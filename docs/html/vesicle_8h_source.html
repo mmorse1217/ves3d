@@ -41,37 +41,38 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
     </ul>
   </div>
 <h1>include/vesicle.h</h1><a href="vesicle_8h.html">Go to the documentation of this file.</a><div class="fragment"><pre class="fragment"><a name="l00001"></a>00001 
-<a name="l00018"></a><a class="code" href="classTest.html">00018</a> <span class="keyword">class </span><a class="code" href="classTest.html">Test</a>
+<a name="l00018"></a><a class="code" href="classvesicle.html">00018</a> <span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt; <span class="keyword">class </span><a class="code" href="classvesicle.html" title="The main class.">vesicle</a>
 <a name="l00019"></a>00019 {
-<a name="l00020"></a>00020   <span class="keyword">public</span>:
-<a name="l00021"></a>00021 
-<a name="l00027"></a><a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3">00027</a>     <span class="keyword">enum</span> <a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3" title="An enum.">TEnum</a> { 
-<a name="l00028"></a><a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3abf8059769020a35c76df3d8b02521273">00028</a>           <a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3abf8059769020a35c76df3d8b02521273" title="enum value TVal1.">TVal1</a>, 
-<a name="l00029"></a><a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3a38ab2f54365cee5e5561b04f32f053e3">00029</a>           <a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3a38ab2f54365cee5e5561b04f32f053e3" title="enum value TVal2.">TVal2</a>, 
-<a name="l00030"></a><a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3ad63507e26f2168659722f1ef575b50b2">00030</a>           <a class="code" href="classTest.html#ad8d13fe56b896633273087859b89a1a3ad63507e26f2168659722f1ef575b50b2" title="enum value TVal3.">TVal3</a>  
-<a name="l00031"></a>00031          } 
-<a name="l00032"></a>00032        *<a class="code" href="classTest.html#add1f72d205230e7bac3fcc70a65c1de2" title="An enum.">enumPtr</a>, 
-<a name="l00033"></a>00033        <a class="code" href="classTest.html#a0bd371828a36ad7ea83dfd07b2a672b5" title="enum variable.">enumVar</a>;  
-<a name="l00039"></a>00039       <a class="code" href="classTest.html#a99f2bbfac6c95612322b0f10e607ebe5" title="A constructor.">Test</a>();
-<a name="l00040"></a>00040 
-<a name="l00045"></a>00045      <a class="code" href="classTest.html#a2b0a62f1e667bbe8d8cb18d785bfa991" title="A destructor.">~Test</a>();
-<a name="l00046"></a>00046     
-<a name="l00057"></a>00057        <span class="keywordtype">int</span> <a class="code" href="classTest.html#af7115d71dda64654a7104c24f130e8d0" title="a normal member taking two arguments and returning an integer value.">testMe</a>(<span class="keywordtype">int</span> a,<span class="keyword">const</span> <span class="keywordtype">char</span> *s);
-<a name="l00058"></a>00058        
-<a name="l00065"></a>00065        <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code" href="classTest.html#a3edb9fdc1e9f0d5274b57386ab03704c" title="A pure virtual member.">testMeToo</a>(<span class="keywordtype">char</span> c1,<span class="keywordtype">char</span> c2) = 0;
-<a name="l00066"></a>00066    
-<a name="l00071"></a><a class="code" href="classTest.html#a3085f973ef857d85d647bf04e89760d0">00071</a>        <span class="keywordtype">int</span> <a class="code" href="classTest.html#a3085f973ef857d85d647bf04e89760d0" title="a public variable.">publicVar</a>;
-<a name="l00072"></a>00072        
-<a name="l00077"></a>00077        int (*<a class="code" href="classTest.html#a8bef142724c4059c18f752e630a4d925" title="a function variable.">handler</a>)(<span class="keywordtype">int</span> a,<span class="keywordtype">int</span> b);
-<a name="l00078"></a>00078 };
-<a name="l00079"></a>00079 
+<a name="l00020"></a>00020 <span class="keyword">public</span>:
+<a name="l00021"></a><a class="code" href="classvesicle.html#a02e23211774527a8dec82c741ea6899b">00021</a>     <span class="keywordtype">int</span> <a class="code" href="classvesicle.html#a02e23211774527a8dec82c741ea6899b" title="The number of vesicles.">nv</a>; 
+<a name="l00022"></a><a class="code" href="classvesicle.html#a34acbe9c962bc2be315cfa096989241e">00022</a>     <span class="keywordtype">int</span> <a class="code" href="classvesicle.html#a34acbe9c962bc2be315cfa096989241e" title="The spherical harmonics basis degree.">p</a>; 
+<a name="l00023"></a><a class="code" href="classvesicle.html#a71e0e239fe1da969271b5f3bb97456b5">00023</a>     T* <a class="code" href="classvesicle.html#a71e0e239fe1da969271b5f3bb97456b5" title="The position vector for the grid points.">posVec</a>; 
+<a name="l00031"></a><a class="code" href="classvesicle.html#ac6b846421ac3c6b5d919ef8e9209fbad">00031</a>     <a class="code" href="classvesicle.html#ac6b846421ac3c6b5d919ef8e9209fbad" title="A constructor for the class vesicle.">vesicle</a>(<span class="keywordtype">int</span> nvIn, <span class="keywordtype">int</span> pIn) : <a class="code" href="classvesicle.html#a02e23211774527a8dec82c741ea6899b" title="The number of vesicles.">nv</a>(nvIn), <a class="code" href="classvesicle.html#a34acbe9c962bc2be315cfa096989241e" title="The spherical harmonics basis degree.">p</a>(pIn)
+<a name="l00032"></a>00032     {
+<a name="l00033"></a>00033         <a class="code" href="classvesicle.html#a71e0e239fe1da969271b5f3bb97456b5" title="The position vector for the grid points.">posVec</a> = <span class="keyword">new</span> T[<a class="code" href="classvesicle.html#a34acbe9c962bc2be315cfa096989241e" title="The spherical harmonics basis degree.">p</a>];
+<a name="l00034"></a>00034         
+<a name="l00035"></a>00035         <span class="keywordflow">for</span>(<span class="keywordtype">int</span> ii=0;ii&lt;<a class="code" href="classvesicle.html#a34acbe9c962bc2be315cfa096989241e" title="The spherical harmonics basis degree.">p</a>;++ii)
+<a name="l00036"></a>00036             <a class="code" href="classvesicle.html#a71e0e239fe1da969271b5f3bb97456b5" title="The position vector for the grid points.">posVec</a>[ii] = ii;
+<a name="l00037"></a>00037     }
+<a name="l00038"></a>00038 
+<a name="l00039"></a>00039     
+<a name="l00045"></a><a class="code" href="classvesicle.html#a2ee2cc68356721b787bf7fe60b9ce08e">00045</a>     <a class="code" href="classvesicle.html#a2ee2cc68356721b787bf7fe60b9ce08e" title="The deconstructor for the class vesicle.">~vesicle</a>()
+<a name="l00046"></a>00046     {
+<a name="l00047"></a>00047         <span class="keyword">delete</span>[] <a class="code" href="classvesicle.html#a71e0e239fe1da969271b5f3bb97456b5" title="The position vector for the grid points.">posVec</a>;
+<a name="l00048"></a>00048     }
+<a name="l00049"></a>00049 
+<a name="l00050"></a>00050 <span class="keyword">private</span>:
+<a name="l00051"></a><a class="code" href="classvesicle.html#ad52297e96dd4cdfb62d16eb05692f71c">00051</a>     <span class="keywordtype">int</span> <a class="code" href="classvesicle.html#ad52297e96dd4cdfb62d16eb05692f71c" title="The number of points on each vesicle.">np</a>; 
+<a name="l00052"></a><a class="code" href="classvesicle.html#abb0d0a00142a4a455efb3119aab56a22">00052</a>     <span class="keywordtype">int</span> <a class="code" href="classvesicle.html#abb0d0a00142a4a455efb3119aab56a22" title="The total length of the position vector.">vecLength</a>; 
+<a name="l00054"></a>00054 };
+<a name="l00055"></a>00055 
 </pre></div></div>
 <!--- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&nbsp;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&nbsp;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&nbsp;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&nbsp;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&nbsp;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&nbsp;</span>Enumerations</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&nbsp;</span>Enumerator</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&nbsp;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&nbsp;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&nbsp;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&nbsp;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&nbsp;</span>Variables</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -80,7 +81,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </iframe>
 </div>
 
-<hr size="1"/><address style="text-align: right;"><small>Generated on Mon Jan 18 14:45:16 2010 for Ves3D by&nbsp;
+<hr size="1"/><address style="text-align: right;"><small>Generated on Mon Jan 18 21:53:30 2010 for Ves3D by&nbsp;
 <a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.6.1 </small></address>
 </body>
