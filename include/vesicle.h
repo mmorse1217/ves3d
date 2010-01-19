@@ -9,7 +9,7 @@
 
 
 /**
- * \class vesicle
+ * @class vesicle
  * @brief The main class
  *
  * vesicle is the class used to ...
