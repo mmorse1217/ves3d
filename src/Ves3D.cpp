@@ -9,6 +9,8 @@ function timeStepper(vesicle* ves, char* method, options* optsIn)
     T *tensForce;
     int p, nv;
     double ts;
+
+		
     
     ves.bendingOp(ves.scaGeoProp[1], bendForce);
     stokesMatVec(p, nv, S.posVec, S.scaGeoProp[2], bendForce, rhs1); 
