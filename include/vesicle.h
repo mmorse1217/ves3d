@@ -7,7 +7,6 @@
  *
  */
 
-
 /**
  * @class vesicle
  * @brief The main class
@@ -18,38 +17,51 @@
 template <typename T> class vesicle
 {
 public:
-    int nv; /**< The number of vesicles */
-    int p; /**< The spherical harmonics basis degree.*/
-    T* posVec; /**< The position vector for the grid points */
-
-    /**
-     * A constructor for the class vesicle.
-     * 
-     * @param nvIn Number of vesicles.
-     * @param pIn Maximum degree of spherical harmonics.
-     */
-    vesicle(int nvIn, int pIn) : nv(nvIn), p(pIn)
-    {
-	posVec = new T[p];
-	
-	for(int ii=0;ii<p;++ii)
-	    posVec[ii] = ii;
-    }
-
+    int nv;/**< The number of vesicles */
+    int p;/**< The spherical harmonics basis degree.*/
+    int np;/**< number of discrization points on each vesicle */
     
-    /**
-     * The deconstructor for the class vesicle.
-     * In the deconstructor the dynamic memory is freed. The position
-     * vector is allocated dynamically, therefore it is deleted here. 
-     */
-    ~vesicle()
-    {
-	delete[] posVec;
-    }
+    T* posVec;/**< The position vector for the grid points ordered as
+	       * [x y z] first on each vesicle then across vesicles*/
 
-private:
-    int np; /**< The number of points on each vesicle  */
-    int vecLength; /**< The total length of the position vector */
-    
+    T** scaGeoProp;/**< The vector of scalar valued geometric properties, ordered as {W,H,K,...} */
+    T** vecGeoProp/**< The vector of vector valued geometric  properties */
+
+    int setPosVec(T* posIn);/**< Takes care of updating geoProps */
+
+    vesicle();
+    ~vesicle();
+
+    int linCurv(T* vec, T* curv); 
+    /**< Linear curvature operator */
+    int Grad(T* vec, T* gradVec);
+    /**< Surface gradient */
+    int Div(T* vec, T* divVec);
+    /**< surface divergence */
+    int bendingOp(T* vec, T* bendForce);
+    /**< Bending Operator */
+    int tensionOp(T* vec, T* tensileForce);
+    /**< Tension Operator */
 };
+
+int stokesMatVec(int p, int nv, T* posVec,T* W, T* density, T* sf); 
+/// Self interaction stokes matVec
+
+int DmSH(T* vecIn,int du,int dv, T* vecOut);
+/// Spherical harmonic differentiation
+
+int shAna(T* vecIn, T* vecOut);
+/// Spherical harmonics transform
+
+int shSyn(T* vecIn, T* vecOut);
+/// Spherical harmonics inverse transform
+
+int interpsh(T* vecIn, T* vecOut);
+/// Interpolation function via spherical harmonics
+
+int filtersh(T* vecIn, T* vecOut);
+/// Filtering via spherical harmonics
+
+int reparam(vecicle* ves);
+
 
