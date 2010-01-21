@@ -1,85 +1,62 @@
-/**
- * @file   vesicle.h
- * @author Rahimian, Abtin <abtin@romario>
- * @date   Mon Jan 18 14:08:45 2010
- * 
- * @brief  The header function of the class vesicle.
- *
- */
+	
+template <typename ScalarType> class FieldOnSphere
+{
+private: 
+    int number_of_fields_;
+    int each_field_length_;
+    ScalarType *data_;
 
-/**
- * @class surface
- * @brief The main class
- *
- * surface is the class used to ...
- * 
- */
-
-template <typename T> class vesicle{
-    int bendingForce(T* vec, T* bendForce);
-    /**< Bending Operator */
-    int tensionForce(T* vec, T* tensileForce);
-    /**< Tension Operator */
+public:
+    VectorsOnSphere();
+    VectorsOnSphere(int num_of_fields_in, int each_field_length_in);
+    VectorsOnSphere(int num_of_fields_in, int each_field_length_in, ScalarType *data_in);
+    ~VectorsOnSphere();
+    
+    ScalarType* SetData(ScalarType *data_in,int data_length_in); 
 }
 
-
-
-template <typename T> class surface
+template <typename ScalarType> class Surface
 {
- private:
-	VecType=.X_,E_,W_...
- 
+private:
+    FieldOnSphere<ScalarType> x_, h_, w_, k_, cu_, cv_, normal_;
+    	
 public:
-    int nv;/**< The number of surfaces */
-    int p;/**< The spherical harmonics basis degree.*/
-    int np;/**< number of discrization points on each surface */
+    int p;
+    int number_of_points;
     
-    T* X(void);/**< The position vector for the grid points ordered as
-	       * [x y z] first on each vesicle then across vesicles*/
-    T* X(T *Xin); // set calucaton and recalculate
-
-		T* E(),W(),H,N,n,Cu,Cv;
-
+    T* X(void);	       
+    T* X(T *Xin);    
+    
     vesicle();
     ~vesicle();
 
-    int approxCurvatureJacobian(T* vec, T* curv); 
-    /**< Linearized curvature operator */
-    int Grad(T* vec, T* gradVec);
-    /**< Surface gradient */
-    int Div(T* vec, T* divVec);
-    /**< surface divergence */
+    int SurfGrad(T* vec, T* surf_grad_vec_out);
+    int SurdDiv(T* vec, T* surf_div_out);
 };
-int stokesMatVec(int p, int nv, T* posVec,T* W, T* density, T* sf); 
-/// Self interaction stokes matVec
 
-template <typename VectorType> class SH
+template <typename VectorType> class Vesicle : public Surface<VectorType>{
+    int ApproxCurvatureJacobian(VectorType* vec_in, VectorType* lininearized_curvature_out); 
+    int BendingForce(VectorType* position_vector_in, VectorType* bending_force_out);
+    int TensileForce(VectorType* tension_in, VectorType* tensile_force_out);
+}
+
+
+template <typename VectorsOnSphere> class SH
 {  
 	
- public:
-	VectorTypeManager *workVectorStack;
-	int allDerivatives_FrequencyToPoints( VectorType *f, VectorType *Duf, *Dvf, *Duuf,...);
-	int pointsToFrequency(VectorType *fin, VectorType *fout);
-	int frequencyToPoints(VectorType *fin, VectorType *fout);
-	int resample(VecType *fIn, VecType *fout);
-	int resampleWithScaling(VecType *fIn, Real *Uscaling, Real *Vscaling, VecType *fout);
-
-	// composite functions
-	int allDerivatives_PointsToPoints( VectorType *f, VectorType *Duf, *Dvf, *Duuf,...);
+public:
+    VectorTypeManager *workVectorStack;
+    int allDerivatives_FrequencyToPoints( VectorType *f, VectorType *Duf, *Dvf, *Duuf,...);
+    int pointsToFrequency(VectorType *fin, VectorType *fout);
+    int frequencyToPoints(VectorType *fin, VectorType *fout);
+    int resample(VecType *fIn, VecType *fout);
+    int resampleWithScaling(VecType *fIn, Real *Uscaling, Real *Vscaling, VecType *fout);
+    
+    // composite functions
+    int allDerivatives_PointsToPoints( VectorType *f, VectorType *Duf, *Dvf, *Duuf,...);
 };
 
-
-template <typename ScalarType> class VecType
-{
- public:
-	int numberOfFunction;
-	int order;  //p
-	ScalarType *data;
-	
-
-
-
-
-int reparam(vecicle* ves);
+int StokesMatVec(Vesicle *ves_in, T* surface_velocity_out);
+int reparam(Vecicle* ves);
 
 
