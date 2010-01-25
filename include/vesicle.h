@@ -9,36 +9,12 @@ template <typename ScalarType> class WorkSpaceManager
     int PushWorkMemery();
 };
 
-/// Cartesian vector
-template <typename FieldType> class D3Vectors
+template <typename ScalarType> SHScalars
 {
-  private:
-    FieldType *X_,*Y_,*Z_;
-    FieldType *data_;
-  public:
-    D3Vectors();
-    ~D3Vectors();
-    SetData();
-    DotProduct();
-    D3Vectors* CrossProduct(D3Vectors *a, D3Vectors *b);
-    D3Vectors* MatVecProduct(MatType* A, D3Vectors *b);
-    operator+();
-    operator-();
-    operator=();
-};
+ public:
+	int number_of_scalar_Functions_;
+	int p_;
 
-// Spherical Calculus
-/// Scalar fields defined on the unit sphere.
-template <typename ScalarType> class FieldsOnSphere
-{
-private: 
-    int number_of_fields_;
-    int number_of_colatitude_grid_;
-    int number_of_longitude_grid_;
-    int fields_length_;
-    ScalarType *data_;
-    
-public:
     FieldsOnSphere();
     FieldsOnSphere(int num_of_fields_in, int num_colatitude_in, int num_longitude_in);
     FieldsOnSphere(int num_of_fields_in, int num_colatitude_in, int num_longitude_in, ScalarType *data_in);
@@ -47,6 +23,31 @@ public:
     ScalarType* SetData(ScalarType *data_in, int data_length_in); 
     ScalarType* GetData();
 };
+	
+template <typename ScalarType> SHVectors
+{
+private:
+  public:
+		FieldType X() data_ ;
+		FieldType Y() data_ + length ; //etc..
+
+    SetData();
+
+		//gb    D3Vectors* MatVecProduct(MatType* A, D3Vectors *b); // remove
+    
+};
+friend    CrossProduct(D3Vectors *aIn, D3Vectors *bIc, D3vectors *aCb);
+//friend   operator+();  //gb avoid mallocs() problematic for large length
+//friend   operator-();
+//friend    operator=();
+friend    DotProduct();
+
+friend		axpy(a,x,y,c);       //gb ( c = a*x + y )
+	
+	
+
+
+    
 
 /// Spherical harmonics
 template <typename FieldsOnSphere> class SphericalHarmonic
@@ -66,13 +67,6 @@ template <typename FieldsOnSphere> class SphericalHarmonic
     int allDerivatives_PointsToPoints( VectorType *f, VectorType *Duf, *Dvf, *Duuf,...);
 };
 
-template <typename FieldType> class VectorsOnSphere : public D3Vectors
-{
-private:
-    
-  public:
-    
-};
 /// General Genus Zero Surfaces
 template <typename ScalarType> class Surface
 {
@@ -97,11 +91,17 @@ public:
 template <typename VectorType> class Vesicle : public Surface
 {
     int ApproxCurvatureJacobian(VectorType* vec_in, VectorType* lininearized_curvature_out); 
-    int BendingForce(VectorType* position_vector_in, VectorType* bending_force_out);
+    int BendingForce(VectorType* bending_force_out);
+		int BendingForceMatVec(D3Vector in, D3Vector out);
     int TensileForce(VectorType* tension_in, VectorType* tensile_force_out);
 };
 
 int StokesMatVec(Vesicle *ves_in, T* surface_velocity_out);
 int reparam(Vecicle* ves);
 
+class StokesMatVec{
+ puclic:
+	init();
+	matvec();
+}
 
