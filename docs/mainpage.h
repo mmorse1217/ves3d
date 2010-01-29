@@ -1,6 +1,6 @@
 /**
  * @file   mainpage.h
- * @author Abtin Rahimian <abtin@romario>
+ * @author Abtin Rahimian <arahimian@acm.org>
  * @date   Tue Jan 19 11:22:23 2010
  * 
  * @brief  The main page for the Ves3D package manual.
@@ -69,10 +69,8 @@
   
   I use emacs as the text editor and the following is the part in my
   <code>.emacs</code> file that corresponds to presonalization for C++:
-
-
-  <code>
-  (setq c-hungry-delete-key t)<br /> 
+  
+  <code>(setq c-hungry-delete-key t)<br /> 
   (add-hook 'c-mode-common-hook 'flyspell-prog-mode)<br /> 
 
   ;; C++ mode style, space only as tab<br /> 
