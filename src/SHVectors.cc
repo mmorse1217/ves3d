@@ -68,6 +68,8 @@ void DotProduct(SHVectors<ScalarType> *a_in,
     aDb_out->SetData(dot);
 
 }
+
+
 template<typename ScalarType> 
 void CrossProduct(SHVectors<ScalarType> *a_in, 
     SHVectors<ScalarType> *b_in, SHVectors<ScalarType> *aCb_out)
@@ -100,7 +102,8 @@ void CrossProduct(SHVectors<ScalarType> *a_in,
             
         }
     }
-    aCb_out->SetData(cross);
-    
+    aCb_out->SetData(cross);    
 }
+
+
 

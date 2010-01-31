@@ -34,6 +34,14 @@ template<typename ScalarType>
 void CrossProduct(SHVectors<ScalarType> *a_in, 
     SHVectors<ScalarType> *b_in, SHVectors<ScalarType> *aCb_out);
 
+template<typename ScalarType> 
+void AxPy(SHScalars<ScalarType> *a_in, 
+        SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
+        SHVectors<ScalarType> c_out); 
+
+
+
+//Class declaration
 template <typename ScalarType> 
 class SHVectors : public SHScalars<ScalarType>
 {
@@ -71,9 +79,13 @@ class SHVectors : public SHScalars<ScalarType>
 
     friend void DotProduct<ScalarType>(SHVectors<ScalarType> *a_in, 
         SHVectors<ScalarType> *b_in, SHScalars<ScalarType> *aDb_out);
+    
     friend void CrossProduct<ScalarType>(SHVectors<ScalarType> *a_in, 
         SHVectors<ScalarType> *b_in, SHVectors<ScalarType> *aCb_out);
-    //friend void AxPy(ScalarType *A_in, SHVectors *x_in, SHVectors *y_in, SHVectors c_out); 
+    
+    friend void AxPy<ScalarType>(SHScalars<ScalarType> *a_in, 
+        SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
+        SHVectors<ScalarType> c_out); 
 };
 
 #include "SHVectors.cc"
