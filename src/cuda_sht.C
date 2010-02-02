@@ -174,7 +174,7 @@ cuda_sht::~cuda_sht()
   assert(cublasGetError ()==CUBLAS_STATUS_SUCCESS);
 }
 
-void cuda_sht::forward(scalar * inputs, scalar * outputs)
+void cuda_sht::forward(const scalar * inputs, scalar * outputs)
 {
   // p is the "order"; we have 2*p points on each "parallel" and p+1 points on each meridian
 

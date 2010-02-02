@@ -10,7 +10,7 @@ using namespace std;
 class cuda_sht
 {
   public:
-    void forward(scalar * inputs, scalar * outputs);
+    void forward(const scalar * inputs, scalar * outputs);
 // "inputs" is array of physical coordinates, vesicle after vesicle;
 // coordinates of each vesicle are stored as ( 2p -by- p+1 ) matrix in
 // columnwise order. That is, first DFT will be performed on columns

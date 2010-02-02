@@ -7,29 +7,35 @@ $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a          \
 -Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core        \
 -Wl,--end-group -openmp -lpthread
 
-CPPFLAGS = -I$(CUDA_DIR)/include                                        \
+CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                                 \
            -I/usr/local/apps/intel/mkl/10.0.3.020/include               \
            -I../include/                                                \
            -I../src/                                                    \
            -DCUDA_SHT_PROFILING
 
-CXXFLAGS = -g -O0
+all: SurfaceTest CurvFlow
 
+SHScalarsTest:
 
-#all: driver
+SHVectorsTest:
 
-SHScalars:
-        $(CXX) $(CFLAGS) $(CPPFLAGS) -o $@.out $@Test.cc 
+SphHarmTest: cuda_sht.o blas_sht.o SphHarmTest.o
 
-SHVectors:
-        $(CXX) $(CFLAGS) $(CPPFLAGS) -o $@.out $@Test.cc 
+SurfaceTest:
 
-SphHarm:
-        $(CXX) $(CFLAGS) $(CPPFLAGS) -o $@.out $@Test.cc 
+CurvFlow:
 
-driver: cuda_sht.o driver.o blas_sht.o
+driver: cuda_sht.o blas_sht.o driver.o 
 
-clean: 
-        rm *.o *.out
+cuda_sht.o: ../src/cuda_sht.C
+	$(CXX) $(CPPFLAGS) -c ../src/cuda_sht.C
+
+blas_sht.o: ../src/blas_sht.C
+	$(CXX) $(CPPFLAGS) -c ../src/blas_sht.C
+
+.PHONY: clean
+
+clean: 	
+	rm -f *.o *.out SurfaceTest
 
 

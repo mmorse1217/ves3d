@@ -4,12 +4,13 @@
 #include "SHVectors.h"
 #include "SphHarm.h"
 
-using namespace std;
-
-int main(int argc, char* argv[])
+int main(int argc, char ** argv)
 {
-    SHVectors<double> vecIn(4,1);
-    SphHarm<double> mamad;
-
-    mamad.Derivatives(&vecIn,&vecIn,&vecIn,&vecIn,&vecIn,&vecIn);
+  int p=12;
+  int num_ves = 1;
+  
+  SHScalars<float> vecIn(p,num_ves);
+  SphHarm<float> mamad(p,num_ves);
+  
+  mamad.Derivatives(&vecIn,&vecIn,&vecIn,&vecIn,&vecIn,&vecIn);
 }

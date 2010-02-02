@@ -26,8 +26,8 @@ int main(int argc, char ** argv)
     num_vesicles = atoi(argv[2]);
   printf("Using p=%d num_vesicles=%d\n",p,num_vesicles);
 
-  cuda_sht  my_sht(p,num_vesicles,"legTrans12", "legTransInv12", "d1legTrans12", "d2legTrans12");
-  blas_sht  my_blas_sht(p,num_vesicles,"legTrans12", "legTransInv12", "d1legTrans12", "d2legTrans12");
+  cuda_sht  my_sht(p,num_vesicles,"../data/legTrans12", "../data/legTransInv12", "../data/d1legTrans12", "../data/d2legTrans12");
+  blas_sht  my_blas_sht(p,num_vesicles,"../data/legTrans12", "../data/legTransInv12", "../data/d1legTrans12", "../data/d2legTrans12");
 
   int num_dft_inputs = num_vesicles*(p+1);
 

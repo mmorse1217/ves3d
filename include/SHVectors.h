@@ -11,6 +11,8 @@
 #define _SHVECTORS_H_
 
 #include "SHScalars.h"
+#include <stdexcept>
+#include<iostream>
 
 /**
  * Three dimensional vectors fields with each component defined on the
@@ -37,8 +39,22 @@ void CrossProduct(SHVectors<ScalarType> *a_in,
 template<typename ScalarType> 
 void AxPy(SHScalars<ScalarType> *a_in, 
         SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
-        SHVectors<ScalarType> c_out); 
+        SHVectors<ScalarType> *c_out); 
 
+template<typename ScalarType> 
+void AxPy(ScalarType a_in, 
+        SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
+        SHVectors<ScalarType> *c_out); 
+
+template<typename ScalarType> 
+void AxPy(SHScalars<ScalarType> *a_in, 
+        SHVectors<ScalarType> *x_in, ScalarType y_in, 
+        SHVectors<ScalarType> *c_out); 
+
+template<typename ScalarType> 
+void AxPy(ScalarType a_in, 
+        SHVectors<ScalarType> *x_in, ScalarType y_in, 
+        SHVectors<ScalarType> *c_out); 
 
 
 //Class declaration
@@ -85,7 +101,7 @@ class SHVectors : public SHScalars<ScalarType>
     
     friend void AxPy<ScalarType>(SHScalars<ScalarType> *a_in, 
         SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
-        SHVectors<ScalarType> c_out); 
+        SHVectors<ScalarType> *c_out); 
 };
 
 #include "SHVectors.cc"

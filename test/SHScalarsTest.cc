@@ -22,17 +22,15 @@ int main(int argc, char* argv[])
         cout<<" number_of_functions  [5]: "<<sf.number_of_functions_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [200]: "<<sf.GetDataLength()<<endl;
-        cout<<" GetData()            [0]: "<<sf.GetData()<<endl;
-
-        cout<<" data_ array allocation  :";
-        int dLen(200);
+        
+	int dLen(200);
         double *data_in = new double[dLen];
         for(int idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
         try{
             sf.SetData(data_in);
         } catch(range_error err) {
-            cerr<<err.what()<<endl;
+            cerr<<" data_ array allocation  :"<<err.what()<<endl;
         }
         delete[] data_in;
         cout<<endl<<endl;
@@ -47,7 +45,7 @@ int main(int argc, char* argv[])
         cout<<" number_of_functions  [5]: "<<sf.number_of_functions_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [200]: "<<sf.GetDataLength()<<endl;
-        cout<<" SetData()-GetData()  [0]: ";
+        cout<<" SetData()-data_      [0]: ";
 
         int dLen(200), idx;
         float *data_in = new float[dLen];
@@ -63,8 +61,7 @@ int main(int argc, char* argv[])
             cerr<<err.what()<<endl;
         }
         delete[] data_in;
-        const float *data_p = sf.GetData();
-        cout<<*(data_p+idx-1)-idx+1<<endl<<endl;
+	cout<<*(sf.data_+idx-1)-idx+1<<endl<<endl;
 
     }
 
@@ -86,24 +83,23 @@ int main(int argc, char* argv[])
         cout<<" GetDataLength()    [280]: "<<sf.GetDataLength()<<endl;
         cout<<" GetFunctionAt() [0, 200]: "<<*sf.GetFunctionAt(0)<<", "<<*sf.GetFunctionAt(5)<<endl;
  
-        cout<<" Function index range    : ";
         try
         {
             sf.GetFunctionAt(-1);
         }
         catch(range_error err)
         {
-            cerr<<err.what()<<endl;
+	  cerr<<" Function index range    : "<<err.what()<<endl;
         }
 
-        cout<<" Function index range    : ";
+        
         try
         {
-            sf.GetFunctionAt(7);
+	  sf.GetFunctionAt(7);
         }
         catch(range_error err)
         {
-            cerr<<err.what()<<endl;
+	  cerr<<" Function index range    : "<<err.what()<<endl;
         }
 
         const double *fp=sf.GetFunctionAt(1);

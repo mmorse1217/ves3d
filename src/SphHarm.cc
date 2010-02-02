@@ -6,19 +6,29 @@
  * @brief  The implementation of the SphHarm class. 
  */
 
-#include<iostream>
+template<typename scalarType> 
+SphHarm<scalarType>::SphHarm() : 
+  p_(0), number_of_functions_(0), shc_(NULL){}
+
 
 template<typename scalarType> 
-SphHarm<scalarType>::SphHarm()
+SphHarm<scalarType>::SphHarm(int p_in, int number_of_functions_) : 
+  p_(p_in),   number_of_functions_(number_of_functions_),
+  cudaTransClass(p_,number_of_functions_,"../data/legTrans12", 
+		 "../data/legTransInv12", "../data/d1legTrans12",
+		 "../data/d2legTrans12")
 {
-    std::cout<<"Initialization will be here"<<std::endl;
+  int size = p_*(p_+2)*number_of_functions_;
+  shc_ = new scalarType[size];
 }
 
 template<typename scalarType> 
 SphHarm<scalarType>::~SphHarm()
 {
-    std::cout<<"Destruction will be here"<<std::endl;
+  delete[] shc_;
+  shc_ = NULL;
 }
+
 
 template <typename scalarType> 
 void SphHarm<scalarType>::Derivatives(SHScalars<scalarType> *f_in, 
@@ -26,6 +36,11 @@ void SphHarm<scalarType>::Derivatives(SHScalars<scalarType> *f_in,
     SHScalars<scalarType> *Duuf_out, SHScalars<scalarType> *Duvf_out, 
     SHScalars<scalarType> *Dvvf_out)
 {
-    std::cout<<"Hello again"<<std::endl;
+  cudaTransClass.forward(f_in->data_, shc_);
+  cudaTransClass.backward_du (shc_, Duf_out->data_ );
+  cudaTransClass.backward_dv (shc_, Duf_out->data_ );
+  cudaTransClass.backward_d2u(shc_, Duuf_out->data_);
+  cudaTransClass.backward_d2v(shc_, Dvvf_out->data_);
+  cudaTransClass.backward_duv(shc_, Duvf_out->data_);
 }
 

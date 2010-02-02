@@ -6,8 +6,6 @@
  * @brief  Implementation for the SHScalars class. 
  */
 
-#include <stdexcept>
-
 //Constructors
 template<typename ScalarType> 
 SHScalars<ScalarType>::SHScalars() :
@@ -61,12 +59,6 @@ void SHScalars<ScalarType>::SetData(const ScalarType *data_in)
     int data_length = GetDataLength();
     for(int idx=0;idx<data_length;++idx)
         data_[idx] = data_in[idx];
-}
-
-template<typename ScalarType> 
-const ScalarType* SHScalars<ScalarType>::GetData()
-{
-    return(data_);
 }
 
 template<typename ScalarType> 

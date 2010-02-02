@@ -6,9 +6,6 @@
  * @brief  The implementation of SHVectors.
  */
 
-#include <stdexcept>
-#include<iostream>
-
 // Constructors
 template<typename ScalarType> 
 SHVectors<ScalarType>::SHVectors() :
@@ -46,8 +43,8 @@ void DotProduct(SHVectors<ScalarType> *a_in,
     int funLen = a_in->GetFunLength();
     int numVec = a_in->number_of_vectors_;
     int idx;
-    const ScalarType *a_data = a_in->GetData();
-    const ScalarType *b_data = a_in->GetData();
+    const ScalarType *a_data = a_in->data_;
+    const ScalarType *b_data = a_in->data_;
     ScalarType *dot = new ScalarType[numVec*funLen];
     
     for(int ii=0;ii<numVec;++ii)
@@ -83,8 +80,8 @@ void CrossProduct(SHVectors<ScalarType> *a_in,
     int funLen = a_in->GetFunLength();
     int numVec = a_in->number_of_vectors_;
     int idx;
-    const ScalarType *a_data = a_in->GetData();
-    const ScalarType *b_data = a_in->GetData();
+    const ScalarType *a_data = a_in->data_;
+    const ScalarType *b_data = a_in->data_;
     ScalarType *cross = new ScalarType[aCb_out->GetDataLength()];
     
     for(int ii=0;ii<numVec;++ii)

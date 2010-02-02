@@ -10,6 +10,8 @@
 #ifndef _SHSCALARS_H_
 #define _SHSCALARS_H_
 
+#include <stdexcept>
+
 /**
  * @brief SHScalars is a class of scalar field/functions defined on a
  * Gauss-uniform grid on a sphere.
@@ -24,16 +26,16 @@ template <typename ScalarType>
 class SHScalars
 {
   protected:
-    /// The array that holds the function values.
-    ScalarType *data_;          
-  
   public:
     /// The grid size variable, equal to the order of spherical harmonics expansion of the functions.
     int p_; 
   
     /// Number of functions in the class. 
-	int number_of_functions_;   
+    int number_of_functions_;   
 
+    /// The array that holds the function values.
+    ScalarType *data_;          
+  
     /// Default constructor, no memory is allocated.
     SHScalars();                
 
@@ -94,13 +96,6 @@ class SHScalars
      */
     void SetFunctionAt(const ScalarType *fun_in, int fun_idx_in);
     
-    /** 
-     * The getter function for the data_ member. 
-     * 
-     * @return A constant pointer to the data_ array.
-     */
-    const ScalarType* GetData();
-
     /** 
      * The getter function for a field at a given index.
      * 

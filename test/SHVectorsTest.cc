@@ -24,17 +24,15 @@ int main(int argc, char* argv[])
         cout<<" number_of_functions [15]: "<<sf.number_of_functions_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [600]: "<<sf.GetDataLength()<<endl;
-        cout<<" GetData()            [0]: "<<sf.GetData()<<endl;
 
-        cout<<" data_ array allocation  :";
-        int dLen(1);
+	int dLen(1);
         double *data_in = new double[dLen];
         for(int idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
         try{
             sf.SetData(data_in);
         } catch(range_error err) {
-            cerr<<err.what()<<endl;
+            cerr<<" data_ array allocation  :"<<err.what()<<endl;
         }
         delete[] data_in;
         cout<<endl<<endl;
@@ -52,8 +50,7 @@ int main(int argc, char* argv[])
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [600]: "<<sf.GetDataLength()<<endl;
         cout<<" GetVecLength()     [120]: "<<sf.GetVecLength()<<endl;
-        cout<<" SetData()-GetData()  [0]: ";
-
+        
         int dLen(sf.GetDataLength()), idx;
         float *data_in = new float[dLen];
         for(idx=0;idx<dLen;++idx)
@@ -65,11 +62,10 @@ int main(int argc, char* argv[])
         } 
         catch(range_error err)
         {
-            cerr<<err.what()<<endl;
+            cerr<<" SetData()-data_      [0]: "<<err.what()<<endl;
         }
         delete[] data_in;
-        const float *data_p = sf.GetData();
-        cout<<*(data_p+idx-1)-idx+1<<endl<<endl;
+        cout<<*(sf.data_+idx-1)-idx+1<<endl<<endl;
 
     }
 
@@ -88,27 +84,25 @@ int main(int argc, char* argv[])
         cout<<" p                    [4]: "<<sf.p_<<endl;
         cout<<" number_of_vectors    [7]: "<<sf.number_of_vectors_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
-        cout<<" GetDataLength()    [280]: "<<sf.GetDataLength()<<endl;
+        cout<<" GetDataLength()    [840]: "<<sf.GetDataLength()<<endl;
         cout<<" GetFunctionAt() [0, 200]: "<<*sf.GetFunctionAt(0)<<", "<<*sf.GetFunctionAt(5)<<endl;
  
-        cout<<" Function index range    : ";
         try
         {
             sf.GetFunctionAt(-1);
         }
         catch(range_error err)
         {
-            cerr<<err.what()<<endl;
+            cerr<<" Function index range    : "<<err.what()<<endl;
         }
 
-        cout<<" Function index range    : ";
         try
         {
             sf.GetFunctionAt(3*nVec);
         }
         catch(range_error err)
         {
-            cerr<<err.what()<<endl;
+            cerr<<" Function index range    : "<<err.what()<<endl;
         }
 
         const double *fp=sf.GetFunctionAt(1);
