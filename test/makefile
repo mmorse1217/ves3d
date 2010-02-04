@@ -1,6 +1,5 @@
 MKLPATH = /opt/intel/Compiler/11.1/059/mkl/lib/em64t
 CXX = icpc
-CC = icpc
 CUDA_DIR = /usr/local/cuda
 LDFLAGS = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath              \
 $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a          \
@@ -36,6 +35,6 @@ blas_sht.o: ../src/blas_sht.C
 .PHONY: clean
 
 clean: 	
-	rm -f *.o *.out SurfaceTest
+	-rm -f *.o *.out SurfaceTest
 
 
