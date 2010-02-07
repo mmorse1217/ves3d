@@ -12,7 +12,6 @@
 
 #include "SHScalars.h"
 #include <stdexcept>
-#include<iostream>
 
 /**
  * Three dimensional vectors fields with each component defined on the
@@ -29,33 +28,26 @@ template <typename ScalarType> class SHVectors;
 
 //Function declaration
 template<typename ScalarType> 
-void DotProduct(SHVectors<ScalarType> *a_in, 
-    SHVectors<ScalarType> *b_in, SHScalars<ScalarType> *aDb_out);
+void DotProduct(const SHVectors<ScalarType>& a_in, 
+    const SHVectors<ScalarType>& b_in, SHScalars<ScalarType>& aDb_out);
 
 template<typename ScalarType> 
-void CrossProduct(SHVectors<ScalarType> *a_in, 
-    SHVectors<ScalarType> *b_in, SHVectors<ScalarType> *aCb_out);
+void CrossProduct(const SHVectors<ScalarType>& a_in, 
+    const SHVectors<ScalarType>& b_in, SHVectors<ScalarType>& aCb_out);
 
 template<typename ScalarType> 
-void AxPy(SHScalars<ScalarType> *a_in, 
-        SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
-        SHVectors<ScalarType> *c_out); 
+void AxPy(const SHScalars<ScalarType>& a_in, 
+    const SHVectors<ScalarType>& x_in, const SHVectors<ScalarType>& y_in, 
+    SHVectors<ScalarType>& c_out); 
 
 template<typename ScalarType> 
-void AxPy(ScalarType a_in, 
-        SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
-        SHVectors<ScalarType> *c_out); 
+void AxPy(const SHScalars<ScalarType>& a_in, 
+    const SHVectors<ScalarType>& x_in, ScalarType y_in, 
+    SHVectors<ScalarType>& c_out); 
 
 template<typename ScalarType> 
-void AxPy(SHScalars<ScalarType> *a_in, 
-        SHVectors<ScalarType> *x_in, ScalarType y_in, 
-        SHVectors<ScalarType> *c_out); 
-
-template<typename ScalarType> 
-void AxPy(ScalarType a_in, 
-        SHVectors<ScalarType> *x_in, ScalarType y_in, 
-        SHVectors<ScalarType> *c_out); 
-
+void xDy(const SHVectors<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
+        SHVectors<ScalarType>& c_out); 
 
 //Class declaration
 template <typename ScalarType> 
@@ -91,17 +83,55 @@ class SHVectors : public SHScalars<ScalarType>
      * 
      * @return The length of each vector 
      */
-    int GetVecLength();
+    int GetVecLength() const;
 
-    friend void DotProduct<ScalarType>(SHVectors<ScalarType> *a_in, 
-        SHVectors<ScalarType> *b_in, SHScalars<ScalarType> *aDb_out);
+    /** 
+     * The vector (geometrical) dot product on SHVectors.
+     */
+    friend void DotProduct<ScalarType>(const SHVectors<ScalarType>& a_in, 
+        const SHVectors<ScalarType>& b_in, SHScalars<ScalarType>& aDb_out);
     
-    friend void CrossProduct<ScalarType>(SHVectors<ScalarType> *a_in, 
-        SHVectors<ScalarType> *b_in, SHVectors<ScalarType> *aCb_out);
+    /**
+     * The vector (geometrical) cross product on SHVectors.
+     * 
+     */
+    friend void CrossProduct<ScalarType>(const SHVectors<ScalarType>& a_in, 
+        const SHVectors<ScalarType>& b_in, SHVectors<ScalarType>& aCb_out);
     
-    friend void AxPy<ScalarType>(SHScalars<ScalarType> *a_in, 
-        SHVectors<ScalarType> *x_in, SHVectors<ScalarType> *y_in, 
-        SHVectors<ScalarType> *c_out); 
+    /**
+     * The addition operator for SHVectors.
+     */
+    friend void AxPy<ScalarType>(const SHScalars<ScalarType>& a_in, 
+        const SHVectors<ScalarType>& x_in, const SHVectors<ScalarType>& y_in, 
+        SHVectors<ScalarType>& c_out); 
+
+    /**
+     * The addition operator for SHVectors.
+     */
+    friend void AxPy<ScalarType>(const SHScalars<ScalarType>& a_in, 
+        const SHVectors<ScalarType>& x_in, ScalarType y_in, 
+        SHVectors<ScalarType>& c_out); 
+    
+    /**
+     * The division (scaling) operator for SHVectors.
+     */
+    friend void xDy<ScalarType>(const SHVectors<ScalarType>& x_in, 
+        const SHScalars<ScalarType>& y_in, SHVectors<ScalarType>& c_out); 
+
+  private:
+    /** 
+     * The declaration of the copy constructor, this is declared as
+     * private so as to disallow any passing by value to
+     * functions. There will be no implementation for this method.
+     */
+    SHVectors(const SHVectors<ScalarType>& sh_in);
+    
+    /** 
+     * The declaration of the assignment operator, it is declared as
+     * private so as to disallow any passing by value to
+     * functions. There will be no implementation for this method.
+     */
+    SHVectors<ScalarType>& operator=(const SHVectors<ScalarType>& sh_in);
 };
 
 #include "SHVectors.cc"

@@ -12,8 +12,28 @@
 
 #include <stdexcept>
 
+//Forward declaration
+template <typename ScalarType> class SHScalars; 
+
+//Function declaration
+template<typename ScalarType> 
+void AxPy(ScalarType a_in, const SHScalars<ScalarType>& x_in, 
+    const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& res_out); 
+
+template<typename ScalarType> 
+void AxPy(ScalarType a_in, const SHScalars<ScalarType>& x_in, 
+    ScalarType y_in, SHScalars<ScalarType>& res_out);
+
+template<typename ScalarType> 
+void xTy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
+    SHScalars<ScalarType>& xTy_out);
+
+template<typename ScalarType> 
+void xDy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
+    SHScalars<ScalarType>& xDy_out);
+
 /**
- * @brief SHScalars is a class of scalar field/functions defined on a
+ * @brief SHScalars is a class of scalar fields/functions defined on a
  * Gauss-uniform grid on a sphere.
  *
  * An instance of this class may hold multiple scalar fields so that
@@ -68,14 +88,14 @@ class SHScalars
      *
      * @return The length of each field.
      */
-    int GetFunLength();
+    int GetFunLength() const;
     
     /** 
      * Calculates the length of data_ array.
      *
      * @return The length of data_ array.
      */
-    int GetDataLength();
+    int GetDataLength() const;
 
     /** 
      * The setter function for data_.
@@ -102,8 +122,63 @@ class SHScalars
      * @param fun_idx_in The index of the function, starts from 0.
      * @return A constant pointer to the Function.
      */
-    const ScalarType* GetFunctionAt(int fun_idx_in);
+    const ScalarType* GetFunctionAt(int fun_idx_in) const;
+
+    /** 
+     * The (overloaded) addition operator for the class type
+     * SHScalars. There will be no size check inside of the function,
+     * and the input is assumed to be of the correct size. The
+     * function calculates c = a*x + y.
+     */
+    friend void AxPy<ScalarType>(ScalarType a_in, 
+        const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
+        SHScalars<ScalarType>& res_out);
+
+    /** 
+     * The (overloaded) addition operator for the class type
+     * SHScalars. There will be no size check inside of the function,
+     * and the input is assumed to be of the correct size. The
+     * function calculates c = a*x + y.
+     */
+    friend void AxPy<ScalarType>(ScalarType a_in, 
+        const SHScalars<ScalarType>& x_in, ScalarType y_in, 
+        SHScalars<ScalarType>& res_out);
+
+    /** 
+     * The multiplication operator for the class type SHScalars. There
+     * will be no size check inside of the function, and the input is
+     * assumed to be of the correct size. The function calculates c =
+     * x*y (pointwise).
+     */
+    friend void xTy<ScalarType>(const SHScalars<ScalarType>& x_in, 
+        const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& xTy_out);
+
+    /** 
+     * The division operator for the class type SHScalars. There will
+     * be no size check inside of the function, and the input is
+     * assumed to be of the correct size. The function calculates c =
+     * x/y (pointwise).
+     */
+    friend void xDy<ScalarType>(const SHScalars<ScalarType>& x_in, 
+        const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& xDy_out);
+
+
+  private:
+    /** 
+     * The declaration of the copy constructor, this is declared as
+     * private so as to disallow any passing by value to
+     * functions. There will be no implementation for this method.
+     */
+    SHScalars(const SHScalars<ScalarType>& sh_in);
+    
+    /** 
+     * The declaration of the assignment operator, it is declared as
+     * private so as to disallow any passing by value to
+     * functions. There will be no implementation for this method.
+     */
+    SHScalars<ScalarType>& operator=(const SHScalars<ScalarType>& sh_in);
 };
 
 #include "SHScalars.cc"
-#endif
+
+#endif //_SHSCALARS_H_

@@ -31,16 +31,16 @@ SphHarm<scalarType>::~SphHarm()
 
 
 template <typename scalarType> 
-void SphHarm<scalarType>::Derivatives(SHScalars<scalarType> *f_in, 
-    SHScalars<scalarType> *Duf_out, SHScalars<scalarType> *Dvf_out, 
-    SHScalars<scalarType> *Duuf_out, SHScalars<scalarType> *Duvf_out, 
-    SHScalars<scalarType> *Dvvf_out)
+void SphHarm<scalarType>::Derivatives(const SHScalars<scalarType>& f_in, 
+    SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out, 
+    SHScalars<scalarType>& Duuf_out, SHScalars<scalarType>& Duvf_out, 
+    SHScalars<scalarType>& Dvvf_out)
 {
-  cudaTransClass.forward(f_in->data_, shc_);
-  cudaTransClass.backward_du (shc_, Duf_out->data_ );
-  cudaTransClass.backward_dv (shc_, Duf_out->data_ );
-  cudaTransClass.backward_d2u(shc_, Duuf_out->data_);
-  cudaTransClass.backward_d2v(shc_, Dvvf_out->data_);
-  cudaTransClass.backward_duv(shc_, Duvf_out->data_);
+  cudaTransClass.forward(f_in.data_, shc_);
+  cudaTransClass.backward_du (shc_, Duf_out.data_ );
+  cudaTransClass.backward_dv (shc_, Dvf_out.data_ );
+  cudaTransClass.backward_d2u(shc_, Duuf_out.data_);
+  cudaTransClass.backward_duv(shc_, Duvf_out.data_);
+  cudaTransClass.backward_d2v(shc_, Dvvf_out.data_);
 }
 

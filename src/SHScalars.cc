@@ -36,13 +36,13 @@ SHScalars<ScalarType>::~SHScalars()
 
 //Utility functions
 template<typename ScalarType> 
-int SHScalars<ScalarType>::GetFunLength()
+int SHScalars<ScalarType>::GetFunLength() const
 {
     return(2*p_*(p_ + 1));
 }
 
 template<typename ScalarType> 
-int SHScalars<ScalarType>::GetDataLength()
+int SHScalars<ScalarType>::GetDataLength() const
 {
     return(number_of_functions_ * GetFunLength());
 }
@@ -62,7 +62,7 @@ void SHScalars<ScalarType>::SetData(const ScalarType *data_in)
 }
 
 template<typename ScalarType> 
-const ScalarType* SHScalars<ScalarType>::GetFunctionAt(int fun_idx_in)
+const ScalarType* SHScalars<ScalarType>::GetFunctionAt(int fun_idx_in) const
 {
     if ( data_ == NULL )
     {
@@ -94,3 +94,39 @@ void SHScalars<ScalarType>::SetFunctionAt(const ScalarType *fun_in, int fun_idx_
 
 }
 
+template<typename ScalarType> 
+void AxPy(ScalarType a_in, const SHScalars<ScalarType>& x_in,
+    const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& res_out)
+{
+    int data_length = res_out.GetDataLength();
+    for(int idx=0;idx<data_length;++idx)
+        res_out.data_[idx] = a_in*x_in.data_[idx] + y_in.data_[idx];
+}
+
+template<typename ScalarType> 
+void AxPy(ScalarType a_in, const SHScalars<ScalarType>& x_in,
+    ScalarType y_in, SHScalars<ScalarType>& res_out)
+{
+    int data_length = res_out.GetDataLength();
+    for(int idx=0;idx<data_length;++idx)
+        res_out.data_[idx] = a_in*x_in.data_[idx] + y_in;
+}
+
+template<typename ScalarType> 
+void xTy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
+    SHScalars<ScalarType>& xTy_out)
+{
+    int data_length = xTy_out.GetDataLength();
+    for(int idx=0;idx<data_length;++idx)
+        xTy_out.data_[idx] = x_in.data_[idx]*y_in.data_[idx];
+}
+
+template<typename ScalarType> 
+void xDy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
+    SHScalars<ScalarType>& xDy_out)
+{
+    int data_length = xDy_out.GetDataLength();
+    for(int idx=0;idx<data_length;++idx)
+        xDy_out.data_[idx] = x_in.data_[idx]/y_in.data_[idx];
+
+}

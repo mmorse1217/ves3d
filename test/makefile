@@ -1,5 +1,6 @@
 MKLPATH = /opt/intel/Compiler/11.1/059/mkl/lib/em64t
 CXX = icpc
+CC = icpc
 CUDA_DIR = /usr/local/cuda
 LDFLAGS = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath              \
 $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a          \
@@ -12,7 +13,7 @@ CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                                 \
            -I../src/                                                    \
            -DCUDA_SHT_PROFILING
 
-all: SurfaceTest CurvFlow
+all: CurvFlow
 
 SHScalarsTest:
 
@@ -20,9 +21,9 @@ SHVectorsTest:
 
 SphHarmTest: cuda_sht.o blas_sht.o SphHarmTest.o
 
-SurfaceTest:
+SurfaceTest: cuda_sht.o SurfaceTest.o
 
-CurvFlow:
+CurvFlow: cuda_sht.o CurvFlow.o
 
 driver: cuda_sht.o blas_sht.o driver.o 
 
@@ -35,6 +36,5 @@ blas_sht.o: ../src/blas_sht.C
 .PHONY: clean
 
 clean: 	
-	-rm -f *.o *.out SurfaceTest
-
+	@-rm -f *.o *.out CurvFlow
 

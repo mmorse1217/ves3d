@@ -12,17 +12,16 @@
 #include "SHScalars.h"
 #include "SHVectors.h"
 #include "SphHarm.h"
+#include <math.h>
 
 template <typename ScalarType> class Surface
 {
-  private:
-    ScalarType *area_, *volume_;
   public:
     int p_;
     int number_of_surfs_;
-    SHVectors<ScalarType> x_, normal_;
-    SHScalars<ScalarType> h_, w_, k_, cu_, cv_;
-
+    SHVectors<ScalarType> x_, normal_, cu_, cv_;
+    SHScalars<ScalarType> h_, w_, k_;
+        
     Surface();
     Surface(int p_in, int number_of_surfs_in);
     Surface(int p_in, int number_of_surfs_in, const SHVectors<ScalarType> &x_in);
@@ -35,4 +34,4 @@ template <typename ScalarType> class Surface
 };
 
 #include "Surface.cc"
-#endif
+#endif //_SURFACE_H_

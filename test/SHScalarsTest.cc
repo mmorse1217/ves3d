@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [280]: "<<sf.GetDataLength()<<endl;
         cout<<" GetFunctionAt() [0, 200]: "<<*sf.GetFunctionAt(0)<<", "<<*sf.GetFunctionAt(5)<<endl;
- 
+        
         try
         {
             sf.GetFunctionAt(-1);
@@ -104,13 +104,25 @@ int main(int argc, char* argv[])
 
         const double *fp=sf.GetFunctionAt(1);
         sf.SetFunctionAt(fp,0);
-        cout<<" SetFunctionAt()       [0]: "<<*sf.GetFunctionAt(0)-*sf.GetFunctionAt(1)<<endl<<endl;
+        cout<<" SetFunctionAt()       [0]: "<<*sf.GetFunctionAt(0)-*sf.GetFunctionAt(1)<<endl;
 
-        cout<<" ------------ "<<endl;
-        cout<<" End of test. "<<endl;
-        cout<<" ------------ "<<endl;
-        
+        AxPy(1.0,sf,2.0,sf);
+        cout<<" AxPy()               [42]: "<<sf.data_[0]<<endl;
+        AxPy(1.0,sf,sf,sf);
+        cout<<" AxPy()               [84]: "<<sf.data_[0]<<endl;
+        AxPy(.5,sf,-2.0,sf);
+        cout<<" AxPy()               [40]: "<<sf.data_[0]<<endl<<endl;
+
+        xTy(sf,sf,sf);
+        cout<<" xTy()              [1600]: "<<sf.data_[0]<<endl<<endl;
+
+        xDy(sf,sf,sf);
+        cout<<" xDy()                 [1]: "<<sf.data_[0]<<endl<<endl;
+
     }
+    cout<<" ------------ "<<endl;
+    cout<<" End of test. "<<endl;
+    cout<<" ------------ "<<endl;
 }
 
 

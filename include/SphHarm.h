@@ -26,10 +26,10 @@ template <typename scalarType> class SphHarm
   SphHarm(int p_in, int number_of_functions_in);
   ~SphHarm();
 
-  void Derivatives(SHScalars<scalarType> *f_in, 
-		   SHScalars<scalarType> *Duf_out, SHScalars<scalarType> *Dvf_out, 
-		   SHScalars<scalarType> *Duuf_out, SHScalars<scalarType> *Duvf_out, 
-		   SHScalars<scalarType> *Dvvf_out);
+  void Derivatives(const SHScalars<scalarType>& f_in, 
+		   SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out, 
+		   SHScalars<scalarType>& Duuf_out, SHScalars<scalarType>& Duvf_out, 
+		   SHScalars<scalarType>& Dvvf_out);
 
   //int PointsToFrequency(SHScalars *f_in, SHScalars *f_out);
   //int FrequencyToPoints(SHScalars *f_in, SHScalars *f_out);
@@ -40,4 +40,4 @@ template <typename scalarType> class SphHarm
 };
 
 #include "SphHarm.cc"
-#endif
+#endif //_SPHHARM_H_
