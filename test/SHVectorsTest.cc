@@ -15,25 +15,16 @@ int main(int argc, char* argv[])
     cout<<" -----------------------------------"<<endl;
     {
         SHVectors<double> sf;
-        sf.p_ = 4;
-        sf.number_of_vectors_ = 5;
-        sf.number_of_functions_ = 15;
-        
-        cout<<" p                    [4]: "<<sf.p_<<endl;
-        cout<<" number_of_vectors    [5]: "<<sf.number_of_vectors_<<endl;
-        cout<<" number_of_functions [15]: "<<sf.number_of_functions_<<endl;
+        sf.Resize(4,5);
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [600]: "<<sf.GetDataLength()<<endl;
 
-	int dLen(1);
+        int dLen(sf.GetDataLength());
         double *data_in = new double[dLen];
         for(int idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
-        try{
-            sf.SetData(data_in);
-        } catch(range_error err) {
-            cerr<<" data_ array allocation  :"<<err.what()<<endl;
-        }
+        sf.SetData(data_in);
+        
         delete[] data_in;
         cout<<endl<<endl;
     }
@@ -44,9 +35,6 @@ int main(int argc, char* argv[])
     {
         SHVectors<float> sf(4,5);
 
-        cout<<" p                    [4]: "<<sf.p_<<endl;
-        cout<<" number_of_functions [15]: "<<sf.number_of_functions_<<endl;
-        cout<<" number_of_vectors    [5]: "<<sf.number_of_vectors_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [600]: "<<sf.GetDataLength()<<endl;
         cout<<" GetVecLength()     [120]: "<<sf.GetVecLength()<<endl;
@@ -56,14 +44,6 @@ int main(int argc, char* argv[])
         for(idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
         
-        try
-        {
-            sf.SetData(data_in);
-        } 
-        catch(range_error err)
-        {
-            cerr<<" SetData()-data_      [0]: "<<err.what()<<endl;
-        }
         delete[] data_in;
         cout<<*(sf.data_+idx-1)-idx+1<<endl<<endl;
 
@@ -81,29 +61,10 @@ int main(int argc, char* argv[])
         SHVectors<double> sf(p,nVec,data_in);
         delete[] data_in;
 
-        cout<<" p                    [4]: "<<sf.p_<<endl;
-        cout<<" number_of_vectors    [7]: "<<sf.number_of_vectors_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [840]: "<<sf.GetDataLength()<<endl;
         cout<<" GetFunctionAt() [0, 200]: "<<*sf.GetFunctionAt(0)<<", "<<*sf.GetFunctionAt(5)<<endl;
  
-        try
-        {
-            sf.GetFunctionAt(-1);
-        }
-        catch(range_error err)
-        {
-            cerr<<" Function index range    : "<<err.what()<<endl;
-        }
-
-        try
-        {
-            sf.GetFunctionAt(3*nVec);
-        }
-        catch(range_error err)
-        {
-            cerr<<" Function index range    : "<<err.what()<<endl;
-        }
 
         const double *fp=sf.GetFunctionAt(1);
         sf.SetFunctionAt(fp,0);

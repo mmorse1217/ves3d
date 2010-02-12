@@ -26,16 +26,20 @@ int SHVectors<ScalarType>::GetVecLength() const
     return(3*SHScalars<ScalarType>::GetFunLength());
 }
 
+template<typename ScalarType> 
+void SHVectors<ScalarType>::Resize(int p_in, int number_of_vectors_in)
+{
+    assert(SHScalars<ScalarType>::data_ == NULL);
+    SHScalars<ScalarType>::Resize(p_in, 3*number_of_vectors_in);
+    number_of_vectors_ = number_of_vectors_in;
+}
 
 template<typename ScalarType> 
 void DotProduct(const SHVectors<ScalarType>& a_in, 
     const SHVectors<ScalarType>& b_in, SHScalars<ScalarType>& aDb_out)
 {
-    if(a_in.GetDataLength() != b_in.GetDataLength())
-        throw std::length_error(" Input vector sizes do not match.");
-    
-    if(a_in.GetDataLength() > 3*aDb_out.GetDataLength())
-        throw std::length_error(" Output vector is too small.");
+    assert(a_in.GetDataLength() == b_in.GetDataLength());
+    assert(a_in.GetDataLength() <= 3*aDb_out.GetDataLength());
     
     int funLen = a_in.GetFunLength();
     int numVec = a_in.number_of_vectors_;
@@ -62,15 +66,12 @@ void DotProduct(const SHVectors<ScalarType>& a_in,
     aDb_out.SetData(dot);
 }
 
-#include <iostream>
-
 template<typename ScalarType> 
 void CrossProduct(const SHVectors<ScalarType>& a_in, 
     const SHVectors<ScalarType>& b_in, SHVectors<ScalarType>& aCb_out)
 {
-    if(a_in.GetDataLength() != b_in.GetDataLength() ||
-        b_in.GetDataLength() != aCb_out.GetDataLength())
-        throw std::length_error(" Input/output vector sizes do not match.");
+    assert(a_in.GetDataLength() == b_in.GetDataLength() &&
+        b_in.GetDataLength() == aCb_out.GetDataLength());
     
     int funLen = a_in.GetFunLength();
     int numVec = a_in.number_of_vectors_;

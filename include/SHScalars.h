@@ -10,7 +10,8 @@
 #ifndef _SHSCALARS_H_
 #define _SHSCALARS_H_
 
-#include <stdexcept>
+#include <math.h>
+#include <cassert>
 
 //Forward declaration
 template <typename ScalarType> class SHScalars; 
@@ -47,12 +48,6 @@ class SHScalars
 {
   protected:
   public:
-    /// The grid size variable, equal to the order of spherical harmonics expansion of the functions.
-    int p_; 
-  
-    /// Number of functions in the class. 
-    int number_of_functions_;   
-
     /// The array that holds the function values.
     ScalarType *data_;          
   
@@ -80,7 +75,7 @@ class SHScalars
      */
     SHScalars(int p_in, int num_funs_in, const ScalarType *data_in); 
 
-    /// Default deconstructor, the memory is freed.
+    /// Default destructor, the memory is freed.
     virtual ~SHScalars();
     
     /** 
@@ -124,6 +119,23 @@ class SHScalars
      */
     const ScalarType* GetFunctionAt(int fun_idx_in) const;
 
+
+    /** 
+     * The square root operator for the class. It calculates and saves
+     * the point wise square roots.
+     */
+    void Sqrt();
+
+    /** 
+     * Sets the private data members p_ and number_of_functions_ (for
+     * now, only before initialization of data_). For the time being
+     * it will be impossible to change these values after that the
+     * memory for data_ is allocated (it needs an interpolation method
+     * to move between to different size). It also allocates memory
+     * for data_.
+     */
+    virtual void Resize(int p_in, int number_of_functions_in);
+
     /** 
      * The (overloaded) addition operator for the class type
      * SHScalars. There will be no size check inside of the function,
@@ -164,6 +176,15 @@ class SHScalars
 
 
   private:
+    /**
+     * The grid size variable, equal to the order of spherical
+     * harmonics expansion of the functions.
+     */
+    int p_; 
+  
+    /// Number of functions in the class. 
+    int number_of_functions_;   
+
     /** 
      * The declaration of the copy constructor, this is declared as
      * private so as to disallow any passing by value to
@@ -177,6 +198,13 @@ class SHScalars
      * functions. There will be no implementation for this method.
      */
     SHScalars<ScalarType>& operator=(const SHScalars<ScalarType>& sh_in);
+
+    /**
+     * Allocated the memory in the heap for the data_ member. The size
+     * of the allocation will be equal to the value returned by
+     * GetDataLength().
+     */
+    void AllocateMemory();
 };
 
 #include "SHScalars.cc"

@@ -15,14 +15,14 @@ template<typename ScalarType>
 SHScalars<ScalarType>::SHScalars(int p_in, int num_funs_in) : 
     p_(p_in), number_of_functions_(num_funs_in)
 {
-    data_ = new ScalarType[GetDataLength()];
+    AllocateMemory();
 }
 
 template<typename ScalarType> 
 SHScalars<ScalarType>::SHScalars(int p_in, int num_funs_in, const ScalarType *data_in) :
     p_(p_in), number_of_functions_(num_funs_in)
 {
-    data_ = new ScalarType[GetDataLength()];
+    AllocateMemory();
     SetData(data_in);
 }
 
@@ -35,6 +35,21 @@ SHScalars<ScalarType>::~SHScalars()
 }
 
 //Utility functions
+template<typename ScalarType> 
+void SHScalars<ScalarType>::AllocateMemory()
+{
+    data_ = new ScalarType[GetDataLength()];
+}
+
+template<typename ScalarType> 
+void SHScalars<ScalarType>::Resize(int p_in, int number_of_functions_in)
+{
+    assert(data_ == NULL);
+    p_ = p_in;
+    number_of_functions_ = number_of_functions_in;
+    AllocateMemory();
+}
+
 template<typename ScalarType> 
 int SHScalars<ScalarType>::GetFunLength() const
 {
@@ -51,11 +66,7 @@ template<typename ScalarType>
 void SHScalars<ScalarType>::SetData(const ScalarType *data_in)
 {
     ///If memory is not allocated return.
-    if ( data_ == NULL )
-    {
-        throw std::range_error(" data_ is not yet allocated."); 
-    }
-    
+    assert(data_ != NULL);
     int data_length = GetDataLength();
     for(int idx=0;idx<data_length;++idx)
         data_[idx] = data_in[idx];
@@ -64,28 +75,17 @@ void SHScalars<ScalarType>::SetData(const ScalarType *data_in)
 template<typename ScalarType> 
 const ScalarType* SHScalars<ScalarType>::GetFunctionAt(int fun_idx_in) const
 {
-    if ( data_ == NULL )
-    {
-        throw std::range_error(" data_ is not yet allocated."); 
-    }
-    else if ( fun_idx_in>=number_of_functions_ || fun_idx_in<0 )
-    {
-        throw std::range_error(" function index fun_idx_in is out of range.");
-    }
+    assert(data_ != NULL);
+    assert(fun_idx_in<number_of_functions_ && fun_idx_in>=0);
     return(data_ + fun_idx_in*GetFunLength());
 }
 
 template<typename ScalarType> 
 void SHScalars<ScalarType>::SetFunctionAt(const ScalarType *fun_in, int fun_idx_in)
 {
-    if ( data_ == NULL )
-    {
-        throw std::range_error(" data_ is not yet allocated."); 
-    }
-    else if ( fun_idx_in>=number_of_functions_ || fun_idx_in<0 )
-    {
-        throw std::range_error(" function index fun_idx_in is out of range.");
-    }
+    assert(data_ != NULL);
+    assert(fun_idx_in<number_of_functions_ && fun_idx_in>=0);
+
     int fun_length = GetFunLength();
     ScalarType *fun_head = data_ + fun_idx_in*GetFunLength();
 
@@ -129,4 +129,12 @@ void xDy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in,
     for(int idx=0;idx<data_length;++idx)
         xDy_out.data_[idx] = x_in.data_[idx]/y_in.data_[idx];
 
+}
+
+template<typename ScalarType> 
+void SHScalars<ScalarType>::Sqrt()
+{
+    int len = GetDataLength();
+    for(int idx=0;idx<len; ++idx)
+        data_[idx] = sqrt(data_[idx]);
 }

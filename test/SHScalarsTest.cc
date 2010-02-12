@@ -1,5 +1,4 @@
 #include<iostream>
-#include<exception>
 #include "SHScalars.h"
 
 using namespace std;
@@ -15,23 +14,20 @@ int main(int argc, char* argv[])
     cout<<" -----------------------------------"<<endl;
     {
         SHScalars<double> sf;
-        sf.p_ = 4;
-        sf.number_of_functions_ = 5;
+        sf.Resize(4,5);
         
-        cout<<" p                    [4]: "<<sf.p_<<endl;
-        cout<<" number_of_functions  [5]: "<<sf.number_of_functions_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [200]: "<<sf.GetDataLength()<<endl;
         
-	int dLen(200);
+        int dLen(sf.GetDataLength());
         double *data_in = new double[dLen];
         for(int idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
-        try{
-            sf.SetData(data_in);
-        } catch(range_error err) {
-            cerr<<" data_ array allocation  :"<<err.what()<<endl;
-        }
+//         try{
+//             sf.SetData(data_in);
+//         } catch(range_error err) {
+//             cerr<<" data_ array allocation  :"<<err.what()<<endl;
+//         }
         delete[] data_in;
         cout<<endl<<endl;
     }
@@ -41,8 +37,6 @@ int main(int argc, char* argv[])
     {
         SHScalars<float> sf(4,5);
 
-        cout<<" p                    [4]: "<<sf.p_<<endl;
-        cout<<" number_of_functions  [5]: "<<sf.number_of_functions_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [200]: "<<sf.GetDataLength()<<endl;
         cout<<" SetData()-data_      [0]: ";
@@ -51,17 +45,10 @@ int main(int argc, char* argv[])
         float *data_in = new float[dLen];
         for(idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
-        
-        try
-        {
-            sf.SetData(data_in);
-        } 
-        catch(range_error err)
-        {
-            cerr<<err.what()<<endl;
-        }
+        sf.SetData(data_in);
+
         delete[] data_in;
-	cout<<*(sf.data_+idx-1)-idx+1<<endl<<endl;
+        cout<<*(sf.data_+idx-1)-idx+1<<endl<<endl;
 
     }
 
@@ -77,30 +64,9 @@ int main(int argc, char* argv[])
         SHScalars<double> sf(p,nFun,data_in);
         delete[] data_in;
 
-        cout<<" p                    [4]: "<<sf.p_<<endl;
-        cout<<" number_of_functions  [7]: "<<sf.number_of_functions_<<endl;
         cout<<" GetFunLength()      [40]: "<<sf.GetFunLength()<<endl;
         cout<<" GetDataLength()    [280]: "<<sf.GetDataLength()<<endl;
         cout<<" GetFunctionAt() [0, 200]: "<<*sf.GetFunctionAt(0)<<", "<<*sf.GetFunctionAt(5)<<endl;
-        
-        try
-        {
-            sf.GetFunctionAt(-1);
-        }
-        catch(range_error err)
-        {
-	  cerr<<" Function index range    : "<<err.what()<<endl;
-        }
-
-        
-        try
-        {
-	  sf.GetFunctionAt(7);
-        }
-        catch(range_error err)
-        {
-	  cerr<<" Function index range    : "<<err.what()<<endl;
-        }
 
         const double *fp=sf.GetFunctionAt(1);
         sf.SetFunctionAt(fp,0);
@@ -111,13 +77,14 @@ int main(int argc, char* argv[])
         AxPy(1.0,sf,sf,sf);
         cout<<" AxPy()               [84]: "<<sf.data_[0]<<endl;
         AxPy(.5,sf,-2.0,sf);
-        cout<<" AxPy()               [40]: "<<sf.data_[0]<<endl<<endl;
-
+        cout<<" AxPy()               [40]: "<<sf.data_[0]<<endl;
         xTy(sf,sf,sf);
-        cout<<" xTy()              [1600]: "<<sf.data_[0]<<endl<<endl;
-
+        cout<<" xTy()              [1600]: "<<sf.data_[0]<<endl;
+        sf.Sqrt();
+        cout<<" Sqrt()            [40,41]: "<<sf.data_[0]<<", "<<sf.data_[1]<<endl<<endl;
         xDy(sf,sf,sf);
         cout<<" xDy()                 [1]: "<<sf.data_[0]<<endl<<endl;
+
 
     }
     cout<<" ------------ "<<endl;

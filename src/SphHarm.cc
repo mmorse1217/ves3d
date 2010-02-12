@@ -10,7 +10,6 @@ template<typename scalarType>
 SphHarm<scalarType>::SphHarm() : 
   p_(0), number_of_functions_(0), shc_(NULL){}
 
-
 template<typename scalarType> 
 SphHarm<scalarType>::SphHarm(int p_in, int number_of_functions_) : 
   p_(p_in),   number_of_functions_(number_of_functions_),
@@ -31,7 +30,7 @@ SphHarm<scalarType>::~SphHarm()
 
 
 template <typename scalarType> 
-void SphHarm<scalarType>::Derivatives(const SHScalars<scalarType>& f_in, 
+void SphHarm<scalarType>::AllDerivatives(const SHScalars<scalarType>& f_in, 
     SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out, 
     SHScalars<scalarType>& Duuf_out, SHScalars<scalarType>& Duvf_out, 
     SHScalars<scalarType>& Dvvf_out)
@@ -43,4 +42,16 @@ void SphHarm<scalarType>::Derivatives(const SHScalars<scalarType>& f_in,
   cudaTransClass.backward_duv(shc_, Duvf_out.data_);
   cudaTransClass.backward_d2v(shc_, Dvvf_out.data_);
 }
+
+template <typename scalarType> 
+void SphHarm<scalarType>::FirstDerivatives(const SHScalars<scalarType>& f_in, 
+    SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out) 
+{
+  cudaTransClass.forward(f_in.data_, shc_);
+  cudaTransClass.backward_du (shc_, Duf_out.data_ );
+  cudaTransClass.backward_dv (shc_, Dvf_out.data_ );
+}
+
+
+
 

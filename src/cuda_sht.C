@@ -216,8 +216,10 @@ void cuda_sht::forward(const scalar * inputs, scalar * outputs)
 	devPtrB, dft_size, 0.0F,
 	devPtrC, dft_size);
   }
-    ss = get_seconds()-ss ;
-    cout<<"CUDA BLAS Forward DFT time: "<<ss<< endl;
+#ifdef CUDA_SHT_PROFILING
+  ss = get_seconds()-ss ;
+  cout<<"CUDA BLAS Forward DFT time: "<<ss<< endl;
+#endif
     assert(cublasGetError ()==CUBLAS_STATUS_SUCCESS);
 
     dft_outputs = &temp_data[0];
@@ -593,9 +595,12 @@ void cuda_sht::backward(scalar * inputs, scalar * outputs)
       devPtrB, dft_size, 0.0F,
       devPtrC, dft_size);
   }
-    ss = get_seconds()-ss ;
-    cout<<"CUDA BLAS Backward DFT time: "<<ss<< endl;
-  assert(cublasGetError ()==CUBLAS_STATUS_SUCCESS);
+#ifdef CUDA_SHT_PROFILING
+  ss = get_seconds()-ss ;
+  cout<<"CUDA BLAS Backward DFT time: "<<ss<< endl;
+#endif
+
+assert(cublasGetError ()==CUBLAS_STATUS_SUCCESS);
 
 
   cublasGetMatrix (dft_size, num_dft_inputs, sizeof(scalar), devPtrC, dft_size, dft_outputs, dft_size);

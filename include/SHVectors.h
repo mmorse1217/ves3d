@@ -11,7 +11,7 @@
 #define _SHVECTORS_H_
 
 #include "SHScalars.h"
-#include <stdexcept>
+#include <cassert>
 
 /**
  * Three dimensional vectors fields with each component defined on the
@@ -54,9 +54,6 @@ template <typename ScalarType>
 class SHVectors : public SHScalars<ScalarType>
 {
  public:
-    /// Number of vectors in the class.
-    int number_of_vectors_;
-
     /// Default constructor, no memory allocation.
     SHVectors();
     
@@ -84,6 +81,15 @@ class SHVectors : public SHScalars<ScalarType>
      * @return The length of each vector 
      */
     int GetVecLength() const;
+
+    /** 
+     * Sets the private data members p_ and number_of_vectors_ (for
+     * now, only before initialization of data_). For the time being
+     * it will be impossible to change these values after that the
+     * memory for data_ is allocated (it needs an interpolation method
+     * to move between to different size).
+     */
+    void Resize(int p_in, int number_of_vectors_in);
 
     /** 
      * The vector (geometrical) dot product on SHVectors.
@@ -119,6 +125,9 @@ class SHVectors : public SHScalars<ScalarType>
         const SHScalars<ScalarType>& y_in, SHVectors<ScalarType>& c_out); 
 
   private:
+    /// Number of vectors in the class.
+    int number_of_vectors_;
+    
     /** 
      * The declaration of the copy constructor, this is declared as
      * private so as to disallow any passing by value to

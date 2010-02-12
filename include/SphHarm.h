@@ -10,33 +10,61 @@
 #define _SPHHARM_H_
 
 #include "SHScalars.h"
-#include "cuda_sht.h"
+#include "cuda_sht.h" 
 
-/// Spherical harmonics
+/** Spherical harmonics transform operator interface.
+ * MODIFY THE TEMPLATE TO HAVE THE DEVICE AS A TEMPLATE PARAMETER 
+ *
+ * COMPOSITE FUNCTIONS TO BE ADDED.
+ */
 template <typename scalarType> class SphHarm
 {  
- private:
-  scalarType p_;
-  scalarType number_of_functions_;
-  cuda_sht  cudaTransClass;
-  scalarType* shc_;
+  private:
+    /**
+     * 	The grid size variable, equal to the order of spherical
+     * 	harmonics expansion of the functions.
+     */
+    int p_;
+    
+    /// Number of functions to be operated on.
+    int number_of_functions_;
+    
+    /// The actual transform operator
+    cuda_sht  cudaTransClass;
+    
+    /**
+     * The spherical harmonic coefficients of last set of functions
+     * passed to the class.  
+     */
+    scalarType* shc_;
   
  public:
-  SphHarm();
-  SphHarm(int p_in, int number_of_functions_in);
-  ~SphHarm();
+    /// Default constructor.
+    SphHarm();
+    
+    /// Constructor with size argument. THE INTERFACE WITH THE
+    /// CUDA/BLAS_SHT IS FLAWED(ADD THE DATA FILE). IT ONLY WORKS FOR P=12.
+    SphHarm(int p_in, int number_of_functions_in);
 
-  void Derivatives(const SHScalars<scalarType>& f_in, 
-		   SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out, 
-		   SHScalars<scalarType>& Duuf_out, SHScalars<scalarType>& Duvf_out, 
-		   SHScalars<scalarType>& Dvvf_out);
+    ///Destructor.
+    ~SphHarm();
 
-  //int PointsToFrequency(SHScalars *f_in, SHScalars *f_out);
-  //int FrequencyToPoints(SHScalars *f_in, SHScalars *f_out);
-  //int Resample(SHScalars *f_in, SHScalars *f_out);
-  //int ResampleWithScaling(SHScalars *f_in, int *p_scaling_in, SHScalars *f_out);
-  
-  // composite functions
+    /** 
+     * Given function set f_in on the sphere, it returns all the first
+     * and second derivatives of f_in.
+     */
+    void AllDerivatives(const SHScalars<scalarType>& f_in, 
+        SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out, 
+        SHScalars<scalarType>& Duuf_out, SHScalars<scalarType>& Duvf_out, 
+        SHScalars<scalarType>& Dvvf_out);
+
+    /** 
+     * Given function set f_in on the sphere, it returns all only the
+     * derivatives of f_in.
+     */
+    void FirstDerivatives(const SHScalars<scalarType>& f_in, 
+        SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out);
+
 };
 
 #include "SphHarm.cc"

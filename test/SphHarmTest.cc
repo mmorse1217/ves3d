@@ -10,7 +10,8 @@ int main(int argc, char ** argv)
   int num_ves = 1;
   
   SHScalars<float> vecIn(p,num_ves);
-  SphHarm<float> mamad(p,num_ves);
+  SphHarm<float> diff(p,num_ves);
   
-  mamad.Derivatives(&vecIn,&vecIn,&vecIn,&vecIn,&vecIn,&vecIn);
+  diff.AllDerivatives(vecIn,vecIn,vecIn,vecIn,vecIn,vecIn);
+  diff.FirstDerivatives(vecIn,vecIn,vecIn);
 }
