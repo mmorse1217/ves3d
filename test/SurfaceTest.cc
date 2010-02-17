@@ -121,15 +121,15 @@ int main(int argc, char* argv[])
 //     Surface<scType> S(p,num_vecs,pos_vec);
 //     SHVectors<scType> bend_force(p,num_vecs);
 
-//     for(int tt=0;tt<m;++tt)
-//     {
-//         AxPy(S.h_, S.normal_, (float) 0.0, bend_force);
-//         //Add pressure to preserve volume
+    for(int tt=0;tt<m;++tt)
+    {
+        AxPy(S.h_, S.normal_, (float) 0.0, bend_force);
+        //Add pressure to preserve volume
 
-//         AxPy(ts,bend_force, S.x_, pos_vec);
-//         S.SetX(pos_vec);
-//         cout<<tt<<" ";
-//     }
+        AxPy(ts,bend_force, S.x_, pos_vec);
+        S.SetX(pos_vec);
+        cout<<tt<<" ";
+    }
 //     cout<<endl;
     
 //     scType err = 0, err2;

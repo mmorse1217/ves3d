@@ -103,8 +103,6 @@ template <typename ScalarType> class Surface
     //Work space -- TO BE REMOVED
     SHVectors<ScalarType> xu, xv, xuv, xvv, xuu;
     SHScalars<ScalarType> E, F, G, L, M, N, W2, temp;
-
-    
 };
 
 #include "Surface.cc"

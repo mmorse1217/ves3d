@@ -65,6 +65,8 @@ template <typename scalarType> class SphHarm
     void FirstDerivatives(const SHScalars<scalarType>& f_in, 
         SHScalars<scalarType>& Duf_out, SHScalars<scalarType>& Dvf_out);
 
+    void Filter(int fiter_freq_in, SHScalars<scalarType>& f_in, SHScalar<scalarType>& filter_f_out);
+    void Interpolate(int fiter_freq_in, SHScalars<scalarType>& f_in, SHScalar<scalarType>& filter_f_out);
 };
 
 #include "SphHarm.cc"

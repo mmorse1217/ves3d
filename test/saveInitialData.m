@@ -1,11 +1,18 @@
-% Script to make the Legendre and inverse Legendre trnasforms.
+% Script to make the Legendre and inverse Legendre transforms.
 
 format long;
 clear all;clc
-addpath ../src/
+addpath ../../Ves3DMat/src/ ../../Ves3DMat/util/
 
-shape = 'dumbbell';
+%% Options
+precision = 'single';
 p = 12;
+shape = 'dumbbell';
+filePath = '../data/';
+
+actionList = {'InitialPos','legMat','rotMat'};
+
+%% Save boundary
 S = boundary(p,shape);
 
 x = reshape(S.cart.x,p+1,[])';
@@ -13,43 +20,55 @@ y = reshape(S.cart.y,p+1,[])';
 z = reshape(S.cart.z,p+1,[])';
 
 X = [x(:); y(:); z(:)];
-fileName = [shape '_cart' num2str(p)];
-save(fileName,'X','-ascii'); 
+fileName = [filePath shape '_cart' num2str(p)];
+saveData(fileName,X,precision,'bin');
 
-% [u w] = grule(p+1); u = u(:); u = acos(u);
-% v = zeros(size(u));
-% 
-% L  = cell(p+1,1);
-% LS = cell(p+1,1);
-% HS = cell(p+1,1);
-% WS = cell(p+1,1);
-% 
-% for n = 0:p
-% 	[Yn Hn Wn] = Ynm(n, [], u, v);
-% 	Yn = Yn*sqrt(2*pi);
-% 	Hn = Hn*sqrt(2*pi);
-% 	Wn = Wn*sqrt(2*pi);
-% 	
-% 	for m = 0:n
-% 		L{1+m}(n+1,:) = w.*Yn(:,n+1+m).';
-% 		LS{1+m}(:,n+1) = Yn(:,n+1+m);
-% 		HS{1+m}(:,n+1) = Hn(:,n+1+m);
-% 		WS{1+m}(:,n+1) = Wn(:,n+1+m);
-% 	end
-% end
-% 
-% Lmat = []; LImat = []; Hmat = []; Wmat = [];
-% for m=0:p
-% 	Lmat  = [Lmat ; reshape(L{m+1}(m+1:p+1,:),[],1)];
-% 	LImat = [LImat; reshape(LS{m+1}(:,m+1:p+1),[],1)];
-% 	Hmat  = [Hmat ; reshape(HS{m+1}(:,m+1:p+1),[],1)];
-% 	Wmat  = [Wmat ; reshape(WS{m+1}(:,m+1:p+1),[],1)];
-% end
-% 
-% save ['legTrans' num2str(p)] 'Lmat' '-ascii' 
-% save ['legTransInv' num2str(p)] 'LImat' '-ascii' 
-% save ['d1legTrans' num2str(p)] 'Hmat' '-ascii' 
-% save ['d2legTrans' num2str(p)] 'Wmat' '-ascii' 
+%% Legendre matrix
+[u w] = grule(p+1); u = u(:); u = acos(u);
+v = zeros(size(u));
+
+L  = cell(p+1,1);
+LS = cell(p+1,1);
+HS = cell(p+1,1);
+WS = cell(p+1,1);
+
+for n = 0:p
+  [Yn Hn Wn] = Ynm(n, [], u, v);
+  Yn = Yn*sqrt(2*pi);
+  Hn = Hn*sqrt(2*pi);
+  Wn = Wn*sqrt(2*pi);
+	
+  for m = 0:n
+    L{1+m}(n+1,:) = w.*Yn(:,n+1+m).';
+    LS{1+m}(:,n+1) = Yn(:,n+1+m);
+    HS{1+m}(:,n+1) = Hn(:,n+1+m);
+    WS{1+m}(:,n+1) = Wn(:,n+1+m);
+  end
+end
+
+Lmat = []; LImat = []; Hmat = []; Wmat = [];
+for m=0:p
+  Lmat  = [Lmat ; reshape(L{m+1}(m+1:p+1,:),[],1)];
+  LImat = [LImat; reshape(LS{m+1}(:,m+1:p+1),[],1)];
+  Hmat  = [Hmat ; reshape(HS{m+1}(:,m+1:p+1),[],1)];
+  Wmat  = [Wmat ; reshape(WS{m+1}(:,m+1:p+1),[],1)];
+end
+
+fileName = [filePath 'legTrans' num2str(p)]; 
+saveData(fileName,Lmat,precision,'bin');
+saveData(fileName,Lmat,precision,'txt');
+
+fileName = [filePath 'legTransInv' num2str(p)]; 
+saveData(fileName,LImat,precision,'bin');
+saveData(fileName,LImat,precision,'txt');
+
+fileName = [filePath 'd1legTrans' num2str(p)]; 
+saveData(fileName,Hmat,precision,'bin');
+saveData(fileName,Hmat,precision,'txt');
+
+fileName = [filePath 'd2legTrans' num2str(p)]; 
+saveData(fileName,Wmat,precision,'bin');
+saveData(fileName,Wmat,precision,'txt');
 
 
 

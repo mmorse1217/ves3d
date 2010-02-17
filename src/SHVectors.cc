@@ -46,7 +46,9 @@ void DotProduct(const SHVectors<ScalarType>& a_in,
     int idx;
     const ScalarType *a_data;
     const ScalarType *b_data;
-    ScalarType *dot = new ScalarType[numVec*funLen];
+    ScalarType *dot = aDb_out.data_;
+    
+//ScalarType *dot = new ScalarType[numVec*funLen];
     
     for(int ii=0;ii<numVec;++ii)
     {
@@ -60,10 +62,8 @@ void DotProduct(const SHVectors<ScalarType>& a_in,
             dot[idx] = a_data[jj         ]*b_data[jj         ];
             dot[idx]+= a_data[jj+  funLen]*b_data[jj+  funLen];
             dot[idx]+= a_data[jj+2*funLen]*b_data[jj+2*funLen];
-            
         }
     }
-    aDb_out.SetData(dot);
 }
 
 template<typename ScalarType> 
@@ -78,7 +78,7 @@ void CrossProduct(const SHVectors<ScalarType>& a_in,
     int idx;
     const ScalarType *a_data;
     const ScalarType *b_data;
-    ScalarType *cross = new ScalarType[aCb_out.GetDataLength()];
+    ScalarType *cross = new ScalarType[aCb_out.GetDataLength()];//to have output the same as inputs, we need a buffer.
     
     for(int ii=0;ii<numVec;++ii)
     {
@@ -95,6 +95,7 @@ void CrossProduct(const SHVectors<ScalarType>& a_in,
         }
     }
     aCb_out.SetData(cross);    
+    delete []cross;
 }
 
 template<typename ScalarType> 

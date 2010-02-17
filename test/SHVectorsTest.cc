@@ -149,22 +149,22 @@ int main(int argc, char* argv[])
 
     }
 
-    cout<<" Memory allocation."<<endl;
-    cout<<" -----------------"<<endl;
-    {
-        int p(64), nVec(200);
-        int dLen(6*p*(p+1)*nVec);
-        double *data_in = new double[dLen];
-        for(int idx=0;idx<dLen;++idx)
-            data_in[idx] = idx;
+//     cout<<" Memory allocation."<<endl;
+//     cout<<" -----------------"<<endl;
+//     {
+//         int p(64), nVec(200);
+//         int dLen(6*p*(p+1)*nVec);
+//         double *data_in = new double[dLen];
+//         for(int idx=0;idx<dLen;++idx)
+//             data_in[idx] = idx;
 
-        for(int idx=0;idx<500;++idx)
-        {
-            SHVectors<double> sf(p,nVec,data_in);
-        }
+//         for(int idx=0;idx<500;++idx)
+//         {
+//             SHVectors<double> sf(p,nVec,data_in);
+//         }
 
-        delete[] data_in;
-    }
+//         delete[] data_in;
+//     }
 
     
     cout<<" ------------ "<<endl;
