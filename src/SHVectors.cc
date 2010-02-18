@@ -47,21 +47,24 @@ void DotProduct(const SHVectors<ScalarType>& a_in,
     const ScalarType *a_data;
     const ScalarType *b_data;
     ScalarType *dot = aDb_out.data_;
+    //ScalarType *dot = new ScalarType[numVec*funLen];
     
-//ScalarType *dot = new ScalarType[numVec*funLen];
+    DotProductGpu(float *a, float *b, int stride, int num_surfs, float *aDb);
     
-    for(int ii=0;ii<numVec;++ii)
+        
+    for(int ii=0;ii<num_surfs;++ii)
     {
-        a_data = a_in.GetFunctionAt(3*ii);
+        
+        a_data = a_+(3*stride);
         b_data = b_in.GetFunctionAt(3*ii);
 
-        for(int jj=0;jj<funLen;++jj)
+        for(int jj=0;jj<stride;++jj)
         {
-            idx = ii*funLen +jj;
+            idx = ii*stride +jj;
             
             dot[idx] = a_data[jj         ]*b_data[jj         ];
-            dot[idx]+= a_data[jj+  funLen]*b_data[jj+  funLen];
-            dot[idx]+= a_data[jj+2*funLen]*b_data[jj+2*funLen];
+            dot[idx]+= a_data[jj+  stride]*b_data[jj+  stride];
+            dot[idx]+= a_data[jj+2*stride]*b_data[jj+2*stride];
         }
     }
 }
@@ -80,6 +83,9 @@ void CrossProduct(const SHVectors<ScalarType>& a_in,
     const ScalarType *b_data;
     ScalarType *cross = new ScalarType[aCb_out.GetDataLength()];//to have output the same as inputs, we need a buffer.
     
+    CrossProductGpu(float *a, float *b, int stride, int num_surfs, float *aCb);
+
+
     for(int ii=0;ii<numVec;++ii)
     {
         a_data = a_in.GetFunctionAt(3*ii);
