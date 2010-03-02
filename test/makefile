@@ -1,13 +1,20 @@
+CXX      = icpc
+CC       = icpc
+CUDA     = /usr/local/cuda/bin/nvcc
 
-CXX = icpc
-CC  = icpc
-CPPFLAGS = -I../include/ -I../src/ -fPIC  -DNDEBUG 
+CUDA_DIR = /usr/local/cuda
 
-DeviceTest: DeviceCPU.o
-	$(CXX) $(CPPFLAGS) $@.cc DeviceCPU.o -o $@.out
+INCLUDE  = -I../include/ -I../src/ -I$(CUDA_DIR)/include
+CPPFLAGS = -g -O0 -fPIC  -DNDEBUG 
+LDFLAGS  = -L$(CUDA_DIR)/lib64 -lcuda -lcudart -Wl,-rpath $(CUDA_DIR)/lib64  
 
-DeviceCPU.o: ../include/DeviceCPU.h
-	$(CXX) $(CPPFLAGS) -c ../include/DeviceCPU.h
+all: DeviceTest
+
+DeviceTest: DeviceGPU.o 
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $@.cc $^ -o $@.out
+
+DeviceGPU.o: ../include/DeviceGPU.cu
+	$(CUDA) $(INCLUDE) -c ../include/DeviceGPU.cu
 
 .PHONY: clean
 
@@ -15,9 +22,7 @@ clean:
 	@-rm -f *.o *.out  
 
 # MKLPATH = /opt/intel/Compiler/11.1/059/mkl/lib/em64t
-# CXX = icpc
-# CC = icpc
-# CUDA_DIR = /usr/local/cuda
+
 # LDFLAGS = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath            \
 # $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
 # -Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core      \
@@ -27,7 +32,6 @@ clean:
 # -I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
 # -I../src/ -fPIC  #-DNDEBUG #-DCUDA_SHT_PROFILING 
 
-# CUDA = /usr/local/cuda/bin/nvcc
 
 # all: SurfaceTest
 
@@ -42,6 +46,7 @@ clean:
 # CurvFlow: cuda_sht.o 
 
 # CUTest: CUvec.o 
+# 	$(CXX) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $@.cc $^ -o $@.out
 
 # CUvec.o: ../src/CUvec.cu
 # 	$(CUDA) -c ../src/CUvec.cu
@@ -53,18 +58,6 @@ clean:
 
 # blas_sht.o: ../src/blas_sht.C
 # 	$(CXX) $(CPPFLAGS) -c ../src/blas_sht.C
-
-# DotProductTest:
-
-# DeviceTest: DeviceCPU.o #DeviceGPU.o
-
-# DeviceGPU.o: ../src/DeviceGPU.cu
-# 	$(CUDA) -I../include  -c ../src/DeviceGPU.cu
-
-# .PHONY: clean
-
-# clean: 	
-# 	@-rm -f *.o *.out  
 
 
 # MEXSUFFIX = mexa64	

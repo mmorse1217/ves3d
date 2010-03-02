@@ -7,31 +7,31 @@
  * of this class is in src/SHScalars.cc. 
  */
 
-#ifndef _SHSCALARS_H_
-#define _SHSCALARS_H_
+#ifndef _SCALARS_H_
+#define _SCALARS_H_
 
-#include <math.h>
 #include <cassert>
+#include "Device.h"
 
 //Forward declaration
-template <typename ScalarType> class SHScalars; 
+template <typename T> class SHScalars; 
 
 //Function declaration
-template<typename ScalarType> 
-void AxPy(ScalarType a_in, const SHScalars<ScalarType>& x_in, 
-    const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& res_out); 
+template<typename T> 
+void AxPy(T a_in, const SHScalars<T>& x_in, 
+    const SHScalars<T>& y_in, SHScalars<T>& res_out); 
 
-template<typename ScalarType> 
-void AxPy(ScalarType a_in, const SHScalars<ScalarType>& x_in, 
-    ScalarType y_in, SHScalars<ScalarType>& res_out);
+template<typename T> 
+void AxPy(T a_in, const SHScalars<T>& x_in, 
+    T y_in, SHScalars<T>& res_out);
 
-template<typename ScalarType> 
-void xTy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
-    SHScalars<ScalarType>& xTy_out);
+template<typename T> 
+void xTy(const SHScalars<T>& x_in, const SHScalars<T>& y_in, 
+    SHScalars<T>& xTy_out);
 
-template<typename ScalarType> 
-void xDy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
-    SHScalars<ScalarType>& xDy_out);
+template<typename T> 
+void xDy(const SHScalars<T>& x_in, const SHScalars<T>& y_in, 
+    SHScalars<T>& xDy_out);
 
 /**
  * @brief SHScalars is a class of scalar fields/functions defined on a
@@ -43,13 +43,13 @@ void xDy(const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in,
  * The implementation is in src/SHScalars.cc and the tester is
  * test/SHScalarsTest.cc
  */
-template <typename ScalarType> 
+template <typename T> 
 class SHScalars
 {
   protected:
   public:
     /// The array that holds the function values.
-    ScalarType *data_;          
+    T *data_;          
   
     /// Default constructor, no memory is allocated.
     SHScalars();                
@@ -73,7 +73,7 @@ class SHScalars
      * file. data_in is assumed to be of length at least that of
      * returned by GetDataLength().
      */
-    SHScalars(int p_in, int num_funs_in, const ScalarType *data_in); 
+    SHScalars(int p_in, int num_funs_in, const T *data_in); 
 
     /// Default destructor, the memory is freed.
     virtual ~SHScalars();
@@ -99,7 +99,7 @@ class SHScalars
      * assumed to be of length at least that of returned by
      * GetDataLength().
      */
-    void SetData(const ScalarType *data_in); 
+    void SetData(const T *data_in); 
     
     /** 
      * Set the values of a function at a given index. fun_in is
@@ -109,7 +109,7 @@ class SHScalars
      * @param fun_idx The index of the target location, starting from 0.
      * 
      */
-    void SetFunctionAt(const ScalarType *fun_in, int fun_idx_in);
+    void SetFunctionAt(const T *fun_in, int fun_idx_in);
     
     /** 
      * The getter function for a field at a given index.
@@ -117,7 +117,7 @@ class SHScalars
      * @param fun_idx_in The index of the function, starts from 0.
      * @return A constant pointer to the Function.
      */
-    const ScalarType* GetFunctionAt(int fun_idx_in) const;
+    const T* GetFunctionAt(int fun_idx_in) const;
 
 
     /** 
@@ -142,9 +142,9 @@ class SHScalars
      * and the input is assumed to be of the correct size. The
      * function calculates c = a*x + y.
      */
-    friend void AxPy<ScalarType>(ScalarType a_in, 
-        const SHScalars<ScalarType>& x_in, const SHScalars<ScalarType>& y_in, 
-        SHScalars<ScalarType>& res_out);
+    friend void AxPy<T>(T a_in, 
+        const SHScalars<T>& x_in, const SHScalars<T>& y_in, 
+        SHScalars<T>& res_out);
 
     /** 
      * The (overloaded) addition operator for the class type
@@ -152,9 +152,9 @@ class SHScalars
      * and the input is assumed to be of the correct size. The
      * function calculates c = a*x + y.
      */
-    friend void AxPy<ScalarType>(ScalarType a_in, 
-        const SHScalars<ScalarType>& x_in, ScalarType y_in, 
-        SHScalars<ScalarType>& res_out);
+    friend void AxPy<T>(T a_in, 
+        const SHScalars<T>& x_in, T y_in, 
+        SHScalars<T>& res_out);
 
     /** 
      * The multiplication operator for the class type SHScalars. There
@@ -162,8 +162,8 @@ class SHScalars
      * assumed to be of the correct size. The function calculates c =
      * x*y (pointwise).
      */
-    friend void xTy<ScalarType>(const SHScalars<ScalarType>& x_in, 
-        const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& xTy_out);
+    friend void xTy<T>(const SHScalars<T>& x_in, 
+        const SHScalars<T>& y_in, SHScalars<T>& xTy_out);
 
     /** 
      * The division operator for the class type SHScalars. There will
@@ -171,8 +171,8 @@ class SHScalars
      * assumed to be of the correct size. The function calculates c =
      * x/y (pointwise).
      */
-    friend void xDy<ScalarType>(const SHScalars<ScalarType>& x_in, 
-        const SHScalars<ScalarType>& y_in, SHScalars<ScalarType>& xDy_out);
+    friend void xDy<T>(const SHScalars<T>& x_in, 
+        const SHScalars<T>& y_in, SHScalars<T>& xDy_out);
 
 
   private:
@@ -190,14 +190,14 @@ class SHScalars
      * private so as to disallow any passing by value to
      * functions. There will be no implementation for this method.
      */
-    SHScalars(const SHScalars<ScalarType>& sh_in);
+    SHScalars(const SHScalars<T>& sh_in);
     
     /** 
      * The declaration of the assignment operator, it is declared as
      * private so as to disallow any passing by value to
      * functions. There will be no implementation for this method.
      */
-    SHScalars<ScalarType>& operator=(const SHScalars<ScalarType>& sh_in);
+    SHScalars<T>& operator=(const SHScalars<T>& sh_in);
 
     /**
      * Allocated the memory in the heap for the data_ member. The size
