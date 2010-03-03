@@ -91,7 +91,7 @@ template<typename T>
 void Scalars<T>::Sqrt()
 {
     int len = GetDataLength();
-    device_.sqrt(data_,GetFunLength(), n_funs_, data_);
+    device_.Sqrt(data_,GetFunLength(), n_funs_, data_);
 }
 
 //Friends

@@ -11,7 +11,6 @@
 #define _VECTORS_H_
 
 #include "Scalars.h"
-#include <cassert>
 
 //Forward declaration of Vectors 
 template <typename T> class Vectors; 
@@ -84,13 +83,13 @@ class Vectors : public Scalars<T>
     void Resize(int p_in, int n_vecs_in);
 
     /** 
-     * The vector (geometrical) dot product on Vectors.
+     * The geometrical dot product on Vectors.
      */
-    friend void DotProduct<T>(const Vectors<T>& x_in, 
-        const Vectors<T>& y_in, Scalars<T>& xDy_out);
+    friend void DotProduct<T>(const Vectors<T> &x_in, 
+        const Vectors<T> &y_in, Scalars<T> &xDy_out);
     
     /**
-     * The vector (geometrical) cross product on Vectors.
+     * The geometrical cross product on Vectors.
      * 
      */
     friend void CrossProduct<T>(const Vectors<T>& x_in, 

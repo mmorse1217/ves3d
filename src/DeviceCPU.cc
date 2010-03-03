@@ -65,14 +65,15 @@ T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
 
     int base, resbase;
     T dot;
-    
+
     for (int surf = 0; surf < num_surfs; surf++) {
         resbase = surf * stride;
         base = resbase * 3;
         for (int s = 0; s < stride; s++) {
-            dot  = u_in[base + s                  ] * v_in[base + s                 ];
-            dot += u_in[base + s + stride         ] * v_in[base + s + stride        ];
-            dot += u_in[base + s + stride + stride] * v_in[base + s +stride + stride];
+            
+            dot  = u_in[base + s                  ] * v_in[base + s                  ];
+            dot += u_in[base + s + stride         ] * v_in[base + s + stride         ];
+            dot += u_in[base + s + stride + stride] * v_in[base + s + stride + stride];
             x_out[resbase + s] = dot;
         }
     }

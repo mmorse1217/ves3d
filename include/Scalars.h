@@ -42,7 +42,7 @@ void xyInv(const Scalars<T> &x_in, const Scalars<T> &y_in, Scalars<T>  &xyInv_ou
 template <typename T> 
 class Scalars
 {
-  protected:
+  public:
     /// The reference to the device that the data member will reside.
     Device<T> &device_;
     

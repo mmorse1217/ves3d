@@ -4,9 +4,7 @@
 int main(int argc, char* argv[])
 {
     DeviceCPU<float> cpu;
-    Scalars<float> vecfld(cpu);
-    VectorsTest<float> vectest(scfld);
-   
+    VectorsTest<float> vectest(cpu);
     vectest.performAll();
     
     return 0;
