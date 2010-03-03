@@ -5,16 +5,19 @@ CUDA     = /usr/local/cuda/bin/nvcc
 CUDA_DIR = /usr/local/cuda
 
 INCLUDE  = -I../include/ -I../src/ -I$(CUDA_DIR)/include
-CPPFLAGS = -g -O0 -fPIC  -DNDEBUG 
+CXXFLAGS = -g -O0 -fPIC  #-DNDEBUG 
 LDFLAGS  = -L$(CUDA_DIR)/lib64 -lcuda -lcudart -Wl,-rpath $(CUDA_DIR)/lib64  
 
-all: DeviceTest
+all: 
 
-DeviceTest: DeviceGPU.o 
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $@.cc $^ -o $@.out
+DeviceTest: #DeviceGPU.o 
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(INCLUDE) $@.cc $^ -o $@.out
 
 DeviceGPU.o: ../include/DeviceGPU.cu
 	$(CUDA) $(INCLUDE) -c ../include/DeviceGPU.cu
+
+ScalarsTest:
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $@.cc -o $@.out
 
 .PHONY: clean
 
@@ -32,10 +35,6 @@ clean:
 # -I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
 # -I../src/ -fPIC  #-DNDEBUG #-DCUDA_SHT_PROFILING 
 
-
-# all: SurfaceTest
-
-# SHScalarsTest:
 
 # SHVectorsTest:
 

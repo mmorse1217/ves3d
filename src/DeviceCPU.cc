@@ -111,6 +111,22 @@ T* DeviceCPU<T>::CrossProduct(const T* u_in, const T* v_in, int stride, int num_
 }
 
 template<typename T>
+T* DeviceCPU<T>::Sqrt(const T* x_in, int stride, int num_surfs, T* sqrt_out)
+{
+#ifndef NDEBUG
+    cout<<"DeviceCPU::sqrt"<<endl;
+#endif
+
+    int length = stride*num_surfs;
+    for (int idx = 0; idx < length; idx++)
+    {
+        assert(x_in[idx] >= (T) 0.0);
+        sqrt_out[idx] = ::sqrt(x_in[idx]);
+    }
+    return sqrt_out;
+}
+
+template<typename T>
 T* DeviceCPU<T>::xInv(const T* x_in, int stride, int num_surfs, T* xInv_out)
 {
 #ifndef NDEBUG
@@ -120,8 +136,8 @@ T* DeviceCPU<T>::xInv(const T* x_in, int stride, int num_surfs, T* xInv_out)
     int length = stride*num_surfs;
     for (int idx = 0; idx < length; idx++)
     {
-        xInv_out[idx] = 1.0/x_in[idx];
         assert(x_in[idx] != (T) 0.0);
+        xInv_out[idx] = 1.0/x_in[idx];
     }
 
     return xInv_out;
@@ -153,8 +169,8 @@ T* DeviceCPU<T>::xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, 
 
     for (idx = 0; idx < length; idx++)
     {
-        xyInv_out[idx] = x_in[idx]/y_in[idx];
         assert( y_in[idx] != (T) 0.0);
+        xyInv_out[idx] = x_in[idx]/y_in[idx];
     }
     return xyInv_out;
 }

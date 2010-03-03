@@ -10,6 +10,7 @@
 #include "Device.h"
 #include <iostream>
 #include <cassert>
+#include <math.h>
 
 using namespace std;
 
@@ -22,12 +23,15 @@ class DeviceCPU : public Device<T>
     virtual T* Malloc(unsigned long int length);
     virtual void  Free(T* ptr);
     virtual T* Calloc(unsigned long int num);
+
+    ///@todo Memcpy is incomplete
     virtual T* Memcpy (T* destination, const T* source, unsigned long int num, enum MemcpyKind kind = MemcpyHostToHost);
 
     //Algebraic operators
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out);
     virtual T* CrossProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* w_out);
 
+    virtual T* Sqrt(const T* x_in, int stride, int num_surfs, T* sqrt_out);
     virtual T* xInv(const T* x_in, int stride, int num_surfs, T* xInv_out);
     virtual T* xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* xy_out);
     virtual T* xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, T* xyInv_out);

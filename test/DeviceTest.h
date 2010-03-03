@@ -17,16 +17,12 @@ class DeviceTest
 {
   private:
     T eps_;
-    Device<T>* device_;
-
+    Device<T>& device_;
+    
   public:
-    void SetDevice(Device<T>* device_in)
-    {
-        device_ = device_in;
-    };
 
-
-    DeviceTest()
+    DeviceTest(Device<T>& device_in) :
+        device_(device_in)
     {
         eps_ = 1.0;
         
@@ -35,8 +31,6 @@ class DeviceTest
         
         eps_ *= 1e2;
     };
-
-        
 
     bool PerformAll()
     {
@@ -54,12 +48,12 @@ class DeviceTest
     bool TestMalloc()
     {
         int arr_size = (int) 1e6;
-        T* a = device_->Malloc(arr_size);
+        T* a = device_.Malloc(arr_size);
         
         int idx;
         for(idx=0;idx<arr_size;++idx)
             a[idx] = idx;
-        device_->Free(a);
+        device_.Free(a);
         
         cout<<"* DeviceCPU::Malloc: Passed *"<<endl;
         return true;
@@ -68,14 +62,14 @@ class DeviceTest
     bool TestCalloc()
     {
         int arr_size = 1e6;
-        T* a = device_->Calloc(arr_size);
+        T* a = device_.Calloc(arr_size);
      
         bool res;
         for(int idx=0;idx<arr_size;++idx)
             res = (a[idx] == 0) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        device_->Free(a);
+        device_.Free(a);
         
         cout<<"* DeviceCPU::Calloc: " + res_print + " *"<<endl;
         return (res);
@@ -84,22 +78,22 @@ class DeviceTest
     bool TestMemcpy()
     {
         int arr_size = 1e6;
-        T* a = device_->Malloc(arr_size);
+        T* a = device_.Malloc(arr_size);
         
         int idx;
         for(idx=0;idx<arr_size;++idx)
             a[idx] = idx;
         
-        T* b = device_->Calloc(arr_size);
+        T* b = device_.Calloc(arr_size);
 
-        device_->Memcpy(b, a, arr_size, MemcpyHostToHost);
+        device_.Memcpy(b, a, arr_size, MemcpyHostToHost);
 
         bool res = true;
         for(idx=0;idx<arr_size;++idx)
             res = res && (a[idx] == b[idx]) ? true : false;
 
-        device_->Free(a);
-        device_->Free(b);
+        device_.Free(a);
+        device_.Free(b);
         
         string res_print = (res) ? "Passed" : "Failed";
         cout<<"* DeviceCPU::Memcpy: " + res_print + " *"<<endl;
@@ -115,9 +109,9 @@ class DeviceTest
             int stride = 312, num_vecs = 1;
             int sc_length = stride*num_vecs;
             int arr_length = 3*num_vecs*stride;
-            T* a = device_->Malloc(arr_length);
-            T* b = device_->Malloc(arr_length);
-            T* c = device_->Malloc(sc_length);
+            T* a = device_.Malloc(arr_length);
+            T* b = device_.Malloc(arr_length);
+            T* c = device_.Malloc(sc_length);
             
             // a dot b should be zero since they are geometrically orthogonal 
             T rnum;
@@ -130,14 +124,14 @@ class DeviceTest
                 c[idx] = 1;
             }
             
-            device_->DotProduct(a,b,stride,num_vecs,c);
+            device_.DotProduct(a,b,stride,num_vecs,c);
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (c[idx]>err) ? c[idx] : err ;
 
-            device_->Free(a);
-            device_->Free(b);
-            device_->Free(c);
+            device_.Free(a);
+            device_.Free(b);
+            device_.Free(c);
             
             res = res && ((err<eps_) ? true : false);
 
@@ -149,8 +143,8 @@ class DeviceTest
             int stride = 401, num_vecs = 1;
             int sc_length = stride*num_vecs;
             int arr_length = 3*num_vecs*stride;
-            T* a = device_->Malloc(arr_length);
-            T* c = device_->Malloc(sc_length);
+            T* a = device_.Malloc(arr_length);
+            T* c = device_.Malloc(sc_length);
 
             for(int idx=0;idx<stride;idx++)
             {                
@@ -160,7 +154,7 @@ class DeviceTest
                 c[idx] = 1.0;
             }
             
-            device_->DotProduct(a,a,stride,num_vecs,c);
+            device_.DotProduct(a,a,stride,num_vecs,c);
 
             T nn;
             for(int idx=0;idx<sc_length;idx++)
@@ -171,14 +165,14 @@ class DeviceTest
                 a[idx+stride+stride] /= nn;
             }
                         
-            device_->DotProduct(a,a,stride,num_vecs,c);
+            device_.DotProduct(a,a,stride,num_vecs,c);
 
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (c[idx]-1>err) ? c[idx]-1 : err ;
       
-            device_->Free(a);
-            device_->Free(c);
+            device_.Free(a);
+            device_.Free(c);
             
             res = res && (err<eps_) ? true : false;
             
@@ -194,8 +188,8 @@ class DeviceTest
         {//Self-product 
             int stride = 312, num_vecs = 1;
             int arr_length = 3*num_vecs*stride;
-            T* a = device_->Malloc(arr_length);
-            T* c = device_->Malloc(arr_length);
+            T* a = device_.Malloc(arr_length);
+            T* c = device_.Malloc(arr_length);
             
             
             for(int idx=0;idx<stride;idx++)
@@ -205,13 +199,13 @@ class DeviceTest
                 a[idx+stride+stride] = drand48();
             }
 
-            device_->CrossProduct(a,a,stride,num_vecs,c);
+            device_.CrossProduct(a,a,stride,num_vecs,c);
             T err = 0;
             for(int idx=0;idx<stride*num_vecs;idx++)
                 err = (c[idx]>err) ? c[idx] : err ;
             
-            device_->Free(a);
-            device_->Free(c);
+            device_.Free(a);
+            device_.Free(c);
             
             res = res && (err<eps_) ? true : false;
             
@@ -224,13 +218,13 @@ class DeviceTest
             int arr_length = 3*num_vecs*stride;
             int sc_length = num_vecs*stride;
             
-            T* a = device_->Malloc(arr_length);
-            T* b = device_->Malloc(arr_length);
-            T* c = device_->Malloc(arr_length);
-            T* d = device_->Malloc(arr_length);
+            T* a = device_.Malloc(arr_length);
+            T* b = device_.Malloc(arr_length);
+            T* c = device_.Malloc(arr_length);
+            T* d = device_.Malloc(arr_length);
             
-            T* e = device_->Malloc(sc_length );
-            T* f = device_->Malloc(sc_length );            
+            T* e = device_.Malloc(sc_length );
+            T* f = device_.Malloc(sc_length );            
 
             for(int idx=0;idx<stride;idx++)
             {                
@@ -248,30 +242,30 @@ class DeviceTest
             }
 
             // (a x b).c
-            device_->CrossProduct(a,b,stride,num_vecs,d);
-            device_->DotProduct(d,c,stride,num_vecs,e);
+            device_.CrossProduct(a,b,stride,num_vecs,d);
+            device_.DotProduct(d,c,stride,num_vecs,e);
 
             // (b x a).c
-            device_->CrossProduct(b,a,stride,num_vecs,d);
-            device_->DotProduct(d,c,stride,num_vecs,f);
+            device_.CrossProduct(b,a,stride,num_vecs,d);
+            device_.DotProduct(d,c,stride,num_vecs,f);
 
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (e[idx]+f[idx]>err) ? e[idx]+f[idx] : err ;
 
             // (c x a).b
-            device_->CrossProduct(c,a,stride,num_vecs,d);
-            device_->DotProduct(d,b,stride,num_vecs,f);
+            device_.CrossProduct(c,a,stride,num_vecs,d);
+            device_.DotProduct(d,b,stride,num_vecs,f);
             
             for(int idx=0;idx<sc_length;idx++)
                 err = ((e[idx]-f[idx])>err) ? e[idx]-f[idx] : err ;
 
-            device_->Free(a);
-            device_->Free(b);
-            device_->Free(c);
-            device_->Free(d);
-            device_->Free(e);
-            device_->Free(f);
+            device_.Free(a);
+            device_.Free(b);
+            device_.Free(c);
+            device_.Free(d);
+            device_.Free(e);
+            device_.Free(f);
 
             res = res && (err<eps_) ? true : false;
             
@@ -287,21 +281,21 @@ class DeviceTest
         {
             int stride = 413, num_vecs = 1;
             int sc_length = stride*num_vecs;
-            T* x = device_->Malloc(sc_length);
-            T* y = device_->Malloc(sc_length);
+            T* x = device_.Malloc(sc_length);
+            T* y = device_.Malloc(sc_length);
             
             for(int idx=0;idx<sc_length;idx++)
             x[idx] = (T) drand48();
                         
-            device_->xInv(x,stride,num_vecs,y);
-            device_->xInv(y,stride,num_vecs,y);
+            device_.xInv(x,stride,num_vecs,y);
+            device_.xInv(y,stride,num_vecs,y);
             
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (x[idx]-y[idx]>err) ? x[idx]-y[idx] : err ;
             
-            device_->Free(x);
-            device_->Free(y);
+            device_.Free(x);
+            device_.Free(y);
             
             res = res && (err<eps_) ? true : false;
             
@@ -317,9 +311,9 @@ class DeviceTest
         {
             int stride = 65, num_vecs = 4;
             int sc_length = stride*num_vecs;
-            T* x = device_->Malloc(sc_length);
-            T* y = device_->Malloc(sc_length);
-            T* z = device_->Malloc(sc_length);
+            T* x = device_.Malloc(sc_length);
+            T* y = device_.Malloc(sc_length);
+            T* z = device_.Malloc(sc_length);
             
             for(int idx=0;idx<sc_length;idx++)
             {
@@ -327,7 +321,7 @@ class DeviceTest
                 y[idx] = (T) drand48();
             }
                         
-            device_->xy(x,y,stride,num_vecs,z);
+            device_.xy(x,y,stride,num_vecs,z);
             
             T err = 0, diff;
             for(int idx=0;idx<sc_length;idx++)
@@ -335,9 +329,9 @@ class DeviceTest
                 diff = fabs(x[idx]*y[idx]-z[idx]);
                 err = (diff>err) ? diff : err ;
             }
-            device_->Free(x);
-            device_->Free(y);
-            device_->Free(z);
+            device_.Free(x);
+            device_.Free(y);
+            device_.Free(z);
             
             
             res = res && (err<eps_) ? true : false;
@@ -354,23 +348,23 @@ class DeviceTest
         {
             int stride = 413, num_vecs = 2;
             int sc_length = stride*num_vecs;
-            T* x = device_->Malloc(sc_length);
-            T* y = device_->Malloc(sc_length);
-            T* z = device_->Malloc(sc_length);
+            T* x = device_.Malloc(sc_length);
+            T* y = device_.Malloc(sc_length);
+            T* z = device_.Malloc(sc_length);
             
             for(int idx=0;idx<sc_length;idx++)
             x[idx] = (T) drand48();
                         
-            device_->xInv(x,stride,num_vecs,y);
-            device_->xyInv(x,y,stride,num_vecs,z);
+            device_.xInv(x,stride,num_vecs,y);
+            device_.xyInv(x,y,stride,num_vecs,z);
             
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (z[idx]-1.0>err) ? z[idx]-1 : err ;
             
-            device_->Free(x);
-            device_->Free(y);
-            device_->Free(z);
+            device_.Free(x);
+            device_.Free(y);
+            device_.Free(z);
             
             res = res && (err<eps_) ? true : false;
             
@@ -386,20 +380,20 @@ class DeviceTest
         {
             int stride = 531, num_vecs = 3;
             int sc_length = stride*num_vecs;
-            T* x = device_->Malloc(sc_length);
-            T* y = device_->Malloc(sc_length);
+            T* x = device_.Malloc(sc_length);
+            T* y = device_.Malloc(sc_length);
             
             for(int idx=0;idx<sc_length;idx++)
                 x[idx] = (T) drand48();
                         
-            device_->axpy(-1.0,x,x,stride,num_vecs,y);
+            device_.axpy(-1.0,x,x,stride,num_vecs,y);
             
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (y[idx]>err) ? y[idx] : err ;
             
-            device_->Free(x);
-            device_->Free(y);
+            device_.Free(x);
+            device_.Free(y);
             
             res = res && (err<eps_) ? true : false;
             
@@ -415,20 +409,20 @@ class DeviceTest
         {
             int stride = 531, num_vecs = 3;
             int sc_length = stride*num_vecs;
-            T* x = device_->Malloc(sc_length);
-            T* y = device_->Malloc(sc_length);
+            T* x = device_.Malloc(sc_length);
+            T* y = device_.Malloc(sc_length);
             
             for(int idx=0;idx<sc_length;idx++)
                 x[idx] = (T) drand48();
                         
-            device_->axpb(-1.0,x,0.0,stride,num_vecs,y);
+            device_.axpb(-1.0,x,0.0,stride,num_vecs,y);
             
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
                 err = (x[idx]+y[idx]>err) ? (x[idx]+y[idx]) : err ;
             
-            device_->Free(x);
-            device_->Free(y);
+            device_.Free(x);
+            device_.Free(y);
             
             res = res && (err<eps_) ? true : false;
             
@@ -446,14 +440,14 @@ class DeviceTest
             int sc_length = stride*num_vecs;
             int vec_length = 3*sc_length;
 
-            T* x = device_->Malloc(vec_length);
-            T* y = device_->Malloc(vec_length);
-            T* z = device_->Malloc(vec_length);
+            T* x = device_.Malloc(vec_length);
+            T* y = device_.Malloc(vec_length);
+            T* z = device_.Malloc(vec_length);
 
-            T* a = device_->Malloc(sc_length );
-            T* b = device_->Malloc(sc_length );
-            T* c = device_->Malloc(sc_length );
-            T* d = device_->Malloc(sc_length );
+            T* a = device_.Malloc(sc_length );
+            T* b = device_.Malloc(sc_length );
+            T* c = device_.Malloc(sc_length );
+            T* d = device_.Malloc(sc_length );
             
             for(int idx=0;idx<vec_length;idx++)
             {
@@ -464,10 +458,10 @@ class DeviceTest
             for(int idx=0;idx<sc_length;idx++)
                 a[idx] = (T) drand48();
 
-            device_->xvpb(a,x,0.0,stride,num_vecs,z);
+            device_.xvpb(a,x,0.0,stride,num_vecs,z);
             
-            device_->DotProduct(x,y,stride,num_vecs,b);
-            device_->DotProduct(z,y,stride,num_vecs,d);
+            device_.DotProduct(x,y,stride,num_vecs,b);
+            device_.DotProduct(z,y,stride,num_vecs,d);
             
             T err = 0, diff;
             for(int idx=0;idx<sc_length;idx++)
@@ -476,11 +470,11 @@ class DeviceTest
                 err = (diff>err) ? diff : err ;
             }
             
-            device_->xvpw(a,x,y,stride,num_vecs,z);
+            device_.xvpw(a,x,y,stride,num_vecs,z);
             
-            device_->DotProduct(x,y,stride,num_vecs,b);
-            device_->DotProduct(y,y,stride,num_vecs,c);
-            device_->DotProduct(z,y,stride,num_vecs,d);
+            device_.DotProduct(x,y,stride,num_vecs,b);
+            device_.DotProduct(y,y,stride,num_vecs,c);
+            device_.DotProduct(z,y,stride,num_vecs,d);
             
             for(int idx=0;idx<sc_length;idx++)
             {
@@ -488,13 +482,13 @@ class DeviceTest
                 err = (diff>err) ? diff : err ;
             }
 
-            device_->Free(x);
-            device_->Free(y);
-            device_->Free(z);
-            device_->Free(a);
-            device_->Free(b);
-            device_->Free(c);
-            device_->Free(d);
+            device_.Free(x);
+            device_.Free(y);
+            device_.Free(z);
+            device_.Free(a);
+            device_.Free(b);
+            device_.Free(c);
+            device_.Free(d);
             
             res = res && (err<eps_) ? true : false;
             
