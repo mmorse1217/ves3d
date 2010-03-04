@@ -78,3 +78,14 @@ void xvpb(const Scalars<T>& x_in, const Vectors<T>& v_in,
 
     x_in.device_.xvpb(x_in.data_, v_in.data_, w_in, v_in.GetFunLength(), v_in.n_vecs_, xvpb_out.data_);
 }
+
+template<typename T> 
+void uyInv(const Vectors<T>& u_in, const Scalars<T>& y_in, 
+    Vectors<T>& uyInv_out)
+{
+    assert(3*y_in.GetDataLength() == u_in.GetDataLength());
+    assert(u_in.GetDataLength() == uyInv_out.GetDataLength());
+    assert(y_in.device_ == u_in.device_ && u_in.device_ == uyInv_out.device_);
+
+    u_in.device_.uyInv(u_in.data_, y_in.data_, u_in.GetFunLength(), u_in.n_vecs_, uyInv_out.data_);
+}

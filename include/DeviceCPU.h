@@ -35,6 +35,7 @@ class DeviceCPU : public Device<T>
     virtual T* xInv(const T* x_in, int stride, int num_surfs, T* xInv_out);
     virtual T* xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* xy_out);
     virtual T* xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, T* xyInv_out);
+    virtual T* uyInv(const T* u_in, const T* y_in, int stride, int num_surfs, T* uyInv_out);
 
     virtual T* axpy(T a_in, const T* x_in, const T* y_in, int stride, int num_surfs , T* axpy_out);
     virtual T* axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs , T*  axpb_out);

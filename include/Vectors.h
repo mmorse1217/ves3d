@@ -26,11 +26,16 @@ void CrossProduct(const Vectors<T>& x_in,
 
 template<typename T> 
 void xvpw(const Scalars<T>& x_in, const Vectors<T>& v_in, 
-    const Vectors<T>& w_in, Vectors<T>& xvpw_out); 
+    const Vectors<T>& w_in, Vectors<T>& xvpw_out);
 
 template<typename T> 
 void xvpb(const Scalars<T>& a_in, const Vectors<T>& x_in, 
     T b_in, Vectors<T>& xvpb_out); 
+
+template<typename T> 
+void uyInv(const Vectors<T>& u_in, const Scalars<T>& y_in, 
+    Vectors<T> &uyInv_out); 
+
 
 /**
  * Three dimensional vectors fields with each component defined on the
@@ -109,7 +114,9 @@ class Vectors : public Scalars<T>
         const Vectors<T>& v_in, T b_in, 
         Vectors<T>& xvpb_out); 
     
-    ///@todo Add scaling by division
+    friend void uyInv<T>(const Vectors<T>& u_in, 
+        const Scalars<T>& y_in, Vectors<T> &uyInv_out); 
+
   private:
     /// Number of vectors in the class.
     int n_vecs_;

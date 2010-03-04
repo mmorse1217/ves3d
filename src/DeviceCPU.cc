@@ -177,6 +177,25 @@ T* DeviceCPU<T>::xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, 
 }
 
 template<typename T>
+T*  DeviceCPU<T>::uyInv(const T* u_in, const T* y_in, int stride, int num_surfs, T* uyInv_out)
+{
+#ifndef NDEBUG
+    cout<<"DeviceCPU::uyInv"<<endl;
+#endif
+    
+    int vec, s, idx(0), y_idx(0);
+
+    for (vec = 0; vec < num_surfs; vec++)
+    {
+        y_idx = vec*stride;
+        for (s = 0; s < stride; s++) {
+            uyInv_out[idx]  = u_in[idx++] / y_in[y_idx++];
+        }
+    }
+    return uyInv_out;
+}
+
+template<typename T>
 T*  DeviceCPU<T>::axpy(T a_in, const T*  x_in, const T*  y_in, int stride, int num_surfs , T*  axpy_out)
 {
 #ifndef NDEBUG

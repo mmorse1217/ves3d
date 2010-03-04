@@ -91,6 +91,9 @@ template<typename T> class Device
 
     ///Element-wise division of scalar fields.
     virtual T* xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, T* xyInv_out) = 0;
+
+    ///Element-wise scaling of a vector field by a scalar fields.
+    virtual T* uyInv(const T* u_in, const T* y_in, int stride, int num_surfs, T* uyInv_out) = 0;
     
     ///Scaling and addition of an scalar field to another field.
     virtual T* axpy(T a_in, const T* x_in, const T* y_in, int stride, int num_surfs , T* axpy_out) = 0;

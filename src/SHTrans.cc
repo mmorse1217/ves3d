@@ -6,6 +6,8 @@
  * @brief  The implementation of the SHTrans class. 
  */
 
+///@bug There is no default constructor for cuda_sht so this
+///constructor breaks
 template<typename T> 
 SHTrans<T>::SHTrans(Device<T> &device_in) : 
     device_(device_in), p_(0), n_funs_(0), shc_(0){}
