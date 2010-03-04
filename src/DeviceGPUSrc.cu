@@ -7,7 +7,7 @@
 template <typename T>
 T* DeviceGPU<T>::Malloc(unsigned long int length)
 {
-    T* ptr = NULL;
+    T* ptr = 0;
     cudaMalloc(&ptr, length * sizeof(T));
     return(ptr);
 }
@@ -21,13 +21,17 @@ void DeviceGPU<T>::Free(T* ptr)
 template <typename T>
 T* DeviceGPU<T>::Calloc(unsigned long int num)
 {
-    T* ptr = NULL;
+    T* ptr = 0;
+    cudaMalloc(&ptr, num * sizeof(T));
+    cudaMemset(ptr, 0, num * sizeof(T));
     return ptr;
 }
 
 template <typename T>
 T* DeviceGPU<T>::Memcpy (T* destination, const T* source, unsigned long int num, enum MemcpyKind kind)
 {
+    cudaMemcpyKind cuda_kind = static_cast<cudaMemcpyKind>(kind);
+    cudaMemcpy(destination, source, sizeof(T) * num, cuda_kind);
     return destination;
 }
 
@@ -41,6 +45,13 @@ template <typename T>
 T* DeviceGPU<T>::CrossProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* w_out)
 {
     return w_out;
+}
+
+
+template <typename T>
+T* DeviceGPU<T>::Sqrt(const T* x_in, int stride, int num_surfs, T* sqrt_out)
+{
+    return sqrt_out;
 }
 
 template <typename T>
@@ -59,6 +70,12 @@ template <typename T>
 T* DeviceGPU<T>::xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, T* xyInv_out)
 {
     return xyInv_out;
+}
+
+template <typename T>
+T* DeviceGPU<T>::uyInv(const T* u_in, const T* y_in, int stride, int num_surfs, T* uyInv_out)
+{
+    return uyInv_out;
 }
 
 template <typename T>
@@ -84,15 +101,6 @@ T* DeviceGPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num
 {
     return xvpb_out;
 }
-
-// void* DeviceGPU::calloc(size_t num, size_t size)
-// {
-//     void* ptr = NULL;
-//     cudaMalloc(&ptr, size);
-//     std::cerr<<"Zero initialization is not implemented."<<std::endl;
-//     return(ptr);
-
-// }
 
 // float* DeviceGPU::DotProduct(float* a_in, float* b_in, int stride, int num_vecs, float* aDb_out)
 // {

@@ -12,14 +12,12 @@
 //Forward declaration for the friend function
 template<typename T> class Device;
 
-///The comparison operator for the device class
-template<typename T, typename E>
-inline bool operator==(const Device<T> &rhs, const Device<E> &lhs)
+// ///The comparison operator for the device class
+template<typename Tlhs, typename Trhs>
+inline bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs)
 {
-    return(rhs.GetID() == lhs.GetID());
+    return( (void*) &rhs == (void*) &lhs); 
 }
-
-unsigned long int AssignDeviceID();
 
 ///The enum types for the memory copying action.
 enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, MemcpyDeviceToDevice};
@@ -42,19 +40,7 @@ enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, Memcp
  */
 template<typename T> class Device
 {
-  protected:
-    ///The ID of the device
-    const unsigned long int device_id_;
-
   public:
-    ///The default constructor (takes care of id'ing).
-    Device();
-    
-    ///Returns the ID of the device.
-    unsigned long int GetID() const;
-    
-    friend unsigned long int AssignDeviceID();
-
     ///Memory allocation, since the type is defined as a template
     ///parameter, the size is different from the original malloc() as
     ///it <b>does not need to be multiplied by the sizeof(T)</b>.
@@ -73,7 +59,7 @@ template<typename T> class Device
     ///MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, or
     ///MemcpyDeviceToDevice</code>.
     virtual T* Memcpy (T* destination, const T* source, unsigned long int num, enum MemcpyKind kind) = 0;
-
+ 
     ///Geometric dot product of two (Cartesian) vectors. 
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out) = 0;
 
@@ -108,29 +94,8 @@ template<typename T> class Device
     virtual T* xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num_surfs, T*  xvpb_out) = 0;
 
     ///The comparison operator for the device class
-    template<typename T,typename E>
-    friend bool operator==(const Device<T> &rhs, const Device<E> &lhs);
+    template<typename Tlhs,typename Trhs>
+    friend bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs);
 };
-
-// Implementations
-template<typename T>
-Device<T>::Device() : 
-    device_id_(AssignDeviceID()) 
-{ }
-
-template<typename T>
-unsigned long int Device<T>::GetID() const
-{
-    return(device_id_);
-}
-
-///Returns a unique ID to the caller class. With this function we can
-///use the same counter for all template parameters instantiation of
-///the Device class.
-unsigned long int AssignDeviceID()
-{
-    static unsigned long int device_counter = 0;
-    return(device_counter++);
-}
 
 #endif //_DEVICE_H_

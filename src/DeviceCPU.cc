@@ -183,18 +183,26 @@ T*  DeviceCPU<T>::uyInv(const T* u_in, const T* y_in, int stride, int num_surfs,
     cout<<"DeviceCPU::uyInv"<<endl;
 #endif
     
-    int vec, s, idx(0), y_idx(0);
+    int vec, s, y_base, base, y_idx;
 
     for (vec = 0; vec < num_surfs; vec++)
     {
-        y_idx = vec*stride;
-        for (s = 0; s < stride; s++) {
-            uyInv_out[idx]  = u_in[idx++] / y_in[y_idx++];
+        y_base = vec*stride;
+        base = 3*y_base;
+        for (s = 0; s < stride; s++) 
+        {
+            y_idx = y_base + s;
+            uyInv_out[base                  + s ]  = u_in[base                   + s ] / y_in[y_idx];
+            uyInv_out[base+ stride          + s ]  = u_in[base + stride          + s ] / y_in[y_idx];
+            uyInv_out[base+ stride + stride + s ]  = u_in[base + stride + stride + s ] / y_in[y_idx];
         }
     }
     return uyInv_out;
 }
 
+///@todo For all these methods the input and output may be the same,
+///so we have temporary variables created, either make a variable or
+///remove the option that in and out the same.
 template<typename T>
 T*  DeviceCPU<T>::axpy(T a_in, const T*  x_in, const T*  y_in, int stride, int num_surfs , T*  axpy_out)
 {
@@ -202,12 +210,10 @@ T*  DeviceCPU<T>::axpy(T a_in, const T*  x_in, const T*  y_in, int stride, int n
     cout<<"DeviceCPU::axpy"<<endl;
 #endif
 
+    T val;
     int length = stride*num_surfs;
     for (int idx = 0; idx < length; idx++)
-    {
-        axpy_out[idx]  = a_in*x_in[idx];
-        axpy_out[idx] += y_in[idx];
-    }
+        axpy_out[idx] = a_in*x_in[idx] + y_in[idx];
     
     return axpy_out;
 }
@@ -221,10 +227,7 @@ T*  DeviceCPU<T>::axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs
 
     int length = stride*num_surfs;
     for (int idx = 0; idx < length; idx++)
-    {
-        axpb_out[idx] = a_in*x_in[idx];
-        axpb_out[idx] += b_in;
-    }
+        axpb_out[idx] = a_in*x_in[idx] + b_in;
 
     return axpb_out;
 }
@@ -248,16 +251,13 @@ T*  DeviceCPU<T>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, int stride
             idx = base+s;
             x_idx = x_base+s;
 
-            xvpw_out[idx]  = x_in[x_idx] * v_in[idx];
-            xvpw_out[idx] += w_in[idx];
+            xvpw_out[idx]  = x_in[x_idx] * v_in[idx] + w_in[idx];
 
             idx +=stride;
-            xvpw_out[idx]  = x_in[x_idx] * v_in[idx];
-            xvpw_out[idx] += w_in[idx];
+            xvpw_out[idx]  = x_in[x_idx] * v_in[idx] + w_in[idx];
 
             idx +=stride;
-            xvpw_out[idx]  = x_in[x_idx] * v_in[idx];
-            xvpw_out[idx] += w_in[idx];
+            xvpw_out[idx]  = x_in[x_idx] * v_in[idx] + w_in[idx];
         }
     }
     return xvpw_out;

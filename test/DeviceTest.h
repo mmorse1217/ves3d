@@ -49,10 +49,11 @@ class DeviceTest
     {
         int arr_size = (int) 1e6;
         T* a = device_.Malloc(arr_size);
-        
-        int idx;
-        for(idx=0;idx<arr_size;++idx)
-            a[idx] = idx;
+        T* b = (T*) malloc(arr_size * sizeof(T));
+
+        for(int idx=0;idx<arr_size;++idx)
+            b[idx] = idx;
+        device_.Memcpy(a, b, arr_size, MemcpyHostToDevice);
         device_.Free(a);
         
         cout<<"* DeviceCPU::Malloc: Passed *"<<endl;
@@ -63,10 +64,15 @@ class DeviceTest
     {
         int arr_size = 1e6;
         T* a = device_.Calloc(arr_size);
-     
+        T* b = (T*) malloc(arr_size * sizeof(T));
+
+        for(int idx=0;idx<arr_size;++idx)
+            b[idx] = 1;
+        device_.Memcpy(b, a, arr_size, MemcpyDeviceToHost);
+
         bool res;
         for(int idx=0;idx<arr_size;++idx)
-            res = (a[idx] == 0) ? true : false;
+            res = (b[idx] == 0) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
         device_.Free(a);
@@ -79,18 +85,19 @@ class DeviceTest
     {
         int arr_size = 1e6;
         T* a = device_.Malloc(arr_size);
-        
-        int idx;
-        for(idx=0;idx<arr_size;++idx)
-            a[idx] = idx;
-        
-        T* b = device_.Calloc(arr_size);
+        T* b = (T*) malloc(arr_size * sizeof(T));
 
-        device_.Memcpy(b, a, arr_size, MemcpyHostToHost);
+        for(int idx=0;idx<arr_size;++idx)
+            b[idx] = 1;
+        device_.Memcpy(a, b, arr_size, MemcpyHostToDevice);
+        
+        for(int idx=0;idx<arr_size;++idx)
+            b[idx] = 2;
+        device_.Memcpy(b, a, arr_size, MemcpyDeviceToHost);
 
         bool res = true;
-        for(idx=0;idx<arr_size;++idx)
-            res = res && (a[idx] == b[idx]) ? true : false;
+        for(int idx=0;idx<arr_size;++idx)
+            res = res && (b[idx] == (T) 1) ? true : false;
 
         device_.Free(a);
         device_.Free(b);

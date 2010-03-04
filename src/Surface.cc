@@ -133,6 +133,7 @@ void Surface<T>::UpdateProps()
     xy(F,M,temp);
     axpy((T)-2.0,temp,h_,h_);
     xy(G,L, temp);
+
     axpy((T)1.0,temp,h_,h_);
     axpb((T)0.5,h_,(T)0.0,h_);
     xyInv(h_,W2,h_);
@@ -140,9 +141,9 @@ void Surface<T>::UpdateProps()
     // Gaussian curvature
     xy(L,N,k_);
     xy(M,M,temp);
-    axpy((T)-1.0,temp,h_,h_);
+    axpy((T)-1.0,temp,k_,k_);
     xyInv(k_,W2,k_);
-
+    
     //Div and Grad coefficients
     xvpb(F,xv,(T) 0.0,cu_);
     axpb((T) -1.0,cu_, (T) 0.0, cu_);
@@ -157,25 +158,27 @@ void Surface<T>::UpdateProps()
 
 template <typename T> 
 void Surface<T>::SurfGrad(
-    const Scalars<T>& f_in, 
-    Vectors<T>& grad_f_out)
+    const Scalars<T> &f_in, 
+    Vectors<T> &grad_f_out)
 {
-//     Scalars<T> fu(p_,n_surfs_), fv(p_,n_surfs_);
-//     scalar_diff_.FirstDerivatives(f_in,fu,fv);
+    ///@todo The allocation should be moved outside
+    Scalars<T> fu(device_, p_, n_surfs_), fv(device_, p_, n_surfs_);
+    scalar_diff_.FirstDerivatives(f_in,fu,fv);
     
-//     AxPy(fu,cu_, (T) 0.0, grad_f_out);
-//     AxPy(fv,cv_, grad_f_out, grad_f_out);
+    xvpb(fu,cu_, (T) 0.0, grad_f_out);
+    xvpw(fv,cv_, grad_f_out, grad_f_out);
 }
 
 template <typename T> 
 void Surface<T>::SurfDiv(
-    const Vectors<T>& f_in, 
-    Scalars<T>& div_f_out) 
+    const Vectors<T> &f_in, 
+    Scalars<T> &div_f_out) 
 {
-//     Vectors<T> fu(p_,n_surfs_), fv(p_,n_surfs_);
-//     vector_diff_.FirstDerivatives(f_in,fu,fv);
+    ///@todo The allocation should be moved outside
+    Vectors<T> fu(device_, p_, n_surfs_), fv(device_, p_, n_surfs_);
+    vector_diff_.FirstDerivatives(f_in,fu,fv);
     
-//     DotProduct(fu,cu_, temp);
-//     DotProduct(fv,cv_, div_f_out);
-//     AxPy((T)1.0,div_f_out,temp, div_f_out);
+    DotProduct(fu,cu_, temp);
+    DotProduct(fv,cv_, div_f_out);
+    axpy((T)1.0,div_f_out,temp, div_f_out);
 }

@@ -1,9 +1,9 @@
 CXX  = icpc
 CC   = icpc
-NVCC = /usr/local/cuda/bin/nvcc
 
 MKLPATH  = /opt/intel/Compiler/11.1/059/mkl/lib/em64t
 CUDA_DIR = /usr/local/cuda
+NVCC = $(CUDA_DIR)/bin/nvcc
 
 LDFLAGS  = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
 $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
@@ -12,15 +12,17 @@ $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
 
 CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                               \
 -I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
--I../src/ -fPIC #-DCUDA_SHT_PROFILING -DNDEBUG
+-I../src/ -fPIC -DNDEBUG #-DCUDA_SHT_PROFILING 
+
+CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
 
 all: 
 
-DeviceTest: #DeviceGPU.o 
-#	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
+DeviceTest: DeviceGPU.o 
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
 
 DeviceGPU.o: ../include/DeviceGPU.cu
-	$(CUDA) $(INCLUDE) -c ../include/DeviceGPU.cu
+	$(NVCC) $(CUDAFLAGS) -c ../include/DeviceGPU.cu
 
 ScalarsTest:
 
@@ -48,5 +50,5 @@ clean:
 # CUTest: CUvec.o 
 # 	$(CXX) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $@.cc $^ -o $@.out
 
-# CUvec.o: ../src/CUvec.cu
-# 	$(CUDA) -c ../src/CUvec.cu
+CUvec.o: ../etc/CUvec.cu
+	$(NVCC) -c ../etc/CUvec.cu
