@@ -93,6 +93,37 @@ template<typename T> class Device
     ///Element-wise scaling and addition.
     virtual T* xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num_surfs, T*  xvpb_out) = 0;
 
+    ///SHT size
+    virtual void InitializeSHT(int p, char *leg_trans_fname,
+        char *leg_trans_inv_fname, char *d1_leg_trans_fname, 
+        char *d2_leg_trans_fname) = 0;
+    
+    ///SHT Analysis
+    virtual void ShAna(const T *x_in, int num_funs, T *sht_out) = 0;
+    
+    ///SHT Synthesis
+    virtual void ShSyn(const T *shc_in, int num_funs, T *y_out) = 0;
+    
+    ///SHT First derivative u
+    virtual void ShSynDu(const T *shc_in, int num_funs, T *xu_out) = 0;
+    
+    ///SHT First derivative v
+    virtual void ShSynDv(const T *shc_in, int num_funs, T *xv_out) = 0;
+    
+    ///SHT Second derivative uu
+    virtual void ShSynDuu(const T *shc_in, int num_funs, T *xuu_out) = 0;
+    
+    ///SHT Second derivative vv
+    virtual void ShSynDvv(const T *shc_in, int num_funs, T *xvv_out) = 0;
+    
+    ///SHT Second derivative uv
+    virtual void ShSynDuv(const T *shc_in, int num_funs, T *xuv_out) = 0;
+
+    virtual void AllDerivatives(const T *x_in, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out, 
+        T *Duux_out, T *Duvx_out, T *Dvvx_out) = 0;
+
+    virtual void FirstDerivatives(const T *x_in, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out) = 0;
+
     ///The comparison operator for the device class
     template<typename Tlhs,typename Trhs>
     friend bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs);

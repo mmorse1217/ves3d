@@ -18,7 +18,7 @@ CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
 
 all: 
 
-DeviceTest: DeviceGPU.o 
+DeviceTest: BlasSht.o #DeviceGPU.o 
 	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
 
 DeviceGPU.o: ../include/DeviceGPU.cu
@@ -28,17 +28,21 @@ ScalarsTest:
 
 VectorsTest:
 
-SHTransTest: cuda_sht.o 
+SHTransTest: cuda_sht.o BlasSht.o
 
 driver: cuda_sht.o blas_sht.o 
 
 cuda_sht.o: ../src/cuda_sht.C
 	$(CXX) $(CPPFLAGS) -c ../src/cuda_sht.C
 
-blas_sht.o: ../src/blas_sht.C
-	$(CXX) $(CPPFLAGS) -c ../src/blas_sht.C
+blas_test: BlasSht.o
 
-SurfaceTest: cuda_sht.o
+BlasSht.o: ../src/BlasSht.cc
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -c ../src/BlasSht.cc
+
+SurfaceTest: cuda_sht.o BlasSht.o
+
+ExplicitStepper: cuda_sht.o BlasSht.o
 
 .PHONY: clean
 

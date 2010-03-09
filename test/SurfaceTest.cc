@@ -16,7 +16,18 @@ int main(int argc, char ** argv)
     DataIO<T> myIO;
 
     int p(12), nVec(1);
+    cpu.InitializeSHT(p, "../data/legTrans12_single.txt",
+            "../data/legTransInv12_single.txt",
+            "../data/d1legTrans12_single.txt",
+            "../data/d2legTrans12_single.txt");
+
     
+    T *trash1, *trash2;
+    trash1 = (scalar*) malloc(6 * p * (p + 1) * nVec * sizeof(scalar));
+    trash2 = (scalar*) malloc(6 * p * (p + 1) * nVec * sizeof(scalar));
+    cpu.sht_.trans_in = trash1;
+    cpu.sht_.trans_out = trash2;
+
     int fLen(2*p*(p+1));
     int dLen(6*p*(p+1)*nVec);
 

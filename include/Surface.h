@@ -90,6 +90,7 @@ template <typename T> class Surface
     ///The surface divergence operator.
     void SurfDiv(const Vectors<T> &f_in, Scalars<T> &div_f_out);
 
+    void StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out);
     /// The spherical harmonics transform operator, initialized for
     /// vector sizes.
     SHTrans<T> vector_diff_;
@@ -99,7 +100,7 @@ template <typename T> class Surface
     SHTrans<T> scalar_diff_;
 
     //Work space -- TO BE REMOVED
-    Vectors<T> xu, xv, xuv, xvv, xuu;
+    Vectors<T> xu, xv, xuv, xvv, xuu, bending_force;
     Scalars<T> E, F, G, L, M, N, W2, temp;
 };
 

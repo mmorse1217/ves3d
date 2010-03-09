@@ -23,6 +23,7 @@ Surface<T>::Surface(Device<T> &device_in) :
     xuv(device_), 
     xvv(device_), 
     xuu(device_),
+    bending_force(device_),
     E(device_),
     F(device_),
     G(device_),
@@ -52,6 +53,7 @@ Surface<T>::Surface(Device<T> &device_in, int p_in, int n_surfs_in) :
     xuv(device_,p_,n_surfs_), 
     xvv(device_,p_,n_surfs_), 
     xuu(device_,p_,n_surfs_),
+    bending_force(device_,p_,n_surfs_),
     E(device_,p_,n_surfs_),
     F(device_,p_,n_surfs_),
     G(device_,p_,n_surfs_),
@@ -82,6 +84,7 @@ Surface<T>::Surface(Device<T> &device_in, int p_in, int n_surfs_in,
     xuv(device_,p_,n_surfs_), 
     xvv(device_,p_,n_surfs_), 
     xuu(device_,p_,n_surfs_),
+    bending_force(device_,p_,n_surfs_),
     E(device_,p_,n_surfs_),
     F(device_,p_,n_surfs_),
     G(device_,p_,n_surfs_),
@@ -108,6 +111,12 @@ void Surface<T>::UpdateProps()
 {
     // Calculating the derivative
     vector_diff_.AllDerivatives(x_,xu,xv,xuu,xuv,xvv);
+//     T *shc;
+//     shc = (T*) malloc(6 * p_ * (p_ + 1) * n_surfs_ * sizeof(T));
+    
+//     device_.AllDerivatives(x_.data_, 3*n_surfs_, shc, xu.data_, 
+//         xv.data_, xuu.data_, xuv.data_, xvv.data_);
+    //
 
     // First fundamental coefficients
     DotProduct(xu,xu,E);
@@ -154,6 +163,25 @@ void Surface<T>::UpdateProps()
     axpb((T) -1.0,cv_, (T) 0.0, cv_);
     xvpw(E,xv, cv_, cv_);
     uyInv(cv_,W2,cv_);
+
+    SurfGrad(h_, bending_force);
+    SurfDiv(bending_force, E);
+    axpb((T) -1.0,E, (T) 0.0, E);
+    
+    //Bending force
+    xy(h_,h_,F);
+    axpy((T) -1.0, F, k_, F);
+    xy(F, h_, F);
+    axpy((T) 2.0, F, E, E);
+    xvpb(E, normal_, (T) 0.0, bending_force);
+}
+
+template <typename T>
+void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out)
+{
+    int len = density_in.GetDataLength();
+    for(int ii=0;ii<len; ii++)
+        velocity_out.data_[ii] = density_in.data_[ii];
 }
 
 template <typename T> 
