@@ -13,14 +13,14 @@ Scalars<T>::Scalars(Device<T> &device_in) :
 
 template<typename T> 
 Scalars<T>::Scalars(Device<T> &device_in, int p_in, int n_funs_in) : 
-    device_(device_in), p_(p_in), n_funs_(n_funs_in)
+    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in)
 {
     AllocateMemory();
 }
 
 template<typename T> 
 Scalars<T>::Scalars(Device<T> &device_in, int p_in, int n_funs_in, const T *data_in) :
-    device_(device_in), p_(p_in), n_funs_(n_funs_in)
+    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in)
 {
     AllocateMemory();
     SetData(data_in);
@@ -90,8 +90,7 @@ void Scalars<T>::SetFunctionAt(const T *fun_in, int fun_idx_in)
 template<typename T> 
 void Scalars<T>::Sqrt()
 {
-    int len = GetDataLength();
-    device_.Sqrt(data_,GetFunLength(), n_funs_, data_);
+    device_.Sqrt(data_, GetFunLength(), n_funs_, data_);
 }
 
 //Friends

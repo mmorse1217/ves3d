@@ -37,7 +37,6 @@ template<typename T>
 void DotProduct(const Vectors<T> &x_in, 
     const Vectors<T> &y_in, Scalars<T> &xDy_out)
 {
-    //Vectors<T>  *temp = static_cast<Vectors<T>*> (&xDy_out);
     assert(x_in.GetDataLength() == y_in.GetDataLength());
     assert(x_in.GetDataLength() <= 3*xDy_out.GetDataLength());
     assert(x_in.device_ == y_in.device_ && y_in.device_ == xDy_out.device_);

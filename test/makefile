@@ -40,7 +40,7 @@ blas_test: BlasSht.o
 BlasSht.o: ../src/BlasSht.cc
 	$(CXX) $(CPPFLAGS) $(LDFLAGS) -c ../src/BlasSht.cc
 
-SurfaceTest: cuda_sht.o BlasSht.o
+SurfaceTest: BlasSht.o
 
 ExplicitStepper: cuda_sht.o BlasSht.o
 

@@ -12,8 +12,6 @@
 #include "Device.h"
 #include "Scalars.h"
 #include "Vectors.h"
-#include "SHTrans.h"
-#include <math.h>
 
 template <typename T> class Surface
 {
@@ -91,13 +89,6 @@ template <typename T> class Surface
     void SurfDiv(const Vectors<T> &f_in, Scalars<T> &div_f_out);
 
     void StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out);
-    /// The spherical harmonics transform operator, initialized for
-    /// vector sizes.
-    SHTrans<T> vector_diff_;
-
-    /// The spherical harmonics transform operator, initialized for
-    /// scalar sizes.
-    SHTrans<T> scalar_diff_;
 
     //Work space -- TO BE REMOVED
     Vectors<T> xu, xv, xuv, xvv, xuu, bending_force;

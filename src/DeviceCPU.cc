@@ -304,6 +304,15 @@ void  DeviceCPU<T>::InitializeSHT(int p, char *leg_trans_fname,
 {
     assert(dft_forward == 0);
 
+     T *dft_forward;
+    T *dft_backward;
+    T *dft_d1backward;
+    T *dft_d2backward;
+    T *leg_trans;
+    T *leg_trans_inv;
+    T *d1_leg_trans;
+    T *d2_leg_trans;
+
     dft_forward    = DeviceCPU<T>::Malloc(4 * p * p); 
     dft_backward   = DeviceCPU<T>::Malloc(4 * p * p); 
     dft_d1backward = DeviceCPU<T>::Malloc(4 * p * p); 
@@ -314,132 +323,111 @@ void  DeviceCPU<T>::InitializeSHT(int p, char *leg_trans_fname,
     d1_leg_trans   = DeviceCPU<T>::Malloc((p + 1) * (p+1) * (p +2)); 
     d2_leg_trans   = DeviceCPU<T>::Malloc((p + 1) * (p+1) * (p +2)); 
 
-//     trans_in       = DeviceCPU<T>::Malloc(2 * p * (p + 1)); 
-//     trans_out      = DeviceCPU<T>::Malloc(2 * p * (p + 1)); 
-
     sht_.InitializeBlasSht(p, leg_trans_fname, leg_trans_inv_fname, 
         d1_leg_trans_fname, d2_leg_trans_fname, 
         dft_forward, dft_backward, dft_d1backward, dft_d2backward, 
-        leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans,
-        trans_in, trans_out);
+        leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
 }
 
 template<typename T>
-DeviceCPU<T>::DeviceCPU() :
-    dft_forward(0),
-    dft_backward(0),
-    dft_d1backward(0),
-    dft_d2backward(0),
-    leg_trans(0),
-    leg_trans_inv(0),
-    d1_leg_trans(0),
-    d2_leg_trans(0),
-    trans_in(0),
-    trans_out(0)
-{}
+DeviceCPU<T>::DeviceCPU(){}
 
 template<typename T>
 DeviceCPU<T>::~DeviceCPU()
 {
-    if(dft_forward != 0)
-        Free(dft_forward); 
+    if(sht_.dft_forward != 0)
+        Free(sht_.dft_forward); 
     
-    if(dft_backward != 0)
-        Free(dft_backward); 
+    if(sht_.dft_backward != 0)
+        Free(sht_.dft_backward); 
 
-    if(dft_d1backward != 0)
-        Free(dft_d1backward); 
+    if(sht_.dft_d1backward != 0)
+        Free(sht_.dft_d1backward); 
     
-    if(dft_d2backward != 0)
-        Free(dft_d2backward); 
+    if(sht_.dft_d2backward != 0)
+        Free(sht_.dft_d2backward); 
     
-    if(leg_trans != 0)
-        Free(leg_trans); 
+    if(sht_.leg_trans != 0)
+        Free(sht_.leg_trans); 
     
-    if(leg_trans_inv != 0)
-        Free(leg_trans_inv); 
+    if(sht_.leg_trans_inv != 0)
+        Free(sht_.leg_trans_inv); 
     
-    if(d1_leg_trans != 0)
-        Free(d1_leg_trans); 
+    if(sht_.d1_leg_trans != 0)
+        Free(sht_.d1_leg_trans); 
 
-    if(d2_leg_trans != 0)
-        Free(d2_leg_trans); 
-
-//     if(trans_in != 0)
-//         Free(trans_in); 
-    
-//     if(trans_out != 0)
-//         Free(trans_out); 
+    if(sht_.d2_leg_trans != 0)
+        Free(sht_.d2_leg_trans); 
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShAna(const T *x_in, int n_funs, T *shc_out)
+void  DeviceCPU<T>::ShAna(const T *x_in, T *work_arr, int n_funs, T *shc_out)
 {
     assert(sht_.leg_trans != 0);
-    sht_.forward(x_in, n_funs, shc_out);
+    sht_.forward(x_in, work_arr, n_funs, shc_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSyn(const T *shc_in, int n_funs, T *x_out)
+void  DeviceCPU<T>::ShSyn(const T *shc_in, T *work_arr, int n_funs, T *x_out)
 {
     assert(sht_.leg_trans_inv != 0);
-    sht_.backward(shc_in, n_funs, x_out);
+    sht_.backward(shc_in, work_arr, n_funs, x_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDu(const T *shc_in, int n_funs, T *xu_out)
+void  DeviceCPU<T>::ShSynDu(const T *shc_in, T *work_arr, int n_funs, T *xu_out)
 {
     assert(sht_.d1_leg_trans != 0);
-    sht_.backward_du(shc_in, n_funs, xu_out);
+    sht_.backward_du(shc_in, work_arr, n_funs, xu_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDv(const T *shc_in, int n_funs, T *xv_out)
+void  DeviceCPU<T>::ShSynDv(const T *shc_in, T *work_arr, int n_funs, T *xv_out)
 {
     assert(sht_.leg_trans != 0);
-    sht_.backward_dv(shc_in, n_funs, xv_out);
+    sht_.backward_dv(shc_in, work_arr, n_funs, xv_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDuu(const T *shc_in, int n_funs, T *xuu_out)
+void  DeviceCPU<T>::ShSynDuu(const T *shc_in, T *work_arr, int n_funs, T *xuu_out)
 {
     assert(sht_.d2_leg_trans != 0);
-    sht_.backward_d2u(shc_in, n_funs, xuu_out);
+    sht_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDvv(const T *shc_in, int n_funs, T *xvv_out)
+void  DeviceCPU<T>::ShSynDvv(const T *shc_in, T *work_arr, int n_funs, T *xvv_out)
 {
     assert(sht_.leg_trans != 0);
-    sht_.backward_d2v(shc_in, n_funs, xvv_out);
+    sht_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDuv(const T *shc_in, int n_funs, T *xuv_out)
+void  DeviceCPU<T>::ShSynDuv(const T *shc_in, T *work_arr, int n_funs, T *xuv_out)
 {
     assert(sht_.d1_leg_trans != 0);
-    sht_.backward_duv(shc_in, n_funs, xuv_out);
+    sht_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::AllDerivatives(const T *x_in, int n_funs, T *shc_x, T *Dux_out, 
+void  DeviceCPU<T>::AllDerivatives(const T *x_in, T *work_arr, int n_funs, T *shc_x, T *Dux_out, 
     T *Dvx_out,T *Duux_out, T *Duvx_out, T *Dvvx_out)
 {
     assert(sht_.leg_trans != 0);
-    sht_.forward(x_in, n_funs, shc_x);
-    sht_.backward_du(shc_x, n_funs, Dux_out);
-    sht_.backward_dv(shc_x, n_funs, Dvx_out);
-    sht_.backward_d2u(shc_x, n_funs, Duux_out);
-    sht_.backward_d2v(shc_x, n_funs, Dvvx_out);
-    sht_.backward_duv(shc_x, n_funs, Duvx_out);
+    sht_.forward(     x_in , work_arr, n_funs, shc_x);
+    sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+    sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+    sht_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
+    sht_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
+    sht_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
 }
 
 template<typename T>
-void  DeviceCPU<T>::FirstDerivatives(const T *x_in, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out)
+void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out)
 {
     assert(sht_.leg_trans != 0);
-    sht_.forward(x_in, n_funs, shc_x);
-    sht_.backward_du(shc_x, n_funs, Dux_out);
-    sht_.backward_dv(shc_x, n_funs, Dvx_out);
+    sht_.forward(x_in, work_arr, n_funs, shc_x);
+    sht_.backward_du(shc_x, work_arr, n_funs, Dux_out);
+    sht_.backward_dv(shc_x, work_arr, n_funs, Dvx_out);
 }
 

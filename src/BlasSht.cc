@@ -91,8 +91,6 @@ BlasSht::BlasSht() :
     vesicle_size(0),
     alpha(0),
     beta(0),
-    trans_in(0),
-    trans_out(0),
     leg_trans(0),
     leg_trans_inv(0),
     d1_leg_trans(0),
@@ -108,12 +106,11 @@ BlasSht::BlasSht(int p, char *leg_trans_fname, char *leg_trans_inv_fname,
     scalar *dft_forward, scalar *dft_backward,
     scalar *dft_d1backward, scalar *dft_d2backward,
     scalar *leg_trans, scalar *leg_trans_inv,
-    scalar* d1_leg_trans, scalar *d2_leg_trans,
-    scalar *trans_in, scalar *trans_out) {
+    scalar* d1_leg_trans, scalar *d2_leg_trans) {
     
     InitializeBlasSht(p, leg_trans_fname, leg_trans_inv_fname, 
         d1_leg_trans_fname, d2_leg_trans_fname, dft_forward, dft_backward, dft_d1backward, 
-        dft_d2backward, leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans, trans_in, trans_out);
+        dft_d2backward, leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
 
 //     this->p = p;
 //     //this->num_vesicles = num_vesicles;
@@ -168,8 +165,10 @@ void BlasSht::leg_transform(scalar *trans, const scalar *inputs, scalar *outputs
 }
 
 
-void BlasSht::back(const scalar *inputs, int n_funs, scalar *outputs, scalar *trans, scalar *dft) {
-
+void BlasSht::back(const scalar *inputs, scalar *work_arr, int n_funs,
+                    scalar *outputs, scalar *trans, scalar *dft) {
+    scalar *trans_in = work_arr;
+    scalar *trans_out = work_arr + 2 * p * (p + 1) * n_funs;
     int num_dft_inputs = n_funs * (p + 1);
     leg_transform(trans, inputs, trans_in, p + 1, 2 * n_funs, p + 1, 0, 0, 1);
     transpose(trans_out, trans_in, num_dft_inputs, dft_size);
@@ -177,8 +176,10 @@ void BlasSht::back(const scalar *inputs, int n_funs, scalar *outputs, scalar *tr
         trans_out, &dft_size, &beta, outputs, &dft_size);
 }
 
-void BlasSht::forward(const scalar *inputs, int n_funs, scalar *outputs) {
-
+void BlasSht::forward(const scalar *inputs, scalar *work_arr, int n_funs,
+                       scalar *outputs) {
+    scalar *trans_in = work_arr;
+    scalar *trans_out = work_arr + 2 * p * (p + 1) * n_funs;
     int num_dft_inputs = n_funs * (p + 1);
     sgemm("N", "N", &dft_size, &num_dft_inputs, &dft_size, &alpha, dft_forward, &dft_size,
         inputs, &dft_size, &beta, trans_in, &dft_size);
@@ -187,65 +188,68 @@ void BlasSht::forward(const scalar *inputs, int n_funs, scalar *outputs) {
 }
 
 
-void BlasSht::backward(const scalar *inputs, int n_funs, scalar *outputs) {
-    back(inputs, n_funs, outputs, leg_trans_inv, dft_backward);
+void BlasSht::backward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+    back(inputs, work_arr, n_funs, outputs, leg_trans_inv, dft_backward);
 }
 
 
-void BlasSht::backward_du(const scalar *inputs, int n_funs, scalar *outputs) {
-    back(inputs, n_funs, outputs, d1_leg_trans, dft_backward);
+void BlasSht::backward_du(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+    back(inputs, work_arr, n_funs, outputs, d1_leg_trans, dft_backward);
 }
 
 
-void BlasSht::backward_d2u(const scalar *inputs, int n_funs, scalar *outputs) {
-    back(inputs, n_funs, outputs, d2_leg_trans, dft_backward);
+void BlasSht::backward_d2u(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+    back(inputs, work_arr, n_funs, outputs, d2_leg_trans, dft_backward);
 }
 
 
-void BlasSht::backward_dv(const scalar *inputs, int n_funs, scalar *outputs) {
-    back(inputs, n_funs, outputs,leg_trans_inv, dft_d1backward);
+void BlasSht::backward_dv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+    back(inputs, work_arr, n_funs, outputs,leg_trans_inv, dft_d1backward);
 }
 
 
-void BlasSht::backward_d2v(const scalar *inputs, int n_funs, scalar *outputs) {
-    back(inputs, n_funs, outputs, leg_trans_inv, dft_d2backward);
+void BlasSht::backward_d2v(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+    back(inputs, work_arr, n_funs, outputs, leg_trans_inv, dft_d2backward);
 }
 
 
-void BlasSht::backward_duv(const scalar *inputs, int n_funs, scalar *outputs) {
-    back(inputs, n_funs, outputs, d1_leg_trans, dft_d1backward);
+void BlasSht::backward_duv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+    back(inputs, work_arr, n_funs, outputs, d1_leg_trans, dft_d1backward);
 }
 
 
 void BlasSht::test(int n_funs) {
-    scalar *inputs, *outputs, *outputs_2;
+    scalar *inputs, *outputs, *outputs_2, *work_arr;
     inputs = (scalar*) malloc(2 * p * (p + 1) * n_funs * sizeof(scalar));
     outputs = (scalar*) malloc(2 * p * (p + 1) * n_funs * sizeof(scalar));
     outputs_2 = (scalar*) malloc(2 * p * (p + 1) * n_funs * sizeof(scalar));
+    work_arr = (scalar*) malloc(4 * p * (p + 1) * n_funs * sizeof(scalar));
 
     for (int i = 0; i < 2 * p * (p + 1) * n_funs; i++) {
         inputs[i] = (float) rand() / (float) RAND_MAX;
     }
-    forward(inputs, n_funs, outputs);
-    backward(outputs, n_funs, outputs_2);
-//     for (int i = 0; i < 2* p * (p + 1); i++) {
-//         fprintf(stderr, "%f\n", outputs_2[i]);
-//     }
+    forward(inputs, work_arr, n_funs, outputs);
+    backward(outputs, work_arr, n_funs, outputs_2);
+     for (int i = 0; i < 2* p * (p + 1); i++) {
+         fprintf(stderr, "%f\n", outputs_2[i]);
+     }
+     free(inputs);
+     free(outputs);
+     free(outputs_2);
+     free(work_arr);
 }
 
 void BlasSht::InitializeBlasSht(int p, char *leg_trans_fname, 
     char *leg_trans_inv_fname, char *d1_leg_trans_fname, char *d2_leg_trans_fname,
     scalar *dft_forward, scalar *dft_backward, scalar *dft_d1backward, 
     scalar *dft_d2backward, scalar *leg_trans, scalar *leg_trans_inv, 
-    scalar* d1_leg_trans, scalar *d2_leg_trans, scalar *trans_in, scalar *trans_out) 
+    scalar* d1_leg_trans, scalar *d2_leg_trans) 
 {
     this->p = p;
     this->dft_size = 2 * p;
     //this->num_dft_inputs = num_vesicles * (p + 1);
     this->leg_mat_size = (p + 1) * (p + 1) * (p + 2);
     this->vesicle_size = 2 * p * (p + 1);
-    this->trans_in = trans_in;
-    this->trans_out = trans_out;
     this->dft_forward = dft_forward;
     this->dft_backward = dft_backward;
     this->dft_d1backward = dft_d1backward;

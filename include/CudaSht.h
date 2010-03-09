@@ -8,12 +8,10 @@
 
 extern void cu_trans(scalar *out, scalar *in, int width, int height);
 
-class cuda_sht {
+class CudaSht {
 private:
   int p;
-  int num_vesicles;
   int dft_size;
-  int num_dft_inputs;
   int leg_mat_size;
   int vesicle_size;
 
@@ -21,8 +19,6 @@ private:
   scalar *trans_in;
   scalar *trans_out;
   scalar *dft_temp;
-  scalar *trans_in_cpu;
-  scalar *trans_out_cpu;
 
   scalar *leg_trans;
   scalar *leg_trans_inv;
@@ -46,22 +42,22 @@ private:
 
   void leg_transform(scalar *trans_gpu, scalar *inputs_gpu, scalar *outputs_gpu,
                   int m, int n , int k, int mf, int nf, int kf);
-  void back(scalar *inputs, scalar *outputs, scalar *trans, scalar *dft);
+  void back(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs, scalar *trans, scalar *dft);
 
 public:
-  void forward(scalar *inputs, scalar *outputs);
-  void backward(scalar *inputs, scalar *outputs);
-  void backward_du(scalar *inputs, scalar *outputs);
-  void backward_dv(scalar *inputs, scalar *outputs);
-  void backward_d2u(scalar *inputs, scalar *outputs);
-  void backward_d2v(scalar *inputs, scalar *outputs);
-  void backward_duv(scalar *inputs, scalar *outputs);
+  void forward(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+  void backward(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+  void backward_du(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+  void backward_dv(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+  void backward_d2u(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+  void backward_d2v(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+  void backward_duv(scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
 
-cuda_sht(int p, int num_vesicles, char *leg_trans_fname, char *leg_trans_inv_fname,
+CudaSht(int p, int num_vesicles, char *leg_trans_fname, char *leg_trans_inv_fname,
          char *d1_leg_trans_fname, char *d2_leg_trans_fname, scalar *leg_temp,
-         scalar *dft_temp, scalar *trans_in_cpu, scalar *trans_out_cpu);
-~cuda_sht();
+         scalar *dft_temp);
+~CudaSht();
 
   static void cublas_alloc_copy(scalar *cpu_ptr, scalar **gpu_ptr, int rows, int cols);
-  void test();
+  void test(int n_funs);
 };

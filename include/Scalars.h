@@ -58,6 +58,8 @@ class Scalars
     /// The array that holds the function values.
     T *data_;          
     
+
+  private:
     /** 
      * The declaration of the copy constructor, this is declared as
      * private so as to disallow any passing by value to

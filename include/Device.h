@@ -36,7 +36,8 @@ enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, Memcp
  *  methods' parameters. All arrays are assumed to be residing on the
  *  device and there is no need of copying to the device etc.
  *
- *  @todo The tester does not cover the comparison operator, the ID'ing mechanism, and the sqrt
+ *  @todo The tester does not cover the comparison operator, the
+ *  ID'ing mechanism, and the sqrt
  */
 template<typename T> class Device
 {
@@ -99,30 +100,30 @@ template<typename T> class Device
         char *d2_leg_trans_fname) = 0;
     
     ///SHT Analysis
-    virtual void ShAna(const T *x_in, int num_funs, T *sht_out) = 0;
+    virtual void ShAna(const T *x_in, T *work_arr, int num_funs, T *sht_out) = 0;
     
     ///SHT Synthesis
-    virtual void ShSyn(const T *shc_in, int num_funs, T *y_out) = 0;
+    virtual void ShSyn(const T *shc_in, T *work_arr, int num_funs, T *y_out) = 0;
     
     ///SHT First derivative u
-    virtual void ShSynDu(const T *shc_in, int num_funs, T *xu_out) = 0;
+    virtual void ShSynDu(const T *shc_in, T *work_arr, int num_funs, T *xu_out) = 0;
     
     ///SHT First derivative v
-    virtual void ShSynDv(const T *shc_in, int num_funs, T *xv_out) = 0;
+    virtual void ShSynDv(const T *shc_in, T *work_arr, int num_funs, T *xv_out) = 0;
     
     ///SHT Second derivative uu
-    virtual void ShSynDuu(const T *shc_in, int num_funs, T *xuu_out) = 0;
+    virtual void ShSynDuu(const T *shc_in, T *work_arr, int num_funs, T *xuu_out) = 0;
     
     ///SHT Second derivative vv
-    virtual void ShSynDvv(const T *shc_in, int num_funs, T *xvv_out) = 0;
+    virtual void ShSynDvv(const T *shc_in, T *work_arr, int num_funs, T *xvv_out) = 0;
     
     ///SHT Second derivative uv
-    virtual void ShSynDuv(const T *shc_in, int num_funs, T *xuv_out) = 0;
+    virtual void ShSynDuv(const T *shc_in, T *work_arr, int num_funs, T *xuv_out) = 0;
 
-    virtual void AllDerivatives(const T *x_in, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out, 
+    virtual void AllDerivatives(const T *x_in, T *work_arr, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out, 
         T *Duux_out, T *Duvx_out, T *Dvvx_out) = 0;
 
-    virtual void FirstDerivatives(const T *x_in, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out) = 0;
+    virtual void FirstDerivatives(const T *x_in, T *work_arr, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out) = 0;
 
     ///The comparison operator for the device class
     template<typename Tlhs,typename Trhs>
