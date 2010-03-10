@@ -125,6 +125,9 @@ template<typename T> class Device
 
     virtual void FirstDerivatives(const T *x_in, T *work_arr, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out) = 0;
 
+    ///Filter
+    virtual void Filter(const T *shc_in, T *work_arr, int num_funs, T *shc_out) = 0;
+
     ///The comparison operator for the device class
     template<typename Tlhs,typename Trhs>
     friend bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs);

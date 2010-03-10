@@ -302,7 +302,7 @@ void  DeviceCPU<T>::InitializeSHT(int p, char *leg_trans_fname,
     char *leg_trans_inv_fname, char *d1_leg_trans_fname, 
     char *d2_leg_trans_fname)
 {
-    assert(dft_forward == 0);
+    assert(sht_.dft_forward == 0);
 
      T *dft_forward;
     T *dft_backward;
@@ -429,5 +429,12 @@ void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int n_funs, T *
     sht_.forward(x_in, work_arr, n_funs, shc_x);
     sht_.backward_du(shc_x, work_arr, n_funs, Dux_out);
     sht_.backward_dv(shc_x, work_arr, n_funs, Dvx_out);
+}
+
+template<typename T>
+void  DeviceCPU<T>::Filter(const T *shc_in, T *work_arr, int n_funs, T *shc_out)
+{
+    assert(sht_.leg_trans != 0);
+    Memcpy(shc_out, shc_in, 2 * sht_.p * (sht_.p + 1) * n_funs, MemcpyDeviceToDevice);
 }
 

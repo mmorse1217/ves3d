@@ -2,9 +2,6 @@
 #define _TIMESTEPPER_H_
 
 #include "Surface.h"
-//#include "Vectors.h"
-
-#include <iostream>
 
 template<typename T> 
 class TimeStepper
@@ -28,19 +25,33 @@ class TimeStepper
 
     void EvolveInTime()
     {
+#ifndef NDEBUG
+        cout<<" ------------------------------------"<<endl;
+        cout<<"  Number of vesicles: "<<vesicle_.n_surfs_<<endl;
+        cout<<"  p                 : "<<vesicle_.p_<<endl;
+        cout<<"  ts                : "<<ts_<<endl;
+        cout<<"  n_steps           : "<<n_steps_<<endl<<endl;
+
+        cout<<"  kappa             : "<<vesicle_.kappa_<<endl;
+        cout<<"  rep ts            : "<<vesicle_.rep_ts_<<endl;
+        cout<<"  rep max iter      : "<<vesicle_.iter_max_<<endl;
+        cout<<"  rep max vel       : "<<vesicle_.max_vel_<<endl;
+        cout<<" ------------------------------------"<<endl<<endl;
+#endif
+
         for(int idx=0;idx<n_steps_;idx++)
         {
-            vesicle_.StokesMatVec(vesicle_.bending_force, velocity_);
-            //vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
+            vesicle_.UpdateAll();
+            //Interaction
+            vesicle_.StokesMatVec(vesicle_.bending_force_, velocity_);
+            vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
             //Calculate tension
-            axpy((T) 0.0, velocity_, vel_tension_, velocity_); //check whether the same input and output works
+            axpy((T) 1.0, velocity_, vel_tension_, velocity_);
             axpy(ts_, velocity_, vesicle_.x_, vesicle_.x_);
-            vesicle_.UpdateProps();
-#ifdef NDEBUG
-            std::cout<<idx<<std::endl;
-#endif
+        
+            vesicle_.Reparam();
         }
     };
 };
 
-#endif
+#endif //_TIMESTEPPER_H_

@@ -66,10 +66,20 @@ template <typename T> class Surface
      * \f$L, M, N\f$ are the second fundamental form coefficients.
      */
     Scalars<T> k_;
-        
+
+    Vectors<T> bending_force_;
+    
+    Vectors<T> tensile_force_;
+
+    T kappa_;
+    T rep_ts_;
+    T max_vel_;
+    int iter_max_;
+    
     Surface(Device<T> &device_in);
     Surface(Device<T> &device_in, int p_in, int n_surfs_in);
     Surface(Device<T> &device_in, int p_in, int n_surfs_in, const Vectors<T> &x_in);
+    ~Surface();
     
     /** 
      * Setter method for the member function x_, although x_ is
@@ -80,7 +90,10 @@ template <typename T> class Surface
     void SetX(const Vectors<T> &x_in);
 
     /// Recalculates the geometric properties of the surface.
-    void UpdateProps();
+    void UpdateFirstForms();
+    void UpdateAll();
+
+    void Reparam();
 
     /// The surface gradient operator.
     void SurfGrad(const Scalars<T> &f_in, Vectors<T> &grad_f_out);
@@ -90,10 +103,14 @@ template <typename T> class Surface
 
     void StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out);
 
-    //Work space -- TO BE REMOVED
-    Vectors<T> xu, xv, xuv, xvv, xuu, bending_force;
-    Scalars<T> E, F, G, L, M, N, W2, temp;
+  private:
+    //Work space
+    Scalars<T> E, F, G, L, M, N;
+    Vectors<T> Fu, Fv;
+    T *shc, *work_arr;
 };
+
+
 
 #include "Surface.cc"
 #endif //_SURFACE_H_

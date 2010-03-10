@@ -151,6 +151,8 @@ class Scalars
      */
     void Sqrt();
 
+    T Max();
+
     /** 
      * Sets the private data members p_ and n_funs_ (for now, only
      * before initialization of data_). For the time being it will be

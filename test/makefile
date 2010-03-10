@@ -12,7 +12,7 @@ $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
 
 CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                               \
 -I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
--I../src/ -fPIC -DNDEBUG #-DCUDA_SHT_PROFILING 
+-I../src/ -fPIC #-DNDEBUG #-DCUDA_SHT_PROFILING 
 
 CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
 

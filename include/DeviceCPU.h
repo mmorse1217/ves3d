@@ -63,6 +63,7 @@ class DeviceCPU : public Device<T>
     virtual void ShSynDuv(const T *shc_in, T *work_arr, int num_funs, T *xuv_out);
     virtual void AllDerivatives(const T *x_in, T *work_arr, int num_funs, T *shc_x, T *Dux_out, T *Dvx_out,T *Duux_out, T *Duvx_out, T *Dvvx_out);
     virtual void FirstDerivatives(const T *x_in, T *work_arr, int num_funs, T *shc_x, T *Dux_out, T *Dvx_out);
+    virtual void Filter(const T *shc_in, T *work_arr, int num_funs, T *shc_out);
 
 };
 
