@@ -9,6 +9,13 @@
 #ifndef _DEVICE_H_
 #define _DEVICE_H_
 
+#include <sys/time.h>
+#define get_seconds()   (gettimeofday(&tp, &tzp), \
+    (double)tp.tv_sec + (double)tp.tv_usec / 1000000.0)
+
+struct timeval  tp;
+struct timezone tzp;
+
 //Forward declaration for the friend function
 template<typename T> class Device;
 
@@ -59,7 +66,7 @@ template<typename T> class Device
     ///kind of copy is from the enum type MemcpyKind and is <code>
     ///MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, or
     ///MemcpyDeviceToDevice</code>.
-    virtual T* Memcpy (T* destination, const T* source, unsigned long int num, enum MemcpyKind kind) = 0;
+    virtual T* Memcpy(T* destination, const T* source, unsigned long int num, enum MemcpyKind kind) = 0;
  
     ///Geometric dot product of two (Cartesian) vectors. 
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out) = 0;
@@ -89,10 +96,16 @@ template<typename T> class Device
     virtual T* axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs , T*  axpb_out) = 0;
     
     ///Element-wise scaling and addition.
+    virtual T* avpw(const T* a_in, const T*  v_in, const T*  w_in, int stride, int num_surfs, T*  avpw_out) = 0;
+ 
+    ///Element-wise scaling and addition.
     virtual T* xvpw(const T* x_in, const T*  v_in, const T*  w_in, int stride, int num_surfs, T*  xvpw_out) = 0;
     
     ///Element-wise scaling and addition.
     virtual T* xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num_surfs, T*  xvpb_out) = 0;
+
+    ///Smooth integral--reduction
+    virtual T* Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int stride, int num_surfs, T  *int_x_dw) = 0;
 
     ///SHT size
     virtual void InitializeSHT(int p, char *leg_trans_fname,
@@ -126,7 +139,9 @@ template<typename T> class Device
     virtual void FirstDerivatives(const T *x_in, T *work_arr, int num_funs, T* shc_x, T *Dux_out, T *Dvx_out) = 0;
 
     ///Filter
-    virtual void Filter(const T *shc_in, T *work_arr, int num_funs, T *shc_out) = 0;
+    virtual void Filter(int p, int n_funs, const T *x_in, const T *alpha, T* work_arr, T *shc_out, T *x_out) = 0;
+    virtual void ScaleFreqs(int p, int n_funs, const T *inputs, const T *alphas, T *outputs) = 0;
+    virtual void Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q) = 0;
 
     ///The comparison operator for the device class
     template<typename Tlhs,typename Trhs>

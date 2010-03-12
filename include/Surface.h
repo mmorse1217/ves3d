@@ -13,6 +13,21 @@
 #include "Scalars.h"
 #include "Vectors.h"
 
+
+template <typename T>
+struct SurfacePrams 
+{
+    int p_;
+    int n_surfs_;
+    T kappa_;
+    T rep_ts_;
+    T rep_max_vel_;
+    int rep_iter_max_;
+    int filter_freq_;
+    int up_freq_;
+};
+    
+
 template <typename T> class Surface
 {
   public:
@@ -75,6 +90,7 @@ template <typename T> class Surface
     T rep_ts_;
     T max_vel_;
     int iter_max_;
+    int filter_freq_;
     
     Surface(Device<T> &device_in);
     Surface(Device<T> &device_in, int p_in, int n_surfs_in);
@@ -107,7 +123,14 @@ template <typename T> class Surface
     //Work space
     Scalars<T> E, F, G, L, M, N;
     Vectors<T> Fu, Fv;
-    T *shc, *work_arr;
+    T *shc, *work_arr, *alpha_p;
+    
+    //Work vectors for the up-sampling
+    int up_freq_;
+    Vectors<T> X, Xu, Xv, XN;
+    Scalars<T> XE;
+    T *alpha_q;
+    void UpdateNormal();
 };
 
 

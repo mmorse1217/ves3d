@@ -36,6 +36,7 @@ class TimeStepper
         cout<<"  rep ts            : "<<vesicle_.rep_ts_<<endl;
         cout<<"  rep max iter      : "<<vesicle_.iter_max_<<endl;
         cout<<"  rep max vel       : "<<vesicle_.max_vel_<<endl;
+        cout<<"  filter_freq       : "<<vesicle_.filter_freq_<<endl;
         cout<<" ------------------------------------"<<endl<<endl;
 #endif
 

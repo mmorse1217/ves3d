@@ -113,7 +113,7 @@ class DeviceTest
         srand48(time(0));
 
         {//Orthogonality (random single)
-            int stride = 312, num_vecs = 1;
+            int stride = 312, num_vecs = 100, idx;
             int sc_length = stride*num_vecs;
             int arr_length = 3*num_vecs*stride;
             T* a = device_.Malloc(arr_length);
@@ -122,14 +122,16 @@ class DeviceTest
             
             // a dot b should be zero since they are geometrically orthogonal 
             T rnum;
-            for(int idx=0;idx<stride;idx++)
-            {
-                rnum = (T) drand48();
-                
-                a[idx] = rnum; a[idx+stride] = 1   ; a[idx+2*stride] = rnum;
-                b[idx] = 1   ; b[idx+stride] = rnum; b[idx+2*stride] = -2;
-                c[idx] = 1;
-            }
+            for(int ii=0;ii<num_vecs;++ii)
+                for(int jj=0;jj<stride;++jj)
+                {
+                    idx = 3*ii*stride+jj;
+                    rnum = (T) drand48();
+                    
+                    a[idx] = rnum; a[idx+stride] = 1   ; a[idx+2*stride] = rnum;
+                    b[idx] = 1   ; b[idx+stride] = rnum; b[idx+2*stride] = -2;
+                    c[idx] = 1;
+                }
             
             device_.DotProduct(a,b,stride,num_vecs,c);
             T err = 0;
@@ -193,18 +195,19 @@ class DeviceTest
     {
         bool res = true;
         {//Self-product 
-            int stride = 312, num_vecs = 1;
+            int stride = 312, num_vecs = 100, idx;
             int arr_length = 3*num_vecs*stride;
             T* a = device_.Malloc(arr_length);
             T* c = device_.Malloc(arr_length);
             
-            
-            for(int idx=0;idx<stride;idx++)
-            {                
-                a[idx              ] = drand48();
-                a[idx+stride       ] = drand48();
-                a[idx+stride+stride] = drand48();
-            }
+            for(int ii=0;ii<num_vecs;++ii)
+                for(int jj=0;idx<stride;jj++)
+                {                
+                    idx = ii*3*stride + jj;
+                    a[idx              ] = drand48();
+                    a[idx+stride       ] = drand48();
+                    a[idx+stride+stride] = drand48();
+                }
 
             device_.CrossProduct(a,a,stride,num_vecs,c);
             T err = 0;

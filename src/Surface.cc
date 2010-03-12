@@ -24,6 +24,7 @@ Surface<T>::Surface(Device<T> &device_in) :
     rep_ts_(.1),
     max_vel_(.01),
     iter_max_(10),
+    filter_freq_(0),
     E(device_),
     F(device_),
     G(device_),
@@ -33,7 +34,15 @@ Surface<T>::Surface(Device<T> &device_in) :
     Fu(device_),
     Fv(device_),
     shc(0),
-    work_arr(0)
+    work_arr(0),
+    alpha_p(0),
+    alpha_q(0),
+    up_freq_(0),
+    X(device_), 
+    Xu(device_),
+    Xv(device_), 
+    XN(device_),
+    XE(device_)
 {}
 
 template <typename T> 
@@ -61,10 +70,35 @@ Surface<T>::Surface(Device<T> &device_in, int p_in, int n_surfs_in) :
     M(device_,p_,n_surfs_), 
     N(device_,p_,n_surfs_),
     Fu(device_,p_,n_surfs_),
-    Fv(device_,p_,n_surfs_)
+    Fv(device_,p_,n_surfs_),
+    up_freq_(2*p_),
+    X(device_,up_freq_,n_surfs_), 
+    Xu(device_,up_freq_,n_surfs_),
+    Xv(device_,up_freq_,n_surfs_),
+    XN(device_,up_freq_,n_surfs_),
+    XE(device_,up_freq_,n_surfs_)
 {
-    shc      = device_.Malloc(6  * p_ *(p_ + 1) * n_surfs_);
-    work_arr = device_.Malloc(12 * p_ *(p_ + 1) * n_surfs_);
+    filter_freq_ = 2*p_/3;
+    shc      = device_.Malloc(6  * up_freq_ *(up_freq_ + 1) * n_surfs_);
+    work_arr = device_.Malloc(12 * up_freq_ *(up_freq_ + 1) * n_surfs_);
+    alpha_p = device_.Malloc(p_ *(p_ + 2));
+    alpha_q = device_.Malloc(up_freq_ *(up_freq_ + 2));
+    
+    int idx = 0, len;
+    for(int ii=0; ii< 2 * p_; ++ii)
+    {
+        len = p_ + 1 - (ii+1)/2;
+        for(int jj=0; jj< len; ++jj)
+            alpha_p[idx++] = (len-jj)<=(p_-filter_freq_) ? 0 : 1;
+    }
+
+    idx = 0;
+    for(int ii=0; ii< 2 * up_freq_; ++ii)
+    {
+        len = up_freq_ + 1 - (ii+1)/2;
+        for(int jj=0; jj< len; ++jj)
+            alpha_q[idx++] = (len-jj)<=(up_freq_-filter_freq_) ? 0 : 1;
+    }
 }
 
 template <typename T> 
@@ -93,10 +127,28 @@ Surface<T>::Surface(Device<T> &device_in, int p_in, int n_surfs_in,
     M(device_,p_,n_surfs_), 
     N(device_,p_,n_surfs_),
     Fu(device_,p_,n_surfs_),
-    Fv(device_,p_,n_surfs_)
+    Fv(device_,p_,n_surfs_),
+    up_freq_(2*p_),
+    X(device_,up_freq_,n_surfs_), 
+    Xu(device_,up_freq_,n_surfs_),
+    Xv(device_,up_freq_,n_surfs_),
+    XN(device_,up_freq_,n_surfs_),
+    XE(device_,up_freq_,n_surfs_)
 {
-    shc      = device_.Malloc(6  * p_ *(p_ + 1) * n_surfs_);
-    work_arr = device_.Malloc(12 * p_ *(p_ + 1) * n_surfs_);
+    filter_freq_ = 2 * p_ / 3;
+    shc      = device_.Malloc(6  * up_freq_ *(up_freq_ + 1) * n_surfs_);
+    work_arr = device_.Malloc(12 * up_freq_ *(up_freq_ + 1) * n_surfs_);
+    alpha_p = device_.Malloc(p_ *(p_ + 2));
+    alpha_q = device_.Malloc(up_freq_ *(up_freq_ + 2));
+
+    int idx = 0, len;
+    for(int ii=0; ii< 2 * p_; ++ii)
+    {
+        len = p_ + 1 - (ii+1)/2;
+        for(int jj=0; jj< len; ++jj)
+            alpha[idx++] = (len-jj)<=(p_-filter_freq_) ? 1 : 0;
+    }
+    
     SetX(x_in);
 }
 
@@ -105,6 +157,8 @@ Surface<T>::~Surface()
 {
     device_.Free(shc);
     device_.Free(work_arr);
+    device_.Free(alpha_p);
+    device_.Free(alpha_q);
 }
 
 template <typename T> 
@@ -171,7 +225,9 @@ void Surface<T>::UpdateAll()
     axpy((T)-1.0,h_,k_,k_);
     xyInv(k_,w_,k_);
     xyInv(k_,w_,k_);
-
+    
+    device_.Filter(p_, n_surfs_, k_.data_, alpha_p, work_arr, shc, k_.data_);
+    
     // Mean curvature
     xy(E,N,h_);
     axpb((T) .5,h_, (T) 0.0,h_);
@@ -183,7 +239,9 @@ void Surface<T>::UpdateAll()
     axpb((T) .5,N, (T) 0.0, N);
     
     axpy((T)1.0 ,h_,N, h_);
-    
+
+    device_.Filter(p_, n_surfs_, h_.data_, alpha_p, work_arr, shc, h_.data_);
+
     //Bending force
     SurfGrad(h_, Fu);
     SurfDiv(Fu, E);
@@ -213,6 +271,8 @@ void Surface<T>::SurfGrad(
     
     xvpb(E,cu_, (T) 0.0, grad_f_out);
     xvpw(G,cv_, grad_f_out, grad_f_out);
+
+    device_.Filter(p_, 3*n_surfs_, grad_f_out.data_, alpha_p, work_arr, shc, grad_f_out.data_);
 }
 
 ///@todo this can be done in place so that we'll only need one extra work space.
@@ -225,36 +285,39 @@ void Surface<T>::SurfDiv(
     DotProduct(Fu,cu_, E);
     DotProduct(Fv,cv_, div_f_out);
     axpy((T)1.0,div_f_out,E, div_f_out);
+
+    device_.Filter(p_, n_surfs_, div_f_out.data_, alpha_p, work_arr, shc, div_f_out.data_);
 }
 
 template <typename T> 
 void Surface<T>::Reparam()
 {
-    bool do_iterate = true;
     int iter = 0;
     T vel;
 
+    //Resample(p_, n_surfs_, up_freq_, shc_, *shc_);
     //upsample
-    while(do_iterate && (iter++ < iter_max_))
+    while(iter++ < iter_max_)
     {
         UpdateFirstForms();///@todo shc may have changed
-        //device_.ShAna(x_.data_, work_arr, 3*n_surfs_, shc);
-        device_.Filter(shc, work_arr, 3*n_surfs_, shc);
-        device_.ShSyn( shc, work_arr, 3*n_surfs_, Fu.data_); //Fu holds the filtered version
-        
+        device_.Filter(p_, 3*n_surfs_, x_.data_, alpha_q, work_arr, shc, Fu.data_);
+
         axpy((T) -1.0, x_, Fu, Fu);
         DotProduct(normal_,Fu, E);
         axpb((T) -1.0,E, (T) 0.0,E);
         xvpw(E, normal_, Fu, Fu);//The correction velocity
         axpy(rep_ts_, Fu, x_, x_);
 
+#ifndef NDEBUG
         DotProduct(Fu,Fu,E);//@todo seems extra because we work with singles now
         vel = E.Max();
-        do_iterate = ( vel > (max_vel_ * max_vel_) );
-
-#ifndef NDEBUG
-        cout<<"Iteration"<<iter<<", reparam max vel: "<<vel<<endl;
+        cout<<" Iteration"<<iter<<", reparam max vel: "<<vel<<endl;
 #endif
     }
     //down-sample
+}
+
+template<typename T>
+void Surface<T>::UpdateNormal()
+{
 }

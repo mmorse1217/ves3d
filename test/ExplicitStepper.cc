@@ -8,9 +8,9 @@ typedef float T;
 int main(int argc, char **argv)
 {
 
-    int p(12), num_vesicles(1000);
-    T ts(1e-3);
-    int n_steps(1);
+    int p(12), num_vesicles(100);
+    T ts(.2);
+    int n_steps(0);
 
     //Setting up the device
     DeviceCPU<T> cpu_device;
