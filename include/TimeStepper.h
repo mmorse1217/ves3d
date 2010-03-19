@@ -49,16 +49,16 @@ class TimeStepper
                 velocity_.data_, velocity_.GetFunLength(), vesicle_.params_.n_surfs_, velocity_.data_);
 
             //Interaction
-            vesicle_.device_.avpw(vesicle_.tension_, vesicle_.tensile_force_.data_,
-                vesicle_.bending_force_.data_, vesicle_.x_.GetFunLength(), vesicle_.params_.n_surfs_,
-                vesicle_.tensile_force_.data_);
+//             vesicle_.device_.avpw(vesicle_.tension_, vesicle_.tensile_force_.data_,
+//                 vesicle_.bending_force_.data_, vesicle_.x_.GetFunLength(), vesicle_.params_.n_surfs_,
+//                 vesicle_.tensile_force_.data_);
 
-            axpb( 1/8/pi, vesicle_.tensile_force_, (T) 0.0, vesicle_.tensile_force_);
+//             axpb( 1/8/pi, vesicle_.tensile_force_, (T) 0.0, vesicle_.tensile_force_);
 
 
-            vesicle_.device_.DirectStokes(vesicle.x_.GetFunLength(), vesicle_.params_.n_surfs_, 
-                0, vesicle.x_.GetFunLength(), vesicle_.quad_weights_, vesicle_.x_.data_,
-                vesicle.x_.data_, const T *den, vel_tension_.data_);
+//             vesicle_.device_.DirectStokes(vesicle.x_.GetFunLength(), vesicle_.params_.n_surfs_, 
+//                 0, vesicle.x_.GetFunLength(), vesicle_.quad_weights_, vesicle_.x_.data_,
+//                 vesicle.x_.data_, const T *den, vel_tension_.data_);
 
 
 

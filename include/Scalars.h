@@ -58,6 +58,12 @@ class Scalars
     /// The array that holds the function values.
     T *data_;          
     
+    /// The maximum number of functions that fit in the allocated
+    /// memory. This may as well be different from n_funs_.
+    int max_n_funs_;
+    
+    /// The factor used to enlarge the allocated memory when resizing.
+    T resize_factor_;
 
   private:
     /** 
@@ -74,12 +80,6 @@ class Scalars
      */
     Scalars<T>& operator=(const Scalars<T> &sc_in);
 
-    /**
-     * Allocated the memory in the heap for the data_ member. The size
-     * of the allocation will be equal to the value returned by
-     * GetDataLength().
-     */
-    void AllocateMemory();
 
   public:
     //No default constructor, because the device should be known.
@@ -160,7 +160,7 @@ class Scalars
      * data_ is allocated (it needs an interpolation method to move
      * between to different size). It also allocates memory for data_.
      */
-    virtual void Resize(int p_in, int n_funs_in);
+    virtual void Resize(int n_funs_in);
 
     friend void axpy<T>(T a_in, const Scalars<T> &x_in, 
         const Scalars<T> &y_in, Scalars<T> &axpy_out);

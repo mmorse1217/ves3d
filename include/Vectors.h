@@ -78,14 +78,7 @@ class Vectors : public Scalars<T>
      */
     int GetVecLength() const;
 
-    /** 
-     * Sets the private data members p_ and n_vecs_ (for
-     * now, only before initialization of data_). For the time being
-     * it will be impossible to change these values after that the
-     * memory for data_ is allocated (it needs an interpolation method
-     * to move between to different size).
-     */
-    void Resize(int p_in, int n_vecs_in);
+    void Resize(int n_vecs_in);
 
     /** 
      * The geometrical dot product on Vectors.

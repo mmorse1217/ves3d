@@ -38,9 +38,8 @@ int main(int argc, char ** argv)
     Scalars<T> X(cpu,p,nVec);
     Scalars<T> Y(cpu,p,nVec);
     Scalars<T> Z(cpu,p,nVec);
-
-    myIO.ReadData("../data/eightHump_12.txt",dLen,S.x_.data_);
-    //myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
+    
+    myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
     for(int ii=1;ii<nVec;ii++)
         for(int idx=0;idx<dLen;idx++)
             S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];

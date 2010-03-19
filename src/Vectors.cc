@@ -27,10 +27,9 @@ int Vectors<T>::GetVecLength() const
 }
 
 template<typename T> 
-void Vectors<T>::Resize(int p_in, int n_vecs_in)
+void Vectors<T>::Resize(int n_vecs_in)
 {
-    Scalars<T>::Resize(p_in, 3*n_vecs_in);
-    n_vecs_ = n_vecs_in;
+    Scalars<T>::Resize(3*n_vecs_in);
 }
 
 template<typename T> 

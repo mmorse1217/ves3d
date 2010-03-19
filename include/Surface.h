@@ -143,6 +143,8 @@ template <typename T> class Surface
     void Area();
     void Volume();
 
+    void Resize(int n_surfs_in);
+
   public://private:
     //Work space
     Scalars<T> S1, S2, S3, S4, S5, S6;

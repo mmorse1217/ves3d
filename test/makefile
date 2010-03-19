@@ -18,15 +18,17 @@ CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
 
 all: 
 
-DeviceTest: BlasSht.o #DeviceGPU.o 
+DeviceTest: BlasSht.o 
 	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
 
 DeviceGPU.o: ../include/DeviceGPU.cu
 	$(NVCC) $(CUDAFLAGS) -c ../include/DeviceGPU.cu
 
-ScalarsTest:
+ScalarsTest: BlasSht.o
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out	
 
-VectorsTest:
+VectorsTest: BlasSht.o
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
 
 SHTransTest: cuda_sht.o BlasSht.o
 

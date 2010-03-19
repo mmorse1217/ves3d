@@ -34,9 +34,14 @@ class ScalarsTest
         for(int idx=0;idx<dLen;++idx)
             data_in[idx] = idx;
         
-        sc.Resize(p,nFun);
+        sc.p_ = p;
+        sc.Resize(nFun);
+        sc.n_funs_ = nFun;
         sc.SetData(data_in);
-            
+        
+        sc.Resize(10*nFun);
+        sc.Resize(nFun);
+                    
         cout<<" GetFunLength()      [40]: "<<sc.GetFunLength()<<endl;
         cout<<" GetDataLength()    [280]: "<<sc.GetDataLength()<<endl;
         cout<<" GetFunctionAt() [0, 200]: "<<*sc.GetFunctionAt(0)<<", "<<*sc.GetFunctionAt(5)<<endl;
@@ -57,7 +62,6 @@ class ScalarsTest
         cout<<" Sqrt()            [40,41]: "<<*sc.GetFunctionAt(0)<<", "<<*(sc.GetFunctionAt(0)+1)<<endl<<endl;
         xyInv(sc,sc,sc);
         cout<<" xyInv()               [1]: "<<*sc.GetFunctionAt(0)<<endl<<endl;
-            
             
         cout<<" ------------ "<<endl;
         cout<<" End of test. "<<endl;

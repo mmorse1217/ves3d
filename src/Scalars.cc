@@ -6,23 +6,28 @@
  * @brief  Implementation for the Scalars class. 
  */
 
+#include <iostream>
+using namespace std;
 //Constructors
 template<typename T> 
 Scalars<T>::Scalars(Device<T> &device_in) :
-    device_(device_in), data_(0), p_(0), n_funs_(0){}
+    device_(device_in), data_(0), p_(0), n_funs_(0), max_n_funs_(0), 
+    resize_factor_(1.2){}
 
 template<typename T> 
 Scalars<T>::Scalars(Device<T> &device_in, int p_in, int n_funs_in) : 
-    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in)
+    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in),
+    max_n_funs_(0), resize_factor_(1.2)
 {
-    AllocateMemory();
+    Resize(n_funs_);
 }
 
 template<typename T> 
 Scalars<T>::Scalars(Device<T> &device_in, int p_in, int n_funs_in, const T *data_in) :
-    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in)
+    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in),
+    max_n_funs_(0), resize_factor_(1.2)
 {
-    AllocateMemory();
+    Resize(n_funs_);
     SetData(data_in);
 }
 
@@ -36,18 +41,17 @@ Scalars<T>::~Scalars()
 
 //Utility functions
 template<typename T> 
-void Scalars<T>::AllocateMemory()
+void Scalars<T>::Resize(int n_funs_in)
 {
-    data_ = device_.Malloc(GetDataLength());
-}
-
-template<typename T> 
-void Scalars<T>::Resize(int p_in, int n_funs_in)
-{
-    assert(data_ == 0);
-    p_ = p_in;
-    n_funs_ = n_funs_in;
-    AllocateMemory();
+    if(n_funs_in > max_n_funs_)
+    {
+        T *data_old(this->data_);
+        this->max_n_funs_ = (int) (resize_factor_ * (T) n_funs_in);
+        data_ = device_.Malloc(max_n_funs_ * GetFunLength());
+        if(data_old != 0)
+            device_.Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
+        device_.Free(data_old);
+    }
 }
 
 template<typename T> 

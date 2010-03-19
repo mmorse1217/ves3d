@@ -227,6 +227,34 @@ Surface<T>::~Surface()
     device_.Free(quad_weights_);
 }
 
+template<typename T>
+Surface<T>::Resize(int n_surfs_in)
+{
+    x_.Resize(n_srurfs_in);
+    normal_.Resize(n_surfs_in); 
+    h_.Resize(n_surfs_in); 
+    w_.Resize(n_surfs_in);
+    k_.Resize(n_surfs_in); 
+    cu_.Resize(n_surfs_in); 
+    cv_.Resize(n_surfs_in);
+    bending_force_.Resize(n_surfs_in);
+    tensile_force_.Resize(n_surfs_in);
+    S1.Resize(n_surfs_in);
+    S2.Resize(n_surfs_in);
+    S3.Resize(n_surfs_in);
+    S4.Resize(n_surfs_in); 
+    S5.Resize(n_surfs_in); 
+    S6.Resize(n_surfs_in);
+    V1.Resize(n_surfs_in);
+    V2.Resize(n_surfs_in);
+    V10.Resize(n_surfs_in); 
+    V11.Resize(n_surfs_in);
+    V12.Resize(n_surfs_in); 
+    V13.Resize(n_surfs_in);
+    S10.Resize(n_surfs_in);
+    w_sph_(n_surfs_in);
+
+}
 template <typename T> 
 void Surface<T>::SetX(const Vectors<T> &x_in)
 {
@@ -340,6 +368,7 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     
     xyInv(w_, w_sph_, S1);
    
+    ///@todo #pragma omp parallel for 
     for(int ii=0;ii <= params_.p_; ++ii)
     {
         for(int jj=0;jj < 2 * params_.p_; ++jj)
