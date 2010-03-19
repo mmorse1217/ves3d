@@ -33,7 +33,7 @@ class BlasSht {
     void gen_dft_d1backward();
     void gen_dft_d2backward();
 
-    void read_leg_mat(scalar *leg_ptr, char *fname);
+    void read_leg_mat(scalar *leg_ptr, const char *fname);
 
     void leg_transform(scalar *trans, const scalar *inputs, scalar *outputs,
         int m, int n , int k, int mf, int nf, int kf);
@@ -59,9 +59,9 @@ class BlasSht {
     void backward_d2v(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
     void backward_duv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
 
-    void InitializeBlasSht(int p, char *leg_trans_fname,
-        char *leg_trans_inv_fname, char *d1_leg_trans_fname, 
-        char *d2_leg_trans_fname, scalar *dft_forward, scalar *dft_backward, 
+    void InitializeBlasSht(int p, const char *leg_trans_fname,
+        const char *leg_trans_inv_fname, const char *d1_leg_trans_fname, 
+        const char *d2_leg_trans_fname, scalar *dft_forward, scalar *dft_backward, 
         scalar *dft_d1backward, scalar *dft_d2backward, scalar *leg_trans, 
         scalar *leg_trans_inv, scalar* d1_leg_trans, scalar *d2_leg_trans);
 

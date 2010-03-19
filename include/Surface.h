@@ -12,21 +12,43 @@
 #include "Device.h"
 #include "Scalars.h"
 #include "Vectors.h"
-
+#include "DataIO.h"
+#include <iostream>
 
 template <typename T>
-struct SurfacePrams 
+struct SurfaceParams 
 {
     int p_;
     int n_surfs_;
     T kappa_;
+    int filter_freq_;
     T rep_ts_;
     T rep_max_vel_;
     int rep_iter_max_;
-    int filter_freq_;
-    int up_freq_;
+    int rep_up_freq_;
+    int rep_filter_freq_;
 };
+
+template<typename T>
+ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
+{
     
+    output<<"\n ------------------------------------"<<endl;
+    output<<"  Surface properties"<<endl;
+    output<<" ------------------------------------"<<endl;
+    output<<"  p                 : "<<par.p_<<endl;
+    output<<"  Number of surfaces: "<<par.n_surfs_<<endl;
+    output<<"  kappa             : "<<par.kappa_<<endl;
+    output<<"  filter_freq       : "<<par.filter_freq_<<endl;
+    output<<"  rep_ts            : "<<par.rep_ts_<<endl;
+    output<<"  rep_max_iter      : "<<par.rep_iter_max_<<endl;
+    output<<"  rep_max_vel       : "<<par.rep_max_vel_<<endl;
+    output<<"  rep_up_freq       : "<<par.rep_up_freq_<<endl;
+    output<<"  rep_filter_freq   : "<<par.rep_filter_freq_<<endl;
+    output<<" ------------------------------------"<<endl<<endl;
+    
+    return output;
+}    
 
 template <typename T> class Surface
 {
@@ -34,12 +56,8 @@ template <typename T> class Surface
     
     Device<T> &device_;
 
-    /// The spherical harmonics expansion truncation frequency.
-    int p_;
     
-    /// The number of separate surfaces in the Surface class.
-    int n_surfs_;
-
+    SurfaceParams<T> params_;
     /** The vector holding the coordinates of the grid points,
      * supposing the Surface class, holds multiple surfaces, the order
      * will be \f$ \mathbf{x} = [X_1, Y_1, Z_1, \dots ,X_n, Y_n, Z_n],
@@ -83,18 +101,19 @@ template <typename T> class Surface
     Scalars<T> k_;
 
     Vectors<T> bending_force_;
-    
-    Vectors<T> tensile_force_;
 
-    T kappa_;
-    T rep_ts_;
-    T max_vel_;
-    int iter_max_;
-    int filter_freq_;
+    T *tension_;
+    Vectors<T> tensile_force_;
+    
+    //Rotation matrix
+    T *all_rot_mats_;
+
+    //Quadrature weights
+    T* quad_weights_;
     
     Surface(Device<T> &device_in);
-    Surface(Device<T> &device_in, int p_in, int n_surfs_in);
-    Surface(Device<T> &device_in, int p_in, int n_surfs_in, const Vectors<T> &x_in);
+    Surface(Device<T> &device_in, SurfaceParams<T> params_in);
+    Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vectors<T> &x_in);
     ~Surface();
     
     /** 
@@ -119,18 +138,29 @@ template <typename T> class Surface
 
     void StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out);
 
-  private:
+    void GetTension(const Vectors<T> &v_in, const Vectors<T> &v_ten_in, T *tension_out);
+
+    void Area();
+    void Volume();
+
+  public://private:
     //Work space
-    Scalars<T> E, F, G, L, M, N;
-    Vectors<T> Fu, Fv;
+    Scalars<T> S1, S2, S3, S4, S5, S6;
+    Vectors<T> V1, V2;
     T *shc, *work_arr, *alpha_p;
     
     //Work vectors for the up-sampling
-    int up_freq_;
-    Vectors<T> X, Xu, Xv, XN;
-    Scalars<T> XE;
+    Vectors<T> V10, V11, V12, V13;
+    Scalars<T> S10;
     T *alpha_q;
+
     void UpdateNormal();
+
+    //Rotation
+    Scalars<T> w_sph_;
+    T *rot_mat;
+    T *sing_quad_weights_;
+    T *vel;
 };
 
 

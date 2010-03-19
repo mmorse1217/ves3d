@@ -8,11 +8,11 @@ NVCC = $(CUDA_DIR)/bin/nvcc
 LDFLAGS  = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
 $(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
 -Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core      \
--Wl,--end-group -openmp -lpthread 
+-Wl,--end-group -openmp -lpthread -msse3
 
 CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                               \
 -I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
--I../src/ -fPIC -DPROFILINGX #-DNDEBUG
+-I../src/ -fPIC -DPROFILINGX -DNDEBUG
 
 CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
 
@@ -41,8 +41,10 @@ BlasSht.o: ../src/BlasSht.cc
 	$(CXX) $(CPPFLAGS) $(LDFLAGS) -c ../src/BlasSht.cc
 
 SurfaceTest: BlasSht.o
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out	
 
-ExplicitStepper: cuda_sht.o BlasSht.o
+ExplicitStepper: BlasSht.o
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
 
 .PHONY: clean
 

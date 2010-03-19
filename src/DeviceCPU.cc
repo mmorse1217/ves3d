@@ -522,20 +522,38 @@ T*  DeviceCPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int s
     double ss = get_seconds();
 #endif
 
-    int ii, jj, idx = 0;
-    T val;
-
-#pragma omp parallel for private(val,ii, jj, idx)
-    for (ii = 0; ii < num_surfs; ++ii)
+    T val, sum;
+    
+    if(x_in != NULL)
     {
-        int_x_dw[ii] = 0;
-        for (jj = 0; jj < stride; ++jj) 
+#pragma omp parallel for private(val,sum)
+        for (int ii = 0; ii < num_surfs; ++ii)
         {
-            val  = x_in[idx];
-            val *= w_in[idx++];
-            val *= quad_w_in[jj];
+            sum = 0;
+            for (int jj = 0; jj < stride; ++jj) 
+            {
+                val  = x_in[ii * stride + jj];
+                val *= w_in[ii * stride + jj];
+                val *= quad_w_in[jj];
+                
+                sum += val;
+            }
+            int_x_dw[ii] = sum;
+        }
+    } else{
+#pragma omp parallel for private(val,sum)
+        for (int ii = 0; ii < num_surfs; ++ii)
+        {
+            sum = 0;
+            for (int jj = 0; jj < stride; ++jj) 
+            {
+                val = w_in[ii * stride + jj];
+                val *= quad_w_in[jj];
+                
+                sum += val;
+            }
 
-            int_x_dw[ii] += val;
+            int_x_dw[ii] = sum;
         }
     }
 
@@ -548,15 +566,16 @@ T*  DeviceCPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int s
 }
 
 template<typename T>
-void  DeviceCPU<T>::InitializeSHT(int p, char *leg_trans_fname,
-    char *leg_trans_inv_fname, char *d1_leg_trans_fname, 
-    char *d2_leg_trans_fname)
+void  DeviceCPU<T>::InitializeSHT(int p, int p_up)
 {
     assert(sht_.dft_forward == 0);
     
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
+
+    p_ = p;
+    p_up_ = p_up;
 
     T *dft_forward;
     T *dft_backward;
@@ -567,17 +586,50 @@ void  DeviceCPU<T>::InitializeSHT(int p, char *leg_trans_fname,
     T *d1_leg_trans;
     T *d2_leg_trans;
 
-    dft_forward    = DeviceCPU<T>::Malloc(4 * p * p); 
-    dft_backward   = DeviceCPU<T>::Malloc(4 * p * p); 
-    dft_d1backward = DeviceCPU<T>::Malloc(4 * p * p); 
-    dft_d2backward = DeviceCPU<T>::Malloc(4 * p * p); 
+    char leg_trans_fname[100];
+    char leg_trans_inv_fname[100]; 
+    char d1_leg_trans_fname[100];
+    char d2_leg_trans_fname[100];
 
-    leg_trans      = DeviceCPU<T>::Malloc((p + 1) * (p+1) * (p +2)); 
-    leg_trans_inv  = DeviceCPU<T>::Malloc((p + 1) * (p+1) * (p +2)); 
-    d1_leg_trans   = DeviceCPU<T>::Malloc((p + 1) * (p+1) * (p +2)); 
-    d2_leg_trans   = DeviceCPU<T>::Malloc((p + 1) * (p+1) * (p +2)); 
+    //p version_
+    dft_forward    = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+    dft_backward   = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+    dft_d1backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+    dft_d2backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
 
-    sht_.InitializeBlasSht(p, leg_trans_fname, leg_trans_inv_fname, 
+    leg_trans      = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
+    leg_trans_inv  = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
+    d1_leg_trans   = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
+    d2_leg_trans   = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
+
+    sprintf(leg_trans_fname    ,   "../data/legTrans%u_single.txt",p_);
+    sprintf(leg_trans_inv_fname,"../data/legTransInv%u_single.txt",p_);
+    sprintf(d1_leg_trans_fname , "../data/d1legTrans%u_single.txt",p_);
+    sprintf(d2_leg_trans_fname , "../data/d2legTrans%u_single.txt",p_);
+
+    sht_.InitializeBlasSht(p_, leg_trans_fname, leg_trans_inv_fname, 
+        d1_leg_trans_fname, d2_leg_trans_fname, 
+        dft_forward, dft_backward, dft_d1backward, dft_d2backward, 
+        leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
+
+
+    //p_up version
+    dft_forward    = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+    dft_backward   = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+    dft_d1backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+    dft_d2backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+
+    leg_trans      = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
+    leg_trans_inv  = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
+    d1_leg_trans   = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
+    d2_leg_trans   = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
+
+    sprintf(leg_trans_fname    ,   "../data/legTrans%u_single.txt",p_up_);
+    sprintf(leg_trans_inv_fname,"../data/legTransInv%u_single.txt",p_up_);
+    sprintf(d1_leg_trans_fname , "../data/d1legTrans%u_single.txt",p_up_);
+    sprintf(d2_leg_trans_fname , "../data/d2legTrans%u_single.txt",p_up_);
+
+    sht_up_sample_.InitializeBlasSht(p_up_, leg_trans_fname, leg_trans_inv_fname, 
         d1_leg_trans_fname, d2_leg_trans_fname, 
         dft_forward, dft_backward, dft_d1backward, dft_d2backward, 
         leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
@@ -594,41 +646,44 @@ DeviceCPU<T>::DeviceCPU(){}
 template<typename T>
 DeviceCPU<T>::~DeviceCPU()
 {
-    if(sht_.dft_forward != 0)
-        Free(sht_.dft_forward); 
     
-    if(sht_.dft_backward != 0)
-        Free(sht_.dft_backward); 
-
-    if(sht_.dft_d1backward != 0)
-        Free(sht_.dft_d1backward); 
+    Free(sht_.dft_forward); 
+    Free(sht_.dft_backward); 
+    Free(sht_.dft_d1backward); 
+    Free(sht_.dft_d2backward); 
+    Free(sht_.leg_trans); 
+    Free(sht_.leg_trans_inv); 
+    Free(sht_.d1_leg_trans); 
+    Free(sht_.d2_leg_trans); 
     
-    if(sht_.dft_d2backward != 0)
-        Free(sht_.dft_d2backward); 
-    
-    if(sht_.leg_trans != 0)
-        Free(sht_.leg_trans); 
-    
-    if(sht_.leg_trans_inv != 0)
-        Free(sht_.leg_trans_inv); 
-    
-    if(sht_.d1_leg_trans != 0)
-        Free(sht_.d1_leg_trans); 
-
-    if(sht_.d2_leg_trans != 0)
-        Free(sht_.d2_leg_trans); 
+    // up sample
+    Free(sht_up_sample_.dft_forward); 
+    Free(sht_up_sample_.dft_backward); 
+    Free(sht_up_sample_.dft_d1backward); 
+    Free(sht_up_sample_.dft_d2backward); 
+    Free(sht_up_sample_.leg_trans); 
+    Free(sht_up_sample_.leg_trans_inv); 
+    Free(sht_up_sample_.d1_leg_trans); 
+    Free(sht_up_sample_.d2_leg_trans); 
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShAna(const T *x_in, T *work_arr, int n_funs, T *shc_out)
+void  DeviceCPU<T>::ShAna(const T *x_in, T *work_arr, int p, int n_funs, T *shc_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
 
-    assert(sht_.leg_trans != 0);
-    sht_.forward(x_in, work_arr, n_funs, shc_out);
-
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans != 0);
+        sht_.forward(x_in, work_arr, n_funs, shc_out);
+    }else{
+        assert(sht_up_sample_.leg_trans != 0);
+        sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
+    }
+        
+        
 #ifdef PROFILING
     ss = get_seconds()-ss ;
     cout<<"DeviceCPU::ShAna takes (sec) : "<<ss<<endl;
@@ -636,14 +691,19 @@ void  DeviceCPU<T>::ShAna(const T *x_in, T *work_arr, int n_funs, T *shc_out)
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSyn(const T *shc_in, T *work_arr, int n_funs, T *x_out)
+void  DeviceCPU<T>::ShSyn(const T *shc_in, T *work_arr, int p, int n_funs, T *x_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
-
-    assert(sht_.leg_trans_inv != 0);
-    sht_.backward(shc_in, work_arr, n_funs, x_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans_inv != 0);
+        sht_.backward(shc_in, work_arr, n_funs, x_out);
+    }else{
+        assert(sht_up_sample_.leg_trans_inv != 0);
+        sht_up_sample_.backward(shc_in, work_arr, n_funs, x_out);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -652,14 +712,20 @@ void  DeviceCPU<T>::ShSyn(const T *shc_in, T *work_arr, int n_funs, T *x_out)
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDu(const T *shc_in, T *work_arr, int n_funs, T *xu_out)
+void  DeviceCPU<T>::ShSynDu(const T *shc_in, T *work_arr, int p, int n_funs, T *xu_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
 
-    assert(sht_.d1_leg_trans != 0);
-    sht_.backward_du(shc_in, work_arr, n_funs, xu_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.d1_leg_trans != 0);
+        sht_.backward_du(shc_in, work_arr, n_funs, xu_out);
+    }else{
+        assert(sht_up_sample_.d1_leg_trans != 0);
+        sht_up_sample_.backward_du(shc_in, work_arr, n_funs, xu_out);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -668,14 +734,20 @@ void  DeviceCPU<T>::ShSynDu(const T *shc_in, T *work_arr, int n_funs, T *xu_out)
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDv(const T *shc_in, T *work_arr, int n_funs, T *xv_out)
+void  DeviceCPU<T>::ShSynDv(const T *shc_in, T *work_arr, int p, int n_funs, T *xv_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
 
-    assert(sht_.leg_trans != 0);
-    sht_.backward_dv(shc_in, work_arr, n_funs, xv_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans != 0);
+        sht_.backward_dv(shc_in, work_arr, n_funs, xv_out);
+    }else{
+        assert(sht_up_sample_.leg_trans != 0);
+        sht_up_sample_.backward_dv(shc_in, work_arr, n_funs, xv_out);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -684,14 +756,20 @@ void  DeviceCPU<T>::ShSynDv(const T *shc_in, T *work_arr, int n_funs, T *xv_out)
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDuu(const T *shc_in, T *work_arr, int n_funs, T *xuu_out)
+void  DeviceCPU<T>::ShSynDuu(const T *shc_in, T *work_arr, int p, int n_funs, T *xuu_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
 
-    assert(sht_.d2_leg_trans != 0);
-    sht_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.d2_leg_trans != 0);
+        sht_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
+    }else{
+        assert(sht_up_sample_.d2_leg_trans != 0);
+        sht_up_sample_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -700,25 +778,43 @@ void  DeviceCPU<T>::ShSynDuu(const T *shc_in, T *work_arr, int n_funs, T *xuu_ou
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDvv(const T *shc_in, T *work_arr, int n_funs, T *xvv_out)
+void  DeviceCPU<T>::ShSynDvv(const T *shc_in, T *work_arr, int p, int n_funs, T *xvv_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
-    assert(sht_.leg_trans != 0);
-    sht_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
+
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans != 0);
+        sht_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
+    }else{
+        assert(sht_up_sample_.leg_trans != 0);
+        sht_up_sample_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
+    }
+
+#ifdef PROFILING
+    ss = get_seconds()-ss ;
+    cout<<"DeviceCPU::ShSynDvv takes (sec) : "<<ss<<endl;
+#endif
 }
 
 template<typename T>
-void  DeviceCPU<T>::ShSynDuv(const T *shc_in, T *work_arr, int n_funs, T *xuv_out)
+void  DeviceCPU<T>::ShSynDuv(const T *shc_in, T *work_arr, int p, int n_funs, T *xuv_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
-
-    assert(sht_.d1_leg_trans != 0);
-    sht_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
-
+    
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.d1_leg_trans != 0);
+        sht_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
+    }else{
+        assert(sht_up_sample_.d1_leg_trans != 0);
+        sht_up_sample_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
+    }
+    
 #ifdef PROFILING
     ss = get_seconds()-ss ;
     cout<<"DeviceCPU::ShSynDuv takes (sec) : "<<ss<<endl;
@@ -726,20 +822,31 @@ void  DeviceCPU<T>::ShSynDuv(const T *shc_in, T *work_arr, int n_funs, T *xuv_ou
 }
 
 template<typename T>
-void  DeviceCPU<T>::AllDerivatives(const T *x_in, T *work_arr, int n_funs, T *shc_x, T *Dux_out, 
+void  DeviceCPU<T>::AllDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, 
     T *Dvx_out,T *Duux_out, T *Duvx_out, T *Dvvx_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
 
-    assert(sht_.leg_trans != 0);
-    sht_.forward(     x_in , work_arr, n_funs, shc_x);
-    sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
-    sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
-    sht_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
-    sht_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
-    sht_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans != 0);
+        sht_.forward(     x_in , work_arr, n_funs, shc_x);
+        sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+        sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+        sht_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
+        sht_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
+        sht_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
+    }else{
+        assert(sht_up_sample_.leg_trans != 0);
+        sht_up_sample_.forward(     x_in , work_arr, n_funs, shc_x);
+        sht_up_sample_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+        sht_up_sample_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+        sht_up_sample_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
+        sht_up_sample_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
+        sht_up_sample_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -748,16 +855,24 @@ void  DeviceCPU<T>::AllDerivatives(const T *x_in, T *work_arr, int n_funs, T *sh
 }
 
 template<typename T>
-void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out)
+void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out)
 {
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
 
-    assert(sht_.leg_trans != 0);
-    sht_.forward(x_in, work_arr, n_funs, shc_x);
-    sht_.backward_du(shc_x, work_arr, n_funs, Dux_out);
-    sht_.backward_dv(shc_x, work_arr, n_funs, Dvx_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans != 0);
+        sht_.forward(     x_in , work_arr, n_funs, shc_x);
+        sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+        sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+    }else{
+        assert(sht_up_sample_.leg_trans != 0);
+        sht_up_sample_.forward(     x_in , work_arr, n_funs, shc_x);
+        sht_up_sample_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+        sht_up_sample_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -768,11 +883,19 @@ void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int n_funs, T *
 template<typename T>
 void DeviceCPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* work_arr, T *shc_out, T *x_out)
 {
-    assert(sht_.leg_trans != 0);
-
-    sht_.forward(x_in, work_arr, n_funs, shc_out);
-    ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
-    sht_.backward(shc_out, work_arr, n_funs, x_out);
+    assert(p == p_ || p == p_up_);
+    if ( p == p_){
+        assert(sht_.leg_trans != 0);
+        sht_.forward(x_in, work_arr, n_funs, shc_out);
+        ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
+        sht_.backward(shc_out, work_arr, n_funs, x_out);
+    }else{
+        assert(sht_up_sample_.leg_trans != 0);
+        sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
+        ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
+        sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
+    }
+    
 }
 
 template<typename T>
@@ -898,3 +1021,356 @@ void DeviceCPU<T>::Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q)
     assert(shc_q-out_deb == n_funs*q*(q+2));
 }
 
+
+template<typename T>
+T* DeviceCPU<T>::gemm(const enum BlasTranspose transa, const enum BlasTranspose transb,
+    int m, int n, int k, T alpha, const T *A, int lda, const T *B, int ldb, T beta, T *C, int ldc)
+{
+    cerr<<"gemm is not implemented for this data type"<<endl;
+    abort();
+}
+
+template<>
+float* DeviceCPU<float>::gemm(const enum BlasTranspose transa, const enum BlasTranspose transb,
+    int m, int n, int k, float alpha, const float *A, int lda, const float *B, int ldb, float beta, float *C, int ldc)
+{
+    // enum types reference:
+    // enum CBLAS_ORDER { CblasRowMajor=101, /* row-major arrays */
+    //                    CblasColMajor=102}; /* column-major arrays */
+    
+    // enum CBLAS_TRANSPOSE { CblasNoTrans=111, /* trans='N' */ 
+    //                        CblasTrans=112, /* trans='T' */ 
+    //                        CblasConjTrans=113}; /* trans='C' */ 
+
+    
+#ifndef NDEBUG
+    cout<<"DeviceCPU::gemm"<<endl;
+#endif
+
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
+    
+    CBLAS_TRANSPOSE ta = static_cast<CBLAS_TRANSPOSE>(transa);
+    CBLAS_TRANSPOSE tb = static_cast<CBLAS_TRANSPOSE>(transb);
+
+#ifndef NDEBUG
+    cout<<"DeviceCPU::gemm : transa = "<<transa<<", ta = "<<ta<<endl;
+    cout<<"DeviceCPU::gemm : transb = "<<transb<<", tb = "<<tb<<endl;
+#endif
+        
+    cblas_sgemm(CblasColMajor, ta, tb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+    
+#ifdef PROFILING
+    ss = get_seconds()-ss ;
+    cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
+#endif
+
+    return C;
+}
+
+template<typename T>
+T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shift, T *arr_out)
+{
+
+#ifndef NDEBUG
+    cout<<"DeviceCPU::CircShift"<<endl;
+#endif
+
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
+
+    shift = shift%vec_length;
+    if (shift<0)
+        shift+=vec_length;
+
+    int base_in, base_out;
+
+#pragma omp parallel for private(base_in,base_out)
+    for(int ii=0;ii<n_vecs; ++ii)
+    {
+        base_out = ii * vec_length;
+        base_in  = base_out + vec_length - shift;
+        for(int jj=0;jj<shift; ++jj)
+            arr_out[base_out + jj] = arr_in[base_in + jj];
+
+        base_in  = base_out;
+        base_out += shift;
+        for(int jj=0;jj<vec_length-shift; ++jj)
+            arr_out[base_out + jj] = arr_in[base_in + jj];
+    }
+
+#ifdef PROFILING
+    ss = get_seconds()-ss ;
+    cout<<"DeviceCPU::CircShift takes (sec) : "<<ss<<endl;
+#endif
+
+    return arr_out;
+}
+
+template<typename T>
+void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const T *qw, const T *trg, const T *src, const T *den, T *pot)
+{                              
+#ifndef NDEBUG
+    cout<<"DeviceCPU::DirectStokes"<<endl;
+#endif
+
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
+
+    T tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+    for (int vt=0; vt<n_surfs; vt++)
+    {
+        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
+        {
+            px = 0;
+            py = 0;
+            pz = 0;
+            
+            tx=trg[3*vt*stride +                   trg_idx];
+            ty=trg[3*vt*stride + stride +          trg_idx];
+            tz=trg[3*vt*stride + stride + stride + trg_idx];
+            
+            for (int s=0; s<stride; s++)
+            {
+                dx=src[3*stride*vt +                   s]-tx;
+                dy=src[3*stride*vt + stride +          s]-ty;
+                dz=src[3*stride*vt + stride + stride + s]-tz;
+
+                invR = dx*dx;
+                invR+= dy*dy;
+                invR+= dz*dz;
+                
+                if (invR!=0)
+                    invR = 1.0/sqrt(invR);
+            
+                cpx = den[3*stride*vt +                   s] * qw[s]; 
+                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
+                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
+                
+                cc  = dx*cpx;
+                cc += dy*cpy;
+                cc += dz*cpz;
+                cc *= invR;
+                cc *= invR;
+
+                cpx += cc*dx;
+                cpy += cc*dy;
+                cpz += cc*dz;
+                
+                px += cpx*invR;
+                py += cpy*invR;
+                pz += cpz*invR;
+            }
+            pot[3*vt*stride +                  trg_idx] = px;
+            pot[3*vt*stride + stride +         trg_idx] = py;
+            pot[3*vt*stride + stride +stride + trg_idx] = pz;
+        }
+    }
+
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+#endif
+    return;
+} 
+
+#define IDEAL_ALIGNMENT 16
+#define SIMD_LEN (IDEAL_ALIGNMENT / sizeof(float))
+
+// template<>
+// void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
+//     const float *qw, const float *trg, const float *src, const float *den, float *pot)
+// {
+// #ifndef NDEBUG
+//     cout<<"DeviceCPU::DirectStokes (SSE, float)"<<endl;
+// #endif
+
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
+
+//     //#ifdef __SSE2__ 
+//     ///@todo check for availability of SSE
+
+//     if (stride%4) // necessary for proper alignment of sources
+//         abort();
+    
+//     float aux_arr[3*SIMD_LEN+3]; 
+//     float *tempvalx; 
+//     float *tempvaly; 
+//     float *tempvalz; 
+//     size_t residual = size_t(aux_arr)%IDEAL_ALIGNMENT;
+//     if (residual)  // if aux_arr is misaligned
+//         tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual);
+//     else tempvalx = aux_arr;
+//     if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
+//         abort();
+//     tempvaly=tempvalx+SIMD_LEN;
+//     tempvalz=tempvaly+SIMD_LEN;
+  
+//     //#pragma omp parallel for private(aux_arr)
+//     ///@todo add the openmp instructions
+//     for (int vt=0; vt<n_surfs; vt++)
+//     {
+//         float p[3]={0,0,0};
+//         float tx=trg[3*vt*stride            + trg_idx];
+//         float ty=trg[3*vt*stride +   stride + trg_idx];
+//         float tz=trg[3*vt*stride + 2*stride + trg_idx];
+
+//         residual = size_t(src+ 3*stride*vt)%IDEAL_ALIGNMENT;
+//         if (residual)
+//             residual = IDEAL_ALIGNMENT - residual;
+        
+//         // Handle start data if it is not 16-byte aligned
+//         size_t s;
+//         // residual = stride;
+//         for (s=0; s<residual; s++)
+//         {
+//             float dX_reg=src[3*stride*vt+           s]-tx;
+//             float dY_reg=src[3*stride*vt+  stride + s]-ty;
+//             float dZ_reg=src[3*stride*vt+2*stride + s]-tz;
+            
+//             float invR = (dX_reg*dX_reg+dY_reg*dY_reg+dZ_reg*dZ_reg);
+//             if (invR!=0)
+//                 invR = 1.0/sqrt(invR);
+            
+//             float cur_pot_x = den[3*stride*vt +           s] * qw[s];
+//             float cur_pot_y = den[3*stride*vt +  stride + s] * qw[s];
+//             float cur_pot_z = den[3*stride*vt +2*stride + s] * qw[s];
+
+//             float tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y + dZ_reg*cur_pot_z)*invR*invR;
+//             cur_pot_x += tmp_scalar*dX_reg;
+//             cur_pot_y += tmp_scalar*dY_reg;
+//             cur_pot_z += tmp_scalar*dZ_reg;
+            
+//             p[0] += cur_pot_x*invR;
+//             p[1] += cur_pot_y*invR;
+//             p[2] += cur_pot_z*invR;
+//         }
+
+//         __m128 txi = _mm_load1_ps (&tx);
+//         __m128 tyi = _mm_load1_ps (&ty);
+//         __m128 tzi = _mm_load1_ps (&tz);
+
+//         // for (int s=0; s<stride; s++)
+//         __m128 tempx;
+//         __m128 tempy;
+//         __m128 tempz;
+
+//         tempx = _mm_setzero_ps();
+//         tempy = _mm_setzero_ps();
+//         tempz = _mm_setzero_ps();
+        
+//         // Load and calculate in groups of SIMD_LEN
+//         size_t loop_limit = stride-SIMD_LEN;
+//         for (; s <= loop_limit; s += SIMD_LEN) {
+//             __m128 sxj = _mm_load_ps (src+3*stride*vt+         s);
+//             __m128 syj = _mm_load_ps (src+3*stride*vt+  stride+s);
+//             __m128 szj = _mm_load_ps (src+3*stride*vt+2*stride+s);
+            
+//             // this could be vectorized assuming den and q are 16-byte aligned
+//             __m128 sdenx = _mm_set_ps (
+//                 den[3*stride*vt +s+3] * qw[s+3],
+//                 den[3*stride*vt +s+2] * qw[s+2],
+//                 den[3*stride*vt +s+1] * qw[s+1],
+//                 den[3*stride*vt +s] * qw[s]);
+
+//             __m128 sdeny = _mm_set_ps (
+//                 den[3*stride*vt+stride +s+3] * qw[s+3],
+//                 den[3*stride*vt+stride +s+2] * qw[s+2],
+//                 den[3*stride*vt+stride +s+1] * qw[s+1],
+//                 den[3*stride*vt+stride +s] * qw[s]);
+
+//             __m128 sdenz = _mm_set_ps (
+//                 den[3*stride*vt+2*stride +s+3] * qw[s+3],
+//                 den[3*stride*vt+2*stride +s+2] * qw[s+2],
+//                 den[3*stride*vt+2*stride +s+1] * qw[s+1],
+//                 den[3*stride*vt+2*stride +s] * qw[s]
+//                                        );
+            
+//             //       __m128 sdenx = _mm_load_ps (src+3*stride*vt+         s);
+//             //       __m128 sdeny = _mm_load_ps (src+3*stride*vt+  stride+s);
+//             //       __m128 sdenz = _mm_load_ps (src+3*stride*vt+2*stride+s);
+            
+//             __m128 dX, dY, dZ;
+//             __m128 dR2;
+//             __m128 S;
+
+//             dX = _mm_sub_ps(txi , sxj);
+//             dY = _mm_sub_ps(tyi , syj);
+//             dZ = _mm_sub_ps(tzi , szj);
+
+//             sxj = _mm_mul_ps(dX, dX); 
+//             syj = _mm_mul_ps(dY, dY);
+//             szj = _mm_mul_ps(dZ, dZ);
+
+//             dR2 = _mm_add_ps(sxj, syj);
+//             dR2 = _mm_add_ps(szj, dR2);
+
+//             __m128 zero = _mm_setzero_ps ();
+//             __m128 is_zero = _mm_cmpeq_ps(dR2, zero);
+
+//             // S = _mm_rsqrt_ps(dR2);
+//             const __m128 approx = _mm_rsqrt_ps( dR2 );
+//             const __m128 muls = _mm_mul_ps(_mm_mul_ps(dR2, approx), approx);
+//             const __m128 three = _mm_set1_ps (3.0f);
+//             const __m128 half4 = _mm_set1_ps (0.5f);
+//             S = _mm_mul_ps(_mm_mul_ps(half4, approx), _mm_sub_ps(three, muls) );
+//             S = _mm_andnot_ps (is_zero, S);
+            
+//             __m128 dotx = _mm_mul_ps (dX, sdenx);
+//             __m128 doty = _mm_mul_ps (dY, sdeny);
+//             __m128 dotz = _mm_mul_ps (dZ, sdenz);
+
+//             __m128 dot_sum = _mm_add_ps (dotx, doty);
+//             dot_sum = _mm_add_ps (dot_sum, dotz);
+
+//             dot_sum = _mm_mul_ps (dot_sum, S);
+//             dot_sum = _mm_mul_ps (dot_sum, S);
+
+//             dotx = _mm_mul_ps (dot_sum, dX);
+//             doty = _mm_mul_ps (dot_sum, dY);
+//             dotz = _mm_mul_ps (dot_sum, dZ);
+
+//             sdenx = _mm_add_ps (sdenx, dotx);
+//             sdeny = _mm_add_ps (sdeny, doty);
+//             sdenz = _mm_add_ps (sdenz, dotz);
+
+//             sdenx = _mm_mul_ps (sdenx, S);
+//             sdeny = _mm_mul_ps (sdeny, S);
+//             sdenz = _mm_mul_ps (sdenz, S);
+
+//             tempx = _mm_add_ps (sdenx, tempx);
+//             tempy = _mm_add_ps (sdeny, tempy);
+//             tempz = _mm_add_ps (sdenz, tempz);
+
+//         }
+        
+//         _mm_store_ps(tempvalx, tempx); 
+//         _mm_store_ps(tempvaly, tempy); 
+//         _mm_store_ps(tempvalz, tempz); 
+        
+//         for (size_t k = 0; k < SIMD_LEN; k++) {
+//             p[0] += tempvalx[k];
+//             p[1] += tempvaly[k];
+//             p[2] += tempvalz[k];
+//         }
+        
+//         if (s!=size_t(stride))
+//             abort();
+        
+//         pot[3*vt*stride +            trg_idx] = p[0];
+//         pot[3*vt*stride +   stride + trg_idx] = p[1];
+//         pot[3*vt*stride + 2*stride + trg_idx] = p[2];
+//     }
+
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::DirectStokes (SSE - float) takes (sec) : "<<ss<<endl;
+// #endif
+//     return;
+// }

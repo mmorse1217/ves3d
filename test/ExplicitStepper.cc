@@ -7,40 +7,60 @@ typedef float T;
 
 int main(int argc, char **argv)
 {
+    //Surface parameters
+    SurfaceParams<T> par;
+    par.p_ = 12;
+    par.n_surfs_ = 100;
+    par.kappa_ = 1e-2;
+    par.filter_freq_ = 8;
+    par.rep_ts_ = 0.1;
+    par.rep_max_vel_ = 1e-2;
+    par.rep_iter_max_ = 10;
+    par.rep_up_freq_ = 24;
+    par.rep_filter_freq_ = 4;
 
-    int p(12), num_vesicles(100);
-    T ts(.2);
-    int n_steps(0);
+    //Time stepping parameters
+    T ts(1);
+    int n_steps(5);
 
     //Setting up the device
     DeviceCPU<T> cpu_device;
-    DataIO<T> myIO;
 
-    cpu_device.InitializeSHT(p, "../data/legTrans12_single.txt",
-        "../data/legTransInv12_single.txt",
-        "../data/d1legTrans12_single.txt",
-        "../data/d2legTrans12_single.txt");
+    //Initializing the device
+    cpu_device.InitializeSHT(par.p_, par.rep_up_freq_);
 
     //Length and other derived parameters
-    int one_vec_length = 6 * p * (p+1);
-    int data_length = one_vec_length * num_vesicles;
-
+    int one_vec_length = 6 * par.p_ * (par.p_+1);
+    int data_length = one_vec_length * par.n_surfs_;
+ 
     //Setting up the surface
-    Surface<T> vesicle(cpu_device, p, num_vesicles);
+    Surface<T> vesicle(cpu_device, par);
     
     //Reading initial positions
-    myIO.ReadData("../data/dumbbell_cart12_single.txt", one_vec_length, vesicle.x_.data_);
+    DataIO<T> myIO;
+    char fname[100];
+    sprintf(fname,"../data/dumbbell_cart%u_single.txt",par.p_);
+    myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
 
     //populate copies
-    for(int ii=1;ii<num_vesicles;ii++)
+    for(int ii=1;ii<par.n_surfs_;ii++)
         for(int idx=0;idx<one_vec_length;idx++)
             vesicle.x_.data_[ii*one_vec_length + idx] = 3*ii + vesicle.x_.data_[idx];
     vesicle.UpdateAll();
     
     //Time-stepper
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
     TimeStepper<T> exp_stepper(ts, n_steps, vesicle);
     exp_stepper.EvolveInTime();
 
+#ifdef PROFILING
+    ss = get_seconds()-ss ;
+    cout<<" The whole simulation (sec) : "<<ss<<endl;
+#endif
+
     // save the final result
-    myIO.WriteData("../data/cart12_final.txt",one_vec_length,vesicle.x_.data_);
+    sprintf(fname,"../data/cart%u_final.txt",par.p_);
+    myIO.WriteData(fname,vesicle.x_.GetDataLength(),vesicle.x_.data_);
 }

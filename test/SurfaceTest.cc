@@ -1,4 +1,4 @@
-#include <iostream>
+ #include <iostream>
 #include "DeviceCPU.h"
 #include "DataIO.h"
 #include "Scalars.h"
@@ -14,22 +14,33 @@ int main(int argc, char ** argv)
     DeviceCPU<T> cpu;
     DataIO<T> myIO;
 
-    int p(12), nVec(1000);
-    cpu.InitializeSHT(p, "../data/legTrans12_single.txt",
-            "../data/legTransInv12_single.txt",
-            "../data/d1legTrans12_single.txt",
-            "../data/d2legTrans12_single.txt");
+    int p(12), nVec(5);
+    cpu.InitializeSHT(p,2*p);
 
     int fLen(2*p*(p+1));
     int dLen(6*p*(p+1));
 
+    //Setting surface parameters
+    SurfaceParams<T> par;
+    
+    par.p_ = p;
+    par.n_surfs_ = nVec;
+    par.kappa_ = 1e-2;
+    par.filter_freq_ = 8;
+    par.rep_ts_ = 1e-1;
+    par.rep_max_vel_ = 1e-1;
+    par.rep_iter_max_ = 100;
+    par.rep_up_freq_ = 24;
+    par.rep_filter_freq_ = 4;
+
     // reading data
-    Surface<T> S(cpu,p,nVec);
+    Surface<T> S(cpu,par);
     Scalars<T> X(cpu,p,nVec);
     Scalars<T> Y(cpu,p,nVec);
     Scalars<T> Z(cpu,p,nVec);
 
-    myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
+    myIO.ReadData("../data/eightHump_12.txt",dLen,S.x_.data_);
+    //myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
     for(int ii=1;ii<nVec;ii++)
         for(int idx=0;idx<dLen;idx++)
             S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];
@@ -57,7 +68,7 @@ int main(int argc, char ** argv)
         err2 = fabs(div_n.data_[ii]);
         err = (err>err2) ? err : err2;
     }
-    cout<<"\n The error in the surface divergence (For the dumbbell .09313 expected)= "<<err<<endl;
+    cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
     
     Vectors<T> grad(cpu,p,nVec), lap(cpu,p,nVec);
 
@@ -89,6 +100,25 @@ int main(int argc, char ** argv)
         err = (err>err2) ? err : err2;
     }
     cout<<"\n The error in the surface grad (For the dumbbell .13703 expected)= "<<err<<endl;
+
+//     S.Area();
+//     S.Volume();
+
+//     S.Reparam();
+//     char fname[300];
+//     sprintf(fname,"X.txt");
+//     myIO.WriteData(fname, 3*fLen, S.x_.data_);
+
+//     Vectors<T> den(cpu,p,nVec),vel(cpu,p,nVec);
+//     xvpb(S.h_,S.normal_, (T) 0,den);
+//     S.StokesMatVec(den,vel);
+    
+//     char fname[300];
+//     sprintf(fname,"X.txt");
+//     myIO.WriteData(fname, 3*fLen, S.x_.data_);
+    
+//     sprintf(fname,"V.txt");
+//     myIO.WriteData(fname, 3*fLen, vel.data_);
 
     return 0;
 }
