@@ -33,13 +33,15 @@ int main(int argc, char ** argv)
     par.rep_up_freq_ = 24;
     par.rep_filter_freq_ = 4;
 
-    // reading data
+    // memory allocation
     Surface<T> S(cpu,par);
     Scalars<T> X(cpu,p,nVec);
     Scalars<T> Y(cpu,p,nVec);
     Scalars<T> Z(cpu,p,nVec);
     
+    // initializing vesicle positions from text file
     myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
+
     for(int ii=1;ii<nVec;ii++)
         for(int idx=0;idx<dLen;idx++)
             S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];
