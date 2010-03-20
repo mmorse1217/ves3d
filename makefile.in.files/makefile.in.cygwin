@@ -1,0 +1,22 @@
+CXX  = g++ 
+CC   = gcc
+AR   = ar
+ARFLAGS = -r
+RANLIB = ranlib
+
+BLAS=-L/usr/lib -lblas
+VESINCLUDE=-I${VES3D_DIR}/include 
+VESTEMPLATES=-I${VES3D_DIR}/src
+ALLINCLUDE=${VESINCLUDE} ${VESTEMPLATES}
+
+ifeq ($(USE_GPU),yes)
+	VES3D_GPU_LIBS=-lve3dgpu
+else
+	VES3D_GPU_LIBS=
+endif
+LIBS= -L${VES3D_DIR}/lib -lves3d ${VES3D_GPU_LIBS} ${BLAS}
+
+#LDFLAGS  =  -Wl,-rpath ${LIBS} 
+LDFLAGS  =  ${LIBS} 
+CPPFLAGS = -g -O3 -msse2  ${ALLINCLUDE} -DPROFILENGX -DDEBUG
+

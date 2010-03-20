@@ -54,6 +54,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     cv_(device_,params_.p_,params_.n_surfs_),
     bending_force_(device_,params_.p_,params_.n_surfs_),
     tensile_force_(device_,params_.p_,params_.n_surfs_),
+		//GB: the code below is ugly, must be fixed after sc10
     S1(device_,params_.p_,params_.n_surfs_),
     S2(device_,params_.p_,params_.n_surfs_),
     S3(device_,params_.p_,params_.n_surfs_),
@@ -152,7 +153,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     V12(device_,params_.rep_up_freq_,params_.n_surfs_),
     V13(device_,params_.rep_up_freq_,params_.n_surfs_),
     S10(device_,params_.rep_up_freq_,params_.n_surfs_),
-    w_sph_(device,params_.p_,params_.n_surfs_)
+    w_sph_(device_,params_.p_,params_.n_surfs_)
 {
     shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
@@ -228,9 +229,9 @@ Surface<T>::~Surface()
 }
 
 template<typename T>
-Surface<T>::Resize(int n_surfs_in)
+void Surface<T>::Resize(int n_surfs_in)
 {
-    x_.Resize(n_srurfs_in);
+    x_.Resize(n_surfs_in);
     normal_.Resize(n_surfs_in); 
     h_.Resize(n_surfs_in); 
     w_.Resize(n_surfs_in);
@@ -259,7 +260,7 @@ template <typename T>
 void Surface<T>::SetX(const Vectors<T> &x_in)
 {
     x_.SetData(x_in.data_);
-    UpdateProps();
+		//GB:BUG  UpdateProps();
 }
 
 template <typename T> 

@@ -1,62 +1,23 @@
-CXX  = icpc
-CC   = icpc
+all:ScalarsTest DeviceTest ExplicitStepper VectorsTest
 
-MKLPATH  = /opt/intel/Compiler/11.1/059/mkl/lib/em64t
-CUDA_DIR = /usr/local/cuda
-NVCC = $(CUDA_DIR)/bin/nvcc
+include ${VES3D_DIR}/makefile.in
 
-LDFLAGS  = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
-$(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
--Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core      \
--Wl,--end-group -openmp -lpthread -msse3
+ScalarsTest: 
+	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
-CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                               \
--I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
--I../src/ -fPIC -DPROFILINGX -DNDEBUG
+VectorsTest: 
+	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
-CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
+DeviceTest: 
+	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
-all: 
-
-DeviceTest: BlasSht.o 
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
-
-DeviceGPU.o: ../include/DeviceGPU.cu
-	$(NVCC) $(CUDAFLAGS) -c ../include/DeviceGPU.cu
-
-ScalarsTest: BlasSht.o
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out	
-
-VectorsTest: BlasSht.o
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
-
-SHTransTest: cuda_sht.o BlasSht.o
-
-driver: cuda_sht.o blas_sht.o 
-
-cuda_sht.o: ../src/cuda_sht.C
-	$(CXX) $(CPPFLAGS) -c ../src/cuda_sht.C
-
-blas_test: BlasSht.o
-
-BlasSht.o: ../src/BlasSht.cc
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) -c ../src/BlasSht.cc
-
-SurfaceTest: BlasSht.o
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out	
-
-ExplicitStepper: BlasSht.o
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $@.cc $^ -o $@.out
+ExplicitStepper:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
 .PHONY: clean
 
 clean: 	
 	@-rm -f *.o *.out  
 
-# CurvFlow: cuda_sht.o 
 
-# CUTest: CUvec.o 
-# 	$(CXX) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $@.cc $^ -o $@.out
-
-CUvec.o: ../etc/CUvec.cu
-	$(NVCC) -c ../etc/CUvec.cu
+#all:ScalarsTest  VectorsTest  DeviceTest AllTests SHTransTest ExplicitStepper

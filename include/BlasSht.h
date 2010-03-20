@@ -1,8 +1,8 @@
 #include <fstream>
 #include <iostream>
 #include <math.h>
-#include <mkl.h>
 #include <stdlib.h>
+#include <vesblas.h>
 
 #define scalar float
 

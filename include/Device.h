@@ -111,8 +111,8 @@ template<typename T> class Device
     ///Smooth integral--reduction
     virtual T* Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int stride, int num_surfs, T  *int_x_dw) = 0;
 
-    virtual T* gemm(const enum BlasTranspose transa, const enum BlasTranspose transb, int m, int n, int k, T alpha, 
-        const T *A, int lda, const T *B, int ldb, T beta, T *C, int ldc) = 0;
+    virtual T* gemm(const enum BlasTranspose transa, const enum BlasTranspose transb, const int m, const int n, const int k, const T alpha, 
+        const T *A, const int lda, const T *B, const int ldb, const T beta, T *C, const int ldc) = 0;
 
     virtual T* CircShift(const T *arr_in, int n_vecs, int vec_length, int shift, T *arr_out) = 0;
     
