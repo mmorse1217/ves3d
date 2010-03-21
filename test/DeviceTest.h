@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <math.h>
+#include <time.h>
 #include "Device.h"
 
 using namespace std;

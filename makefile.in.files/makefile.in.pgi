@@ -1,0 +1,40 @@
+CXX  = CC
+CC   = CC
+AR   = ar
+ARFLAGS = -r
+RANLIB = ranlib
+
+BLAS_INCLUDE=
+#-I/usr/local/apps/intel/mkl/10.0.3.020/include
+BLAS_LIBS=
+#-L/opt/xt-libsci/default/pgi/lib -Wl,libsci
+
+ifeq ($(USE_GPU),yes)
+		 CUDA_LIBS= -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
+		            $(CUDA_DIR)/lib64
+		 CUDA_INCLUDE=-I$(CUDA_DIR)/include
+else
+		CUDA_LIBS=
+		CUDA_INCLUDE=
+endif
+
+include ${VES3D_DIR}/makefile.in.files/makefile.in.common
+
+ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE)
+
+# overall flags used in the compilers
+CPPFLAGS = -g -fastsse -mp=nonuma  $(ALL_INCLUDE) -fPIC $(PREFLAGS)
+CUDAFLAGS =  ${ALL_INCLUDE} 
+LDFLAGS  = ${VES3D_LIBS} ${CUDA_LIBS} ${BLAS_LIBS}
+
+
+
+
+
+
+
+
+
+
+
+

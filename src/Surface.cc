@@ -390,20 +390,21 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     xyInv(w_, w_sph_, S1);
    
     //@todo #pragma omp parallel for 
+    int nvX3= 3*params_.n_surfs_;
     for(int ii=0;ii <= params_.p_; ++ii)
     {
         for(int jj=0;jj < 2 * params_.p_; ++jj)
         {
             device_.CircShift( all_rot_mats_ + ii * np * np, params_.p_ + 1, rot_chunck, jj * np, rot_mat);
             
-            device_.gemm(BlasNoTrans, BlasNoTrans, np, 3*params_.n_surfs_, np, 
-                alpha, rot_mat, np, x_.data_        , np, beta, V1.data_, np);
+            device_.gemm("N", "N", &np, &nvX3, &np, 
+			 &alpha,rot_mat, &np, x_.data_, &np, &beta, V1.data_, &np);
             
-            device_.gemm(BlasNoTrans, BlasNoTrans, np, 3*params_.n_surfs_, np, 
-                alpha, rot_mat, np, density_in.data_, np, beta, V2.data_, np);
+            device_.gemm("N", "N", &np, &nvX3, &np,
+			 &alpha,rot_mat,&np,density_in.data_,&np,&beta, V2.data_, &np);
             
-            device_.gemm(BlasNoTrans, BlasNoTrans, np,   params_.n_surfs_, np, 
-                alpha, rot_mat, np, S1.data_        , np, beta, S2.data_, np);
+            device_.gemm("N", "N", &np,&params_.n_surfs_, &np,
+			 &alpha, rot_mat, &np, S1.data_, &np, &beta, S2.data_, &np);
     
             xy(S2, w_sph_, S2);
             xvpb(S2, V2, (T) 0.0, V2);

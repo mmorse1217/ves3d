@@ -2,9 +2,8 @@
 
 TO build:
 # select the appropriate makefile.in
-cp makefile.in.files/makefile.in.machine .
+cp makefile.in.files/makefile.in.machine makefile.in.files/makefile.in
 # if necessary modify makefile for CXX flags and BLAS paths
-
 ./build.sh
 
 
