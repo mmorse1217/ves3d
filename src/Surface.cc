@@ -9,6 +9,7 @@
 template <typename T> 
 Surface<T>::Surface(Device<T> &device_in) :
     device_(device_in), 
+    max_n_surfs_(0),
     x_(device_),
     normal_(device_), 
     h_(device_), 
@@ -45,6 +46,7 @@ template <typename T>
 Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     device_(device_in), 
     params_(params_in),
+    max_n_surfs_(params_.n_surfs_),
     x_(device_,params_.p_,params_.n_surfs_),
     normal_(device_, params_.p_,params_.n_surfs_), 
     h_(device_,params_.p_,params_.n_surfs_), 
@@ -228,31 +230,56 @@ Surface<T>::~Surface()
 }
 
 template<typename T>
-Surface<T>::Resize(int n_surfs_in)
+void Surface<T>::Resize(int n_surfs_in)
 {
-    x_.Resize(n_srurfs_in);
-    normal_.Resize(n_surfs_in); 
-    h_.Resize(n_surfs_in); 
-    w_.Resize(n_surfs_in);
-    k_.Resize(n_surfs_in); 
-    cu_.Resize(n_surfs_in); 
-    cv_.Resize(n_surfs_in);
-    bending_force_.Resize(n_surfs_in);
-    tensile_force_.Resize(n_surfs_in);
-    S1.Resize(n_surfs_in);
-    S2.Resize(n_surfs_in);
-    S3.Resize(n_surfs_in);
-    S4.Resize(n_surfs_in); 
-    S5.Resize(n_surfs_in); 
-    S6.Resize(n_surfs_in);
-    V1.Resize(n_surfs_in);
-    V2.Resize(n_surfs_in);
-    V10.Resize(n_surfs_in); 
-    V11.Resize(n_surfs_in);
-    V12.Resize(n_surfs_in); 
-    V13.Resize(n_surfs_in);
-    S10.Resize(n_surfs_in);
-    w_sph_(n_surfs_in);
+    if(n_surfs_in > max_n_surfs_)
+    {
+        this->max_n_surfs_ = (int) (params_.resize_factor_ * (T) n_surfs_in);
+
+        x_.Resize(max_n_srurfs);
+        normal_.Resize(max_n_surfs_); 
+        cu_.Resize(max_n_surfs_); 
+        cv_.Resize(max_n_surfs_);
+        w_.Resize(max_n_surfs_);
+        h_.Resize(max_n_surfs_); 
+        k_.Resize(max_n_surfs_); 
+        bending_force_.Resize(max_n_surfs_);
+        tensile_force_.Resize(max_n_surfs_);
+        S1.Resize(max_n_surfs_);
+        S2.Resize(max_n_surfs_);
+        S3.Resize(max_n_surfs_);
+        S4.Resize(max_n_surfs_); 
+        S5.Resize(max_n_surfs_); 
+        S6.Resize(max_n_surfs_);
+        V1.Resize(max_n_surfs_);
+        V2.Resize(max_n_surfs_);
+        S10.Resize(max_n_surfs_);
+        V10.Resize(max_n_surfs_); 
+        V11.Resize(max_n_surfs_);
+        V12.Resize(max_n_surfs_); 
+        V13.Resize(max_n_surfs_);
+
+        device_.Free(shc);
+        shc = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.max_n_surfs_);
+
+        device_.Free(work_arr);
+        work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.max_n_surfs_);
+
+        T *tension_old(this->tension_);
+
+        data_ = device_.Malloc(max_n_funs_ * GetFunLength());
+        if(data_old != 0)
+            device_.Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
+        device_.Free(data_old);
+
+    tension_ = device_.Malloc(params_.n_surfs_);
+    vel = device_.Malloc(3*params_.n_surfs_);
+
+    w_sph_(max_n_surfs_);
+
+    device_.Memcpy(w_sph_.data_, buffer, np, MemcpyHostToDevice);
+    for(int ii=1;ii<params_.n_surfs_;++ii)
+        device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
 
 }
 template <typename T> 

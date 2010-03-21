@@ -20,6 +20,7 @@ struct SurfaceParams
 {
     int p_;
     int n_surfs_;
+    int resize_factor_;
     T kappa_;
     int filter_freq_;
     T rep_ts_;
@@ -38,6 +39,7 @@ ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
     output<<" ------------------------------------"<<endl;
     output<<"  p                 : "<<par.p_<<endl;
     output<<"  Number of surfaces: "<<par.n_surfs_<<endl;
+    output<<"  Resize factor     : "<<par.resize_factor_<<endl;
     output<<"  kappa             : "<<par.kappa_<<endl;
     output<<"  filter_freq       : "<<par.filter_freq_<<endl;
     output<<"  rep_ts            : "<<par.rep_ts_<<endl;
@@ -56,8 +58,10 @@ template <typename T> class Surface
     
     Device<T> &device_;
 
-    
     SurfaceParams<T> params_;
+    
+    int max_n_surfs_;
+    
     /** The vector holding the coordinates of the grid points,
      * supposing the Surface class, holds multiple surfaces, the order
      * will be \f$ \mathbf{x} = [X_1, Y_1, Z_1, \dots ,X_n, Y_n, Z_n],
@@ -152,8 +156,9 @@ template <typename T> class Surface
     T *shc, *work_arr, *alpha_p;
     
     //Work vectors for the up-sampling
-    Vectors<T> V10, V11, V12, V13;
     Scalars<T> S10;
+    Vectors<T> V10, V11, V12, V13;
+
     T *alpha_q;
 
     void UpdateNormal();
