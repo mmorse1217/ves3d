@@ -83,7 +83,6 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     all_rot_mats_ = device_.Malloc( np * np * (params_.p_ + 1));
     rot_mat = device_.Malloc(np * np);
     sing_quad_weights_ = device_.Malloc(np);
-    vel = device_.Malloc(3*params_.n_surfs_);
     
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
     //reading quadrature weights and rotation matrix form file
@@ -168,7 +167,6 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     all_rot_mats_ = device_.Malloc( np * np * (params_.p_ + 1));
     rot_mat = device_.Malloc(np * np);
     sing_quad_weights_ = device_.Malloc(np);
-    vel = device_.Malloc(3*params_.n_surfs_);
     
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
     //reading quadrature weights and rotation matrix form file
@@ -185,7 +183,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     sprintf(fname,"../data/all_rot_mats_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
     device_.Memcpy(buffer, all_rot_mats_, np * np *(params_.p_ + 1), MemcpyHostToDevice);
-    
+
     sprintf(fname,"../data/w_sph_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, w_sph_.data_, np, MemcpyHostToDevice);
@@ -225,68 +223,63 @@ Surface<T>::~Surface()
     device_.Free(all_rot_mats_);
     device_.Free(rot_mat);
     device_.Free(sing_quad_weights_);
-    device_.Free(vel);
     device_.Free(quad_weights_);
 }
 
 template<typename T>
 void Surface<T>::Resize(int n_surfs_in)
 {
+    x_.Resize(n_surfs_in);
+    normal_.Resize(n_surfs_in); 
+    cu_.Resize(n_surfs_in); 
+    cv_.Resize(n_surfs_in);
+    w_.Resize(n_surfs_in);
+    h_.Resize(n_surfs_in); 
+    k_.Resize(n_surfs_in); 
+    bending_force_.Resize(n_surfs_in);
+    tensile_force_.Resize(n_surfs_in);
+    S1.Resize(n_surfs_in);
+    S2.Resize(n_surfs_in);
+    S3.Resize(n_surfs_in);
+    S4.Resize(n_surfs_in); 
+    S5.Resize(n_surfs_in); 
+    S6.Resize(n_surfs_in);
+    V1.Resize(n_surfs_in);
+    V2.Resize(n_surfs_in);
+    S10.Resize(n_surfs_in);
+    V10.Resize(n_surfs_in); 
+    V11.Resize(n_surfs_in);
+    V12.Resize(n_surfs_in); 
+    V13.Resize(n_surfs_in);
+
     if(n_surfs_in > max_n_surfs_)
     {
-        this->max_n_surfs_ = (int) (params_.resize_factor_ * (T) n_surfs_in);
-
-        x_.Resize(max_n_srurfs);
-        normal_.Resize(max_n_surfs_); 
-        cu_.Resize(max_n_surfs_); 
-        cv_.Resize(max_n_surfs_);
-        w_.Resize(max_n_surfs_);
-        h_.Resize(max_n_surfs_); 
-        k_.Resize(max_n_surfs_); 
-        bending_force_.Resize(max_n_surfs_);
-        tensile_force_.Resize(max_n_surfs_);
-        S1.Resize(max_n_surfs_);
-        S2.Resize(max_n_surfs_);
-        S3.Resize(max_n_surfs_);
-        S4.Resize(max_n_surfs_); 
-        S5.Resize(max_n_surfs_); 
-        S6.Resize(max_n_surfs_);
-        V1.Resize(max_n_surfs_);
-        V2.Resize(max_n_surfs_);
-        S10.Resize(max_n_surfs_);
-        V10.Resize(max_n_surfs_); 
-        V11.Resize(max_n_surfs_);
-        V12.Resize(max_n_surfs_); 
-        V13.Resize(max_n_surfs_);
-
+        this->max_n_surfs_ = n_surfs_in;
         device_.Free(shc);
-        shc = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.max_n_surfs_);
-
+        shc = device_.Malloc(6  * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
+        
         device_.Free(work_arr);
-        work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.max_n_surfs_);
-
+        work_arr = device_.Malloc(12 * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
+        
         T *tension_old(this->tension_);
-
-        data_ = device_.Malloc(max_n_funs_ * GetFunLength());
-        if(data_old != 0)
-            device_.Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
-        device_.Free(data_old);
-
-    tension_ = device_.Malloc(params_.n_surfs_);
-    vel = device_.Malloc(3*params_.n_surfs_);
-
-    w_sph_(max_n_surfs_);
-
-    device_.Memcpy(w_sph_.data_, buffer, np, MemcpyHostToDevice);
-    for(int ii=1;ii<params_.n_surfs_;++ii)
-        device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
-
+        tension_ = device_.Malloc(max_n_surfs_);
+        if(tension_old != 0)
+            device_.Memcpy(tension_, tension_old, params_.n_surfs_, MemcpyDeviceToDevice);
+        device_.Free(tension_old);
+        
+        w_sph_.Resize(max_n_surfs_);
+        int np = 2 * params_.p_ * (params_.p_ + 1);
+        for(int ii=params_.n_surfs_;ii<max_n_surfs_;++ii)
+            device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
+    }
+    this->params_.n_surfs_ = n_surfs_in;
 }
+
 template <typename T> 
 void Surface<T>::SetX(const Vectors<T> &x_in)
 {
     x_.SetData(x_in.data_);
-    UpdateProps();
+    UpdateAll();
 }
 
 template <typename T> 
@@ -307,7 +300,7 @@ void Surface<T>::UpdateFirstForms()
 
     // Area element
     DotProduct(normal_, normal_, w_);//w = W^2 for now
-    
+
     // Dividing EFG by W^2
     xyInv(S1, w_, S1);
     xyInv(S2, w_, S2);
@@ -319,7 +312,7 @@ void Surface<T>::UpdateFirstForms()
 template <typename T> 
 void Surface<T>::UpdateAll()
 {
-    UpdateFirstForms();///@todo This may lead to a bug. Since there is no guarantee that E,S2,S3 hold their values.
+    UpdateFirstForms();///@todo This may lead to a bug. Since there is no guarantee that S1,S2,S3 hold their values.
 
     //Div and Grad coefficients
     xvpb(S2, V2, (T) 0.0, cu_);//F*xv

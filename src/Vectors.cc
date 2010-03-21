@@ -30,6 +30,7 @@ template<typename T>
 void Vectors<T>::Resize(int n_vecs_in)
 {
     Scalars<T>::Resize(3*n_vecs_in);
+    this->n_vecs_ = n_vecs_in;
 }
 
 template<typename T> 

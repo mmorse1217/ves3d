@@ -52,6 +52,7 @@ void Scalars<T>::Resize(int n_funs_in)
             device_.Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
         device_.Free(data_old);
     }
+    this->n_funs_ = n_funs_in;
 }
 
 template<typename T> 

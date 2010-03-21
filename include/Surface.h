@@ -20,7 +20,6 @@ struct SurfaceParams
 {
     int p_;
     int n_surfs_;
-    int resize_factor_;
     T kappa_;
     int filter_freq_;
     T rep_ts_;
@@ -39,7 +38,6 @@ ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
     output<<" ------------------------------------"<<endl;
     output<<"  p                 : "<<par.p_<<endl;
     output<<"  Number of surfaces: "<<par.n_surfs_<<endl;
-    output<<"  Resize factor     : "<<par.resize_factor_<<endl;
     output<<"  kappa             : "<<par.kappa_<<endl;
     output<<"  filter_freq       : "<<par.filter_freq_<<endl;
     output<<"  rep_ts            : "<<par.rep_ts_<<endl;
@@ -167,7 +165,6 @@ template <typename T> class Surface
     Scalars<T> w_sph_;
     T *rot_mat;
     T *sing_quad_weights_;
-    T *vel;
 };
 
 

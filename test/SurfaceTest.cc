@@ -24,7 +24,7 @@ int main(int argc, char ** argv)
     SurfaceParams<T> par;
     
     par.p_ = p;
-    par.n_surfs_ = nVec;
+    par.n_surfs_ = 1;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
     par.rep_ts_ = 1e-1;
@@ -42,10 +42,12 @@ int main(int argc, char ** argv)
     // initializing vesicle positions from text file
     myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
 
+    S.Resize(nVec);
     for(int ii=1;ii<nVec;ii++)
         for(int idx=0;idx<dLen;idx++)
             S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];
-        
+    S.UpdateAll();
+    
     for(int ii=0;ii<nVec;ii++)
         for(int idx=0;idx<fLen;idx++)
         {
@@ -53,13 +55,10 @@ int main(int argc, char ** argv)
             Y.data_[ ii*fLen + idx] = S.x_.data_[idx + fLen];
             Z.data_[ ii*fLen + idx] = S.x_.data_[idx + fLen + fLen];
         }
-
-    dLen *=nVec;
-    S.UpdateAll();
-    
     
     // Checking the grad and div operator
-    Scalars<T> div_n(cpu,p,nVec);
+    S.Resize(3); 
+    Scalars<T> div_n(cpu,p,3);
     S.SurfDiv(S.normal_, div_n);
     axpy((T) .5, div_n, S.h_,div_n);
         
@@ -71,6 +70,13 @@ int main(int argc, char ** argv)
     }
     cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
     
+    S.Resize(nVec);
+    for(int ii=1;ii<nVec;ii++)
+        for(int idx=0;idx<dLen;idx++)
+            S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];
+
+    dLen *=nVec;
+    S.UpdateAll();
     Vectors<T> grad(cpu,p,nVec), lap(cpu,p,nVec);
 
     S.SurfGrad(X,grad);
