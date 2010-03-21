@@ -9,6 +9,7 @@
 template <typename T> 
 Surface<T>::Surface(Device<T> &device_in) :
     device_(device_in), 
+    max_n_surfs_(0),
     x_(device_),
     normal_(device_), 
     h_(device_), 
@@ -45,6 +46,7 @@ template <typename T>
 Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     device_(device_in), 
     params_(params_in),
+    max_n_surfs_(params_.n_surfs_),
     x_(device_,params_.p_,params_.n_surfs_),
     normal_(device_, params_.p_,params_.n_surfs_), 
     h_(device_,params_.p_,params_.n_surfs_), 
@@ -82,7 +84,6 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     all_rot_mats_ = device_.Malloc( np * np * (params_.p_ + 1));
     rot_mat = device_.Malloc(np * np);
     sing_quad_weights_ = device_.Malloc(np);
-    vel = device_.Malloc(3*params_.n_surfs_);
     
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
     //reading quadrature weights and rotation matrix form file
@@ -167,7 +168,6 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     all_rot_mats_ = device_.Malloc( np * np * (params_.p_ + 1));
     rot_mat = device_.Malloc(np * np);
     sing_quad_weights_ = device_.Malloc(np);
-    vel = device_.Malloc(3*params_.n_surfs_);
     
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
     //reading quadrature weights and rotation matrix form file
@@ -184,7 +184,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     sprintf(fname,"../data/all_rot_mats_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
     device_.Memcpy(buffer, all_rot_mats_, np * np *(params_.p_ + 1), MemcpyHostToDevice);
-    
+
     sprintf(fname,"../data/w_sph_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, w_sph_.data_, np, MemcpyHostToDevice);
@@ -224,7 +224,6 @@ Surface<T>::~Surface()
     device_.Free(all_rot_mats_);
     device_.Free(rot_mat);
     device_.Free(sing_quad_weights_);
-    device_.Free(vel);
     device_.Free(quad_weights_);
 }
 
@@ -233,11 +232,11 @@ void Surface<T>::Resize(int n_surfs_in)
 {
     x_.Resize(n_surfs_in);
     normal_.Resize(n_surfs_in); 
-    h_.Resize(n_surfs_in); 
-    w_.Resize(n_surfs_in);
-    k_.Resize(n_surfs_in); 
     cu_.Resize(n_surfs_in); 
     cv_.Resize(n_surfs_in);
+    w_.Resize(n_surfs_in);
+    h_.Resize(n_surfs_in); 
+    k_.Resize(n_surfs_in); 
     bending_force_.Resize(n_surfs_in);
     tensile_force_.Resize(n_surfs_in);
     S1.Resize(n_surfs_in);
@@ -248,14 +247,35 @@ void Surface<T>::Resize(int n_surfs_in)
     S6.Resize(n_surfs_in);
     V1.Resize(n_surfs_in);
     V2.Resize(n_surfs_in);
+    S10.Resize(n_surfs_in);
     V10.Resize(n_surfs_in); 
     V11.Resize(n_surfs_in);
     V12.Resize(n_surfs_in); 
     V13.Resize(n_surfs_in);
-    S10.Resize(n_surfs_in);
-    w_sph_(n_surfs_in);
 
+    if(n_surfs_in > max_n_surfs_)
+    {
+        this->max_n_surfs_ = n_surfs_in;
+        device_.Free(shc);
+        shc = device_.Malloc(6  * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
+        
+        device_.Free(work_arr);
+        work_arr = device_.Malloc(12 * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
+        
+        T *tension_old(this->tension_);
+        tension_ = device_.Malloc(max_n_surfs_);
+        if(tension_old != 0)
+            device_.Memcpy(tension_, tension_old, params_.n_surfs_, MemcpyDeviceToDevice);
+        device_.Free(tension_old);
+        
+        w_sph_.Resize(max_n_surfs_);
+        int np = 2 * params_.p_ * (params_.p_ + 1);
+        for(int ii=params_.n_surfs_;ii<max_n_surfs_;++ii)
+            device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
+    }
+    this->params_.n_surfs_ = n_surfs_in;
 }
+
 template <typename T> 
 void Surface<T>::SetX(const Vectors<T> &x_in)
 {
@@ -281,7 +301,7 @@ void Surface<T>::UpdateFirstForms()
 
     // Area element
     DotProduct(normal_, normal_, w_);//w = W^2 for now
-    
+
     // Dividing EFG by W^2
     xyInv(S1, w_, S1);
     xyInv(S2, w_, S2);
@@ -293,7 +313,7 @@ void Surface<T>::UpdateFirstForms()
 template <typename T> 
 void Surface<T>::UpdateAll()
 {
-    UpdateFirstForms();///@todo This may lead to a bug. Since there is no guarantee that E,S2,S3 hold their values.
+    UpdateFirstForms();///@todo This may lead to a bug. Since there is no guarantee that S1,S2,S3 hold their values.
 
     //Div and Grad coefficients
     xvpb(S2, V2, (T) 0.0, cu_);//F*xv

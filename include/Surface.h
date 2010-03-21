@@ -56,8 +56,10 @@ template <typename T> class Surface
     
     Device<T> &device_;
 
-    
     SurfaceParams<T> params_;
+    
+    int max_n_surfs_;
+    
     /** The vector holding the coordinates of the grid points,
      * supposing the Surface class, holds multiple surfaces, the order
      * will be \f$ \mathbf{x} = [X_1, Y_1, Z_1, \dots ,X_n, Y_n, Z_n],
@@ -152,8 +154,9 @@ template <typename T> class Surface
     T *shc, *work_arr, *alpha_p;
     
     //Work vectors for the up-sampling
-    Vectors<T> V10, V11, V12, V13;
     Scalars<T> S10;
+    Vectors<T> V10, V11, V12, V13;
+
     T *alpha_q;
 
     void UpdateNormal();
@@ -162,7 +165,6 @@ template <typename T> class Surface
     Scalars<T> w_sph_;
     T *rot_mat;
     T *sing_quad_weights_;
-    T *vel;
 };
 
 

@@ -62,9 +62,6 @@ class Scalars
     /// memory. This may as well be different from n_funs_.
     int max_n_funs_;
     
-    /// The factor used to enlarge the allocated memory when resizing.
-    T resize_factor_;
-
   private:
     /** 
      * The declaration of the copy constructor, this is declared as
