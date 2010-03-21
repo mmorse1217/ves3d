@@ -4,19 +4,10 @@ AR   = ar
 ARFLAGS = -r
 RANLIB = ranlib
 
-BLAS=-L/usr/lib -lblas
-VESINCLUDE=-I${VES3D_DIR}/include 
-VESTEMPLATES=-I${VES3D_DIR}/src
-ALLINCLUDE=${VESINCLUDE} ${VESTEMPLATES}
+BLAS_LIBS=-L/usr/lib -lblas
 
-ifeq ($(USE_GPU),yes)
-	VES3D_GPU_LIBS=-lve3dgpu
-else
-	VES3D_GPU_LIBS=
-endif
-LIBS= -L${VES3D_DIR}/lib -lves3d ${VES3D_GPU_LIBS} ${BLAS}
+include ${VES3D_DIR}/makefile.in.files/makefile.in.common
 
-#LDFLAGS  =  -Wl,-rpath ${LIBS} 
-LDFLAGS  =  ${LIBS} 
-CPPFLAGS = -g -O3 -msse2  ${ALLINCLUDE} -DPROFILENGX -DDEBUG
+LDFLAGS  =  ${VES3D_LIBS} ${BLAS_LIBS}
+CPPFLAGS = -g -O3 -msse2  ${VES3D_INCLUDE} -DPROFILENGX -DDEBUG
 

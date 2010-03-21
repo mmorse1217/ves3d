@@ -1,6 +1,6 @@
 all:libves3.a
 
-include ${VES3D_DIR}/makefile.in
+include ${VES3D_DIR}/makefile.in.files/makefile.in
 LIB_SRC= BlasSht.cc 
 
 ifeq ($(USE_GPU),yes)
