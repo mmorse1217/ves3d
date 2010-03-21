@@ -1,7 +1,7 @@
 #ifndef _VESBLAS_H
 #define _VESBLAS_H
 
-
+//#include "mkl.h"
 
 extern "C"{
 #include <cblas.h>

@@ -3,7 +3,7 @@
 TO build:
 # select the appropriate makefile.in
 cp makefile.in.files/makefile.in.machine .
-# if necessary modify amkefile for CXX flags and BLAS paths
+# if necessary modify makefile for CXX flags and BLAS paths
 
 ./build.sh
 
