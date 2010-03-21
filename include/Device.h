@@ -29,9 +29,6 @@ inline bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs)
 ///The enum types for the memory copying action.
 enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, MemcpyDeviceToDevice};
 
-enum BlasTranspose{BlasNoTrans   = 111,  /* trans='N' */ 
-                   BlasTrans     = 112,  /* trans='T' */ 
-                   BlasConjTrans = 113}; /* trans='C' */ 
 
 /**
  *  This class provides memory operations and also device specific
@@ -111,8 +108,8 @@ template<typename T> class Device
     ///Smooth integral--reduction
     virtual T* Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int stride, int num_surfs, T  *int_x_dw) = 0;
 
-    virtual T* gemm(const enum BlasTranspose transa, const enum BlasTranspose transb, const int m, const int n, const int k, const T alpha, 
-        const T *A, const int lda, const T *B, const int ldb, const T beta, T *C, const int ldc) = 0;
+    virtual T* gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const T *alpha, 
+		    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc)=0;
 
     virtual T* CircShift(const T *arr_in, int n_vecs, int vec_length, int shift, T *arr_out) = 0;
     

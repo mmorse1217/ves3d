@@ -1023,47 +1023,34 @@ void DeviceCPU<T>::Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q)
 
 
 template<typename T>
-T* DeviceCPU<T>::gemm(const enum BlasTranspose transa, const enum BlasTranspose transb,
-    int m, int n, int k, T alpha, const T *A, int lda, const T *B, int ldb, T beta, T *C, int ldc)
+
+
+
+T* DeviceCPU<T>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const T *alpha, 
+		    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc)
 {
     cerr<<"gemm is not implemented for this data type"<<endl;
     abort();
 }
 
-template<>
-float* DeviceCPU<float>::gemm(const enum BlasTranspose transa, const enum BlasTranspose transb,
-    const int m, const int n, const int k, const float alpha, const float *A, const int lda, const float *B, const int ldb, const float beta, float *C, const int ldc)
-{
-    // enum types reference:
-    // enum CBLAS_ORDER { CblasRowMajor=101, /* row-major arrays */
-    //                    CblasColMajor=102}; /* column-major arrays */
-    
-    // enum CBLAS_TRANSPOSE { CblasNoTrans=111, /* trans='N' */ 
-    //                        CblasTrans=112, /* trans='T' */ 
-    //                        CblasConjTrans=113}; /* trans='C' */ 
 
-    
+
+template<>
+float* DeviceCPU<float>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const float *alpha, 
+			      const float *A, const int *lda, const float *B, const int *ldb, const float *beta, float *C, const int *ldc)
+{
 #ifndef NDEBUG
     cout<<"DeviceCPU::gemm"<<endl;
 #endif
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
-    CBLAS_TRANSPOSE ta = static_cast<CBLAS_TRANSPOSE>(transa);
-    CBLAS_TRANSPOSE tb = static_cast<CBLAS_TRANSPOSE>(transb);
-#ifndef NDEBUG
-    cout<<"DeviceCPU::gemm : transa = "<<transa<<", ta = "<<ta<<endl;
-    cout<<"DeviceCPU::gemm : transb = "<<transb<<", tb = "<<tb<<endl;
-#endif
-        
- cblas_sgemm(CblasColMajor, ta, tb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-//	 sgemm("N", "N", &m, &n, &k, &alpha, A, &lda, B, &ldb, &beta, C, &ldc);
+    sgemm(transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
     cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
 #endif
-
     return C;
 }
 

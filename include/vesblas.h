@@ -8,7 +8,7 @@ extern "C"{
 
 #ifndef HAS_MKL_LIB
 
-#include <cblas.h>
+  //#include <cblas.h>
 #define sgemm sgemm_
 extern "C"{
  void sgemm_(const char* TRANSA, const char* TRANSB,
