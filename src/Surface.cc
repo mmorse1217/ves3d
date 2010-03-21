@@ -260,7 +260,7 @@ template <typename T>
 void Surface<T>::SetX(const Vectors<T> &x_in)
 {
     x_.SetData(x_in.data_);
-		//GB:BUG  UpdateProps();
+    UpdateAll();
 }
 
 template <typename T> 
@@ -369,7 +369,7 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     
     xyInv(w_, w_sph_, S1);
    
-    ///@todo #pragma omp parallel for 
+    //@todo #pragma omp parallel for 
     for(int ii=0;ii <= params_.p_; ++ii)
     {
         for(int jj=0;jj < 2 * params_.p_; ++jj)

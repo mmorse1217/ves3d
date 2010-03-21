@@ -1,4 +1,4 @@
-all:ScalarsTest DeviceTest ExplicitStepper VectorsTest
+all:ScalarsTest DeviceTest ExplicitStepper VectorsTest SurfaceTest
 
 include ${VES3D_DIR}/makefile.in.files/makefile.in
 
@@ -6,6 +6,9 @@ ScalarsTest:
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
 VectorsTest: 
+	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
+SurfaceTest: 
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
 DeviceTest: 
@@ -17,7 +20,7 @@ ExplicitStepper:
 .PHONY: clean
 
 clean: 	
-	@-rm -f *.o *.out  
+	@-rm -f *.o *.exe
 
 
 #all:ScalarsTest  VectorsTest  DeviceTest AllTests SHTransTest ExplicitStepper
