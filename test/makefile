@@ -1,6 +1,6 @@
 all:ScalarsTest DeviceTest ExplicitStepper VectorsTest
 
-include ${VES3D_DIR}/makefile.in
+include ${VES3D_DIR}/makefile.in.files/makefile.in
 
 ScalarsTest: 
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 

@@ -4,23 +4,30 @@ AR   = ar
 ARFLAGS = -r
 RANLIB = ranlib
 
-MKLPATH  = /opt/intel/Compiler/11.1/059/mkl/lib/em64t
+BLAS_INCLUDE=-I/usr/local/apps/intel/mkl/10.0.3.020/include
+BLAS_LIBS = -L/opt/intel/Compiler/11.1/059/mkl/lib/em64t -Wl,--start-group \
+      -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group
 CUDA_DIR = /usr/local/cuda
 NVCC = $(CUDA_DIR)/bin/nvcc
 
-LDFLAGS  = -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
-$(CUDA_DIR)/lib64 -L$(MKLPATH) $(MKLPATH)/libmkl_solver_lp64.a        \
--Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core      \
--Wl,--end-group -openmp -lpthread -msse3
+ifeq ($(USE_GPU),yes)
+		 CUDA_LIBS= -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
+		            $(CUDA_DIR)/lib64
+		 CUDA_INCLUDE=-I$(CUDA_DIR)/include
+else
+		CUDA_LIBS=
+		CUDA_INCLUDE=
+endif
 
-CPPFLAGS = -g -O0 -I$(CUDA_DIR)/include                               \
--I/usr/local/apps/intel/mkl/10.0.3.020/include -I../include/          \
--I../src/ -fPIC -DPROFILINGX -DNDEBUG
+include ${VES3D_DIR}/makefile.in.files/makefile.in.common
 
-CUDAFLAGS =  -I../src/ -I../include/ -I$(CUDA_DIR)/include
+ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE)
+PREFLAGS=-DPROFILENGX -DNDEBUG -DHAS_MKL_LIB
 
-
-
+# overall flags used in the compilers
+CPPFLAGS = -g -O0 -openmp -msse3 $(ALL_INCLUDE) -fPIC $(PREFLAGS)
+CUDAFLAGS =  ${ALL_INCLUDE} 
+LDFLAGS  = ${VES3D_LIBS} ${CUDA_LIBS} ${BLAS_LIBS} -lpthread 
 
 
 
