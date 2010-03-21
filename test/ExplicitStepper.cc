@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     par.n_surfs_ = 100;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
-    par.rep_ts_ = 0.1;
+
     par.rep_max_vel_ = 1e-2;
     par.rep_iter_max_ = 10;
     par.rep_up_freq_ = 24;
