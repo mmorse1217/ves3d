@@ -77,7 +77,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     alpha_p  = device_.Malloc(params_.p_ *(params_.p_ + 2));
     alpha_q  = device_.Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2));
 
-    tension_ = device_.Malloc(params_.n_surfs_);
+    tension_ = device_.Calloc(params_.n_surfs_);
     
     int np = 2 * params_.p_ * (params_.p_ + 1);
     quad_weights_ = device_.Malloc(np);
@@ -388,9 +388,8 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     char fname[300];
     
     xyInv(w_, w_sph_, S1);
-   
-    //@todo #pragma omp parallel for 
-    int nvX3= 3*params_.n_surfs_;
+    int nvX3= 3*params_.n_surfs_;   
+
     for(int ii=0;ii <= params_.p_; ++ii)
     {
         for(int jj=0;jj < 2 * params_.p_; ++jj)

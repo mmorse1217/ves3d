@@ -19,7 +19,7 @@ struct timezone tzp;
 //Forward declaration for the friend function
 template<typename T> class Device;
 
-// ///The comparison operator for the device class
+// The comparison operator for the device class
 template<typename Tlhs, typename Trhs>
 inline bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs)
 {
@@ -29,7 +29,8 @@ inline bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs)
 ///The enum types for the memory copying action.
 enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, MemcpyDeviceToDevice};
 
-
+///The enum type for the reordering of the points
+enum CoordinateOrder {PointMajor, AxisMajor};
 /**
  *  This class provides memory operations and also device specific
  *  optimized kernels <b>[Note the notational conventions in the
@@ -115,7 +116,9 @@ template<typename T> class Device
     
     virtual void DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
         const T *qw, const T *trg, const T *src, const T *den, T *pot) = 0;
-        
+
+    virtual T* ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out) = 0;
+
     ///SHT size
     virtual void InitializeSHT(int p, int p_up) = 0;
     

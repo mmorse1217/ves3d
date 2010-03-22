@@ -1,6 +1,7 @@
 #include "DeviceCPU.h"
 #include "DataIO.h"
 #include "TimeStepper.h"
+#include "VesUtil.h"
 
 using namespace std;
 typedef float T;
@@ -13,7 +14,7 @@ int main(int argc, char **argv)
     par.n_surfs_ = 100;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
-
+    par.rep_ts_ = 0.1;
     par.rep_max_vel_ = 1e-2;
     par.rep_iter_max_ = 10;
     par.rep_up_freq_ = 24;
@@ -22,7 +23,12 @@ int main(int argc, char **argv)
     //Time stepping parameters
     T ts(1);
     int n_steps(5);
-
+    
+    //Background flow
+    T shear_rate = .1;
+    ShearFlow<T> flow_field;
+    flow_field.shear_rate_ = shear_rate;
+    
     //Setting up the device
     DeviceCPU<T> cpu_device;
 
@@ -47,12 +53,12 @@ int main(int argc, char **argv)
         for(int idx=0;idx<one_vec_length;idx++)
             vesicle.x_.data_[ii*one_vec_length + idx] = 3*ii + vesicle.x_.data_[idx];
     vesicle.UpdateAll();
-    
+
     //Time-stepper
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
-    TimeStepper<T> exp_stepper(ts, n_steps, vesicle);
+    TimeStepper<T> exp_stepper(ts, n_steps, vesicle, flow_field, &DirectInteraction);
     exp_stepper.EvolveInTime();
 
 #ifdef PROFILING

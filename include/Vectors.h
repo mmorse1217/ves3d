@@ -36,7 +36,6 @@ template<typename T>
 void uyInv(const Vectors<T>& u_in, const Scalars<T>& y_in, 
     Vectors<T> &uyInv_out); 
 
-
 /**
  * Three dimensional vectors fields with each component defined on the
  * sphere. The <i>"spherical calculus"</i> is the same as Scalars, but
@@ -110,10 +109,10 @@ class Vectors : public Scalars<T>
     friend void uyInv<T>(const Vectors<T>& u_in, 
         const Scalars<T>& y_in, Vectors<T> &uyInv_out); 
 
-  private:
     /// Number of vectors in the class.
     int n_vecs_;
-    
+
+  private:
     /** 
      * The declaration of the copy constructor, this is declared as
      * private so as to disallow any passing by value to

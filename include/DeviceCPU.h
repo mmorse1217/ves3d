@@ -63,6 +63,8 @@ class DeviceCPU : public Device<T>
     virtual void DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail,
         const T *qw, const T *trg, const T *src, const T *den, T *pot);
     
+    virtual T* ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
+;
     //SHT
     virtual void InitializeSHT(int p, int p_up);
 

@@ -37,7 +37,8 @@ class DeviceTest
     {
         bool test_result;
         test_result = TestMalloc() && TestCalloc() && TestMemcpy()&& TestDotProduct() && TestCrossProduct()
-            && TestxInv() && Testxy() && TestxyInv() && Testaxpy() && Testaxpb() && Testxvpw();
+            && TestxInv() && Testxy() && TestxyInv() && Testaxpy() && Testaxpb() && Testxvpw()
+            && TestShufflePoints();
         
         
         string res_print = (test_result) ? "Passed" : "Failed";
@@ -508,5 +509,53 @@ class DeviceTest
         }
         return res;
     }    
+
+    bool TestShufflePoints()
+    {
+        int stride = 11, num_vecs = 1;
+        int vec_length = 3*stride*num_vecs;
+
+        T* x = device_.Malloc(vec_length);
+        T* y = device_.Malloc(vec_length);
+
+        int idx;
+        for(int ii=0;ii<num_vecs;++ii)
+            for(int jj=0;jj<stride;jj++)
+            {                
+                idx = ii*3*stride + jj;
+                x[idx              ] = jj;
+                x[idx+stride       ] = jj;
+                x[idx+stride+stride] = jj;
+            }
+
+        device_.ShufflePoints(x, AxisMajor, stride, num_vecs, y);
+
+        T diff, err=0;
+        for(int ii=0;ii<num_vecs;++ii)
+            for(int jj=0;jj<stride;jj++)
+            {                
+                idx = ii*3*stride + 3*jj;
+                diff = fabs(y[idx] + y[++idx] + y[++idx] - 3*jj);
+                err = (diff>err) ? diff : err ;
+            }
+        bool res = (err<eps_) ? true : false;
+
+        device_.ShufflePoints(y, PointMajor, stride, num_vecs, x);
+
+        err=0;
+        for(int ii=0;ii<num_vecs;++ii)
+            for(int jj=0;jj<stride;jj++)
+            {                
+                idx = ii*3*stride + jj;
+                diff = fabs(x[idx] + x[idx+stride] + x[idx+stride+stride] - 3*jj);
+                err = (diff>err) ? diff : err ;
+            }
+
+        res = res && (err<eps_) ? true : false;
+        string res_print = (res) ? "Passed" : "Failed";
+        cout<<"* DeviceCPU::ShufflePoints : " + res_print + " *"<<endl;
+                
+        return res;
+    }
 };
 

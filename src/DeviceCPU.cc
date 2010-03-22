@@ -1023,11 +1023,8 @@ void DeviceCPU<T>::Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q)
 
 
 template<typename T>
-
-
-
 T* DeviceCPU<T>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const T *alpha, 
-		    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc)
+    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc)
 {
     cerr<<"gemm is not implemented for this data type"<<endl;
     abort();
@@ -1037,7 +1034,7 @@ T* DeviceCPU<T>::gemm(const char *transA, const char *transB, const int *m, cons
 
 template<>
 float* DeviceCPU<float>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const float *alpha, 
-			      const float *A, const int *lda, const float *B, const int *ldb, const float *beta, float *C, const int *ldc)
+    const float *A, const int *lda, const float *B, const int *ldb, const float *beta, float *C, const int *ldc)
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::gemm"<<endl;
@@ -1107,6 +1104,8 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
 #endif
 
     T tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+    
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
     for (int vt=0; vt<n_surfs; vt++)
     {
         for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
@@ -1359,3 +1358,57 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
 // #endif
 //     return;
 // }
+
+template<typename T>
+T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
+{
+
+    assert(x_out != x_in);
+        
+    int idx_in, idx_out;
+    T x, y, z;
+    if(order_in == AxisMajor)
+    {
+#pragma omp parallel for private(idx_in, idx_out, x, y, z)
+        for(int ii=0;ii<n_surfs;++ii)
+        {
+            idx_in  = 3*ii*stride;
+            idx_out = idx_in-1;
+                
+            for(int jj=0;jj<stride;++jj)
+            {
+                x = x_in[idx_in                   ];
+                y = x_in[idx_in + stride          ];
+                z = x_in[idx_in + stride + stride ];
+                idx_in++;
+                    
+                x_out[++idx_out] = x;
+                x_out[++idx_out] = y;
+                x_out[++idx_out] = z;
+            }
+        }
+    }
+    else
+    {
+#pragma omp parallel for private(idx_in, idx_out, x, y, z)
+        for(int ii=0;ii<n_surfs;++ii)
+        {
+            idx_out = 3*ii*stride;
+            idx_in  = idx_out-1;
+                
+            for(int jj=0;jj<stride;++jj)
+            {
+                x = x_in[++idx_in];
+                y = x_in[++idx_in];
+                z = x_in[++idx_in];
+                    
+                x_out[idx_out                   ];
+                x_out[idx_out + stride          ];
+                x_out[idx_out + stride + stride ];
+                idx_out++;
+            }
+        }
+    }
+    
+    return x_out;
+}
