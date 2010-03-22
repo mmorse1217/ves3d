@@ -10,14 +10,14 @@ int main(int argc, char **argv)
 {
     //Surface parameters
     SurfaceParams<T> par;
-    par.p_ = 12;
+    par.p_ = 6;
     par.n_surfs_ = 100;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
     par.rep_ts_ = 0.1;
     par.rep_max_vel_ = 1e-2;
     par.rep_iter_max_ = 10;
-    par.rep_up_freq_ = 24;
+    par.rep_up_freq_ = 6;
     par.rep_filter_freq_ = 4;
 
     //Time stepping parameters
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     //Reading initial positions
     DataIO<T> myIO;
     char fname[100];
-    sprintf(fname,"../data/dumbbell_cart%u_single.txt",par.p_);
+    sprintf(fname,"../precomputed/biconcave_ra95_%u",par.p_);
     myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
 
     //populate copies
