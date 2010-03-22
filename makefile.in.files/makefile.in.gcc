@@ -1,0 +1,70 @@
+CXX  = g++ 
+CC   = gcc
+AR   = ar
+ARFLAGS = -r
+RANLIB = ranlib
+
+BLAS_LIBS=/usr/lib64/libblas.so.3
+BLAS_INCLUDE=
+
+ifeq ($(USE_GPU),yes)
+		 CUDA_LIBS= -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
+		            $(CUDA_DIR)/lib64
+		 CUDA_INCLUDE=-I$(CUDA_DIR)/include
+else
+		CUDA_LIBS=
+		CUDA_INCLUDE=
+endif
+
+include ${VES3D_DIR}/makefile.in.files/makefile.in.common
+
+ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE)
+#PREFLAGS+= -DHAS_MKL_LIB
+
+# overall flags used in the compilers
+CPPFLAGS = -g -O3 -fopenmp -msse3 $(ALL_INCLUDE) -fPIC $(PREFLAGS)
+LDFLAGS  = ${VES3D_LIBS} ${CUDA_LIBS} ${BLAS_LIBS} -lpthread 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
