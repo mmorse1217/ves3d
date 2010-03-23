@@ -88,3 +88,15 @@ void uyInv(const Vectors<T>& u_in, const Scalars<T>& y_in,
 
     u_in.device_.uyInv(u_in.data_, y_in.data_, u_in.GetFunLength(), u_in.n_vecs_, uyInv_out.data_);
 }
+
+template<typename T> 
+void avpw(const T* a_in, const Vectors<T> &v_in, 
+    const Scalars<T> &w_in, Vectors<T> &avpw_out) 
+{
+    ///@todo there is no guarantee  that a_in is on the same device.
+    assert(v_in.GetDataLength() == w_in.GetDataLength() &&
+        w_in.GetDataLength() == avpw_out.GetDataLength());
+    assert(v_in.device_ == w_in.device_ && w_in.device_ == avpw_out.device_);
+
+    v_in.device_.avpw(a_in, v_in.data_, w_in.data_, v_in.GetFunLength(), v_in.n_vecs_, avpw_out.data_);
+}

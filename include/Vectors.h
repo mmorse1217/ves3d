@@ -36,6 +36,10 @@ template<typename T>
 void uyInv(const Vectors<T>& u_in, const Scalars<T>& y_in, 
     Vectors<T> &uyInv_out); 
 
+template<typename T> 
+void avpw(const T* a_in, const Vectors<T> &v_in, const Scalars<T> &w_in, 
+    Vectors<T> &avpw_out); 
+
 /**
  * Three dimensional vectors fields with each component defined on the
  * sphere. The <i>"spherical calculus"</i> is the same as Scalars, but
@@ -108,6 +112,10 @@ class Vectors : public Scalars<T>
     
     friend void uyInv<T>(const Vectors<T>& u_in, 
         const Scalars<T>& y_in, Vectors<T> &uyInv_out); 
+
+    friend void avpw<T>(const T* a_in, 
+        const Vectors<T> &v_in, const Scalars<T> &w_in, 
+        Vectors<T> &avpw_out); 
 
     /// Number of vectors in the class.
     int n_vecs_;

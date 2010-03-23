@@ -87,7 +87,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
     //reading quadrature weights and rotation matrix form file
-    DataIO<T> myIO;
+    DataIO<T> myIO(device_,"",0);
     char fname[300];
     sprintf(fname,"../data/quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
@@ -171,7 +171,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
     //reading quadrature weights and rotation matrix form file
-    DataIO<T> myIO;
+    DataIO<T> myIO(device_,"",0);;
     char fname[300];
     sprintf(fname,"../data/quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
@@ -383,9 +383,6 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     int rot_chunck = 2 * params_.p_ * np;
     T alpha(1.0), beta(0.0);
     int trg_idx(0);
-    
-    DataIO<T> myIO;
-    char fname[300];
     
     xyInv(w_, w_sph_, S1);
     int nvX3= 3*params_.n_surfs_;   

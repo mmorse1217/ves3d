@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     //Surface parameters
     SurfaceParams<T> par;
     par.p_ = 12;
-    par.n_surfs_ = 100;
+    par.n_surfs_ = 3;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
     par.rep_ts_ = 0.1;
@@ -21,8 +21,8 @@ int main(int argc, char **argv)
     par.rep_filter_freq_ = 4;
 
     //Time stepping parameters
-    T ts(1);
-    int n_steps(5);
+    T ts(1e-1);
+    int n_steps(400);
     
     //Background flow
     T shear_rate = .1;
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     Surface<T> vesicle(cpu_device, par);
     
     //Reading initial positions
-    DataIO<T> myIO;
+    DataIO<T> myIO(cpu_device,"testBuffer.txt", 5*data_length);
     char fname[100];
     sprintf(fname,"../data/dumbbell_cart%u_single.txt",par.p_);
     myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
@@ -52,13 +52,14 @@ int main(int argc, char **argv)
     for(int ii=1;ii<par.n_surfs_;ii++)
         for(int idx=0;idx<one_vec_length;idx++)
             vesicle.x_.data_[ii*one_vec_length + idx] = 3*ii + vesicle.x_.data_[idx];
+    
     vesicle.UpdateAll();
 
     //Time-stepper
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
-    TimeStepper<T> exp_stepper(ts, n_steps, vesicle, flow_field, &DirectInteraction);
+    TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, &DirectInteraction);
     exp_stepper.EvolveInTime();
 
 #ifdef PROFILING
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
     cout<<" The whole simulation (sec) : "<<ss<<endl;
 #endif
 
-    // save the final result
+    //save the final result
     sprintf(fname,"../data/cart%u_final.txt",par.p_);
     myIO.WriteData(fname,vesicle.x_.GetDataLength(),vesicle.x_.data_);
 }

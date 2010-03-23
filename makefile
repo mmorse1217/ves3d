@@ -8,6 +8,6 @@ docs:
 clean: 
 	-rm -rf *.o ./src/*.o  ./docs/latex ./docs/html 
 
-include makefiles/makefile.in
-include makefiles/makefile.in.common
+include makefile.in.files/makefile.in
+include makefile.in.files/makefile.in.common
 

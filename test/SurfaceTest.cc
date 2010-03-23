@@ -12,7 +12,7 @@ typedef float T;
 int main(int argc, char ** argv)
 {
     DeviceCPU<T> cpu;
-    DataIO<T> myIO;
+    DataIO<T> myIO(cpu,"",0);
 
     int p(12), nVec(5);
     cpu.InitializeSHT(p,2*p);
