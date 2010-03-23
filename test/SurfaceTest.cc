@@ -1,4 +1,4 @@
- #include <iostream>
+#include <iostream>
 #include "DeviceCPU.h"
 #include "DataIO.h"
 #include "Scalars.h"
@@ -14,7 +14,7 @@ int main(int argc, char ** argv)
     DeviceCPU<T> cpu;
     DataIO<T> myIO(cpu,"",0);
 
-    int p(12), nVec(5);
+    int p(6), nVec(5);
     cpu.InitializeSHT(p,2*p);
 
     int fLen(2*p*(p+1));
@@ -30,7 +30,7 @@ int main(int argc, char ** argv)
     par.rep_ts_ = 1e-1;
     par.rep_max_vel_ = 1e-1;
     par.rep_iter_max_ = 100;
-    par.rep_up_freq_ = 24;
+    par.rep_up_freq_ = 6;
     par.rep_filter_freq_ = 4;
 
     // memory allocation
@@ -40,7 +40,7 @@ int main(int argc, char ** argv)
     Scalars<T> Z(cpu,p,nVec);
     
     // initializing vesicle positions from text file
-    myIO.ReadData("../data/dumbbell_cart12_single.txt",dLen,S.x_.data_);
+    myIO.ReadData("../precomputed/biconcave_ra95_6",dLen,S.x_.data_);
 
     S.Resize(nVec);
     for(int ii=1;ii<nVec;ii++)

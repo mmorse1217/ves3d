@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     par.rep_ts_ = 0.1;
     par.rep_max_vel_ = 1e-2;
     par.rep_iter_max_ = 10;
-    par.rep_up_freq_ = 24;
+    par.rep_up_freq_ = 6;
     par.rep_filter_freq_ = 4;
 
     //Time stepping parameters
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     //Reading initial positions
     DataIO<T> myIO(cpu_device,"testBuffer.txt", 5*data_length);
     char fname[100];
-    sprintf(fname,"../data/dumbbell_cart%u_single.txt",par.p_);
+    sprintf(fname,"../precomputed/biconcave_ra95_%u",par.p_);
     myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
 
     //populate copies
@@ -68,6 +68,6 @@ int main(int argc, char **argv)
 #endif
 
     //save the final result
-    sprintf(fname,"../data/cart%u_final.txt",par.p_);
-    myIO.WriteData(fname,vesicle.x_.GetDataLength(),vesicle.x_.data_);
+//     sprintf(fname,"../data/cart%u_final.txt",par.p_);
+//     myIO.WriteData(fname,vesicle.x_.GetDataLength(),vesicle.x_.data_);
 }

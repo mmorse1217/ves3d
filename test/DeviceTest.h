@@ -64,7 +64,7 @@ class DeviceTest
 
     bool TestCalloc()
     {
-        int arr_size = 1e6;
+			int arr_size = int(1e6); 
         T* a = device_.Calloc(arr_size);
         T* b = (T*) malloc(arr_size * sizeof(T));
 
@@ -85,7 +85,7 @@ class DeviceTest
 
     bool TestMemcpy()
     {
-        int arr_size = 1e6;
+			int arr_size = int(1e6);
         T* a = device_.Malloc(arr_size);
         T* b = (T*) malloc(arr_size * sizeof(T));
 
