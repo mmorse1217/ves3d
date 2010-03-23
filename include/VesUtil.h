@@ -46,72 +46,79 @@ class ShearFlow : public VelField<T>
 
 // Interaction /////////////////////////////////////////////////////////////////
 template<typename T>
-void DirectInteraction(T *x_in, T *density_in, enum CoordinateOrder order, int np, T *vel_out)
+void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out)
 {
 #ifndef NDEBUG
     cout<<"DirectInteraction()"<<endl;
 #endif
+ 
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
+
+    int trg_idx, src_idx;
+    T px, py, pz, tx, ty, tz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
     
-    assert(order == PointMajor);
-
-    T tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-
-    int t_idx = 0, s_idx;
-    //#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, t_idx, s_idx)
-    for(int trg=0; trg<np; trg++)
-    {
-        tx = x_in[t_idx  ];
-        ty = x_in[t_idx+1];
-        tz = x_in[t_idx+2];
-        
-        px = 0;
-        py = 0;
-        pz = 0;
-        
-        s_idx = 0;
-        for(int src=0; src<np; src++)
+#pragma omp parallel for private(trg_idx, src_idx, px, py, pz, tx, ty, tz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
+    for(int ii=0;ii<n_surfs;++ii)
+        for(int jj=0;jj<stride;++jj) 
         {
-            dx  = x_in[s_idx]-tx; 
-            cpx = density_in[s_idx++];
-
-            dy=x_in[s_idx]-ty;
-            cpy = density_in[s_idx++];
-
-            dz=x_in[s_idx]-tz;
-            cpz = density_in[s_idx++];
-
-            if(s_idx>936)
-                cerr<<"S "<<s_idx<<endl;
-
-            invR = dx*dx;
-            invR+= dy*dy;
-            invR+= dz*dz;
-                
-            if (invR!=0)
-                invR = 1.0/sqrt(invR);
-            
-            cc  = dx*cpx;
-            cc += dy*cpy;
-            cc += dz*cpz;
-            cc *= invR;
-            cc *= invR;
-
-            cpx += cc*dx;
-            cpy += cc*dy;
-            cpz += cc*dz;
-                
-            px += cpx*invR;
-            py += cpy*invR;
-            pz += cpz*invR;
-        }
-        vel_out[t_idx++] = px;
-        vel_out[t_idx++] = py;
-        vel_out[t_idx++] = pz;
+            trg_idx = 3*ii*stride + jj;
         
-        if(t_idx>936)
-            cerr<<"T "<<t_idx<<endl;
+            px = 0;
+            py = 0;
+            pz = 0;
+            
+            tx=x_in[trg_idx                   ];
+            ty=x_in[trg_idx + stride          ];
+            tz=x_in[trg_idx + stride + stride ];
+            
 
-    }
-};
+            for(int kk=0;kk<n_surfs;++kk)
+                for(int ll=0;ll<stride;++ll) 
+                {
+                    src_idx = 3*kk*stride + ll;
+                    
+                    dx=x_in[src_idx                  ]-tx;
+                    dy=x_in[src_idx + stride         ]-ty;
+                    dz=x_in[src_idx + stride + stride]-tz;
+                    
+                    invR = dx*dx;
+                    invR+= dy*dy;
+                    invR+= dz*dz;
+                
+                    if (invR!=0)
+                        invR = 1.0/sqrt(invR);
+                    
+                    cpx = density_in[src_idx                  ];
+                    cpy = density_in[src_idx + stride         ];
+                    cpz = density_in[src_idx + stride + stride];
+                
+                    cc  = dx*cpx;
+                    cc += dy*cpy;
+                    cc += dz*cpz;
+                    cc *= invR;
+                    cc *= invR;
+
+                    cpx += cc*dx;
+                    cpy += cc*dy;
+                    cpz += cc*dz;
+                
+                    px += cpx*invR;
+                    py += cpy*invR;
+                    pz += cpz*invR;
+                }
+            
+            vel_out[trg_idx                   ] = px;
+            vel_out[trg_idx + stride          ] = py;
+            vel_out[trg_idx + stride + stride ] = pz;
+        }
+
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+#endif
+    return;
+}
 
 #endif //_VESUTIL_H_ 

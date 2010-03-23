@@ -602,10 +602,10 @@ void  DeviceCPU<T>::InitializeSHT(int p, int p_up)
     d1_leg_trans   = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
     d2_leg_trans   = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
 
-    sprintf(leg_trans_fname    ,   "../data/legTrans%u_single.txt",p_);
-    sprintf(leg_trans_inv_fname,"../data/legTransInv%u_single.txt",p_);
-    sprintf(d1_leg_trans_fname , "../data/d1legTrans%u_single.txt",p_);
-    sprintf(d2_leg_trans_fname , "../data/d2legTrans%u_single.txt",p_);
+    sprintf(leg_trans_fname    ,   "../precomputed/legTrans%u_single.txt",p_);
+    sprintf(leg_trans_inv_fname,"../precomputed/legTransInv%u_single.txt",p_);
+    sprintf(d1_leg_trans_fname , "../precomputed/d1legTrans%u_single.txt",p_);
+    sprintf(d2_leg_trans_fname , "../precomputed/d2legTrans%u_single.txt",p_);
 
     sht_.InitializeBlasSht(p_, leg_trans_fname, leg_trans_inv_fname, 
         d1_leg_trans_fname, d2_leg_trans_fname, 
@@ -624,10 +624,10 @@ void  DeviceCPU<T>::InitializeSHT(int p, int p_up)
     d1_leg_trans   = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
     d2_leg_trans   = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
 
-    sprintf(leg_trans_fname    ,   "../data/legTrans%u_single.txt",p_up_);
-    sprintf(leg_trans_inv_fname,"../data/legTransInv%u_single.txt",p_up_);
-    sprintf(d1_leg_trans_fname , "../data/d1legTrans%u_single.txt",p_up_);
-    sprintf(d2_leg_trans_fname , "../data/d2legTrans%u_single.txt",p_up_);
+    sprintf(leg_trans_fname    ,   "../precomputed/legTrans%u_single.txt",p_up_);
+    sprintf(leg_trans_inv_fname,"../precomputed/legTransInv%u_single.txt",p_up_);
+    sprintf(d1_leg_trans_fname , "../precomputed/d1legTrans%u_single.txt",p_up_);
+    sprintf(d2_leg_trans_fname , "../precomputed/d2legTrans%u_single.txt",p_up_);
 
     sht_up_sample_.InitializeBlasSht(p_up_, leg_trans_fname, leg_trans_inv_fname, 
         d1_leg_trans_fname, d2_leg_trans_fname, 

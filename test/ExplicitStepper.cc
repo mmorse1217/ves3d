@@ -8,21 +8,23 @@ typedef float T;
 
 int main(int argc, char **argv)
 {
+    //    int n_lattice = 4;
+
     //Surface parameters
     SurfaceParams<T> par;
     par.p_ = 12;
-    par.n_surfs_ = 3;
+    par.n_surfs_ = 2;//n_lattice * n_lattice * n_lattice;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
-    par.rep_ts_ = 0.1;
-    par.rep_max_vel_ = 1e-2;
-    par.rep_iter_max_ = 10;
-    par.rep_up_freq_ = 6;
+    par.rep_ts_ = 1e-1;
+    par.rep_max_vel_ = 5e-4;
+    par.rep_iter_max_ = 50;
+    par.rep_up_freq_ = 24;
     par.rep_filter_freq_ = 4;
 
     //Time stepping parameters
-    T ts(1e-1);
-    int n_steps(400);
+    T ts(2e-2); //1e-2 works for single, 
+    int n_steps(2000);
     
     //Background flow
     T shear_rate = .1;
@@ -42,17 +44,30 @@ int main(int argc, char **argv)
     //Setting up the surface
     Surface<T> vesicle(cpu_device, par);
     
-    //Reading initial positions
-    DataIO<T> myIO(cpu_device,"testBuffer.txt", 5*data_length);
+    //Reading initial shape to the first vesicle
+    DataIO<T> myIO(cpu_device,"Positions.txt", 2*data_length);
     char fname[100];
     sprintf(fname,"../precomputed/biconcave_ra95_%u",par.p_);
+    //sprintf(fname,"../precomputed/dumbbell_cart%u_single.txt",par.p_);
     myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
 
     //populate copies
-    for(int ii=1;ii<par.n_surfs_;ii++)
-        for(int idx=0;idx<one_vec_length;idx++)
-            vesicle.x_.data_[ii*one_vec_length + idx] = 3*ii + vesicle.x_.data_[idx];
+    T centers[6] ={0, 0, 0,
+                   2.2,0, 0};
+//    T *centers = (T*) malloc(3*par.n_surfs_ * sizeof(T));
+
+//     for(int ii=0;ii<n_lattice;ii++)
+//         for(int jj=0;jj<n_lattice;jj++)
+//             for(int kk=0;kk<n_lattice;kk++)
+//             {
+//                 int idx = ii * n_lattice * n_lattice + jj * n_lattice + kk;
+//                 centers[3*idx  ] = 1.2 * kk;
+//                 centers[3*idx+1] = 2.2 * jj;
+//                 centers[3*idx+2] = 2.2 * ii - ((n_lattice-1) * 2.2/2);
+//             }
     
+    vesicle.Populate(centers);
+    //free(centers);
     vesicle.UpdateAll();
 
     //Time-stepper
@@ -67,7 +82,4 @@ int main(int argc, char **argv)
     cout<<" The whole simulation (sec) : "<<ss<<endl;
 #endif
 
-    //save the final result
-//     sprintf(fname,"../data/cart%u_final.txt",par.p_);
-//     myIO.WriteData(fname,vesicle.x_.GetDataLength(),vesicle.x_.data_);
 }

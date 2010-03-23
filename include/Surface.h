@@ -147,6 +147,8 @@ template <typename T> class Surface
 
     void Resize(int n_surfs_in);
 
+    void Populate(const T *centers);
+
   public://private:
     //Work space
     Scalars<T> S1, S2, S3, S4, S5, S6;
