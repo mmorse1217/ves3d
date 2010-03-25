@@ -66,9 +66,11 @@ class TimeStepper
 
             //Interaction
             avpw(vesicle_.tension_, vesicle_.tensile_force_, vesicle_.bending_force_, vel_tension_);
+
             //vel_tension_ holds the interaction force
             xvpb(vesicle_.w_,vel_tension_, (T) 0.0, vel_tension_);
             axpb((T) (PI_8I), vel_tension_, (T) 0.0, vel_tension_);
+            
 
             //up-sampling x_ to V10
             vesicle_.device_.ShAna(vesicle_.x_.data_, vesicle_.work_arr, vesicle_.params_.p_, 
@@ -117,6 +119,7 @@ class TimeStepper
             vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
                 3*vesicle_.params_.n_surfs_, velocity_.data_);
 
+            fileIO.WriteData("V1",vel_tension_.GetDataLength(), velocity_.data_);
             //Filtering
             //vesicle_.device_.Filter(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_, 
             //    velocity_.data_, vesicle_.alpha_p, vesicle_.work_arr, vesicle_.shc, velocity_.data_);
@@ -144,7 +147,7 @@ class TimeStepper
             vesicle_.Reparam();
 
             if((100*(idx+1))%n_steps_ == 0)
-                 fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
+                fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
         }
     };
 };

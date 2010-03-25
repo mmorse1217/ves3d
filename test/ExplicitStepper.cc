@@ -2,14 +2,17 @@
 #include "DataIO.h"
 #include "TimeStepper.h"
 #include "VesUtil.h"
+//#include "Logger.h"
 #include <cmath>
 
 using namespace std;
 typedef float T;
 
+// unsigned long int Logger::Mflop_count_ = 0;
+// const enum LogLevel Logger::the_log_level_ = FlopCount;
+
 int main(int argc, char *argv[])
 {
-
     //Reading parameters from file
     AllParams<T> all_par;   
     all_par = ParserLite<AllParams<T> >("ExplicitStepper.conf");
@@ -83,4 +86,5 @@ int main(int argc, char *argv[])
     cout<<" The whole simulation (sec) : "<<ss<<endl;
 #endif
 
+    Logger::TearDown();
 }

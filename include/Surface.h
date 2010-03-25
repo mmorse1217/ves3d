@@ -14,6 +14,7 @@
 #include "Vectors.h"
 #include "DataIO.h"
 #include "VesUtil.h"
+#include "Logger.h"
 #include <map>
 
 template <typename T>
