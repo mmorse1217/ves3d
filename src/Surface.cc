@@ -462,7 +462,8 @@ void Surface<T>::Reparam()
         xvpw(S10, V13, V11, V11);//The correction velocity
         axpy(params_.rep_ts_, V11, V10, V10);
 
-        DotProduct(V11,V11,S10);//@todo seems extra because we work with singles now
+        DotProduct(V11,V11,S10);
+        ///@todo The error should be relative
         vel = S10.Max();
 #ifndef NDEBUGX
         cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;

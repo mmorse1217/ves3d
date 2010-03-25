@@ -138,7 +138,7 @@ class TimeStepper
         
             vesicle_.Reparam();
 
-            if((40*(idx+1))%n_steps_ == 0)
+            if((100*(idx+1))%n_steps_ == 0)
                  fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
         }
     };

@@ -2,12 +2,51 @@
 #include "DataIO.h"
 #include "TimeStepper.h"
 #include "VesUtil.h"
-
+#include <cmath>
 using namespace std;
 typedef float T;
 
 int main(int argc, char **argv)
 {
+//     int n_surfs = 1;
+//     int stride = 100;
+//     int np = stride * n_surfs;
+
+//     float *x_in = new float[3*np];
+//     float *density = new float[3*np];
+//     float *vel_out = new float[3*np];
+
+//     for(int ii=0;ii<n_surfs;++ii)
+//         for(int jj=0;jj<stride;++jj)
+//         {
+//             int idx = 3*ii*stride + jj;
+//             int m = ii*stride + jj;
+//             x_in[idx           ] = cos((2*M_PI*m)/np);
+//             x_in[idx +   stride] = sin((2*M_PI*m)/np);
+//             x_in[idx + 2*stride] = 0;
+            
+//             density[idx           ] = cos((2*M_PI*m)/np);
+//             density[idx +   stride] = sin((2*M_PI*m)/np);
+//             density[idx + 2*stride] = 0;
+
+//         }
+    
+//     DirectInteraction(x_in, x_in, stride, n_surfs, vel_out);
+
+//     for(int ii=0;ii<n_surfs;++ii)
+//         for(int jj=0;jj<stride;++jj)
+//         {
+//             int idx = 3*ii*stride + jj;
+//             //printf("%2.4f\t %2.4f\t %2.4f\t\n", vel_out[idx],vel_out[idx + stride],vel_out[idx + 2*stride]);
+//             cout<<vel_out[idx] * vel_out[idx] + vel_out[idx + stride] * vel_out[idx + stride]<<endl;
+//         }
+    
+//     delete[] x_in;
+//     delete[] density;
+//     delete[] vel_out;
+
+//     return 0;
+
     //    int n_lattice = 4;
 
     //Surface parameters
@@ -16,15 +55,15 @@ int main(int argc, char **argv)
     par.n_surfs_ = 2;//n_lattice * n_lattice * n_lattice;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
-    par.rep_ts_ = 1e-1;
+    par.rep_ts_ = 5e-2;
     par.rep_max_vel_ = 5e-4;
-    par.rep_iter_max_ = 50;
+    par.rep_iter_max_ = 100;
     par.rep_up_freq_ = 24;
     par.rep_filter_freq_ = 4;
 
     //Time stepping parameters
-    T ts(2e-2); //1e-2 works for single, 
-    int n_steps(2000);
+    T ts(1e-2); //1e-2 works for single, 
+    int n_steps(20000);
     
     //Background flow
     T shear_rate = .1;
@@ -45,15 +84,15 @@ int main(int argc, char **argv)
     Surface<T> vesicle(cpu_device, par);
     
     //Reading initial shape to the first vesicle
-    DataIO<T> myIO(cpu_device,"Positions.txt", 2*data_length);
+    DataIO<T> myIO(cpu_device,"Positions7.txt", data_length);
     char fname[100];
     sprintf(fname,"../precomputed/biconcave_ra95_%u",par.p_);
     //sprintf(fname,"../precomputed/dumbbell_cart%u_single.txt",par.p_);
     myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
 
     //populate copies
-    T centers[6] ={0, 0, 0,
-                   2.2,0, 0};
+    T centers[6] ={0, .5, 0,
+                   3,0, 0};
 //    T *centers = (T*) malloc(3*par.n_surfs_ * sizeof(T));
 
 //     for(int ii=0;ii<n_lattice;ii++)
