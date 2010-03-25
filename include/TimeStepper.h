@@ -108,9 +108,7 @@ class TimeStepper
             vesicle_.device_.ShAna(vesicle_.V13.data_, vesicle_.work_arr, vesicle_.params_.rep_up_freq_, 
                 3*vesicle_.params_.n_surfs_, vesicle_.V11.data_);
             
-            //vesicle_.device_.Filter(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_, 
-            //    velocity_.data_, vesicle_.alpha_p, vesicle_.work_arr, vesicle_.shc, velocity_.data_);
-
+            //filtering to 1/3
             vesicle_.device_.ScaleFreqs(vesicle_.params_.rep_up_freq_, 3*vesicle_.params_.n_surfs_, 
                 vesicle_.V11.data_, vesicle_.alpha_q, vesicle_.V11.data_);
 
