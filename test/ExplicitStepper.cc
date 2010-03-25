@@ -10,8 +10,8 @@ int main(int argc, char **argv)
 {
     //Surface parameters
     SurfaceParams<T> par;
-    par.p_ = 12;
-    par.n_surfs_ = 3;
+    par.p_ = 6;
+    par.n_surfs_ = 10;
     par.kappa_ = 1e-2;
     par.filter_freq_ = 8;
     par.rep_ts_ = 0.1;
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     //Reading initial positions
     DataIO<T> myIO(cpu_device,"testBuffer.txt", 5*data_length);
     char fname[100];
-    sprintf(fname,"../precomputed/biconcave_ra95_%u",par.p_);
+    sprintf(fname,"%s/precomputed/biconcave_ra95_%u",getenv("VES3D_DIR"),par.p_);
     myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
 
     //populate copies
