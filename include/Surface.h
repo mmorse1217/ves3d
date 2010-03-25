@@ -13,7 +13,8 @@
 #include "Scalars.h"
 #include "Vectors.h"
 #include "DataIO.h"
-#include <iostream>
+#include "VesUtil.h"
+#include <map>
 
 template <typename T>
 struct SurfaceParams 
@@ -27,28 +28,15 @@ struct SurfaceParams
     int rep_iter_max_;
     int rep_up_freq_;
     int rep_filter_freq_;
+    
+    SurfaceParams();
+    void SetMember(string var_name, string var_val);
+
+  private:
+    map<string, int> mapStringValues;
+
 };
 
-template<typename T>
-ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
-{
-    
-    output<<"\n ------------------------------------"<<endl;
-    output<<"  Surface properties"<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  p                 : "<<par.p_<<endl;
-    output<<"  Number of surfaces: "<<par.n_surfs_<<endl;
-    output<<"  kappa             : "<<par.kappa_<<endl;
-    output<<"  filter_freq       : "<<par.filter_freq_<<endl;
-    output<<"  rep_ts            : "<<par.rep_ts_<<endl;
-    output<<"  rep_max_iter      : "<<par.rep_iter_max_<<endl;
-    output<<"  rep_max_vel       : "<<par.rep_max_vel_<<endl;
-    output<<"  rep_up_freq       : "<<par.rep_up_freq_<<endl;
-    output<<"  rep_filter_freq   : "<<par.rep_filter_freq_<<endl;
-    output<<" ------------------------------------"<<endl<<endl;
-    
-    return output;
-}    
 
 template <typename T> class Surface
 {
