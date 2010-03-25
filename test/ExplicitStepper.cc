@@ -87,5 +87,5 @@ int main(int argc, char *argv[])
     cout<<" The whole simulation (sec) : "<<ss<<endl;
 #endif
 
-    Logger::TearDown();
+    //    Logger::TearDown();
 }
