@@ -1,4 +1,7 @@
  *.[oa]
  *~
  *.out
- etc/
+ *.exe
+ *.txt 
+ etc/  
+ precomputed/

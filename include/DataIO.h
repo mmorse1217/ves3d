@@ -13,7 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include "Device.h"
-
+#include <string>
 /**
  * A simple data I/O class tailored for this project. It reads data
  * from and writes data to file. 
@@ -25,11 +25,11 @@ class DataIO
     T* buffer_;
     int buffer_size_;
     int used_buffer_;
-    const char* file_name_;
+    string file_name_;
     Device<T> &device_;
 
   public:
-    DataIO(Device<T> &device_in, const char *file_name_in, int buffer_size_in);
+    DataIO(Device<T> &device_in, string file_name_in, int buffer_size_in);
     
     ~DataIO();
     
@@ -92,7 +92,7 @@ bool DataIO<T>::WriteData(const char* file_name_in,
 }
 
 template<typename T>
-DataIO<T>::DataIO(Device<T> &device_in, const char *file_name_in, int buffer_size_in) :
+DataIO<T>::DataIO(Device<T> &device_in, string file_name_in, int buffer_size_in) :
     buffer_(0),
     buffer_size_(buffer_size_in),
     used_buffer_(0),
@@ -149,7 +149,7 @@ bool DataIO<T>::FlushBuffer()
 
     if(buffer_ !=0 && used_buffer_ > 0)
     {
-        bool res = WriteData(file_name_, used_buffer_, buffer_, ios::app);
+        bool res = WriteData(file_name_.c_str(), used_buffer_, buffer_, ios::app);
         used_buffer_ = 0;
         return(res);
     }

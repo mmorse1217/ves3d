@@ -6,6 +6,115 @@
  * @brief  The implementation of the surface class.
  */
 
+// The parameter struct methods
+template<typename T>
+SurfaceParams<T>::SurfaceParams()
+{
+    this->mapStringValues["p"]               = 1;
+    this->mapStringValues["n_surfs"]         = 2;
+    this->mapStringValues["kappa"]           = 3;
+    this->mapStringValues["filter_freq"]     = 4;
+    this->mapStringValues["rep_ts"]          = 5;
+    this->mapStringValues["rep_max_vel"]     = 6;
+    this->mapStringValues["rep_iter_max"]    = 7;
+    this->mapStringValues["rep_up_freq"]     = 8;
+    this->mapStringValues["rep_filter_freq"] = 9;
+}
+
+template<typename T>
+void SurfaceParams<T>::SetMember(string var_name, string var_val)
+{
+    char *cstr = new char [var_val.size()+1];
+    float val_num;
+    
+    switch (this->mapStringValues[var_name])
+    {
+        case 1:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->p_ = val_num;
+            break;
+
+        case 2:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->n_surfs_ = val_num;
+            break;
+
+        case 3:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->kappa_ = val_num;
+            break;
+
+        case 4:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->filter_freq_ = val_num;
+            break;
+
+        case 5:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->rep_ts_ = val_num;
+            break;
+
+        case 6:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->rep_max_vel_ = val_num;
+            break;
+
+        case 7:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->rep_iter_max_ = val_num;
+            break;
+    
+        case 8:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->rep_up_freq_ = val_num;
+            break;
+
+        case 9:
+            strcpy(cstr, var_val.c_str());
+            sscanf(cstr," %g",&val_num);
+            this->rep_filter_freq_ = val_num;
+            break;
+
+        default:
+            cout << "'" << var_name
+                 << "' is an invalid parameter."
+                 << endl;
+            
+            break;
+    }
+    delete cstr;
+}
+
+template<typename T>
+ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
+{
+    
+    output<<"\n ------------------------------------"<<endl;
+    output<<"  Surface properties"<<endl;
+    output<<" ------------------------------------"<<endl;
+    output<<"  p                 : "<<par.p_<<endl;
+    output<<"  Number of surfaces: "<<par.n_surfs_<<endl;
+    output<<"  kappa             : "<<par.kappa_<<endl;
+    output<<"  filter_freq       : "<<par.filter_freq_<<endl;
+    output<<"  rep_ts            : "<<par.rep_ts_<<endl;
+    output<<"  rep_max_iter      : "<<par.rep_iter_max_<<endl;
+    output<<"  rep_max_vel       : "<<par.rep_max_vel_<<endl;
+    output<<"  rep_up_freq       : "<<par.rep_up_freq_<<endl;
+    output<<"  rep_filter_freq   : "<<par.rep_filter_freq_<<endl;
+    output<<" ------------------------------------"<<endl<<endl;
+    
+    return output;
+}    
+
+//Surface methods
 template <typename T> 
 Surface<T>::Surface(Device<T> &device_in) :
     device_(device_in), 
@@ -173,19 +282,19 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     //reading quadrature weights and rotation matrix form file
     DataIO<T> myIO(device_,"",0);;
     char fname[300];
-    sprintf(fname,"../data/quad_weights_%u_single.txt",params_.p_);
+    sprintf(fname,"../precomputed/quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, quad_weights_, np, MemcpyHostToDevice);
 
-    sprintf(fname,"../data/sing_quad_weights_%u_single.txt",params_.p_);
+    sprintf(fname,"../precomputed/sing_quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, sing_quad_weights_, np, MemcpyHostToDevice);
     
-    sprintf(fname,"../data/all_rot_mats_%u_single.txt",params_.p_);
+    sprintf(fname,"../precomputed/all_rot_mats_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
     device_.Memcpy(buffer, all_rot_mats_, np * np *(params_.p_ + 1), MemcpyHostToDevice);
 
-    sprintf(fname,"../data/w_sph_%u_single.txt",params_.p_);
+    sprintf(fname,"../precomputed/w_sph_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, w_sph_.data_, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
@@ -444,14 +553,14 @@ template <typename T>
 void Surface<T>::Reparam()
 {
     int iter = 0;
-    T vel;
+    T vel = 2*params_.rep_max_vel_;
 
     device_.ShAna(x_.data_, work_arr, params_.p_, 3*params_.n_surfs_, V10.data_);
     device_.Resample(params_.p_, 3*params_.n_surfs_, params_.rep_up_freq_, V10.data_, shc);
     device_.ShSyn(shc, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V10.data_);
 
     //upsample
-    while(iter++ < params_.rep_iter_max_)
+    while(iter++ < params_.rep_iter_max_ && vel > params_.rep_max_vel_ * params_.rep_max_vel_)
     {
         UpdateNormal();///@todo shc may have changed
         device_.Filter(params_.rep_up_freq_, 3*params_.n_surfs_, V10.data_, alpha_q, work_arr, shc, V11.data_);
@@ -462,10 +571,11 @@ void Surface<T>::Reparam()
         xvpw(S10, V13, V11, V11);//The correction velocity
         axpy(params_.rep_ts_, V11, V10, V10);
 
-#ifndef NDEBUG
-        DotProduct(V11,V11,S10);//@todo seems extra because we work with singles now
+        DotProduct(V11,V11,S10);
+        ///@todo The error should be relative
         vel = S10.Max();
-        cout<<" Iteration"<<iter<<", reparam max vel: "<<vel<<endl;
+#ifndef NDEBUGX
+        cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;
 #endif
     }
     device_.ShAna(V10.data_, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V11.data_);
@@ -514,4 +624,27 @@ void Surface<T>::GetTension(const Vectors<T> &v_in, const Vectors<T> &v_ten_in, 
     device_.Reduce(S2.data_, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
     device_.axpb((T) -1.0, tension_out, (T) 0.0, 1, params_.n_surfs_, tension_out);
     device_.xyInv(tension_out, work_arr, 1, params_.n_surfs_, tension_out);
+}
+
+template<typename T>
+void Surface<T>::Populate(const T *centers)
+{
+    int length = this->x_.GetFunLength();
+    ///@todo this is device dependent
+#pragma omp parallel for
+    for(int ii=1;ii<params_.n_surfs_;ii++)
+        for(int idx=0;idx<length;idx++)
+        {
+            x_.data_[3*ii*length + idx                  ] = centers[3*ii  ] + x_.data_[idx                  ];
+            x_.data_[3*ii*length + idx + length         ] = centers[3*ii+1] + x_.data_[idx + length         ];
+            x_.data_[3*ii*length + idx + length + length] = centers[3*ii+2] + x_.data_[idx + length + length];
+        }
+    //treating the first surface
+    for(int idx=0;idx<length;idx++)
+    {
+        x_.data_[idx                  ] += centers[0];
+        x_.data_[idx + length         ] += centers[1];
+        x_.data_[idx + length + length] += centers[2];
+    }
+
 }
