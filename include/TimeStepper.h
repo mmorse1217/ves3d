@@ -38,7 +38,7 @@ class TimeStepper
         int np = 2 * vesicle_.params_.rep_up_freq_ * (vesicle_.params_.rep_up_freq_ + 1);
         quad_weights_ = (T*) malloc(np * sizeof(T));
         char fname[300];
-        sprintf(fname,"../precomputed/quad_weights_%u_single.txt",vesicle_.params_.rep_up_freq_);
+        sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),vesicle_.params_.rep_up_freq_);
         fileIO.ReadData(fname, np, quad_weights_);
     };
 
