@@ -1,7 +1,10 @@
- *.[oa]
- *~
- *.out
- *.exe
- *.txt 
- etc/  
- precomputed/
+*.[oa]
+*~
+*.out
+*.exe
+*.txt 
+results/
+/precomputed/
+makefile.in.files/makefile.in
+docs/html/
+docs/latex/

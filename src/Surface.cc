@@ -198,19 +198,19 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     //reading quadrature weights and rotation matrix form file
     DataIO<T> myIO(device_,"",0);
     char fname[300];
-    sprintf(fname,"%s/data/quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(quad_weights_,buffer, np, MemcpyHostToDevice);
 
-    sprintf(fname,"%s/data/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"%s/precomputed/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(sing_quad_weights_, buffer, np, MemcpyHostToDevice);
     
-    sprintf(fname,"%s/data/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"%s/precomputed/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
     myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
     device_.Memcpy(all_rot_mats_, buffer, np * np *(params_.p_ + 1), MemcpyHostToDevice);
     
-    sprintf(fname,"%s/data/w_sph_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"%s/precomputed/w_sph_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(w_sph_.data_, buffer, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
@@ -484,8 +484,9 @@ void Surface<T>::UpdateAll()
 template <typename T>
 void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out)
 {
+
 #ifdef PROFILING
-    double ss = get_seconds();
+ double ss = Logger::Now();
 #endif
         
     int np = 2 * params_.p_ * (params_.p_ + 1);
@@ -518,8 +519,15 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
             
         }
     }
+
+#ifndef NOLOGGING
+    double np3 = np * np * np;
+    double flops = np3 + (44 * np * np + 14 * np3) * params_.n_surfs_; 
+    Logger::Add2Flops(flops);
+#endif
+
 #ifdef PROFILING
-    ss = get_seconds()-ss ;
+    ss = Logger::Now();
     cout<<"StokesMatVec (sec) : "<<ss<<endl;
 #endif
 
@@ -574,7 +582,7 @@ void Surface<T>::Reparam()
         DotProduct(V11,V11,S10);
         ///@todo The error should be relative
         vel = S10.Max();
-#ifndef NDEBUGX
+#ifndef NDEBUG
         cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;
 #endif
     }
