@@ -71,11 +71,6 @@ int main(int argc, char *argv[])
     //free(centers);
     vesicle.UpdateAll();
     
-    //Time-stepper
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
-
     TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, &DirectInteraction);
     exp_stepper.EvolveInTime();
     

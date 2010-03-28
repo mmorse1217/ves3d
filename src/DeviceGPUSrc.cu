@@ -5,6 +5,13 @@
  */
 
 template <typename T>
+DeviceGPU<T>::DeviceGPU()
+{
+    ///@bug this should be unique
+    cudaSetDevice(0);
+}
+
+template <typename T>
 T* DeviceGPU<T>::Malloc(unsigned long int length)
 {
     T* ptr = 0;
@@ -35,9 +42,16 @@ T* DeviceGPU<T>::Memcpy (T* destination, const T* source, unsigned long int num,
     return destination;
 }
 
+#define DIM 3
+#define BLOCK_HEIGHT 128
+
 template <typename T> 
 T* DeviceGPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out)
 {
+    int GridDim = num_surfs;
+    dotProdKernel<<<GridDim, BLOCK_HEIGHT>>>
+        (u_in, v_in, stride, num_surfs, x_out);
+
     return x_out;
 }
 

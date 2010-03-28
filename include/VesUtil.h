@@ -46,8 +46,10 @@ class ShearFlow : public VelField<T>
 
 // Interaction /////////////////////////////////////////////////////////////////
 template<typename T>
-void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out)
+void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
 {
+    ///@bug divide by 1/8/pi 
+
 #ifndef NDEBUG
     cout<<"DirectInteraction()"<<endl;
 #endif

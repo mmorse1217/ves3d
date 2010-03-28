@@ -19,6 +19,8 @@ template<typename T>
 class DeviceGPU : public Device<T>
 {
   public:
+    DeviceGPU();
+    
     virtual T* Malloc(unsigned long int length);
     virtual void Free(T* ptr);
     virtual T* Calloc(unsigned long int num);
