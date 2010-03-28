@@ -149,7 +149,7 @@ Surface<T>::Surface(Device<T> &device_in) :
     S10(device_),
     rot_mat(0),
     w_sph_(device_),
-    max_init_area_(-1),
+    max_init_area_(-1)
 {}
 
 template <typename T> 
