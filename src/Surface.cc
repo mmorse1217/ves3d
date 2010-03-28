@@ -148,7 +148,8 @@ Surface<T>::Surface(Device<T> &device_in) :
     V13(device_),
     S10(device_),
     rot_mat(0),
-    w_sph_(device_)
+    w_sph_(device_),
+    max_init_area_(-1),
 {}
 
 template <typename T> 
@@ -179,7 +180,8 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     V12(device_,params_.rep_up_freq_,params_.n_surfs_),
     V13(device_,params_.rep_up_freq_,params_.n_surfs_),
     S10(device_,params_.rep_up_freq_,params_.n_surfs_),
-    w_sph_(device_,params_.p_,params_.n_surfs_)
+    w_sph_(device_,params_.p_,params_.n_surfs_),
+    max_init_area_(-1)
 {
     shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
@@ -263,7 +265,8 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     V12(device_,params_.rep_up_freq_,params_.n_surfs_),
     V13(device_,params_.rep_up_freq_,params_.n_surfs_),
     S10(device_,params_.rep_up_freq_,params_.n_surfs_),
-    w_sph_(device_,params_.p_,params_.n_surfs_)
+    w_sph_(device_,params_.p_,params_.n_surfs_),
+    max_init_area_(-1)
 {
     shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
@@ -479,6 +482,9 @@ void Surface<T>::UpdateAll()
     
     //Tensile force
     xvpb(h_,normal_,(T) 0.0, tensile_force_);
+
+    if(max_init_area_<0)
+        max_init_area_ = this->Area();
 }
 
 template <typename T>
@@ -605,11 +611,16 @@ void Surface<T>::UpdateNormal()
 }
 
 template<typename T>
-void Surface<T>::Area()
+T Surface<T>::Area()
 {
     device_.Reduce(NULL, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
+    ///@todo This is device dependent
+    T max_area = -1;
     for(int ii=0;ii<params_.n_surfs_;++ii)
-        cout<<work_arr[ii]<<endl;
+    {
+        max_area = (max_area > fabs(work_arr[ii])) ? max_area : fabs(work_arr[ii]);
+    }
+    return max_area;
 }
 
 template<typename T>

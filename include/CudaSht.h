@@ -2,7 +2,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cublas.h>
-#include <cutil.h>
+//#include <cutil.h> ///@todo I was not able to find this on Ion.
 
 #define scalar float
 

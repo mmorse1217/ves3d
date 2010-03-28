@@ -119,7 +119,6 @@ class TimeStepper
             vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
                 3*vesicle_.params_.n_surfs_, velocity_.data_);
 
-            fileIO.WriteData("V1",vel_tension_.GetDataLength(), velocity_.data_);
             //Filtering
             //vesicle_.device_.Filter(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_, 
             //    velocity_.data_, vesicle_.alpha_p, vesicle_.work_arr, vesicle_.shc, velocity_.data_);
@@ -148,6 +147,13 @@ class TimeStepper
 
             if((100*(idx+1))%n_steps_ == 0)
                 fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
+            
+            T m_area = vesicle_.Area();
+            if(isnan(m_area) || m_area > 2*vesicle_.max_init_area_)
+            {
+                cerr<<"The time stepper has diverged"<<endl;
+                break;
+            }
         }
     };
 };

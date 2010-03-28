@@ -58,7 +58,7 @@ class DeviceTest
         device_.Memcpy(a, b, arr_size, MemcpyHostToDevice);
         device_.Free(a);
         
-        cout<<"* DeviceCPU::Malloc: Passed *"<<endl;
+        cout<<"* Device::Malloc: Passed *"<<endl;
         return true;
     };
 
@@ -79,7 +79,7 @@ class DeviceTest
         string res_print = (res) ? "Passed" : "Failed";
         device_.Free(a);
         
-        cout<<"* DeviceCPU::Calloc: " + res_print + " *"<<endl;
+        cout<<"* Device::Calloc: " + res_print + " *"<<endl;
         return (res);
     };
 
@@ -105,7 +105,7 @@ class DeviceTest
         device_.Free(b);
         
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<"* DeviceCPU::Memcpy: " + res_print + " *"<<endl;
+        cout<<"* Device::Memcpy: " + res_print + " *"<<endl;
         return res;
     };
 
@@ -121,6 +121,10 @@ class DeviceTest
             T* a = device_.Malloc(arr_length);
             T* b = device_.Malloc(arr_length);
             T* c = device_.Malloc(sc_length);
+
+            T* a_host = (T*) malloc(arr_length * sizeof(T));
+            T* b_host = (T*) malloc(arr_length * sizeof(T));
+            T* c_host = (T*) malloc(sc_length * sizeof(T));
             
             // a dot b should be zero since they are geometrically orthogonal 
             T rnum;
@@ -130,24 +134,33 @@ class DeviceTest
                     idx = 3*ii*stride+jj;
                     rnum = (T) drand48();
                     
-                    a[idx] = rnum; a[idx+stride] = 1   ; a[idx+2*stride] = rnum;
-                    b[idx] = 1   ; b[idx+stride] = rnum; b[idx+2*stride] = -2;
-                    c[idx] = 1;
+                    a_host[idx] = rnum; a_host[idx+stride] = 1   ; a_host[idx+2*stride] = rnum;
+                    b_host[idx] = 1   ; b_host[idx+stride] = rnum; b_host[idx+2*stride] = -2;
+                    c_host[ii*stride+jj] = 1;
                 }
             
+            device_.Memcpy(a, a_host, arr_length, MemcpyHostToDevice);
+            device_.Memcpy(b, b_host, arr_length, MemcpyHostToDevice);
+            device_.Memcpy(c, c_host, sc_length , MemcpyHostToDevice);
+            
             device_.DotProduct(a,b,stride,num_vecs,c);
+            device_.Memcpy(c_host, c, sc_length, MemcpyDeviceToHost);
+            
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (c[idx]>err) ? c[idx] : err ;
+                err = (c_host[idx]>err) ? c_host[idx] : err ;
 
             device_.Free(a);
             device_.Free(b);
             device_.Free(c);
             
+            free(a_host);
+            free(b_host);
+            free(c_host);
             res = res && ((err<eps_) ? true : false);
 
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::DotProduct (Orthogonality): " + res_print + " *"<<endl;
+            cout<<"* Device::DotProduct (Orthogonality): " + res_print + " *"<<endl;
         }
 
         {//Normalization (random, single)
@@ -157,38 +170,48 @@ class DeviceTest
             T* a = device_.Malloc(arr_length);
             T* c = device_.Malloc(sc_length);
 
+            T* a_host = (T*) malloc(arr_length * sizeof(T));
+            T* c_host = (T*) malloc(sc_length * sizeof(T));
+
             for(int idx=0;idx<stride;idx++)
             {                
-                a[idx              ] = drand48();
-                a[idx+stride       ] = drand48();
-                a[idx+stride+stride] = drand48();
-                c[idx] = 1.0;
+                a_host[idx              ] = drand48();
+                a_host[idx+stride       ] = drand48();
+                a_host[idx+stride+stride] = drand48();
+                c_host[idx] = 1.0;
             }
             
+            device_.Memcpy(a, a_host, arr_length, MemcpyHostToDevice);
+            device_.Memcpy(c, c_host, sc_length , MemcpyHostToDevice);
             device_.DotProduct(a,a,stride,num_vecs,c);
+            device_.Memcpy(c_host, c, sc_length, MemcpyDeviceToHost);
 
             T nn;
             for(int idx=0;idx<sc_length;idx++)
             {
-                nn = sqrt(c[idx]);
-                a[idx              ] /= nn;
-                a[idx+stride       ] /= nn;
-                a[idx+stride+stride] /= nn;
+                nn = sqrt(c_host[idx]);
+                a_host[idx              ] /= nn;
+                a_host[idx+stride       ] /= nn;
+                a_host[idx+stride+stride] /= nn;
             }
                         
+            device_.Memcpy(a, a_host, arr_length, MemcpyHostToDevice);
             device_.DotProduct(a,a,stride,num_vecs,c);
+            device_.Memcpy(c_host, c, sc_length, MemcpyDeviceToHost);
 
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (c[idx]-1>err) ? c[idx]-1 : err ;
+                err = (c_host[idx]-1>err) ? c_host[idx]-1 : err ;
       
             device_.Free(a);
             device_.Free(c);
-            
+            free(a_host);
+            free(c_host);
+
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::DotProduct (Normalization): " + res_print + " *"<<endl;
+            cout<<"* Device::DotProduct (Normalization): " + res_print + " *"<<endl;
         }
         return res;
     };
@@ -222,7 +245,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::CrossProduct (Self-product): " + res_print + " *"<<endl;
+            cout<<"* Device::CrossProduct (Self-product): " + res_print + " *"<<endl;
         }
         
         {//triple product
@@ -282,7 +305,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::CrossProduct (Triple product): " + res_print + " *"<<endl;
+            cout<<"* Device::CrossProduct (Triple product): " + res_print + " *"<<endl;
         }
         return res;
     };
@@ -312,7 +335,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::xInv : " + res_print + " *"<<endl;
+            cout<<"* Device::xInv : " + res_print + " *"<<endl;
         }
         return res;
     };
@@ -349,7 +372,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::xy : " + res_print + " *"<<endl;
+            cout<<"* Device::xy : " + res_print + " *"<<endl;
         }
         return res;
     }
@@ -381,7 +404,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::xyInv : " + res_print + " *"<<endl;
+            cout<<"* Device::xyInv : " + res_print + " *"<<endl;
         }
         return res;
     };
@@ -410,7 +433,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::axpy: " + res_print + " *"<<endl;
+            cout<<"* Device::axpy: " + res_print + " *"<<endl;
         }
         return res;
     }
@@ -439,7 +462,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::axpb : " + res_print + " *"<<endl;
+            cout<<"* Device::axpb : " + res_print + " *"<<endl;
         }
         return res;
     }
@@ -505,7 +528,7 @@ class DeviceTest
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
-            cout<<"* DeviceCPU::xvpw : " + res_print + " *"<<endl;
+            cout<<"* Device::xvpw : " + res_print + " *"<<endl;
         }
         return res;
     }    
@@ -553,7 +576,7 @@ class DeviceTest
 
         res = res && (err<eps_) ? true : false;
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<"* DeviceCPU::ShufflePoints : " + res_print + " *"<<endl;
+        cout<<"* Device::ShufflePoints : " + res_print + " *"<<endl;
                 
         return res;
     }

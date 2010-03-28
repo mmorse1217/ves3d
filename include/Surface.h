@@ -131,12 +131,14 @@ template <typename T> class Surface
 
     void GetTension(const Vectors<T> &v_in, const Vectors<T> &v_ten_in, T *tension_out);
 
-    void Area();
+    T Area();
     void Volume();
 
     void Resize(int n_surfs_in);
 
     void Populate(const T *centers);
+
+    bool IsAccurate();
 
   public://private:
     //Work space
@@ -144,6 +146,7 @@ template <typename T> class Surface
     Vectors<T> V1, V2;
     T *shc, *work_arr, *alpha_p;
     
+    T max_init_area_;
     //Work vectors for the up-sampling
     Scalars<T> S10;
     Vectors<T> V10, V11, V12, V13;
