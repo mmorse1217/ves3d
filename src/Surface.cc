@@ -198,19 +198,23 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     //reading quadrature weights and rotation matrix form file
     DataIO<T> myIO(device_,"",0);
     char fname[300];
-    sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    //   sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"precomputed/quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(quad_weights_,buffer, np, MemcpyHostToDevice);
 
-    sprintf(fname,"%s/precomputed/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    //    sprintf(fname,"%s/precomputed/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(sing_quad_weights_, buffer, np, MemcpyHostToDevice);
     
-    sprintf(fname,"%s/precomputed/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    //    sprintf(fname,"%s/precomputed/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
     device_.Memcpy(all_rot_mats_, buffer, np * np *(params_.p_ + 1), MemcpyHostToDevice);
     
-    sprintf(fname,"%s/precomputed/w_sph_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    //sprintf(fname,"%s/precomputed/w_sph_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
+    sprintf(fname,"precomputed/w_sph_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(w_sph_.data_, buffer, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
@@ -282,19 +286,19 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     //reading quadrature weights and rotation matrix form file
     DataIO<T> myIO(device_,"",0);;
     char fname[300];
-    sprintf(fname,"../precomputed/quad_weights_%u_single.txt",params_.p_);
+    sprintf(fname,"precomputed/quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, quad_weights_, np, MemcpyHostToDevice);
 
-    sprintf(fname,"../precomputed/sing_quad_weights_%u_single.txt",params_.p_);
+    sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, sing_quad_weights_, np, MemcpyHostToDevice);
     
-    sprintf(fname,"../precomputed/all_rot_mats_%u_single.txt",params_.p_);
+    sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
     device_.Memcpy(buffer, all_rot_mats_, np * np *(params_.p_ + 1), MemcpyHostToDevice);
 
-    sprintf(fname,"../precomputed/w_sph_%u_single.txt",params_.p_);
+    sprintf(fname,"precomputed/w_sph_%u_single.txt",params_.p_);
     myIO.ReadData(fname, np, buffer);
     device_.Memcpy(buffer, w_sph_.data_, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
