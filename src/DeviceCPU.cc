@@ -27,6 +27,9 @@ OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) :
     d1_leg_trans_p_  = (T*) malloc( leg_size * sizeof(T));
     d2_leg_trans_p_  = (T*) malloc( leg_size * sizeof(T));
      
+    //p_up_
+    quad_weights_p_up_ = (T*) malloc(2 * p_up_ *(p_up_ + 1) * sizeof(T));
+    
     int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);
     leg_trans_p_up_     = (T*) malloc( leg_size_up * sizeof(T)); 
     leg_trans_inv_p_up_ = (T*) malloc( leg_size_up * sizeof(T));
@@ -68,6 +71,11 @@ OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) :
         //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
         myIO.ReadData(fname, leg_size, d2_leg_trans_p_);
 
+        //p_up_
+        sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_up_);
+        //sprintf(fname,"precomputed/quad_weights_%u_single.txt",p_up_);
+        myIO.ReadData(fname, 2 * p_up_ *(p_up_ + 1), quad_weights_p_up_);
+        
         sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
         //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_up_);
         myIO.ReadData(fname, leg_size, leg_trans_p_up_);
@@ -93,11 +101,14 @@ OperatorsMats<T>::~OperatorsMats()
     free(all_rot_mats_);
     free(sing_quad_weights_);
     free(w_sph_);
+
     free(leg_trans_p_);
     free(leg_trans_inv_p_);
     free(d1_leg_trans_p_);
     free(d2_leg_trans_p_);
-        free(leg_trans_p_up_);
+    
+    free(quad_weights_p_up_);
+    free(leg_trans_p_up_);
     free(leg_trans_inv_p_up_);
     free(d1_leg_trans_p_up_);
     free(d2_leg_trans_p_up_);

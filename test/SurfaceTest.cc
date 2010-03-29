@@ -41,6 +41,8 @@ int main(int argc, char ** argv)
 
     // memory allocation
     Surface<T> S(cpu,par,mats);
+    Surface<T> S2(cpu,par,mats);
+
     Scalars<T> X(cpu,p,nVec);
     Scalars<T> Y(cpu,p,nVec);
     Scalars<T> Z(cpu,p,nVec);

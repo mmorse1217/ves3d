@@ -35,6 +35,7 @@ struct OperatorsMats
     T *d1_leg_trans_p_;
     T *d2_leg_trans_p_;
 
+    T *quad_weights_p_up_;
     T *leg_trans_p_up_;
     T *leg_trans_inv_p_up_;
     T *d1_leg_trans_p_up_;

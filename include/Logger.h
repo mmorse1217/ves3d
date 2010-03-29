@@ -27,6 +27,7 @@ class Logger
 
     static void TearDown();
   
+    static void GetFlops();
   private:
     Logger();
     static double flop_count_;

@@ -79,5 +79,6 @@ int main(int argc, char *argv[])
     cout<<" The whole simulation (sec) : "<<ss<<endl;
 #endif
 
+    double fp = Logger::GetFlops();
     Logger::TearDown();
 }
