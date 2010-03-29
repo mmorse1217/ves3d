@@ -30,7 +30,7 @@ OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) :
     //p_up_
     quad_weights_p_up_ = (T*) malloc(2 * p_up_ *(p_up_ + 1) * sizeof(T));
     
-    int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);
+    int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);	
     leg_trans_p_up_     = (T*) malloc( leg_size_up * sizeof(T)); 
     leg_trans_inv_p_up_ = (T*) malloc( leg_size_up * sizeof(T));
     d1_leg_trans_p_up_  = (T*) malloc( leg_size_up * sizeof(T));
