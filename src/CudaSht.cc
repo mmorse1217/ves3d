@@ -204,12 +204,12 @@ void CudaSht::test(int n_funs) {
   }
   cublas_alloc_copy(input_cpu, &inputs, dft_size, (p + 1) * n_funs);
   unsigned int timer;
-  cutCreateTimer(&timer);
-  cutStartTimer(timer);
+//   cutCreateTimer(&timer);
+//   cutStartTimer(timer);
   forward(inputs, work_arr, n_funs, outputs);
   backward(outputs, work_arr, n_funs, outputs_2);
-  cutStopTimer(timer);
-  fprintf(stderr, "forward backward took %fms\n", cutGetTimerValue(timer));
+  //  cutStopTimer(timer);
+  //  fprintf(stderr, "forward backward took %fms\n", cutGetTimerValue(timer));
   cublasGetMatrix(dft_size, (p +1) * n_funs, sizeof(scalar), outputs_2, dft_size,
                   output_cpu_2, dft_size);
   for (int i = 0; i < 2* p * (p + 1) * n_funs; i++) {

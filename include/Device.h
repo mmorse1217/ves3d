@@ -69,7 +69,7 @@ template<typename T> class Device
     ///MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, or
     ///MemcpyDeviceToDevice</code>.
     virtual T* Memcpy(T* destination, const T* source, unsigned long int num, enum MemcpyKind kind) = 0;
- 
+    
     ///Geometric dot product of two (Cartesian) vectors. 
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out) = 0;
 
@@ -120,7 +120,7 @@ template<typename T> class Device
     virtual T* ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out) = 0;
 
     ///SHT size
-    virtual void InitializeSHT(int p, int p_up) = 0;
+    //virtual void InitializeSHT(int p, int p_up) = 0;
     
     ///SHT Analysis
     virtual void ShAna(const T *x_in, T *work_arr, int p, int num_funs, T *sht_out) = 0;

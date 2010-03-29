@@ -14,10 +14,15 @@
 #include <fstream>
 #include "Device.h"
 #include <string>
+#include <cassert>
 /**
  * A simple data I/O class tailored for this project. It reads data
  * from and writes data to file. 
  */
+
+using namespace std;
+
+
 template<typename T>
 class DataIO
 {

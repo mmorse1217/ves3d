@@ -5,8 +5,6 @@
 #include "VesUtil.h"
 #include "DataIO.h"
 
-#define PI_8I 1.0/8.0/M_PI
-
 template<typename T> 
 class TimeStepper
 {
@@ -16,15 +14,16 @@ class TimeStepper
     DataIO<T> &fileIO;
     Surface<T> &vesicle_;
     Vectors<T> velocity_, vel_bending_, vel_tension_;
+    void *moboPtr; //to be set manually, for now.
 
     VelField<T> &bg_flow_;
-    void(*Interaction_)(T*, T*, int, int, T*);
+    void(*Interaction_)(T*, T*, int, int, T*, Device<T> &, void*);
 
     T *quad_weights_;
 
     TimeStepper(T ts_in, int n_steps_in, Surface<T> &ves_in, 
         DataIO<T> &fileIO_in, VelField<T> &bg_flow_in, 
-        void(*Interaction_in)(T*, T*, int, int,  T*)) : 
+        void(*Interaction_in)(T*, T*, int, int,  T*, Device<T> &, void*)) : 
         ts_(ts_in),
         n_steps_(n_steps_in), 
         fileIO(fileIO_in),
@@ -69,8 +68,6 @@ class TimeStepper
 
             //vel_tension_ holds the interaction force
             xvpb(vesicle_.w_,vel_tension_, (T) 0.0, vel_tension_);
-            axpb((T) (PI_8I), vel_tension_, (T) 0.0, vel_tension_);
-            
 
             //up-sampling x_ to V10
             vesicle_.device_.ShAna(vesicle_.x_.data_, vesicle_.work_arr, vesicle_.params_.p_, 
@@ -103,7 +100,7 @@ class TimeStepper
 
             //Interaction to V13
             Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
-                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_);
+                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, moboPtr);
             
             axpy((T) -1.0, vesicle_.V12, vesicle_.V13, vesicle_.V13);
             
@@ -119,7 +116,6 @@ class TimeStepper
             vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
                 3*vesicle_.params_.n_surfs_, velocity_.data_);
 
-            fileIO.WriteData("V1",vel_tension_.GetDataLength(), velocity_.data_);
             //Filtering
             //vesicle_.device_.Filter(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_, 
             //    velocity_.data_, vesicle_.alpha_p, vesicle_.work_arr, vesicle_.shc, velocity_.data_);
@@ -148,6 +144,13 @@ class TimeStepper
 
             if((100*(idx+1))%n_steps_ == 0)
                 fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
+            
+            T m_area = vesicle_.Area();
+//             if(isnan(m_area) || m_area > 2*vesicle_.max_init_area_)
+//             {
+//                 cerr<<"The time stepper has diverged"<<endl;
+//                 break;
+//             }
         }
     };
 };
