@@ -27,7 +27,7 @@ class Logger
 
     static void TearDown();
   
-    static double GetFlops();
+    static double GetGFlops();
   private:
     Logger();
     static double flop_count_;
@@ -55,9 +55,9 @@ void Logger::Add2Flops(double flops_in)
     flop_count_ += flops_in;
 }
 
-double Logger::GetFlops()
+double Logger::GetGFlops()
 {
-    return(flop_count_);
+    return(flop_count_/1e9);
 }
 
 Logger::Logger() {}

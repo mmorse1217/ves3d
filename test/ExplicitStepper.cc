@@ -18,11 +18,6 @@ int main(int argc, char *argv[])
     TimeStepperParams<T> time_par = all_par.t_par;
     FileList file_list = all_par.f_list;
     
-    cout<<surf_par<<endl;
-    cout<<time_par<<endl;
-    cout<<file_list<<endl;
-
-
     //Time stepping parameters
     T ts(time_par.ts_); //1e-2 works for single, 
     int n_steps(time_par.n_steps_);
@@ -33,16 +28,18 @@ int main(int argc, char *argv[])
     
     //Setting up the device
     DeviceCPU<T> cpu_device;
-    
+    bool readFromFile = true;
+    OperatorsMats<T> mats(surf_par.p_, surf_par.rep_up_freq_, readFromFile);
+
     //Initializing the device
-    cpu_device.InitializeSHT(surf_par.p_, surf_par.rep_up_freq_);
+    cpu_device.InitializeSHT(mats);
 
     //Length and other derived parameters
     int one_vec_length = 6 * surf_par.p_ * (surf_par.p_+1);
     int data_length = one_vec_length * surf_par.n_surfs_;
  
     //Setting up the surface
-    Surface<T> vesicle(cpu_device, surf_par);
+    Surface<T> vesicle(cpu_device, surf_par,mats);
     
     //Reading initial shape to the first vesicle
     DataIO<T> myIO(cpu_device,file_list.simulation_out_file_, data_length);
@@ -71,14 +68,14 @@ int main(int argc, char *argv[])
     //free(centers);
     vesicle.UpdateAll();
     
-    TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, &DirectInteraction);
+    TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, 
+        mats.quad_weights_p_up_, &DirectInteraction);
     exp_stepper.EvolveInTime();
     
 #ifdef PROFILING
     ss = get_seconds()-ss ;
     cout<<" The whole simulation (sec) : "<<ss<<endl;
 #endif
-
-    double fp = Logger::GetFlops();
-    Logger::TearDown();
+    
+    cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 }

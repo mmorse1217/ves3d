@@ -23,6 +23,7 @@ class TimeStepper
 
     TimeStepper(T ts_in, int n_steps_in, Surface<T> &ves_in, 
         DataIO<T> &fileIO_in, VelField<T> &bg_flow_in, 
+        T* quad_weights_p_up_in,
         void(*Interaction_in)(T*, T*, int, int,  T*, Device<T> &, void*)) : 
         ts_(ts_in),
         n_steps_(n_steps_in), 
@@ -32,19 +33,9 @@ class TimeStepper
         vel_bending_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         vel_tension_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         bg_flow_(bg_flow_in),
-        Interaction_(Interaction_in)
-    {
-        int np = 2 * vesicle_.params_.rep_up_freq_ * (vesicle_.params_.rep_up_freq_ + 1);
-        quad_weights_ = (T*) malloc(np * sizeof(T));
-        char fname[300];
-        sprintf(fname,"precomputed/quad_weights_%u_single.txt",vesicle_.params_.rep_up_freq_);
-        fileIO.ReadData(fname, np, quad_weights_);
-    };
-
-    ~TimeStepper()
-    {
-        free(quad_weights_);
-    };
+        Interaction_(Interaction_in),
+        quad_weights_(quad_weights_p_up_in)
+    {};
 
     void EvolveInTime()
     {
