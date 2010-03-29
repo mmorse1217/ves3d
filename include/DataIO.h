@@ -10,6 +10,7 @@
 #define _DATAIO_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include "Device.h"
