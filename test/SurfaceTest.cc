@@ -11,11 +11,8 @@ typedef float T;
 
 int main(int argc, char ** argv)
 {
-    DeviceCPU<T> cpu;
-    DataIO<T> myIO(cpu,"",0);
 
     int p(6), nVec(5);
-    cpu.InitializeSHT(p,2*p);
 
     int fLen(2*p*(p+1));
     int dLen(6*p*(p+1));
@@ -33,8 +30,17 @@ int main(int argc, char ** argv)
     par.rep_up_freq_ = 6;
     par.rep_filter_freq_ = 4;
 
+    bool readFromFile = true;
+    OperatorsMats<T> mats(par.p_, 2*par.p_, readFromFile);
+    
+    //Device
+    DeviceCPU<T> cpu;
+    DataIO<T> myIO(cpu,"",0);
+    cpu.InitializeSHT(mats);
+
+
     // memory allocation
-    Surface<T> S(cpu,par);
+    Surface<T> S(cpu,par,mats);
     Scalars<T> X(cpu,p,nVec);
     Scalars<T> Y(cpu,p,nVec);
     Scalars<T> Z(cpu,p,nVec);

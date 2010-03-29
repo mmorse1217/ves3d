@@ -6,6 +6,105 @@
  * @brief  The implementation of the DeviceCPU class.
  */
 
+// OperatorsMats //////////////////////////////////////////////////////////////////////
+
+template <typename T>
+OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) : 
+    p_(p_in), p_up_(p_up_in)
+{
+    int np = 2 * p_ * ( p_ + 1);
+    struct DeviceCPU<T> dev; ///@bug This should be moved outside AND IO class should be fixed
+    DataIO<T> myIO(dev,"",0); 
+
+    quad_weights_ = (T*) malloc(np * sizeof(T));
+    all_rot_mats_ = (T*) malloc( np * np * (p_ + 1) * sizeof(T));
+    sing_quad_weights_ = (T*) malloc(np * sizeof(T));
+    w_sph_ = (T*) malloc(np * sizeof(T));
+
+    int leg_size = (p_ + 1) * (p_+1) * (p_ +2);
+    leg_trans_p_     = (T*) malloc( leg_size * sizeof(T)); 
+    leg_trans_inv_p_ = (T*) malloc( leg_size * sizeof(T));
+    d1_leg_trans_p_  = (T*) malloc( leg_size * sizeof(T));
+    d2_leg_trans_p_  = (T*) malloc( leg_size * sizeof(T));
+     
+    int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);
+    leg_trans_p_up_     = (T*) malloc( leg_size_up * sizeof(T)); 
+    leg_trans_inv_p_up_ = (T*) malloc( leg_size_up * sizeof(T));
+    d1_leg_trans_p_up_  = (T*) malloc( leg_size_up * sizeof(T));
+    d2_leg_trans_p_up_  = (T*) malloc( leg_size_up * sizeof(T));
+    
+    char fname[300];
+    if(readFromFile)
+    {
+        sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/quad_weights_%u_single.txt",p_);
+        myIO.ReadData(fname, np, quad_weights_);
+
+        sprintf(fname,"%s/precomputed/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",p_);
+        myIO.ReadData(fname, np, sing_quad_weights_);
+    
+        sprintf(fname,"%s/precomputed/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p_);
+        myIO.ReadData(fname, np * np *(p_ + 1), all_rot_mats_);
+    
+        sprintf(fname,"%s/precomputed/w_sph_%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
+        myIO.ReadData(fname, np, w_sph_);
+
+        sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
+        myIO.ReadData(fname, leg_size, leg_trans_p_);
+
+        sprintf(fname,"%s/precomputed/legTransInv%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
+        myIO.ReadData(fname, leg_size, leg_trans_inv_p_);
+
+        sprintf(fname,"%s/precomputed/d1legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
+        myIO.ReadData(fname, leg_size, d1_leg_trans_p_);
+
+        sprintf(fname,"%s/precomputed/d2legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
+        myIO.ReadData(fname, leg_size, d2_leg_trans_p_);
+
+        sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_up_);
+        myIO.ReadData(fname, leg_size, leg_trans_p_up_);
+
+        sprintf(fname,"%s/precomputed/legTransInv%u_single.txt",getenv("VES3D_DIR"),p_up_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_up_);
+        myIO.ReadData(fname, leg_size, leg_trans_inv_p_up_);
+
+        sprintf(fname,"%s/precomputed/d1legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_up_);
+        myIO.ReadData(fname, leg_size, d1_leg_trans_p_up_);
+
+        sprintf(fname,"%s/precomputed/d2legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
+        //sprintf(fname,"precomputed/w_sph_%u_single.txt",p_up_);
+        myIO.ReadData(fname, leg_size, d2_leg_trans_p_up_);
+    }
+}
+
+template <typename T>
+OperatorsMats<T>::~OperatorsMats()
+{
+    free(quad_weights_);
+    free(all_rot_mats_);
+    free(sing_quad_weights_);
+    free(w_sph_);
+    free(leg_trans_p_);
+    free(leg_trans_inv_p_);
+    free(d1_leg_trans_p_);
+    free(d2_leg_trans_p_);
+        free(leg_trans_p_up_);
+    free(leg_trans_inv_p_up_);
+    free(d1_leg_trans_p_up_);
+    free(d2_leg_trans_p_up_);
+
+}
+
+// Device ////////////////////////////////////////////////////////////
 template<typename T>
 T* DeviceCPU<T>::Malloc(unsigned long int length)
 {
@@ -566,7 +665,7 @@ T*  DeviceCPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int s
 }
 
 template<typename T>
-void  DeviceCPU<T>::InitializeSHT(int p, int p_up)
+void  DeviceCPU<T>::InitializeSHT(OperatorsMats<T> &mats)
 {
     assert(sht_.dft_forward == 0);
     
@@ -574,65 +673,33 @@ void  DeviceCPU<T>::InitializeSHT(int p, int p_up)
     double ss = get_seconds();
 #endif
 
-    p_ = p;
-    p_up_ = p_up;
+    p_ = mats.p_;
+    p_up_ = mats.p_up_;
 
     T *dft_forward;
     T *dft_backward;
     T *dft_d1backward;
     T *dft_d2backward;
-    T *leg_trans;
-    T *leg_trans_inv;
-    T *d1_leg_trans;
-    T *d2_leg_trans;
-
-    char leg_trans_fname[100];
-    char leg_trans_inv_fname[100]; 
-    char d1_leg_trans_fname[100];
-    char d2_leg_trans_fname[100];
 
     //p version_
     dft_forward    = DeviceCPU<T>::Malloc(4 * p_ * p_); 
     dft_backward   = DeviceCPU<T>::Malloc(4 * p_ * p_); 
     dft_d1backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
     dft_d2backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
-
-    leg_trans      = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
-    leg_trans_inv  = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
-    d1_leg_trans   = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
-    d2_leg_trans   = DeviceCPU<T>::Malloc((p_ + 1) * (p_+1) * (p_ +2)); 
-
-    sprintf(leg_trans_fname    ,   "precomputed/legTrans%u_single.txt",p_);
-    sprintf(leg_trans_inv_fname,"precomputed/legTransInv%u_single.txt",p_);
-    sprintf(d1_leg_trans_fname , "precomputed/d1legTrans%u_single.txt",p_);
-    sprintf(d2_leg_trans_fname , "precomputed/d2legTrans%u_single.txt",p_);
-
-    sht_.InitializeBlasSht(p_, leg_trans_fname, leg_trans_inv_fname, 
-        d1_leg_trans_fname, d2_leg_trans_fname, 
-        dft_forward, dft_backward, dft_d1backward, dft_d2backward, 
-        leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
-
+    
+    sht_.InitializeBlasSht(p_, dft_forward, dft_backward, dft_d1backward, 
+        dft_d2backward, mats.leg_trans_p_, mats.leg_trans_inv_p_, 
+        mats.d1_leg_trans_p_, mats.d2_leg_trans_p_);
 
     //p_up version
     dft_forward    = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
-    dft_backward   = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+    dft_backward   = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_);
     dft_d1backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
     dft_d2backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
 
-    leg_trans      = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
-    leg_trans_inv  = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
-    d1_leg_trans   = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
-    d2_leg_trans   = DeviceCPU<T>::Malloc((p_up_ + 1) * (p_up_+1) * (p_up_ +2)); 
-
-    sprintf(leg_trans_fname    , "precomputed/legTrans%u_single.txt",p_up_);
-    sprintf(leg_trans_inv_fname, "precomputed/legTransInv%u_single.txt",p_up_);
-    sprintf(d1_leg_trans_fname , "precomputed/d1legTrans%u_single.txt",p_up_);
-    sprintf(d2_leg_trans_fname , "precomputed/d2legTrans%u_single.txt",p_up_);
-
-    sht_up_sample_.InitializeBlasSht(p_up_, leg_trans_fname, leg_trans_inv_fname, 
-        d1_leg_trans_fname, d2_leg_trans_fname, 
-        dft_forward, dft_backward, dft_d1backward, dft_d2backward, 
-        leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
+    sht_up_sample_.InitializeBlasSht(p_up_, dft_forward, dft_backward, dft_d1backward, 
+        dft_d2backward, mats.leg_trans_p_up_, mats.leg_trans_inv_p_up_, 
+        mats.d1_leg_trans_p_up_, mats.d2_leg_trans_p_up_);
 
 #ifdef PROFILING
     ss = get_seconds()-ss ;
@@ -641,7 +708,8 @@ void  DeviceCPU<T>::InitializeSHT(int p, int p_up)
 }
 
 template<typename T>
-DeviceCPU<T>::DeviceCPU(){}
+DeviceCPU<T>::DeviceCPU()
+{}
 
 template<typename T>
 DeviceCPU<T>::~DeviceCPU()
@@ -651,20 +719,12 @@ DeviceCPU<T>::~DeviceCPU()
     Free(sht_.dft_backward); 
     Free(sht_.dft_d1backward); 
     Free(sht_.dft_d2backward); 
-    Free(sht_.leg_trans); 
-    Free(sht_.leg_trans_inv); 
-    Free(sht_.d1_leg_trans); 
-    Free(sht_.d2_leg_trans); 
-    
+
     // up sample
     Free(sht_up_sample_.dft_forward); 
     Free(sht_up_sample_.dft_backward); 
     Free(sht_up_sample_.dft_d1backward); 
     Free(sht_up_sample_.dft_d2backward); 
-    Free(sht_up_sample_.leg_trans); 
-    Free(sht_up_sample_.leg_trans_inv); 
-    Free(sht_up_sample_.d1_leg_trans); 
-    Free(sht_up_sample_.d2_leg_trans); 
 }
 
 template<typename T>

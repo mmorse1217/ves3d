@@ -38,7 +38,6 @@ struct SurfaceParams
 
 };
 
-
 template <typename T> class Surface
 {
   public:
@@ -103,8 +102,8 @@ template <typename T> class Surface
     T* quad_weights_;
     
     Surface(Device<T> &device_in);
-    Surface(Device<T> &device_in, SurfaceParams<T> params_in);
-    Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vectors<T> &x_in);
+    Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats);
+    Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats, const Vectors<T> &x_in);
     ~Surface();
     
     /** 

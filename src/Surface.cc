@@ -114,7 +114,7 @@ ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
     return output;
 }    
 
-//Surface methods
+// Surface methods ////////////////////////////////////////////////////////////////////
 template <typename T> 
 Surface<T>::Surface(Device<T> &device_in) :
     device_(device_in), 
@@ -149,11 +149,11 @@ Surface<T>::Surface(Device<T> &device_in) :
     S10(device_),
     rot_mat(0),
     w_sph_(device_),
-    max_init_area_(-1),
+    max_init_area_(-1)
 {}
 
 template <typename T> 
-Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
+Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats) :
     device_(device_in), 
     params_(params_in),
     max_n_surfs_(params_.n_surfs_),
@@ -191,37 +191,18 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
     tension_ = device_.Calloc(params_.n_surfs_);
     
     int np = 2 * params_.p_ * (params_.p_ + 1);
-    quad_weights_ = device_.Malloc(np);
-    all_rot_mats_ = device_.Malloc( np * np * (params_.p_ + 1));
-    rot_mat = device_.Malloc(np * np);
-    sing_quad_weights_ = device_.Malloc(np);
-    
-    T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
-    //reading quadrature weights and rotation matrix form file
-    DataIO<T> myIO(device_,"",0);
-    char fname[300];
-    //   sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
-    sprintf(fname,"precomputed/quad_weights_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np, buffer);
-    device_.Memcpy(quad_weights_,buffer, np, MemcpyHostToDevice);
 
-    //    sprintf(fname,"%s/precomputed/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
-    sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np, buffer);
-    device_.Memcpy(sing_quad_weights_, buffer, np, MemcpyHostToDevice);
+    quad_weights_ = mats.quad_weights_;
+    all_rot_mats_ = mats.all_rot_mats_;
+    sing_quad_weights_ = mats.sing_quad_weights_;
     
-    //    sprintf(fname,"%s/precomputed/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
-    sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
-    device_.Memcpy(all_rot_mats_, buffer, np * np *(params_.p_ + 1), MemcpyHostToDevice);
-    
-    //sprintf(fname,"%s/precomputed/w_sph_%u_single.txt",getenv("VES3D_DIR"),params_.p_);
-    sprintf(fname,"precomputed/w_sph_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np, buffer);
-    device_.Memcpy(w_sph_.data_, buffer, np, MemcpyHostToDevice);
+    device_.Memcpy(mats.w_sph_, w_sph_.data_, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
         device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
 
+    rot_mat = device_.Malloc(np * np);
+    T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
+    
     int idx = 0, len;
     for(int ii=0; ii< 2 * params_.p_; ++ii)
     {
@@ -244,7 +225,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in) :
 }
 
 template <typename T> 
-Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vectors<T> &x_in) :
+Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats, const Vectors<T> &x_in) :
     device_(device_in), 
     params_(params_in),
     x_(device_,params_.p_,params_.n_surfs_),
@@ -280,33 +261,18 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Vect
     tension_ = device_.Malloc(params_.n_surfs_);
     
     int np = 2 * params_.p_ * (params_.p_ + 1);
-    quad_weights_ = device_.Malloc(np);
-    all_rot_mats_ = device_.Malloc( np * np * (params_.p_ + 1));
-    rot_mat = device_.Malloc(np * np);
-    sing_quad_weights_ = device_.Malloc(np);
-    
-    T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
-    //reading quadrature weights and rotation matrix form file
-    DataIO<T> myIO(device_,"",0);;
-    char fname[300];
-    sprintf(fname,"precomputed/quad_weights_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np, buffer);
-    device_.Memcpy(buffer, quad_weights_, np, MemcpyHostToDevice);
 
-    sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np, buffer);
-    device_.Memcpy(buffer, sing_quad_weights_, np, MemcpyHostToDevice);
+    quad_weights_ = mats.quad_weights_;
+    all_rot_mats_ = mats.all_rot_mats_;
+    sing_quad_weights_ = mats.sing_quad_weights_;
     
-    sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np * np *(params_.p_ + 1), buffer);
-    device_.Memcpy(buffer, all_rot_mats_, np * np *(params_.p_ + 1), MemcpyHostToDevice);
-
-    sprintf(fname,"precomputed/w_sph_%u_single.txt",params_.p_);
-    myIO.ReadData(fname, np, buffer);
-    device_.Memcpy(buffer, w_sph_.data_, np, MemcpyHostToDevice);
+    device_.Memcpy(mats.w_sph_, w_sph_.data_, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
         device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
 
+    rot_mat = device_.Malloc(np * np);
+    T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
+    
     int idx = 0, len;
     for(int ii=0; ii< 2 * params_.p_; ++ii)
     {
@@ -337,10 +303,7 @@ Surface<T>::~Surface()
     device_.Free(alpha_p);
     device_.Free(alpha_q);
     device_.Free(tension_);
-    device_.Free(all_rot_mats_);
     device_.Free(rot_mat);
-    device_.Free(sing_quad_weights_);
-    device_.Free(quad_weights_);
 }
 
 template<typename T>

@@ -4,6 +4,7 @@
 #include "Device.h"
 #include "Vectors.h"
 #include <iostream>
+
 using namespace std;
 
 // Flow Field /////////////////////////////////////////////////////////////////

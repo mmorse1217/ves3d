@@ -60,19 +60,19 @@ void BlasSht::gen_dft_d2backward() {
 }
 
 
-void BlasSht::read_leg_mat(scalar *leg_ptr, const char *fname) {
-    std::ifstream file(fname);
-    if (file.is_open()) {
-        int idx=0;
-        while (idx < leg_mat_size) {
-            file >> leg_ptr[idx++];
-        }
-        file.close();
-    } else {
-        std::cout << "Unable to open file"; 
-        abort();
-    }
-}
+// void BlasSht::read_leg_mat(scalar *leg_ptr, const char *fname) {
+//     std::ifstream file(fname);
+//     if (file.is_open()) {
+//         int idx=0;
+//         while (idx < leg_mat_size) {
+//             file >> leg_ptr[idx++];
+//         }
+//         file.close();
+//     } else {
+//         std::cout << "Unable to open file"; 
+//         abort();
+//     }
+// }
 
 
 void BlasSht::transpose(scalar *out, scalar *in, int width, int height) {
@@ -101,15 +101,12 @@ BlasSht::BlasSht() :
     dft_d2backward(0)
 {}
 
-BlasSht::BlasSht(int p, char *leg_trans_fname, char *leg_trans_inv_fname,
-    char *d1_leg_trans_fname, char *d2_leg_trans_fname,
-    scalar *dft_forward, scalar *dft_backward,
+BlasSht::BlasSht(int p, scalar *dft_forward, scalar *dft_backward,
     scalar *dft_d1backward, scalar *dft_d2backward,
     scalar *leg_trans, scalar *leg_trans_inv,
     scalar* d1_leg_trans, scalar *d2_leg_trans) {
     
-    InitializeBlasSht(p, leg_trans_fname, leg_trans_inv_fname, 
-        d1_leg_trans_fname, d2_leg_trans_fname, dft_forward, dft_backward, dft_d1backward, 
+    InitializeBlasSht(p, dft_forward, dft_backward, dft_d1backward, 
         dft_d2backward, leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
 
 //     this->p = p;
@@ -142,9 +139,8 @@ BlasSht::BlasSht(int p, char *leg_trans_fname, char *leg_trans_inv_fname,
 }
 
 
-BlasSht::~BlasSht() {
-}
-
+BlasSht::~BlasSht() 
+{}
 
 void BlasSht::leg_transform(scalar *trans, const scalar *inputs, scalar *outputs,
     int m, int n , int k, int mf, int nf, int kf) {
@@ -239,9 +235,8 @@ void BlasSht::test(int n_funs) {
      free(work_arr);
 }
 
-void BlasSht::InitializeBlasSht(int p, const char *leg_trans_fname, 
-    const char *leg_trans_inv_fname, const char *d1_leg_trans_fname, const char *d2_leg_trans_fname,
-    scalar *dft_forward, scalar *dft_backward, scalar *dft_d1backward, 
+void BlasSht::InitializeBlasSht(int p, scalar *dft_forward, 
+    scalar *dft_backward, scalar *dft_d1backward, 
     scalar *dft_d2backward, scalar *leg_trans, scalar *leg_trans_inv, 
     scalar* d1_leg_trans, scalar *d2_leg_trans) 
 {
@@ -261,10 +256,10 @@ void BlasSht::InitializeBlasSht(int p, const char *leg_trans_fname,
     this->alpha = 1.0F;
     this->beta = 0.0F;
 
-    read_leg_mat(leg_trans, leg_trans_fname);
-    read_leg_mat(leg_trans_inv, leg_trans_inv_fname);
-    read_leg_mat(d1_leg_trans, d1_leg_trans_fname);
-    read_leg_mat(d2_leg_trans, d2_leg_trans_fname);
+//     read_leg_mat(leg_trans, leg_trans_fname);
+//     read_leg_mat(leg_trans_inv, leg_trans_inv_fname);
+//     read_leg_mat(d1_leg_trans, d1_leg_trans_fname);
+//     read_leg_mat(d2_leg_trans, d2_leg_trans_fname);
     
     gen_dft_forward();
     gen_dft_backward();
