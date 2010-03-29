@@ -470,6 +470,9 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     xyInv(w_, w_sph_, S1);
     int nvX3= 3*params_.n_surfs_;   
 
+
+    DataIO<T> fileIO(device_,"X", 0);
+    
     for(int ii=0;ii <= params_.p_; ++ii)
     {
         for(int jj=0;jj < 2 * params_.p_; ++jj)
@@ -478,7 +481,10 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
             
             device_.gemm("N", "N", &np, &nvX3, &np, 
 			 &alpha,rot_mat, &np, x_.data_, &np, &beta, V1.data_, &np);
-            
+    
+            if(ii==3)
+                fileIO.Append(V1.data_,3*np);
+
             device_.gemm("N", "N", &np, &nvX3, &np,
 			 &alpha,rot_mat,&np,density_in.data_,&np,&beta, V2.data_, &np);
             
@@ -633,4 +639,40 @@ void Surface<T>::Populate(const T *centers)
         x_.data_[idx + length + length] += centers[2];
     }
 
+}
+
+template<typename T>
+T* Surface<T>::GetCenters(T* cnts)
+{
+    UpdateFirstForms();
+    
+    DotProduct(x_, x_, S1);
+    axpb((T) 1/2, S1,(T) 0.0, S1);
+    xvpb(S1, normal_, (T) 0.0, V1);
+    
+    int sc_len = V1.GetFunLength();
+    int idx = 0;
+    ///@todo this should be added to device
+    for(int ii=0; ii<params_.n_surfs_;++ii)
+    {
+        device_.Memcpy(work_arr + idx, w_.GetFunctionAt(ii), sc_len, MemcpyDeviceToDevice); idx+=sc_len;
+        device_.Memcpy(work_arr + idx, w_.GetFunctionAt(ii), sc_len, MemcpyDeviceToDevice); idx+=sc_len;
+        device_.Memcpy(work_arr + idx, w_.GetFunctionAt(ii), sc_len, MemcpyDeviceToDevice); idx+=sc_len;
+    }
+    
+    device_.Reduce(V1.data_, work_arr, quad_weights_, sc_len, 3*params_.n_surfs_, cnts);
+
+    DotProduct(x_,normal_,S1);
+    axpb((T) 1/3,S1,(T) 0.0, S1);
+    device_.Reduce(S1.data_, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
+    
+    for(int ii=0; ii<params_.n_surfs_;++ii)
+    {
+        idx = 3*ii;
+        cnts[  idx] /=work_arr[ii];
+        cnts[++idx] /=work_arr[ii];
+        cnts[++idx] /=work_arr[ii];
+    }
+    
+    return cnts;
 }

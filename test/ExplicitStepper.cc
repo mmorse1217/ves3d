@@ -3,6 +3,7 @@
 #include "TimeStepper.h"
 #include "VesUtil.h"
 #include "Logger.h"
+#include "Monitor.h"
 #include <cmath>
 
 using namespace std;
@@ -49,33 +50,23 @@ int main(int argc, char *argv[])
     sprintf(fname,file_list.initial_shape_file_.c_str(),surf_par.p_);
     myIO.ReadData(fname, data_length, vesicle.x_.data_);
 
-    //populate copies
-    //    T centers[6] ={0, .5, 0,
-    //              3,0, 0};
-//    T *centers = (T*) malloc(3*surf_par.n_surfs_ * sizeof(T));
-
-// //     for(int ii=0;ii<n_lattice;ii++)
-// //         for(int jj=0;jj<n_lattice;jj++)
-// //             for(int kk=0;kk<n_lattice;kk++)
-// //             {
-// //                 int idx = ii * n_lattice * n_lattice + jj * n_lattice + kk;
-// //                 centers[3*idx  ] = 1.2 * kk;
-// //                 centers[3*idx+1] = 2.2 * jj;
-// //                 centers[3*idx+2] = 2.2 * ii - ((n_lattice-1) * 2.2/2);
-// //             }
-    
-    //vesicle.Populate(centers);
-    //free(centers);
     vesicle.UpdateAll();
+
+    //The monitor
+    MntrOpts mntr_opts;
     
+    mntr_opts.save_centers_ = false;
+    mntr_opts.save_shapes_ = false;
+    mntr_opts.save_freq_ = 1;
+    mntr_opts.area_inc_fac_ = 2;
+
+    Monitor<T> mntr(mntr_opts, myIO);
+    
+    //Time stepper
     TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, 
-        mats.quad_weights_p_up_, &DirectInteraction);
+        mats.quad_weights_p_up_, mntr, &DirectInteraction);
+
     exp_stepper.EvolveInTime();
-    
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<" The whole simulation (sec) : "<<ss<<endl;
-#endif
     
     cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 }

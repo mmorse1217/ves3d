@@ -139,6 +139,8 @@ template <typename T> class Surface
 
     bool IsAccurate();
 
+    T* GetCenters(T* cnts);
+
   public://private:
     //Work space
     Scalars<T> S1, S2, S3, S4, S5, S6;

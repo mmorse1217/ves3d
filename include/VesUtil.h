@@ -46,10 +46,11 @@ class ShearFlow : public VelField<T>
 };
 
 // Interaction /////////////////////////////////////////////////////////////////
+#define I_PI 1/M_PI/8
+
 template<typename T>
 void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
 {
-    ///@bug divide by 1/8/pi 
 
 #ifndef NDEBUG
     cout<<"DirectInteraction()"<<endl;
@@ -112,9 +113,9 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
                     pz += cpz*invR;
                 }
             
-            vel_out[trg_idx                   ] = px;
-            vel_out[trg_idx + stride          ] = py;
-            vel_out[trg_idx + stride + stride ] = pz;
+            vel_out[trg_idx                   ] = px*I_PI;
+            vel_out[trg_idx + stride          ] = py*I_PI;
+            vel_out[trg_idx + stride + stride ] = pz*I_PI;
         }
 
 #ifdef PROFILING

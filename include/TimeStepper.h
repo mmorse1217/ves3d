@@ -4,6 +4,7 @@
 #include "Surface.h"
 #include "VesUtil.h"
 #include "DataIO.h"
+#include "Monitor.h"
 
 template<typename T> 
 class TimeStepper
@@ -17,13 +18,14 @@ class TimeStepper
     void *moboPtr; //to be set manually, for now.
 
     VelField<T> &bg_flow_;
+    Monitor<T> &mntr;
     void(*Interaction_)(T*, T*, int, int, T*, Device<T> &, void*);
 
     T *quad_weights_;
 
     TimeStepper(T ts_in, int n_steps_in, Surface<T> &ves_in, 
         DataIO<T> &fileIO_in, VelField<T> &bg_flow_in, 
-        T* quad_weights_p_up_in,
+        T* quad_weights_p_up_in, Monitor<T> &mntr_in,
         void(*Interaction_in)(T*, T*, int, int,  T*, Device<T> &, void*)) : 
         ts_(ts_in),
         n_steps_(n_steps_in), 
@@ -33,6 +35,7 @@ class TimeStepper
         vel_bending_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         vel_tension_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         bg_flow_(bg_flow_in),
+        mntr(mntr_in),
         Interaction_(Interaction_in),
         quad_weights_(quad_weights_p_up_in)
     {};
@@ -51,9 +54,8 @@ class TimeStepper
         for(int idx=0;idx<n_steps_;idx++)
         {
 
-            cout<<idx<<endl;
             vesicle_.UpdateAll();
-
+            
             //Interaction
             avpw(vesicle_.tension_, vesicle_.tensile_force_, vesicle_.bending_force_, vel_tension_);
 
@@ -107,41 +109,31 @@ class TimeStepper
             vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
                 3*vesicle_.params_.n_surfs_, velocity_.data_);
 
-            //Filtering
-            //vesicle_.device_.Filter(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_, 
-            //    velocity_.data_, vesicle_.alpha_p, vesicle_.work_arr, vesicle_.shc, velocity_.data_);
-
-            //DotProduct(velocity_, velocity_, vesicle_.S1);
-            //cout<<vesicle_.S1.Max()<<endl;
             //Background flow
             bg_flow_.GetVel(vesicle_.x_, vel_tension_);
             axpy((T) 1.0, vel_tension_, velocity_, velocity_);
             
             //Calculate stokes
             vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_);
-            axpy((T) 1.0, vel_bending_, velocity_, velocity_);
+            //fileIO.Append(vel_bending_.data_,10);
+                        
+            //axpy((T) 1.0, vesicle_.bending_force_, velocity_, velocity_);
 
-            vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
+            //vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
 
-            //Calculate tension
-            vesicle_.GetTension(velocity_, vel_tension_, vesicle_.tension_);
-            vesicle_.device_.avpw(vesicle_.tension_, vel_tension_.data_,
-                velocity_.data_, velocity_.GetFunLength(), vesicle_.params_.n_surfs_, velocity_.data_);
+//             //Calculate tension
+//             vesicle_.GetTension(velocity_, vel_tension_, vesicle_.tension_);
+//             vesicle_.device_.avpw(vesicle_.tension_, vel_tension_.data_,
+//                 velocity_.data_, velocity_.GetFunLength(), vesicle_.params_.n_surfs_, velocity_.data_);
 
             //Advance in time
             axpy(ts_, velocity_, vesicle_.x_, vesicle_.x_);
-        
+       
+            //Reparametrization 
             vesicle_.Reparam();
-
-            if((100*(idx+1))%n_steps_ == 0)
-                fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
             
-            T m_area = vesicle_.Area();
-//             if(isnan(m_area) || m_area > 2*vesicle_.max_init_area_)
-//             {
-//                 cerr<<"The time stepper has diverged"<<endl;
-//                 break;
-//             }
+            //monitor
+            mntr.Quiz(vesicle_, idx);
         }
     };
 };

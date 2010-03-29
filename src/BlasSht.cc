@@ -245,14 +245,17 @@ void BlasSht::InitializeBlasSht(int p, scalar *dft_forward,
     //this->num_dft_inputs = num_vesicles * (p + 1);
     this->leg_mat_size = (p + 1) * (p + 1) * (p + 2);
     this->vesicle_size = 2 * p * (p + 1);
+
     this->dft_forward = dft_forward;
     this->dft_backward = dft_backward;
     this->dft_d1backward = dft_d1backward;
     this->dft_d2backward = dft_d2backward;
+
     this->leg_trans = leg_trans;
     this->leg_trans_inv = leg_trans_inv;
     this->d1_leg_trans = d1_leg_trans;
     this->d2_leg_trans= d2_leg_trans;
+
     this->alpha = 1.0F;
     this->beta = 0.0F;
 
