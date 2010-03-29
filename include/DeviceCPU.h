@@ -24,7 +24,8 @@ struct OperatorsMats
 {
     int p_;
     int p_up_;
-
+    
+    T *data_; // holds all arrays one after another
     T *quad_weights_;
     T *all_rot_mats_;
     T *sing_quad_weights_;

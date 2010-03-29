@@ -41,14 +41,12 @@ int main(int argc, char ** argv)
 
     // memory allocation
     Surface<T> S(cpu,par,mats);
-    Surface<T> S2(cpu,par,mats);
-
     Scalars<T> X(cpu,p,nVec);
     Scalars<T> Y(cpu,p,nVec);
     Scalars<T> Z(cpu,p,nVec);
     
     // initializing vesicle positions from text file
-    myIO.ReadData("../precomputed/biconcave_ra95_6",dLen,S.x_.data_);
+    myIO.ReadData("precomputed/biconcave_ra95_6",dLen,S.x_.data_);
 
     S.Resize(nVec);
     for(int ii=1;ii<nVec;ii++)
