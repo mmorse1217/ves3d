@@ -27,7 +27,7 @@ class Logger
 
     static void TearDown();
   
-    static void GetFlops();
+    static double GetGFlops();
   private:
     Logger();
     static double flop_count_;
@@ -53,6 +53,11 @@ void Logger::Log(enum LogLevel events_log_level, const char *msg)
 void Logger::Add2Flops(double flops_in)
 {
     flop_count_ += flops_in;
+}
+
+double Logger::GetGFlops()
+{
+    return(flop_count_/1e9);
 }
 
 Logger::Logger() {}
@@ -87,6 +92,7 @@ void Logger::TearDown()
         cout<<" ++++++++++++++++++++++++++++++++++++++++++++++++"<<endl<<endl;
     }
 }
+
 
 double Logger::flop_count_ = 0;
 double Logger::last_tic_ = 0;
