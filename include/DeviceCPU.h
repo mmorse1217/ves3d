@@ -42,6 +42,7 @@ struct OperatorsMats
     T *d1_leg_trans_p_up_;
     T *d2_leg_trans_p_up_;
 
+    long int GetDataLength();
     OperatorsMats(int p_in, int p_up_in, bool readFromFile);
     ~OperatorsMats();
 

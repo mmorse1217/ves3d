@@ -9,7 +9,19 @@
 // OperatorsMats //////////////////////////////////////////////////////////////////////
 
 template <typename T>
-OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) : 
+long int OperatorsMats<T>::GetDataLength()
+{
+    int np = 2 * p_ * ( p_ + 1);
+    int rot_mat_size =  np * np * (p_ + 1);
+    int np_up = 2 * p_up_ * ( p_up_ + 1);
+    int leg_size = (p_ + 1) * (p_+1) * (p_ +2);
+    int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);
+
+    return(3*np + 4*leg_size + 4*leg_size_up + rot_mat_size + np_up);
+}
+
+template <typename T>
+OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) :
     p_(p_in), p_up_(p_up_in)
 {
     int np = 2 * p_ * ( p_ + 1);
@@ -17,9 +29,8 @@ OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) :
     int np_up = 2 * p_up_ * ( p_up_ + 1);
     int leg_size = (p_ + 1) * (p_+1) * (p_ +2);
     int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);
-    int alloc_size = 3*np + 4*leg_size + 4*leg_size_up + rot_mat_size + np_up;
     
-    data_ = (T*) malloc(alloc_size * sizeof(T));
+    data_ = (T*) malloc(GetDataLength() * sizeof(T));
 
     quad_weights_ = data_;
     all_rot_mats_ = quad_weights_ + np;
