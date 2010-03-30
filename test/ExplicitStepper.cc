@@ -52,20 +52,13 @@ int main(int argc, char *argv[])
 
     vesicle.UpdateAll();
 
-    //The monitor
-    MntrOpts mntr_opts;
-    
-    mntr_opts.save_centers_ = false;
-    mntr_opts.save_shapes_ = true;
-    mntr_opts.save_freq_ = 1;
-    mntr_opts.area_inc_fac_ = 5;
-    mntr_opts.verbose = true;
-
-    Monitor<T> mntr(mntr_opts, myIO);
-    
     //Time stepper
     TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, 
-        mats.quad_weights_p_up_, mntr, &DirectInteraction);
+        mats.quad_weights_p_up_, &DirectInteraction);
+
+    exp_stepper.saveData = false;
+    exp_stepper.verbose = true;
+    exp_stepper.userMonitor =NULL;
 
     exp_stepper.EvolveInTime();
     

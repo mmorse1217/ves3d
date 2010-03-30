@@ -333,14 +333,14 @@ void Surface<T>::Resize(int n_surfs_in)
     V13.Resize(n_surfs_in);
 
 #ifndef NDEBUG
-    cout<<"Resizing form "<<params.n_surfs_<<" to "<<n_surfs_in<<endl;
+    cout<<"Resizing form "<<params_.n_surfs_<<" to "<<n_surfs_in<<endl;
 #endif
 
     if(n_surfs_in > max_n_surfs_)
     {
 #ifndef NDEBUG
     cout<<"  . The new size is larger than the current allocated memory, allocating new memory. "<<endl;
-    cout<<"  . New size "<<s_surf_in<<endl;
+    cout<<"  . New size "<<n_surfs_in<<endl;
 #endif
         this->max_n_surfs_ = n_surfs_in;
         device_.Free(shc);

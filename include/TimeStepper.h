@@ -4,56 +4,77 @@
 #include "Surface.h"
 #include "VesUtil.h"
 #include "DataIO.h"
-#include "Monitor.h"
+//#include "Monitor.h"
 
 template<typename T> 
 class TimeStepper
 {
   public:
     T ts_;
+    bool saveData;
+    bool verbose;
     int n_steps_;
     DataIO<T> &fileIO;
     Surface<T> &vesicle_;
     Vectors<T> velocity_, vel_bending_, vel_tension_;
-    void *user; //to be set manually, for now.
+    void *user;
 
     VelField<T> &bg_flow_;
-    Monitor<T> &mntr;
+    //Monitor<T> &mntr;
     void(*Interaction_)(T*, T*, int, int, T*, Device<T> &, void*);
+    bool(*userMonitor)(TimeStepper<T>&, int current_time_step);
 
     T *quad_weights_;
 
     TimeStepper(T ts_in, int n_steps_in, Surface<T> &ves_in, 
         DataIO<T> &fileIO_in, VelField<T> &bg_flow_in, 
-        T* quad_weights_p_up_in, Monitor<T> &mntr_in,
+        T* quad_weights_p_up_in, 
         void(*Interaction_in)(T*, T*, int, int,  T*, Device<T> &, void*)) : 
         ts_(ts_in),
         n_steps_(n_steps_in), 
         fileIO(fileIO_in),
+        saveData(true),
+        verbose(true),
+        userMonitor(NULL),
         vesicle_(ves_in),
         velocity_   (vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         vel_bending_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         vel_tension_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         bg_flow_(bg_flow_in),
-        mntr(mntr_in),
+        //mntr(mntr_in),
         Interaction_(Interaction_in),
         quad_weights_(quad_weights_p_up_in)
     {};
 
+    void EvolveInTime(int n){ n_steps_=n; 	EvolveInTime();}
+
+    void Resize(int new_size)
+    {
+        this->vesicle_.Resize(new_size);
+        this->velocity_.Resize(new_size);
+        this->vel_bending_.Resize(new_size);
+        this->vel_tension_.Resize(new_size);
+    }
+    
     void EvolveInTime()
     {
-        cout<<vesicle_.params_;
-        
-        cout<<" ------------------------------------"<<endl;
-        cout<<"  Time stepper parameters"<<endl;
-        cout<<" ------------------------------------"<<endl;
-        cout<<"  ts                : "<<ts_<<endl;
-        cout<<"  n_steps           : "<<n_steps_<<endl;
-        cout<<" ------------------------------------"<<endl<<endl;
+        if(verbose){
+            cout<<vesicle_.params_;
+            
+            cout<<" ------------------------------------"<<endl;
+            cout<<"  Time stepper parameters"<<endl;
+            cout<<" ------------------------------------"<<endl;
+            cout<<"  ts                : "<<ts_<<endl;
+            cout<<"  n_steps           : "<<n_steps_<<endl;
+            cout<<" ------------------------------------"<<endl<<endl;
+        }
 
-        for(int idx=0;idx<n_steps_;idx++)
+        int ss = 1;
+        for(int current_time_step=0;current_time_step<n_steps_;current_time_step++)
         {
-
+            
+            if(verbose){ cout<<current_time_step<<endl; }
+            //Set up the current state
             vesicle_.UpdateAll();
             
             //Interaction
@@ -90,8 +111,9 @@ class TimeStepper
                 vesicle_.device_.xvpb(quad_weights_, vesicle_.V11.data_ + 3*ii*stride,
                     (T) 0.0, stride, 1, vesicle_.V11.data_ + 3*ii*stride);
             }
-
-            //Interaction to V13
+						
+            // Call to fast summation algorithm for vesicle-vesicle interactions. 
+            //Interaction to V13 
             Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
                 vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, user);
             
@@ -114,7 +136,7 @@ class TimeStepper
             axpy((T) 1.0, vel_tension_, velocity_, velocity_);
             
             //Calculate stokes
-            vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_);
+            vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_); //calculated above
             axpy((T) 1.0, vesicle_.bending_force_, velocity_, velocity_);
             vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
 
@@ -126,15 +148,16 @@ class TimeStepper
             //Advance in time
             axpy(ts_, velocity_, vesicle_.x_, vesicle_.x_);
        
-            //Reparametrization 
             vesicle_.Reparam();
+
+            if( userMonitor!=NULL)
+            { 
+                bool flag = userMonitor(*this,current_time_step); 
+                if(flag) break;
+            }
             
-            //monitor
-            enum MntrRetFlg flag = mntr.Quiz(vesicle_, idx);
-            if(flag == Terminate)
-                break;
         }
-    };
+    }
 };
 
 
