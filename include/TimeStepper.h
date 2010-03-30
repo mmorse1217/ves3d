@@ -16,10 +16,11 @@ class TimeStepper
     DataIO<T> &fileIO;
     Surface<T> &vesicle_;
     Vectors<T> velocity_, vel_bending_, vel_tension_;
-		void *moboPtr;
+		void *user;
 
     VelField<T> &bg_flow_;
     void(*Interaction_)(T*, T*, int, int, T*, Device<T> &, void*);
+		void(*userMonitor)(TimeStepper<T>&, int current_time_step);
 
     T *quad_weights_;
 
@@ -32,6 +33,7 @@ class TimeStepper
         fileIO(fileIO_in),
 			  saveData(true),
   			verbose(true),
+  			userMonitor(NULL),
         vesicle_(ves_in),
         velocity_   (vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         vel_bending_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
@@ -56,10 +58,10 @@ class TimeStepper
         cout<<" ------------------------------------"<<endl<<endl;
 			}
 
-        for(int idx=0;idx<n_steps_;idx++)
+        for(int current_time_step=0;current_time_step<n_steps_;current_time_step++)
         {
 
-					if(verbose){ cout<<idx<<endl; }
+					if(verbose){ cout<<current_time_step<<endl; }
             vesicle_.UpdateAll();
 
             //Interaction
@@ -96,10 +98,11 @@ class TimeStepper
                 vesicle_.device_.xvpb(quad_weights_, vesicle_.V11.data_ + 3*ii*stride,
                     (T) 0.0, stride, 1, vesicle_.V11.data_ + 3*ii*stride);
             }
-
-            //Interaction to V13
+						
+						// Call to fast summation algorithm for vesicle-vesicle interactions. 
+            //Interaction to V13 
             Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
-                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, moboPtr);
+                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, user);
             
             axpy((T) -1.0, vesicle_.V12, vesicle_.V13, vesicle_.V13);
             
@@ -138,13 +141,14 @@ class TimeStepper
 
             //Advance in time
             axpy(ts_, velocity_, vesicle_.x_, vesicle_.x_);
-        
             vesicle_.Reparam();
 
-            if((100*(idx+1))%n_steps_ == 0 && saveData)
+						if((100*(current_time_step+1))%n_steps_ == 0 && saveData)
                 fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
+
+						if( userMonitor!=NULL){ userMonitor(*this,current_time_step); }
             
-            T m_area = vesicle_.Area();
+						//            T m_area = vesicle_.Area();
 //             if(isnan(m_area) || m_area > 2*vesicle_.max_init_area_)
 //             {
 //                 cerr<<"The time stepper has diverged"<<endl;
