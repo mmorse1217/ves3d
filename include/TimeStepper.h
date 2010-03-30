@@ -10,11 +10,13 @@ class TimeStepper
 {
   public:
     T ts_;
+		bool saveData;
+		bool verbose;
     int n_steps_;
     DataIO<T> &fileIO;
     Surface<T> &vesicle_;
     Vectors<T> velocity_, vel_bending_, vel_tension_;
-    void *moboPtr; //to be set manually, for now.
+		void *moboPtr;
 
     VelField<T> &bg_flow_;
     void(*Interaction_)(T*, T*, int, int, T*, Device<T> &, void*);
@@ -28,6 +30,8 @@ class TimeStepper
         ts_(ts_in),
         n_steps_(n_steps_in), 
         fileIO(fileIO_in),
+			  saveData(true),
+  			verbose(true),
         vesicle_(ves_in),
         velocity_   (vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
         vel_bending_(vesicle_.device_, vesicle_.params_.p_, vesicle_.params_.n_surfs_),
@@ -37,8 +41,11 @@ class TimeStepper
         quad_weights_(quad_weights_p_up_in)
     {};
 
+	 void EvolveInTime(int n){ n_steps_=n; 	EvolveInTime();}
+
     void EvolveInTime()
     {
+			if(verbose){
         cout<<vesicle_.params_;
         
         cout<<" ------------------------------------"<<endl;
@@ -47,11 +54,12 @@ class TimeStepper
         cout<<"  ts                : "<<ts_<<endl;
         cout<<"  n_steps           : "<<n_steps_<<endl;
         cout<<" ------------------------------------"<<endl<<endl;
+			}
 
         for(int idx=0;idx<n_steps_;idx++)
         {
 
-            cout<<idx<<endl;
+					if(verbose){ cout<<idx<<endl; }
             vesicle_.UpdateAll();
 
             //Interaction
@@ -133,7 +141,7 @@ class TimeStepper
         
             vesicle_.Reparam();
 
-            if((100*(idx+1))%n_steps_ == 0)
+            if((100*(idx+1))%n_steps_ == 0 && saveData)
                 fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
             
             T m_area = vesicle_.Area();

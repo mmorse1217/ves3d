@@ -18,7 +18,7 @@ int main(int argc, char ** argv)
     int dLen(6*p*(p+1));
 
     //Setting surface parameters
-    SurfaceParams<T> par;
+    SurfaceParams<T> par; 
     
     par.p_ = p;
     par.n_surfs_ = 1;
