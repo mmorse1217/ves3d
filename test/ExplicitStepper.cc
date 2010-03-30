@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     //Background flow
     ShearFlow<T> flow_field;
     flow_field.shear_rate_ = time_par.shear_rate_;
-    
+
     //Setting up the device
     DeviceCPU<T> cpu_device;
     bool readFromFile = true;
@@ -56,9 +56,10 @@ int main(int argc, char *argv[])
     MntrOpts mntr_opts;
     
     mntr_opts.save_centers_ = false;
-    mntr_opts.save_shapes_ = false;
+    mntr_opts.save_shapes_ = true;
     mntr_opts.save_freq_ = 1;
-    mntr_opts.area_inc_fac_ = 2;
+    mntr_opts.area_inc_fac_ = 5;
+    mntr_opts.verbose = true;
 
     Monitor<T> mntr(mntr_opts, myIO);
     

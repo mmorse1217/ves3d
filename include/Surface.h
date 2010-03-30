@@ -99,11 +99,11 @@ template <typename T> class Surface
     T *all_rot_mats_;
 
     //Quadrature weights
-    T* quad_weights_;
+    T *quad_weights_;
     
     Surface(Device<T> &device_in);
-    Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats);
-    Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats, const Vectors<T> &x_in);
+    Surface(Device<T> &device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats);
+    Surface(Device<T> &device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats, const Vectors<T> &x_in);
     ~Surface();
     
     /** 

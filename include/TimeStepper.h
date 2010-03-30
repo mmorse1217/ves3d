@@ -15,7 +15,7 @@ class TimeStepper
     DataIO<T> &fileIO;
     Surface<T> &vesicle_;
     Vectors<T> velocity_, vel_bending_, vel_tension_;
-    void *moboPtr; //to be set manually, for now.
+    void *user; //to be set manually, for now.
 
     VelField<T> &bg_flow_;
     Monitor<T> &mntr;
@@ -93,7 +93,7 @@ class TimeStepper
 
             //Interaction to V13
             Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
-                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, moboPtr);
+                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, user);
             
             axpy((T) -1.0, vesicle_.V12, vesicle_.V13, vesicle_.V13);
             
@@ -115,16 +115,13 @@ class TimeStepper
             
             //Calculate stokes
             vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_);
-            //fileIO.Append(vel_bending_.data_,10);
-                        
-            //axpy((T) 1.0, vesicle_.bending_force_, velocity_, velocity_);
+            axpy((T) 1.0, vesicle_.bending_force_, velocity_, velocity_);
+            vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
 
-            //vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
-
-//             //Calculate tension
-//             vesicle_.GetTension(velocity_, vel_tension_, vesicle_.tension_);
-//             vesicle_.device_.avpw(vesicle_.tension_, vel_tension_.data_,
-//                 velocity_.data_, velocity_.GetFunLength(), vesicle_.params_.n_surfs_, velocity_.data_);
+            //Calculate tension
+            vesicle_.GetTension(velocity_, vel_tension_, vesicle_.tension_);
+            vesicle_.device_.avpw(vesicle_.tension_, vel_tension_.data_,
+                velocity_.data_, velocity_.GetFunLength(), vesicle_.params_.n_surfs_, velocity_.data_);
 
             //Advance in time
             axpy(ts_, velocity_, vesicle_.x_, vesicle_.x_);
@@ -133,7 +130,9 @@ class TimeStepper
             vesicle_.Reparam();
             
             //monitor
-            mntr.Quiz(vesicle_, idx);
+            enum MntrRetFlg flag = mntr.Quiz(vesicle_, idx);
+            if(flag == Terminate)
+                break;
         }
     };
 };

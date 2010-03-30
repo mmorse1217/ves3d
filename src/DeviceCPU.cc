@@ -1164,6 +1164,8 @@ T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shif
     return arr_out;
 }
 
+#define I_PI 1.0/M_PI/8.0
+
 template<typename T>
 void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     int trg_idx_tail, const T *qw, const T *trg, const T *src, const T *den, T *pot)
@@ -1222,9 +1224,9 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
                 py += cpy*invR;
                 pz += cpz*invR;
             }
-            pot[3*vt*stride +                  trg_idx] = px;
-            pot[3*vt*stride + stride +         trg_idx] = py;
-            pot[3*vt*stride + stride +stride + trg_idx] = pz;
+            pot[3*vt*stride +                  trg_idx] = px * I_PI;
+            pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
+            pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
         }
     }
 

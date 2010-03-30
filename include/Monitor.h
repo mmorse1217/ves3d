@@ -12,6 +12,7 @@ struct MntrOpts
     bool save_shapes_;
     int save_freq_;
     int area_inc_fac_;
+    bool verbose;
 };
     
 template <typename T>
@@ -40,7 +41,12 @@ template <typename T>
 enum MntrRetFlg Monitor<T>::Quiz(Surface<T> &surf_in, int step_idx)
 {
 
-    cout<<step_idx<<endl;
+    if(opts.verbose) 
+    {
+        cout<<" Time step   : "<<step_idx<<endl;
+        cout<<"   . n_surfs_ : "<<surf_in.params_.n_surfs_<<endl;
+    }
+
     if(opts.save_shapes_ && (step_idx + 1)%opts.save_freq_ == 0)
     {
         fileIO.Append(surf_in.x_.data_, surf_in.x_.GetDataLength());
@@ -53,16 +59,22 @@ enum MntrRetFlg Monitor<T>::Quiz(Surface<T> &surf_in, int step_idx)
     }
     
     T m_area = surf_in.Area();
-
+    if(opts.verbose) cout<<"  . Max area : "<<m_area<<endl;
     if(max_init_area_ < 0)
         max_init_area_ = m_area;
     else
         if(isnan(m_area) || m_area > opts.area_inc_fac_ * max_init_area_)
         {
-            cerr<<"The time stepper has diverged"<<endl;
+            cerr<<" ============================== "<<endl;
+            cerr<<" The time stepper has diverged. "<<endl;
+            cerr<<" ============================== "<<endl;
             return(Terminate);
         }
     
+
+    if(step_idx == 2) surf_in.Resize(1);
+    if(step_idx == 100) surf_in.Resize(2);
+
     return(Continue);
 }
 

@@ -153,7 +153,7 @@ Surface<T>::Surface(Device<T> &device_in) :
 {}
 
 template <typename T> 
-Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats) :
+Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats) :
     device_(device_in), 
     params_(params_in),
     max_n_surfs_(params_.n_surfs_),
@@ -196,7 +196,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsM
     all_rot_mats_ = mats.all_rot_mats_;
     sing_quad_weights_ = mats.sing_quad_weights_;
     
-    device_.Memcpy(mats.w_sph_, w_sph_.data_, np, MemcpyHostToDevice);
+    device_.Memcpy(w_sph_.data_, mats.w_sph_, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
         device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
 
@@ -225,7 +225,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsM
 }
 
 template <typename T> 
-Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsMats<T> &mats, const Vectors<T> &x_in) :
+Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats, const Vectors<T> &x_in) :
     device_(device_in), 
     params_(params_in),
     x_(device_,params_.p_,params_.n_surfs_),
@@ -266,7 +266,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, OperatorsM
     all_rot_mats_ = mats.all_rot_mats_;
     sing_quad_weights_ = mats.sing_quad_weights_;
     
-    device_.Memcpy(mats.w_sph_, w_sph_.data_, np, MemcpyHostToDevice);
+    device_.Memcpy(w_sph_.data_, mats.w_sph_, np, MemcpyHostToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
         device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
 
@@ -332,8 +332,16 @@ void Surface<T>::Resize(int n_surfs_in)
     V12.Resize(n_surfs_in); 
     V13.Resize(n_surfs_in);
 
+#ifndef NDEBUG
+    cout<<"Resizing form "<<params.n_surfs_<<" to "<<n_surfs_in<<endl;
+#endif
+
     if(n_surfs_in > max_n_surfs_)
     {
+#ifndef NDEBUG
+    cout<<"  . The new size is larger than the current allocated memory, allocating new memory. "<<endl;
+    cout<<"  . New size "<<s_surf_in<<endl;
+#endif
         this->max_n_surfs_ = n_surfs_in;
         device_.Free(shc);
         shc = device_.Malloc(6  * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
@@ -470,9 +478,6 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     xyInv(w_, w_sph_, S1);
     int nvX3= 3*params_.n_surfs_;   
 
-
-    DataIO<T> fileIO(device_,"X", 0);
-    
     for(int ii=0;ii <= params_.p_; ++ii)
     {
         for(int jj=0;jj < 2 * params_.p_; ++jj)
@@ -482,9 +487,6 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
             device_.gemm("N", "N", &np, &nvX3, &np, 
 			 &alpha,rot_mat, &np, x_.data_, &np, &beta, V1.data_, &np);
     
-            if(ii==3)
-                fileIO.Append(V1.data_,3*np);
-
             device_.gemm("N", "N", &np, &nvX3, &np,
 			 &alpha,rot_mat,&np,density_in.data_,&np,&beta, V2.data_, &np);
             
@@ -493,6 +495,7 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     
             xy(S2, w_sph_, S2);
             xvpb(S2, V2, (T) 0.0, V2);
+
             device_.DirectStokes(np, params_.n_surfs_, ii*2*params_.p_ + jj, ii*2*params_.p_ + jj + 1, 
                 sing_quad_weights_, x_.data_, V1.data_, V2.data_, velocity_out.data_);
             

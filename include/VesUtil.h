@@ -46,7 +46,7 @@ class ShearFlow : public VelField<T>
 };
 
 // Interaction /////////////////////////////////////////////////////////////////
-#define I_PI 1/M_PI/8
+#define I_PI 1.0/M_PI/8.0
 
 template<typename T>
 void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
