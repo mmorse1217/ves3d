@@ -1055,8 +1055,6 @@ T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shif
     return arr_out;
 }
 
-#define I_PI 1.0/M_PI/8.0
-
 template<typename T>
 void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     int trg_idx_tail, const T *qw, const T *trg, const T *src, const T *den, T *pot)
@@ -1069,57 +1067,10 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     double ss = get_seconds();
 #endif
 
-    T tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-    
-#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
-    for (int vt=0; vt<n_surfs; vt++)
-    {
-        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
-        {
-            px = 0;
-            py = 0;
-            pz = 0;
-            
-            tx=trg[3*vt*stride +                   trg_idx];
-            ty=trg[3*vt*stride + stride +          trg_idx];
-            tz=trg[3*vt*stride + stride + stride + trg_idx];
-            
-            for (int s=0; s<stride; s++)
-            {
-                dx=src[3*stride*vt +                   s]-tx;
-                dy=src[3*stride*vt + stride +          s]-ty;
-                dz=src[3*stride*vt + stride + stride + s]-tz;
-
-                invR = dx*dx;
-                invR+= dy*dy;
-                invR+= dz*dz;
-                
-                if (invR!=0)
-                    invR = 1.0/sqrt(invR);
-            
-                cpx = den[3*stride*vt +                   s] * qw[s]; 
-                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
-                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
-                
-                cc  = dx*cpx;
-                cc += dy*cpy;
-                cc += dz*cpz;
-                cc *= invR;
-                cc *= invR;
-
-                cpx += cc*dx;
-                cpy += cc*dy;
-                cpz += cc*dz;
-                
-                px += cpx*invR;
-                py += cpy*invR;
-                pz += cpz*invR;
-            }
-            pot[3*vt*stride +                  trg_idx] = px * I_PI;
-            pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
-            pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
-        }
-    }
+    if(qw != NULL)
+        DirectStokesKernel(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, den, pot);
+    else
+        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
 
 #ifdef PROFILING
     ss = get_seconds()-ss;
@@ -1127,12 +1078,6 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
 #endif
     return;
 } 
-
-#  define IDEAL_ALIGNMENT 16
-#  define SIMD_LEN (IDEAL_ALIGNMENT / sizeof(float))
-#define I_PI 1.0/M_PI/8.0
-
-using namespace std;
 
 template<>
 void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
@@ -1146,115 +1091,37 @@ void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, i
     double ss = get_seconds();
 #endif
 
-    float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+    if(qw != NULL)
+        DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, den, pot);
+    else
+        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
+
+
+
     
-#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
-    for (int vt=0; vt<n_surfs; vt++)
-    {
-        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
-        {
-            px = 0;
-            py = 0;
-            pz = 0;
-            
-            tx=trg[3*vt*stride +                   trg_idx];
-            ty=trg[3*vt*stride + stride +          trg_idx];
-            tz=trg[3*vt*stride + stride + stride + trg_idx];
-            
-            for (int s=0; s<stride; s++)
-            {
-                dx=src[3*stride*vt +                   s]-tx;
-                dy=src[3*stride*vt + stride +          s]-ty;
-                dz=src[3*stride*vt + stride + stride + s]-tz;
-
-                invR = dx*dx;
-                invR+= dy*dy;
-                invR+= dz*dz;
-                
-                if (invR!=0)
-                    invR = 1.0/sqrt(invR);
-            
-                cpx = den[3*stride*vt +                   s] * qw[s]; 
-                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
-                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
-                
-                cc  = dx*cpx;
-                cc += dy*cpy;
-                cc += dz*cpz;
-                cc *= invR;
-                cc *= invR;
-
-                cpx += cc*dx;
-                cpy += cc*dy;
-                cpz += cc*dz;
-                
-                px += cpx*invR;
-                py += cpy*invR;
-                pz += cpz*invR;
-            }
-            pot[3*vt*stride +                  trg_idx] = px * I_PI;
-            pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
-            pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
-        }
-    }
-
 #ifdef PROFILING
     ss = get_seconds()-ss;
     cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
 #endif
     return;
-} 
+}
 
 template<typename T>
 T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
 {
+    ///@transpose could be made in place
+    assert(x_in !=x_out);
 
-    assert(x_out != x_in);
-        
-    int idx_in, idx_out;
-    T x, y, z;
-    if(order_in == AxisMajor)
-    {
-#pragma omp parallel for private(idx_in, idx_out, x, y, z)
-        for(int ii=0;ii<n_surfs;++ii)
-        {
-            idx_in  = 3*ii*stride;
-            idx_out = idx_in-1;
-                
-            for(int jj=0;jj<stride;++jj)
-            {
-                x = x_in[idx_in                   ];
-                y = x_in[idx_in + stride          ];
-                z = x_in[idx_in + stride + stride ];
-                idx_in++;
-                    
-                x_out[++idx_out] = x;
-                x_out[++idx_out] = y;
-                x_out[++idx_out] = z;
-            }
-        }
-    }
-    else
-    {
-#pragma omp parallel for private(idx_in, idx_out, x, y, z)
-        for(int ii=0;ii<n_surfs;++ii)
-        {
-            idx_out = 3*ii*stride;
-            idx_in  = idx_out-1;
-                
-            for(int jj=0;jj<stride;++jj)
-            {
-                x = x_in[++idx_in];
-                y = x_in[++idx_in];
-                z = x_in[++idx_in];
-                    
-                x_out[idx_out                   ];
-                x_out[idx_out + stride          ];
-                x_out[idx_out + stride + stride ];
-                idx_out++;
-            }
-        }
-    }
+    int len = 3*stride;
+    int dim1 = (order_in == AxisMajor) ? stride : 3;
+    int dim2 = (order_in == AxisMajor) ? 3 : stride;
+
+    
+#pragma omp parallel for 
+    for(int ss=0;ss<n_surfs;++ss)
+        for(int ii=0;ii<dim1;++ii)
+            for(int jj=0;jj<dim2;++jj)
+                x_out[ss*len + ii*dim2+jj] = x_in[ss*len + jj*dim1+ii];
     
     return x_out;
 }

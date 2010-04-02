@@ -15,3 +15,4 @@ void cuda_shuffle(float *in, int stride, int n_surfs,int dim);
 void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *D, float *U, const float *Q);
 void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q);
 void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, float *shc_out);
+void avpwGpu(const float *a_in, const float *v_in, const float *w_in, int stride, int num_surfs, float *avpw_out);

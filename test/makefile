@@ -11,6 +11,9 @@ VectorsTest:
 SurfaceTest: 
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
+SurfaceTestGPU: 
+	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
 DeviceTest: 
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
@@ -24,6 +27,9 @@ ExplicitStepperHetro:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
 SHTransTest:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
+StokesTest:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
 .PHONY: clean

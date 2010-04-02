@@ -87,7 +87,12 @@ class ParabolicFlow : public VelField<T>
 template<typename T>
 void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
 {
+#ifndef NDEBUG
+    cout<<"DirectInteraction()"<<endl;
+#endif
+
     T *work = (T*) user;
+
     size_t np = n_surfs * stride;
     size_t n_surfs_direct = 1;
 
@@ -102,6 +107,7 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
     //Direct stokes of Device
     size_t trg_idx_head = 0;
     size_t trg_idx_tail = np;
+    
     device.DirectStokes(np, n_surfs_direct, trg_idx_head, trg_idx_tail, 
         NULL, x_in, x_in, density_in, vel_out);
 
@@ -116,87 +122,13 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
     //reordering vel to the original
     device.ShufflePoints(vel_out,  AxisMajor,     np, n_surfs_direct, work);
     device.ShufflePoints(   work, PointMajor, stride, n_surfs       , vel_out);
-    
+
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+#endif
+    return;
 }
-
-// #define I_PI 1.0/M_PI/8.0
-
-// template<typename T>
-// void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
-// {
-
-// #ifndef NDEBUG
-//     cout<<"DirectInteraction()"<<endl;
-// #endif
- 
-// #ifdef PROFILING
-//     double ss = get_seconds();
-// #endif
-
-//     int trg_idx, src_idx;
-//     T px, py, pz, tx, ty, tz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-    
-// #pragma omp parallel for private(trg_idx, src_idx, px, py, pz, tx, ty, tz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
-//     for(int ii=0;ii<n_surfs;++ii)
-//         for(int jj=0;jj<stride;++jj) 
-//         {
-//             trg_idx = 3*ii*stride + jj;
-        
-//             px = 0;
-//             py = 0;
-//             pz = 0;
-            
-//             tx=x_in[trg_idx                   ];
-//             ty=x_in[trg_idx + stride          ];
-//             tz=x_in[trg_idx + stride + stride ];
-            
-
-//             for(int kk=0;kk<n_surfs;++kk)
-//                 for(int ll=0;ll<stride;++ll) 
-//                 {
-//                     src_idx = 3*kk*stride + ll;
-                    
-//                     dx=x_in[src_idx                  ]-tx;
-//                     dy=x_in[src_idx + stride         ]-ty;
-//                     dz=x_in[src_idx + stride + stride]-tz;
-                    
-//                     invR = dx*dx;
-//                     invR+= dy*dy;
-//                     invR+= dz*dz;
-                
-//                     if (invR!=0)
-//                         invR = 1.0/sqrt(invR);
-                    
-//                     cpx = density_in[src_idx                  ];
-//                     cpy = density_in[src_idx + stride         ];
-//                     cpz = density_in[src_idx + stride + stride];
-                
-//                     cc  = dx*cpx;
-//                     cc += dy*cpy;
-//                     cc += dz*cpz;
-//                     cc *= invR;
-//                     cc *= invR;
-
-//                     cpx += cc*dx;
-//                     cpy += cc*dy;
-//                     cpz += cc*dz;
-                
-//                     px += cpx*invR;
-//                     py += cpy*invR;
-//                     pz += cpz*invR;
-//                 }
-            
-//             vel_out[trg_idx                   ] = px*I_PI;
-//             vel_out[trg_idx + stride          ] = py*I_PI;
-//             vel_out[trg_idx + stride + stride ] = pz*I_PI;
-//         }
-
-// #ifdef PROFILING
-//     ss = get_seconds()-ss;
-//     cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
-// #endif
-//     return;
-// }
 
 ///Parser ///////////////////////////////////////////////////////
 #include <fstream>

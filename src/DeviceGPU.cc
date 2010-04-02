@@ -162,7 +162,7 @@ T* DeviceGPU<T>::avpw(const T* a_in, const T*  v_in, const T*  w_in, int stride,
     cout<<"DeviceGPU::avpw"<<endl;
 #endif
 
-    cout<<"GPU AVPW"<<endl;
+    avpwGpu(a_in, v_in, w_in, stride, num_surfs, avpw_out);
     return avpw_out;
 }
 

@@ -75,10 +75,10 @@ class TimeStepper
             if(verbose){ cout<<current_time_step<<endl; }
             //Set up the current state
             vesicle_.UpdateAll();
-            
+
             //Interaction
             avpw(vesicle_.tension_, vesicle_.tensile_force_, vesicle_.bending_force_, vel_tension_);
-
+            
             //vel_tension_ holds the interaction force
             xvpb(vesicle_.w_,vel_tension_, (T) 0.0, vel_tension_);
 
@@ -99,10 +99,11 @@ class TimeStepper
                 3*vesicle_.params_.n_surfs_, vesicle_.V11.data_);
 
             //the self-interaction -- V12
+
             vesicle_.device_.DirectStokes(vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, 
                 0, vesicle_.V10.GetFunLength(), quad_weights_, vesicle_.V10.data_,
                 vesicle_.V10.data_, vesicle_.V11.data_, vesicle_.V12.data_);
-
+ 
             ///@todo the multiplication by the quadrature weights is slow
             int stride = vesicle_.V11.GetFunLength();
             for(int ii=0;ii<vesicle_.params_.n_surfs_;++ii)
@@ -127,6 +128,7 @@ class TimeStepper
 
             vesicle_.device_.Resample(vesicle_.params_.rep_up_freq_, 3*vesicle_.params_.n_surfs_, 
                 vesicle_.params_.p_, vesicle_.V11.data_, vesicle_.shc);
+
             vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
                 3*vesicle_.params_.n_surfs_, velocity_.data_);
 
@@ -406,6 +408,3 @@ void AllParams<T>::SetMember(string var_name, string var_val)
 }
 
 #endif //_TIMESTEPPER_H_
-
-
-

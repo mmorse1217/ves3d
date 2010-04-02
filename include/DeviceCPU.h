@@ -11,10 +11,11 @@
 #include "Device.h"
 #include <iostream>
 #include <cassert>
-#include <math.h>
-#include <memory.h>
+//#include <math.h>
+//#include <memory.h>
 #include "BlasSht.h"
-#include <emmintrin.h>
+#include "CPUKernels.h"
+//#include <emmintrin.h>
 #include <omp.h>
 #include "OperatorsMats.h"
 
