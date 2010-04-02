@@ -1,90 +1,118 @@
-#include<iostream>
-#include "DeviceCPU.h"
-#include "Scalars.h"
-#include "Vectors.h"
-#include "SHTrans.h"
+#include "CudaSht.h"
+#include "DataIO.h"
+#include "OperatorsMats.h"
+#include "cuda_runtime.h"
+#include "BlasSht.h"
 
+using namespace std;
+typedef float T;
 
-int main(int argc, char ** argv)
+int main(int argc, char *argv[])
 {
-    const int p = 12;
-    const int num_vesicles = 300;
-    int leg_mat_size      = (p + 1) * (p + 1) * (p + 2);
-    float* dft_forward    = (float*)malloc(sizeof(float) * 4 * p *p);
-    float* dft_backward   = (float*)malloc(sizeof(float) * 4 * p *p);
-    float* dft_d1backward = (float*)malloc(sizeof(float) * 4 * p *p);
-    float* dft_d2backward = (float*)malloc(sizeof(float) * 4 * p *p);
+    int p = 12;
+    int leg_size = (p + 1) * (p + 1) * (p + 2);
 
-    float* leg_trans      = (float*)malloc(sizeof(float) * leg_mat_size);
-    float* leg_trans_inv  = (float*)malloc(sizeof(float) * leg_mat_size);
-    float* d1_leg_trans   = (float*)malloc(sizeof(float) * leg_mat_size);
-    float* d2_leg_trans   = (float*)malloc(sizeof(float) * leg_mat_size);
+    CudaSht shtCuda;
+    BlasSht shtBlas;
 
-    BlasSht c(p, "../data/legTrans12_single.txt",
-        "../data/legTransInv12_single.txt",
-        "../data/d1legTrans12_single.txt",
-        "../data/d2legTrans12_single.txt", dft_forward,
-        dft_backward, dft_d1backward, dft_d2backward, leg_trans,
-        leg_trans_inv, d1_leg_trans, d2_leg_trans);
-    //c.test(num_vesicles);
+    //reading mats
+    bool readFromFile = true;
+    OperatorsMats<T> mats(p, 2*p, readFromFile);
+    
+    //Initializing Blas
+    T *dft_forward_host    = (T*) malloc(4 * p * p * sizeof(T));
+    T *dft_backward_host   = (T*) malloc(4 * p * p * sizeof(T));
+    T *dft_d1backward_host = (T*) malloc(4 * p * p * sizeof(T));
+    T *dft_d2backward_host = (T*) malloc(4 * p * p * sizeof(T));
 
-    int vec_length = 2 * p * (p + 1) * num_vesicles;
-    scalar *inputs, *outputs, *outputs_2, *work_arr;
-    inputs    = (scalar*) malloc(vec_length * sizeof(scalar));
-    outputs   = (scalar*) malloc(vec_length * sizeof(scalar));
-    outputs_2 = (scalar*) malloc(vec_length * sizeof(scalar));
-    work_arr  = (scalar*) malloc(2 * vec_length * sizeof(scalar));
-    for (int i = 0; i < vec_length; i++) {
-        inputs[i] = (float) rand() / (float) RAND_MAX;
-    }
-    c.forward(inputs, work_arr, num_vesicles, outputs);
-    c.backward_du(outputs, work_arr, num_vesicles, outputs_2);
+    shtBlas.InitializeBlasSht(p, dft_forward_host, dft_backward_host, 
+        dft_d1backward_host, dft_d2backward_host, mats.leg_trans_p_, 
+        mats.leg_trans_inv_p_, mats.d1_leg_trans_p_, mats.d2_leg_trans_p_);
 
-    //Testing the device
-    DeviceCPU<float> cpu1;
-    cpu1.InitializeSHT(p, "../data/legTrans12_single.txt",
-        "../data/legTransInv12_single.txt",
-        "../data/d1legTrans12_single.txt",
-        "../data/d2legTrans12_single.txt");
-  
-    scalar *du, *dv, *shc;
-    du  = (scalar*) malloc(vec_length * sizeof(scalar));
-    dv  = (scalar*) malloc(vec_length * sizeof(scalar));
-    shc = (scalar*) malloc(vec_length * sizeof(scalar));
+    //Initializing Cuda
+    T *dft_forward;    
+    T *dft_backward;
+    T *dft_d1backward;
+    T *dft_d2backward;
+
+    T *leg_trans;
+    T *leg_trans_inv;
+    T *d1_leg_trans;
+    T *d2_leg_trans;
+
+    cudaMalloc(&dft_forward   , 4 * p * p * sizeof(T));
+    cudaMalloc(&dft_backward  , 4 * p * p * sizeof(T));
+    cudaMalloc(&dft_d1backward, 4 * p * p * sizeof(T));
+    cudaMalloc(&dft_d2backward, 4 * p * p * sizeof(T));
+
+    cudaMalloc(&leg_trans    , leg_size * sizeof(T));
+    cudaMalloc(&leg_trans_inv, leg_size * sizeof(T));
+    cudaMalloc(&d1_leg_trans , leg_size * sizeof(T));
+    cudaMalloc(&d2_leg_trans , leg_size * sizeof(T));
     
-    cpu1.ShAna(inputs, work_arr, num_vesicles, outputs);
-    cpu1.ShSynDu(outputs, work_arr, num_vesicles, du);
-    for (int i = 0; i < 2 * p * (p + 1) * num_vesicles; i++) {
-        cout<<outputs_2[i]<<" "<<du[i]-outputs_2[i]<<endl;
-    }
+    cudaMemcpy(leg_trans    , mats.leg_trans_p_    , leg_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(leg_trans_inv, mats.leg_trans_inv_p_, leg_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d1_leg_trans , mats.d1_leg_trans_p_ , leg_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d2_leg_trans , mats.d2_leg_trans_p_ , leg_size, cudaMemcpyHostToDevice);
+
+    shtCuda.InitializeCudaSht(p, dft_forward, dft_backward, dft_d1backward, dft_d2backward,
+        leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
+
+    //Testing
+    int n_funs = 1;
+    int length = 2 * p * (p + 1) * n_funs;
+    int sh_len = p * (p + 2) * n_funs;
+
+    T *x_ref = (T*) malloc(length * sizeof(T));
+    T *work_arr_ref = (T*) malloc( 2 * length * sizeof(T));
+    T *shc_ref = (T*) malloc( sh_len * sizeof(T));
+
+    srand48(time(0));
+    for(int idx=0;idx<length;idx++)
+            x_ref[idx] = (T) drand48();
+
+    shtBlas.forward(x_ref, work_arr_ref, n_funs, shc_ref);
     
-    Scalars<float> sc(cpu1, p, num_vesicles,inputs);
-    Scalars<float> dsc(cpu1, p, num_vesicles);
-    Scalars<float> trash(cpu1, p, num_vesicles);
-    SHTrans<float> diff(cpu1, p, num_vesicles);
+    T *x;
+    T *work_arr;
+    T *shc;
+    T *shc_host = (T*) malloc( sh_len * sizeof(T));
+
+    cudaMalloc(&x , length * sizeof(T));
+    cudaMalloc(&work_arr , 2 * length * sizeof(T));
+    cudaMalloc(&shc , sh_len * sizeof(T));
+
+    cudaMemcpy(x , x_ref , length, cudaMemcpyHostToDevice);
+    shtCuda.forward(x, work_arr, n_funs, shc);
+    cudaMemcpy(shc_host , shc , sh_len, cudaMemcpyDeviceToHost);
+
+    for(int idx=0;idx<sh_len;idx++)
+        cout<<shc_ref[idx]<<"\t"<<shc_host[idx]<<endl;
+
+    //Freeing
+    free(dft_forward_host);    
+    free(dft_backward_host);
+    free(dft_d1backward_host);
+    free(dft_d2backward_host);
     
-    diff.FirstDerivatives(sc,dsc,trash);
+    cudaFree(dft_forward);    
+    cudaFree(dft_backward);
+    cudaFree(dft_d1backward);
+    cudaFree(dft_d2backward);
+
+    cudaFree(leg_trans);
+    cudaFree(leg_trans_inv);
+    cudaFree(d1_leg_trans);
+    cudaFree(d2_leg_trans);
+
+    free(x_ref);
+    free(work_arr_ref);
+    free(shc_ref);
     
-    for (int i = 0; i < 2 * p * (p + 1) * num_vesicles; i++) {
-        cout<<outputs_2[i]<<" "<<dsc.data_[i]-du[i]<<endl;
-    }
-    
-    
-    free(dft_forward);
-    free(dft_backward);
-    free(dft_d1backward);
-    free(dft_d2backward);
-    free(leg_trans);
-    free(leg_trans_inv);
-    free(d1_leg_trans);
-    free(d2_leg_trans);
-    free(inputs);
-    free(outputs);
-    free(outputs_2);
-    free(work_arr);
-    free(du);
-    free(dv);
-    free(shc);
+    cudaFree(x);
+    cudaFree(work_arr);
+    cudaFree(shc);
+    free(shc_host);
 
     return 0;
 }

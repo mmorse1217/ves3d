@@ -28,8 +28,9 @@ int main(int argc, char *argv[])
     int n_steps(time_par.n_steps_);
     
     //Background flow
-    ShearFlow<T> flow_field;
-    flow_field.shear_rate_ = time_par.shear_rate_;
+    ParabolicFlow<T> flow_field;
+    flow_field.R = 10;
+    flow_field.U = 3;
 
     //Setting up the device
     DeviceCPU<T> cpu_device;
@@ -62,8 +63,9 @@ int main(int argc, char *argv[])
     exp_stepper.saveData = false;
     exp_stepper.verbose = true;
     exp_stepper.userMonitor =NULL;
-    exp_stepper.user = (void*) vesicle.work_arr;
+
     exp_stepper.EvolveInTime();
     
     cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 }
+

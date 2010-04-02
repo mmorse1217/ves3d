@@ -10,6 +10,7 @@
 #define _DEVICE_H_
 
 #include <sys/time.h>
+
 #define get_seconds()   (gettimeofday(&tp, &tzp), \
     (double)tp.tv_sec + (double)tp.tv_usec / 1000000.0)
 
@@ -119,9 +120,8 @@ template<typename T> class Device
 
     virtual T* ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out) = 0;
 
-    ///SHT size
-    //virtual void InitializeSHT(int p, int p_up) = 0;
-    
+    virtual T Max(T *x_in, int length) = 0;
+
     ///SHT Analysis
     virtual void ShAna(const T *x_in, T *work_arr, int p, int num_funs, T *sht_out) = 0;
     
@@ -156,6 +156,8 @@ template<typename T> class Device
     ///The comparison operator for the device class
     template<typename Tlhs,typename Trhs>
     friend bool operator==(const Device<Tlhs> &rhs, const Device<Trhs> &lhs);
+
+    //
 };
 
 #endif //_DEVICE_H_

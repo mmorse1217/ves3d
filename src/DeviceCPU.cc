@@ -6,116 +6,6 @@
  * @brief  The implementation of the DeviceCPU class.
  */
 
-// OperatorsMats //////////////////////////////////////////////////////////////////////
-
-template <typename T>
-long int OperatorsMats<T>::GetDataLength()
-{
-    int np = 2 * p_ * ( p_ + 1);
-    int rot_mat_size =  np * np * (p_ + 1);
-    int np_up = 2 * p_up_ * ( p_up_ + 1);
-    int leg_size = (p_ + 1) * (p_+1) * (p_ +2);
-    int leg_size_up = (p_up_ + 1) * (p_up_+1) * (p_up_ +2);
-
-    return(3*np + 4*leg_size + 4*leg_size_up + rot_mat_size + np_up);
-}
-
-template <typename T>
-OperatorsMats<T>::OperatorsMats(int p_in, int p_up_in, bool readFromFile) :
-    p_(p_in), p_up_(p_up_in)
-{
-    int np = 2 * p_ * ( p_ + 1);
-    int rot_mat_size =  np * np * (p_ + 1);
-    int np_up = 2 * p_up_ * ( p_up_ + 1);
-    int leg_size = (p_ + 1) * (p_ + 1) * (p_ + 2);
-    int leg_size_up = (p_up_ + 1) * (p_up_ + 1) * (p_up_ + 2);
-    
-    data_ = (T*) malloc(GetDataLength() * sizeof(T));
-
-    quad_weights_       = data_;
-    all_rot_mats_       = quad_weights_       + np;
-    sing_quad_weights_  = all_rot_mats_       + rot_mat_size;
-    w_sph_              = sing_quad_weights_  + np;
-    
-    leg_trans_p_        = w_sph_              + np;
-    leg_trans_inv_p_    = leg_trans_p_        + leg_size;
-    d1_leg_trans_p_     = leg_trans_inv_p_    + leg_size;
-    d2_leg_trans_p_     = d1_leg_trans_p_     + leg_size;
-     
-    //p_up_
-    quad_weights_p_up_  = d2_leg_trans_p_     + leg_size;
-    leg_trans_p_up_     = quad_weights_p_up_  + np_up;
-    leg_trans_inv_p_up_ = leg_trans_p_up_     + leg_size_up;
-    d1_leg_trans_p_up_  = leg_trans_inv_p_up_ + leg_size_up;
-    d2_leg_trans_p_up_  = d1_leg_trans_p_up_  + leg_size_up;
-
-    
-    if(readFromFile)
-    {
-        struct DeviceCPU<T> dev; ///@bug This should be moved outside AND IO class should be fixed
-        DataIO<T> myIO(dev,"",0); 
-        char fname[500];
-
-        //sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/quad_weights_%u_single.txt",p_);
-        myIO.ReadData(fname, np, quad_weights_);
-
-        //sprintf(fname,"%s/precomputed/all_rot_mats_%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p_);
-        myIO.ReadData(fname, rot_mat_size, all_rot_mats_);
-
-        //sprintf(fname,"%s/precomputed/sing_quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",p_);
-        myIO.ReadData(fname, np, sing_quad_weights_);
-    
-        //sprintf(fname,"%s/precomputed/w_sph_%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
-        myIO.ReadData(fname, np, w_sph_);
-
-        //sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/legTrans%u_single.txt",p_);
-        myIO.ReadData(fname, leg_size, leg_trans_p_);
-        
-        //sprintf(fname,"%s/precomputed/legTransInv%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/legTransInv%u_single.txt",p_);
-        myIO.ReadData(fname, leg_size, leg_trans_inv_p_);
-
-        //sprintf(fname,"%s/precomputed/d1legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/d1legTrans%u_single.txt",p_);
-        myIO.ReadData(fname, leg_size, d1_leg_trans_p_);
-
-        //sprintf(fname,"%s/precomputed/d2legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
-        sprintf(fname,"precomputed/d2legTrans%u_single.txt",p_);
-        myIO.ReadData(fname, leg_size, d2_leg_trans_p_);
-
-        //p_up_
-        //sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_up_);
-        sprintf(fname,"precomputed/quad_weights_%u_single.txt",p_up_);
-        myIO.ReadData(fname, np_up, quad_weights_p_up_);
-        
-        //sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
-        sprintf(fname,"precomputed/legTrans%u_single.txt",p_up_);
-        myIO.ReadData(fname, leg_size, leg_trans_p_up_);
-
-        //sprintf(fname,"%s/precomputed/legTransInv%u_single.txt",getenv("VES3D_DIR"),p_up_);
-        sprintf(fname,"precomputed/legTransInv%u_single.txt",p_up_);
-        myIO.ReadData(fname, leg_size, leg_trans_inv_p_up_);
-
-        //sprintf(fname,"%s/precomputed/d1legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
-        sprintf(fname,"precomputed/d1legTrans%u_single.txt",p_up_);
-        myIO.ReadData(fname, leg_size, d1_leg_trans_p_up_);
-
-        //sprintf(fname,"%s/precomputed/d2legTrans%u_single.txt",getenv("VES3D_DIR"),p_up_);
-        sprintf(fname,"precomputed/d2legTrans%u_single.txt",p_up_);
-        myIO.ReadData(fname, leg_size, d2_leg_trans_p_up_);
-    }
-}
-
-template <typename T>
-OperatorsMats<T>::~OperatorsMats()
-{
-    free(data_);
-}
 
 // Device ////////////////////////////////////////////////////////////
 template<typename T>
@@ -681,7 +571,8 @@ template<typename T>
 void  DeviceCPU<T>::InitializeSHT(OperatorsMats<T> &mats)
 {
     assert(sht_.dft_forward == 0);
-    
+    assert(mats.fileIO_.device_ == *this);
+
 #ifdef PROFILING
     double ss = get_seconds();
 #endif
@@ -1237,202 +1128,82 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     return;
 } 
 
-#define IDEAL_ALIGNMENT 16
-#define SIMD_LEN (IDEAL_ALIGNMENT / sizeof(float))
+#  define IDEAL_ALIGNMENT 16
+#  define SIMD_LEN (IDEAL_ALIGNMENT / sizeof(float))
+#define I_PI 1.0/M_PI/8.0
 
-// template<>
-// void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
-//     const float *qw, const float *trg, const float *src, const float *den, float *pot)
-// {
-// #ifndef NDEBUG
-//     cout<<"DeviceCPU::DirectStokes (SSE, float)"<<endl;
-// #endif
+using namespace std;
 
-// #ifdef PROFILING
-//     double ss = get_seconds();
-// #endif
+template<>
+void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
+    const float *qw, const float *trg, const float *src, const float *den, float *pot)
+{
+#ifndef NDEBUG
+    cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
+#endif
 
-//     //#ifdef __SSE2__ 
-//     ///@todo check for availability of SSE
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
 
-//     if (stride%4) // necessary for proper alignment of sources
-//         abort();
+    float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
     
-//     float aux_arr[3*SIMD_LEN+3]; 
-//     float *tempvalx; 
-//     float *tempvaly; 
-//     float *tempvalz; 
-//     size_t residual = size_t(aux_arr)%IDEAL_ALIGNMENT;
-//     if (residual)  // if aux_arr is misaligned
-//         tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual);
-//     else tempvalx = aux_arr;
-//     if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-//         abort();
-//     tempvaly=tempvalx+SIMD_LEN;
-//     tempvalz=tempvaly+SIMD_LEN;
-  
-//     //#pragma omp parallel for private(aux_arr)
-//     ///@todo add the openmp instructions
-//     for (int vt=0; vt<n_surfs; vt++)
-//     {
-//         float p[3]={0,0,0};
-//         float tx=trg[3*vt*stride            + trg_idx];
-//         float ty=trg[3*vt*stride +   stride + trg_idx];
-//         float tz=trg[3*vt*stride + 2*stride + trg_idx];
-
-//         residual = size_t(src+ 3*stride*vt)%IDEAL_ALIGNMENT;
-//         if (residual)
-//             residual = IDEAL_ALIGNMENT - residual;
-        
-//         // Handle start data if it is not 16-byte aligned
-//         size_t s;
-//         // residual = stride;
-//         for (s=0; s<residual; s++)
-//         {
-//             float dX_reg=src[3*stride*vt+           s]-tx;
-//             float dY_reg=src[3*stride*vt+  stride + s]-ty;
-//             float dZ_reg=src[3*stride*vt+2*stride + s]-tz;
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
+    for (int vt=0; vt<n_surfs; vt++)
+    {
+        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
+        {
+            px = 0;
+            py = 0;
+            pz = 0;
             
-//             float invR = (dX_reg*dX_reg+dY_reg*dY_reg+dZ_reg*dZ_reg);
-//             if (invR!=0)
-//                 invR = 1.0/sqrt(invR);
+            tx=trg[3*vt*stride +                   trg_idx];
+            ty=trg[3*vt*stride + stride +          trg_idx];
+            tz=trg[3*vt*stride + stride + stride + trg_idx];
             
-//             float cur_pot_x = den[3*stride*vt +           s] * qw[s];
-//             float cur_pot_y = den[3*stride*vt +  stride + s] * qw[s];
-//             float cur_pot_z = den[3*stride*vt +2*stride + s] * qw[s];
+            for (int s=0; s<stride; s++)
+            {
+                dx=src[3*stride*vt +                   s]-tx;
+                dy=src[3*stride*vt + stride +          s]-ty;
+                dz=src[3*stride*vt + stride + stride + s]-tz;
 
-//             float tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y + dZ_reg*cur_pot_z)*invR*invR;
-//             cur_pot_x += tmp_scalar*dX_reg;
-//             cur_pot_y += tmp_scalar*dY_reg;
-//             cur_pot_z += tmp_scalar*dZ_reg;
+                invR = dx*dx;
+                invR+= dy*dy;
+                invR+= dz*dz;
+                
+                if (invR!=0)
+                    invR = 1.0/sqrt(invR);
             
-//             p[0] += cur_pot_x*invR;
-//             p[1] += cur_pot_y*invR;
-//             p[2] += cur_pot_z*invR;
-//         }
+                cpx = den[3*stride*vt +                   s] * qw[s]; 
+                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
+                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
+                
+                cc  = dx*cpx;
+                cc += dy*cpy;
+                cc += dz*cpz;
+                cc *= invR;
+                cc *= invR;
 
-//         __m128 txi = _mm_load1_ps (&tx);
-//         __m128 tyi = _mm_load1_ps (&ty);
-//         __m128 tzi = _mm_load1_ps (&tz);
+                cpx += cc*dx;
+                cpy += cc*dy;
+                cpz += cc*dz;
+                
+                px += cpx*invR;
+                py += cpy*invR;
+                pz += cpz*invR;
+            }
+            pot[3*vt*stride +                  trg_idx] = px * I_PI;
+            pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
+            pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
+        }
+    }
 
-//         // for (int s=0; s<stride; s++)
-//         __m128 tempx;
-//         __m128 tempy;
-//         __m128 tempz;
-
-//         tempx = _mm_setzero_ps();
-//         tempy = _mm_setzero_ps();
-//         tempz = _mm_setzero_ps();
-        
-//         // Load and calculate in groups of SIMD_LEN
-//         size_t loop_limit = stride-SIMD_LEN;
-//         for (; s <= loop_limit; s += SIMD_LEN) {
-//             __m128 sxj = _mm_load_ps (src+3*stride*vt+         s);
-//             __m128 syj = _mm_load_ps (src+3*stride*vt+  stride+s);
-//             __m128 szj = _mm_load_ps (src+3*stride*vt+2*stride+s);
-            
-//             // this could be vectorized assuming den and q are 16-byte aligned
-//             __m128 sdenx = _mm_set_ps (
-//                 den[3*stride*vt +s+3] * qw[s+3],
-//                 den[3*stride*vt +s+2] * qw[s+2],
-//                 den[3*stride*vt +s+1] * qw[s+1],
-//                 den[3*stride*vt +s] * qw[s]);
-
-//             __m128 sdeny = _mm_set_ps (
-//                 den[3*stride*vt+stride +s+3] * qw[s+3],
-//                 den[3*stride*vt+stride +s+2] * qw[s+2],
-//                 den[3*stride*vt+stride +s+1] * qw[s+1],
-//                 den[3*stride*vt+stride +s] * qw[s]);
-
-//             __m128 sdenz = _mm_set_ps (
-//                 den[3*stride*vt+2*stride +s+3] * qw[s+3],
-//                 den[3*stride*vt+2*stride +s+2] * qw[s+2],
-//                 den[3*stride*vt+2*stride +s+1] * qw[s+1],
-//                 den[3*stride*vt+2*stride +s] * qw[s]
-//                                        );
-            
-//             //       __m128 sdenx = _mm_load_ps (src+3*stride*vt+         s);
-//             //       __m128 sdeny = _mm_load_ps (src+3*stride*vt+  stride+s);
-//             //       __m128 sdenz = _mm_load_ps (src+3*stride*vt+2*stride+s);
-            
-//             __m128 dX, dY, dZ;
-//             __m128 dR2;
-//             __m128 S;
-
-//             dX = _mm_sub_ps(txi , sxj);
-//             dY = _mm_sub_ps(tyi , syj);
-//             dZ = _mm_sub_ps(tzi , szj);
-
-//             sxj = _mm_mul_ps(dX, dX); 
-//             syj = _mm_mul_ps(dY, dY);
-//             szj = _mm_mul_ps(dZ, dZ);
-
-//             dR2 = _mm_add_ps(sxj, syj);
-//             dR2 = _mm_add_ps(szj, dR2);
-
-//             __m128 zero = _mm_setzero_ps ();
-//             __m128 is_zero = _mm_cmpeq_ps(dR2, zero);
-
-//             // S = _mm_rsqrt_ps(dR2);
-//             const __m128 approx = _mm_rsqrt_ps( dR2 );
-//             const __m128 muls = _mm_mul_ps(_mm_mul_ps(dR2, approx), approx);
-//             const __m128 three = _mm_set1_ps (3.0f);
-//             const __m128 half4 = _mm_set1_ps (0.5f);
-//             S = _mm_mul_ps(_mm_mul_ps(half4, approx), _mm_sub_ps(three, muls) );
-//             S = _mm_andnot_ps (is_zero, S);
-            
-//             __m128 dotx = _mm_mul_ps (dX, sdenx);
-//             __m128 doty = _mm_mul_ps (dY, sdeny);
-//             __m128 dotz = _mm_mul_ps (dZ, sdenz);
-
-//             __m128 dot_sum = _mm_add_ps (dotx, doty);
-//             dot_sum = _mm_add_ps (dot_sum, dotz);
-
-//             dot_sum = _mm_mul_ps (dot_sum, S);
-//             dot_sum = _mm_mul_ps (dot_sum, S);
-
-//             dotx = _mm_mul_ps (dot_sum, dX);
-//             doty = _mm_mul_ps (dot_sum, dY);
-//             dotz = _mm_mul_ps (dot_sum, dZ);
-
-//             sdenx = _mm_add_ps (sdenx, dotx);
-//             sdeny = _mm_add_ps (sdeny, doty);
-//             sdenz = _mm_add_ps (sdenz, dotz);
-
-//             sdenx = _mm_mul_ps (sdenx, S);
-//             sdeny = _mm_mul_ps (sdeny, S);
-//             sdenz = _mm_mul_ps (sdenz, S);
-
-//             tempx = _mm_add_ps (sdenx, tempx);
-//             tempy = _mm_add_ps (sdeny, tempy);
-//             tempz = _mm_add_ps (sdenz, tempz);
-
-//         }
-        
-//         _mm_store_ps(tempvalx, tempx); 
-//         _mm_store_ps(tempvaly, tempy); 
-//         _mm_store_ps(tempvalz, tempz); 
-        
-//         for (size_t k = 0; k < SIMD_LEN; k++) {
-//             p[0] += tempvalx[k];
-//             p[1] += tempvaly[k];
-//             p[2] += tempvalz[k];
-//         }
-        
-//         if (s!=size_t(stride))
-//             abort();
-        
-//         pot[3*vt*stride +            trg_idx] = p[0];
-//         pot[3*vt*stride +   stride + trg_idx] = p[1];
-//         pot[3*vt*stride + 2*stride + trg_idx] = p[2];
-//     }
-
-// #ifdef PROFILING
-//     ss = get_seconds()-ss ;
-//     cout<<"DeviceCPU::DirectStokes (SSE - float) takes (sec) : "<<ss<<endl;
-// #endif
-//     return;
-// }
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+#endif
+    return;
+} 
 
 template<typename T>
 T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
@@ -1486,4 +1257,35 @@ T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, in
     }
     
     return x_out;
+}
+
+
+template<typename T>
+T DeviceCPU<T>::Max(T *x_in, int length)
+{ 
+    T max = *x_in;
+    for(int idx = 0;idx<length;idx++)
+        max = (max > x_in[idx]) ? max : x_in[idx];
+
+    ///@todo the omp'ize version of this crashes.
+    //     T *max_arr = Malloc(omp_get_num_threads());
+    //     T n_threads = 0;
+
+    // #pragma omp parallel
+    //     {
+    //         T max_loc = *x_in;
+    // #pragma omp for
+    //         for(int idx = 0;idx<length;idx++)
+    //             max_loc = (max_loc > x_in[idx]) ? max_loc : x_in[idx];
+    //         max_arr[omp_get_thread_num()] =  max_loc;
+    //         if(omp_get_thread_num() == 0)
+    //             n_threads = omp_get_num_threads();
+    //     }
+    
+    //     T max=max_arr[0];
+    //     for(int idx = 0;idx<n_threads;idx++)
+    //         max = (max > max_arr[idx]) ? max : max_arr[idx];
+
+    //    Free(max_arr);
+    return(max);
 }

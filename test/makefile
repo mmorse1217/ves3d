@@ -17,6 +17,15 @@ DeviceTest:
 ExplicitStepper:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
+ExplicitStepperPara:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
+ExplicitStepperHetro:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
+SHTransTest:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
 .PHONY: clean
 
 clean: 	

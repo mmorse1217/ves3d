@@ -83,7 +83,6 @@ void BlasSht::transpose(scalar *out, scalar *in, int width, int height) {
         }
 }
 
-
 BlasSht::BlasSht() :
     p(0),
     dft_size(0),
@@ -108,34 +107,6 @@ BlasSht::BlasSht(int p, scalar *dft_forward, scalar *dft_backward,
     
     InitializeBlasSht(p, dft_forward, dft_backward, dft_d1backward, 
         dft_d2backward, leg_trans, leg_trans_inv, d1_leg_trans, d2_leg_trans);
-
-//     this->p = p;
-//     //this->num_vesicles = num_vesicles;
-//     this->dft_size = 2 * p;
-//     //this->num_dft_inputs = num_vesicles * (p + 1);
-//     this->leg_mat_size = (p + 1) * (p + 1) * (p + 2);
-//     this->vesicle_size = 2 * p * (p + 1);
-//     this->trans_in = trans_in;
-//     this->trans_out = trans_out;
-//     this->dft_forward = dft_forward;
-//     this->dft_backward = dft_backward;
-//     this->dft_d1backward = dft_d1backward;
-//     this->dft_d2backward = dft_d2backward;
-//     this->leg_trans = leg_trans;
-//     this->leg_trans_inv = leg_trans_inv;
-//     this->d1_leg_trans = d1_leg_trans;
-//     this->d2_leg_trans= d2_leg_trans;
-//     this->alpha = 1.0F;
-//     this->beta = 0.0F;
-
-//     read_leg_mat(leg_trans, leg_trans_fname);
-//     read_leg_mat(leg_trans_inv, leg_trans_inv_fname);
-//     read_leg_mat(d1_leg_trans, d1_leg_trans_fname);
-//     read_leg_mat(d2_leg_trans, d2_leg_trans_fname);
-//     gen_dft_forward();
-//     gen_dft_backward();
-//     gen_dft_d1backward();
-//     gen_dft_d2backward();
 }
 
 
@@ -242,7 +213,6 @@ void BlasSht::InitializeBlasSht(int p, scalar *dft_forward,
 {
     this->p = p;
     this->dft_size = 2 * p;
-    //this->num_dft_inputs = num_vesicles * (p + 1);
     this->leg_mat_size = (p + 1) * (p + 1) * (p + 2);
     this->vesicle_size = 2 * p * (p + 1);
 
@@ -259,11 +229,6 @@ void BlasSht::InitializeBlasSht(int p, scalar *dft_forward,
     this->alpha = 1.0F;
     this->beta = 0.0F;
 
-//     read_leg_mat(leg_trans, leg_trans_fname);
-//     read_leg_mat(leg_trans_inv, leg_trans_inv_fname);
-//     read_leg_mat(d1_leg_trans, d1_leg_trans_fname);
-//     read_leg_mat(d2_leg_trans, d2_leg_trans_fname);
-    
     gen_dft_forward();
     gen_dft_backward();
     gen_dft_d1backward();

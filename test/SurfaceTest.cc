@@ -30,15 +30,19 @@ int main(int argc, char ** argv)
     par.rep_up_freq_ = 12;
     par.rep_filter_freq_ = 4;
 
-    bool readFromFile = true;
-    OperatorsMats<T> mats(par.p_, 2*par.p_, readFromFile);
-    
     //Device
     DeviceCPU<T> cpu;
+
+    //IO
     DataIO<T> myIO(cpu,"",0);
+
+    //Reading data
+    bool readFromFile = true;
+    OperatorsMats<T> mats(myIO, par.p_, 2*par.p_, readFromFile);
+    
+    //initialing device
     cpu.InitializeSHT(mats);
-
-
+    
     // memory allocation
     Surface<T> S(cpu,par,mats);
     Scalars<T> X(cpu,p,nVec);

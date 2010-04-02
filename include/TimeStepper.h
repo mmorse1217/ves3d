@@ -68,8 +68,7 @@ class TimeStepper
             cout<<"  n_steps           : "<<n_steps_<<endl;
             cout<<" ------------------------------------"<<endl<<endl;
         }
-
-        int ss = 1;
+        
         for(int current_time_step=0;current_time_step<n_steps_;current_time_step++)
         {
             
@@ -111,7 +110,7 @@ class TimeStepper
                 vesicle_.device_.xvpb(quad_weights_, vesicle_.V11.data_ + 3*ii*stride,
                     (T) 0.0, stride, 1, vesicle_.V11.data_ + 3*ii*stride);
             }
-						
+			
             // Call to fast summation algorithm for vesicle-vesicle interactions. 
             //Interaction to V13 
             Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
@@ -132,11 +131,11 @@ class TimeStepper
                 3*vesicle_.params_.n_surfs_, velocity_.data_);
 
             //Background flow
-            bg_flow_.GetVel(vesicle_.x_, vel_tension_);
+            bg_flow_.GetVel(vesicle_.x_, vesicle_.S1, vel_tension_);
             axpy((T) 1.0, vel_tension_, velocity_, velocity_);
             
             //Calculate stokes
-            vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_); //calculated above
+            vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_);
             axpy((T) 1.0, vesicle_.bending_force_, velocity_, velocity_);
             vesicle_.StokesMatVec(vesicle_.tensile_force_, vel_tension_);
 
@@ -147,9 +146,10 @@ class TimeStepper
 
             //Advance in time
             axpy(ts_, velocity_, vesicle_.x_, vesicle_.x_);
-       
+            
             vesicle_.Reparam();
-
+            
+            fileIO.Append(vesicle_.x_.data_, vesicle_.x_.GetDataLength());
             if( userMonitor!=NULL)
             { 
                 bool flag = userMonitor(*this,current_time_step); 

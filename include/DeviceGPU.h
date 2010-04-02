@@ -10,7 +10,11 @@
 #include "Device.h"
 #include <iostream>
 #include <cassert>
-#include <cuda_runtime.h>
+#include "cuda_runtime.h"
+#include "CudaKernels.h"
+#include <cublas.h>
+#include "CudaSht.h"
+#include "OperatorsMats.h"
 
 using namespace std;
 
@@ -18,9 +22,14 @@ using namespace std;
 template<typename T>
 class DeviceGPU : public Device<T>
 {
-  public:
-    DeviceGPU();
-    
+public:
+    CudaSht sht_;
+    CudaSht sht_up_sample_;
+    int p_, p_up_;
+
+    DeviceGPU(int cuda_device_id = 0);
+    ~DeviceGPU();
+
     virtual T* Malloc(unsigned long int length);
     virtual void Free(T* ptr);
     virtual T* Calloc(unsigned long int num);
@@ -50,8 +59,9 @@ class DeviceGPU : public Device<T>
         const T *qw, const T *trg, const T *src, const T *den, T *pot);
 
     virtual T* ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out);
+    virtual T Max(T *x_in, int length);
 
-    virtual void InitializeSHT(int p, int p_up);
+    virtual void InitializeSHT(OperatorsMats<T> &mats);
     virtual void ShAna(const T *x_in, T *work_arr, int p, int num_funs, T *sht_out);
     virtual void ShSyn(const T *shc_in, T *work_arr, int p, int num_funs, T *y_out);
     virtual void ShSynDu(const T *shc_in, T *work_arr, int p, int num_funs, T *xu_out);
@@ -70,5 +80,5 @@ class DeviceGPU : public Device<T>
     virtual void Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q);
 };
 
-#include "DeviceGPUSrc.cu"
+#include "DeviceGPU.cc"
 #endif //_DEVICEGPU_H_

@@ -183,26 +183,28 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
     w_sph_(device_,params_.p_,params_.n_surfs_),
     max_init_area_(-1)
 {
+    assert(mats.fileIO_.device_ == this->device_);
+
     shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     alpha_p  = device_.Malloc(params_.p_ *(params_.p_ + 2));
     alpha_q  = device_.Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2));
 
     tension_ = device_.Calloc(params_.n_surfs_);
-    
+
     int np = 2 * params_.p_ * (params_.p_ + 1);
 
     quad_weights_ = mats.quad_weights_;
     all_rot_mats_ = mats.all_rot_mats_;
     sing_quad_weights_ = mats.sing_quad_weights_;
     
-    device_.Memcpy(w_sph_.data_, mats.w_sph_, np, MemcpyHostToDevice);
+    device_.Memcpy(w_sph_.data_, mats.w_sph_, np, MemcpyDeviceToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
         device_.Memcpy(w_sph_.data_ + ii*np, w_sph_.data_, np, MemcpyDeviceToDevice);
 
     rot_mat = device_.Malloc(np * np);
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
-    
+
     int idx = 0, len;
     for(int ii=0; ii< 2 * params_.p_; ++ii)
     {
@@ -219,6 +221,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
         for(int jj=0; jj < len; ++jj)
             buffer[idx++] = (len-jj)<=(params_.rep_up_freq_-params_.rep_filter_freq_) ? 0 : 1;
     }
+
     device_.Memcpy(alpha_q, buffer, params_.rep_up_freq_ *(params_.rep_up_freq_ + 2), MemcpyHostToDevice);
 
     free(buffer);
@@ -590,13 +593,7 @@ template<typename T>
 T Surface<T>::Area()
 {
     device_.Reduce(NULL, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
-    ///@todo This is device dependent
-    T max_area = -1;
-    for(int ii=0;ii<params_.n_surfs_;++ii)
-    {
-        max_area = (max_area > fabs(work_arr[ii])) ? max_area : fabs(work_arr[ii]);
-    }
-    return max_area;
+    return device_.Max(work_arr, params_.n_surfs_);
 }
 
 template<typename T>
@@ -605,8 +602,8 @@ void Surface<T>::Volume()
     DotProduct(x_,normal_,S1);
     axpb((T) 1/3,S1,(T) 0.0, S1);
     device_.Reduce(S1.data_, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
-    for(int ii=0;ii<params_.n_surfs_;++ii)
-        cout<<work_arr[ii]<<endl;
+//     for(int ii=0;ii<params_.n_surfs_;++ii)
+//         cout<<work_arr[ii]<<endl;
 }
 
 template<typename T>
@@ -625,23 +622,19 @@ template<typename T>
 void Surface<T>::Populate(const T *centers)
 {
     int length = this->x_.GetFunLength();
-    ///@todo this is device dependent
-#pragma omp parallel for
     for(int ii=1;ii<params_.n_surfs_;ii++)
-        for(int idx=0;idx<length;idx++)
-        {
-            x_.data_[3*ii*length + idx                  ] = centers[3*ii  ] + x_.data_[idx                  ];
-            x_.data_[3*ii*length + idx + length         ] = centers[3*ii+1] + x_.data_[idx + length         ];
-            x_.data_[3*ii*length + idx + length + length] = centers[3*ii+2] + x_.data_[idx + length + length];
-        }
-    //treating the first surface
-    for(int idx=0;idx<length;idx++)
     {
-        x_.data_[idx                  ] += centers[0];
-        x_.data_[idx + length         ] += centers[1];
-        x_.data_[idx + length + length] += centers[2];
-    }
+        int idx = 3 * ii * length;
+        device_.Memcpy(x_.data_ + idx, x_.data_, 3 * length, MemcpyDeviceToDevice);
+        device_.axpb((T) 1.0, x_.data_ + idx                  , centers[3*ii  ], length, 1, x_.data_ + idx                  );
+        device_.axpb((T) 1.0, x_.data_ + idx + length         , centers[3*ii+1], length, 1, x_.data_ + idx + length         );
+        device_.axpb((T) 1.0, x_.data_ + idx + length + length, centers[3*ii+2], length, 1, x_.data_ + idx + length + length);
+     }
 
+    //treating the first surface
+    device_.axpb((T) 1.0, x_.data_                  , centers[0], length, 1, x_.data_                  );
+    device_.axpb((T) 1.0, x_.data_ + length         , centers[1], length, 1, x_.data_ + length         );
+    device_.axpb((T) 1.0, x_.data_ + length + length, centers[2], length, 1, x_.data_ + length + length);
 }
 
 template<typename T>
@@ -653,29 +646,28 @@ T* Surface<T>::GetCenters(T* cnts)
     axpb((T) 1/2, S1,(T) 0.0, S1);
     xvpb(S1, normal_, (T) 0.0, V1);
     
-    int sc_len = V1.GetFunLength();
-    int idx = 0;
-    ///@todo this should be added to device
-    for(int ii=0; ii<params_.n_surfs_;++ii)
-    {
-        device_.Memcpy(work_arr + idx, w_.GetFunctionAt(ii), sc_len, MemcpyDeviceToDevice); idx+=sc_len;
-        device_.Memcpy(work_arr + idx, w_.GetFunctionAt(ii), sc_len, MemcpyDeviceToDevice); idx+=sc_len;
-        device_.Memcpy(work_arr + idx, w_.GetFunctionAt(ii), sc_len, MemcpyDeviceToDevice); idx+=sc_len;
-    }
-    
-    device_.Reduce(V1.data_, work_arr, quad_weights_, sc_len, 3*params_.n_surfs_, cnts);
+    size_t idx = 0;
+    size_t len = w_.GetDataLength();
+    size_t sc_len = w_.GetFunLength();
+    size_t nv = params_.n_surfs_;
+
+    device_.Memcpy(work_arr            , w_.data_, len, MemcpyDeviceToDevice);
+    device_.Memcpy(work_arr + len      , w_.data_, len, MemcpyDeviceToDevice);
+    device_.Memcpy(work_arr + len + len, w_.data_, len, MemcpyDeviceToDevice);
+
+    device_.ShufflePoints(work_arr                   , AxisMajor , len   , 1 , work_arr + len + len + len);
+    device_.ShufflePoints(work_arr + len + len + len , PointMajor, sc_len, nv, work_arr);
+
+    device_.Reduce(V1.data_, work_arr, quad_weights_, sc_len, 3*nv, cnts);
 
     DotProduct(x_,normal_,S1);
     axpb((T) 1/3,S1,(T) 0.0, S1);
-    device_.Reduce(S1.data_, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
+    device_.Reduce(S1.data_, w_.data_, quad_weights_, sc_len, nv, work_arr);
     
-    for(int ii=0; ii<params_.n_surfs_;++ii)
-    {
-        idx = 3*ii;
-        cnts[  idx] /=work_arr[ii];
-        cnts[++idx] /=work_arr[ii];
-        cnts[++idx] /=work_arr[ii];
-    }
-    
+    device_.Memcpy(work_arr + nv     , work_arr, nv, MemcpyDeviceToDevice); 
+    device_.Memcpy(work_arr + nv + nv, work_arr, nv, MemcpyDeviceToDevice); 
+    device_.ShufflePoints(work_arr, AxisMajor, nv, 1, work_arr + 3*nv);
+    device_.xyInv(cnts, work_arr + 3*nv, 3, nv, cnts);
+
     return cnts;
 }

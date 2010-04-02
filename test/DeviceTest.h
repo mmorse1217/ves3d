@@ -36,9 +36,21 @@ class DeviceTest
     bool PerformAll()
     {
         bool test_result;
-        test_result = TestMalloc() && TestCalloc() && TestMemcpy()&& TestDotProduct() && TestCrossProduct()
-            && TestxInv() && Testxy() && TestxyInv() && Testaxpy() && Testaxpb() && Testxvpw()
-            && TestShufflePoints();
+        test_result = 
+            TestMalloc() && 
+            TestCalloc() && 
+            TestMemcpy() && 
+            TestDotProduct() && 
+            TestCrossProduct() && 
+            TestxInv() &&
+            Testxy() && 
+            TestxyInv() && 
+            TestuyInv() && 
+            Testaxpy() &&
+            Testaxpb() &&
+            Testxvpw() &&
+            TestShufflePoints() &&
+            TestMax();
         
         
         string res_print = (test_result) ? "Passed" : "Failed";
@@ -224,23 +236,29 @@ class DeviceTest
             int arr_length = 3*num_vecs*stride;
             T* a = device_.Malloc(arr_length);
             T* c = device_.Malloc(arr_length);
-            
-            for(int ii=0;ii<num_vecs;++ii)
-                for(int jj=0;idx<stride;jj++)
-                {                
-                    idx = ii*3*stride + jj;
-                    a[idx              ] = drand48();
-                    a[idx+stride       ] = drand48();
-                    a[idx+stride+stride] = drand48();
-                }
+            T* a_host = (T*) malloc(arr_length * sizeof(T));
+            T* c_host = (T*) malloc(arr_length * sizeof(T));
 
+            for(int ii=0;ii<num_vecs;++ii)
+                for(int idx=0;idx<stride;idx++)
+                {                
+                    a_host[3*ii*stride + idx              ] = drand48();
+                    a_host[3*ii*stride + idx+stride       ] = drand48();
+                    a_host[3*ii*stride + idx+stride+stride] = drand48();
+                }
+            
+            device_.Memcpy(a, a_host, arr_length, MemcpyHostToDevice);
             device_.CrossProduct(a,a,stride,num_vecs,c);
+            device_.Memcpy(c_host, c, arr_length , MemcpyDeviceToHost);
+
             T err = 0;
             for(int idx=0;idx<stride*num_vecs;idx++)
-                err = (c[idx]>err) ? c[idx] : err ;
+                err = (c_host[idx]>err) ? c_host[idx] : err ;
             
             device_.Free(a);
             device_.Free(c);
+            free(a_host);
+            free(c_host);
             
             res = res && (err<eps_) ? true : false;
             
@@ -261,39 +279,54 @@ class DeviceTest
             T* e = device_.Malloc(sc_length );
             T* f = device_.Malloc(sc_length );            
 
+            T* a_host = (T*) malloc(arr_length * sizeof(T));
+            T* b_host = (T*) malloc(arr_length * sizeof(T));
+            T* c_host = (T*) malloc(arr_length * sizeof(T));
+            T* d_host = (T*) malloc(arr_length * sizeof(T));
+
+            T* e_host = (T*) malloc(sc_length * sizeof(T));
+            T* f_host = (T*) malloc(sc_length * sizeof(T));
+
             for(int idx=0;idx<stride;idx++)
             {                
-                a[idx              ] = drand48();
-                a[idx+stride       ] = drand48();
-                a[idx+stride+stride] = drand48();
+                a_host[idx              ] = drand48();
+                a_host[idx+stride       ] = drand48();
+                a_host[idx+stride+stride] = drand48();
 
-                b[idx              ] = drand48();
-                b[idx+stride       ] = drand48();
-                b[idx+stride+stride] = drand48();
+                b_host[idx              ] = drand48();
+                b_host[idx+stride       ] = drand48();
+                b_host[idx+stride+stride] = drand48();
                 
-                c[idx              ] = drand48();
-                c[idx+stride       ] = drand48();
-                c[idx+stride+stride] = drand48();
+                c_host[idx              ] = drand48();
+                c_host[idx+stride       ] = drand48();
+                c_host[idx+stride+stride] = drand48();
             }
+
+            device_.Memcpy(a, a_host, arr_length, MemcpyHostToDevice);
+            device_.Memcpy(b, c_host, arr_length, MemcpyHostToDevice);
+            device_.Memcpy(c, c_host, arr_length, MemcpyHostToDevice);
 
             // (a x b).c
             device_.CrossProduct(a,b,stride,num_vecs,d);
             device_.DotProduct(d,c,stride,num_vecs,e);
+            device_.Memcpy(e_host, e, sc_length , MemcpyDeviceToHost);
 
             // (b x a).c
             device_.CrossProduct(b,a,stride,num_vecs,d);
             device_.DotProduct(d,c,stride,num_vecs,f);
+            device_.Memcpy(f_host, f, sc_length , MemcpyDeviceToHost);
 
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (e[idx]+f[idx]>err) ? e[idx]+f[idx] : err ;
+                err = (e_host[idx]+f_host[idx]>err) ? e_host[idx]+f_host[idx] : err ;
 
             // (c x a).b
             device_.CrossProduct(c,a,stride,num_vecs,d);
             device_.DotProduct(d,b,stride,num_vecs,f);
+            device_.Memcpy(f_host, f, sc_length , MemcpyDeviceToHost);
             
             for(int idx=0;idx<sc_length;idx++)
-                err = ((e[idx]-f[idx])>err) ? e[idx]-f[idx] : err ;
+                err = ((e_host[idx]-f_host[idx])>err) ? e_host[idx]-f_host[idx] : err ;
 
             device_.Free(a);
             device_.Free(b);
@@ -301,6 +334,13 @@ class DeviceTest
             device_.Free(d);
             device_.Free(e);
             device_.Free(f);
+
+            free(a_host);
+            free(b_host);
+            free(c_host);
+            free(d_host);
+            free(e_host);
+            free(f_host);
 
             res = res && (err<eps_) ? true : false;
             
@@ -311,7 +351,7 @@ class DeviceTest
     };
 
     bool TestxInv()
-    {
+     {
         bool res = true;
         {
             int stride = 413, num_vecs = 1;
@@ -319,18 +359,23 @@ class DeviceTest
             T* x = device_.Malloc(sc_length);
             T* y = device_.Malloc(sc_length);
             
+            T* x_host = (T*) malloc(sc_length * sizeof(T));
+            T* y_host = (T*) malloc(sc_length * sizeof(T));
             for(int idx=0;idx<sc_length;idx++)
-            x[idx] = (T) drand48();
-                        
+                x_host[idx] = (T) drand48();
+            
+            device_.Memcpy(x, x_host, sc_length, MemcpyHostToDevice);
             device_.xInv(x,stride,num_vecs,y);
             device_.xInv(y,stride,num_vecs,y);
-            
+            device_.Memcpy(y_host, y, sc_length, MemcpyDeviceToHost);
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (x[idx]-y[idx]>err) ? x[idx]-y[idx] : err ;
+                err = (x_host[idx]-y_host[idx]>err) ? x_host[idx]-y_host[idx] : err ;
             
             device_.Free(x);
             device_.Free(y);
+            free(x_host);
+            free(y_host);
             
             res = res && (err<eps_) ? true : false;
             
@@ -338,10 +383,10 @@ class DeviceTest
             cout<<"* Device::xInv : " + res_print + " *"<<endl;
         }
         return res;
-    };
+     };
 
-    bool Testxy()
-    {
+     bool Testxy()
+     {
         bool res = true;
         {
             int stride = 65, num_vecs = 4;
@@ -349,24 +394,35 @@ class DeviceTest
             T* x = device_.Malloc(sc_length);
             T* y = device_.Malloc(sc_length);
             T* z = device_.Malloc(sc_length);
+
+            T* x_host = (T*) malloc(sc_length * sizeof(T));
+            T* y_host = (T*) malloc(sc_length * sizeof(T));
+            T* z_host = (T*) malloc(sc_length * sizeof(T));
+
             
             for(int idx=0;idx<sc_length;idx++)
             {
-                x[idx] = (T) drand48();
-                y[idx] = (T) drand48();
+                x_host[idx] = (T) drand48();
+                y_host[idx] = (T) drand48();
             }
-                        
+            
+            device_.Memcpy(x, x_host, sc_length, MemcpyHostToDevice);
+            device_.Memcpy(y, y_host, sc_length, MemcpyHostToDevice);
             device_.xy(x,y,stride,num_vecs,z);
+            device_.Memcpy(z_host, z, sc_length, MemcpyDeviceToHost);
             
             T err = 0, diff;
             for(int idx=0;idx<sc_length;idx++)
             {
-                diff = fabs(x[idx]*y[idx]-z[idx]);
+                diff = fabs(x_host[idx]*y_host[idx]-z_host[idx]);
                 err = (diff>err) ? diff : err ;
             }
             device_.Free(x);
             device_.Free(y);
             device_.Free(z);
+            free(x_host);
+            free(y_host);
+            free(z_host);
             
             
             res = res && (err<eps_) ? true : false;
@@ -375,7 +431,7 @@ class DeviceTest
             cout<<"* Device::xy : " + res_print + " *"<<endl;
         }
         return res;
-    }
+     }
 
     bool TestxyInv()
     {
@@ -386,28 +442,84 @@ class DeviceTest
             T* x = device_.Malloc(sc_length);
             T* y = device_.Malloc(sc_length);
             T* z = device_.Malloc(sc_length);
+
+            T* x_host = (T*) malloc(sc_length * sizeof(T));
+            T* y_host = (T*) malloc(sc_length * sizeof(T));
+            T* z_host = (T*) malloc(sc_length * sizeof(T));
             
             for(int idx=0;idx<sc_length;idx++)
-            x[idx] = (T) drand48();
-                        
-            device_.xInv(x,stride,num_vecs,y);
+                x_host[idx] = (T) drand48();
+                      
+            device_.Memcpy(x, x_host, sc_length, MemcpyHostToDevice);
+            device_.xInv(x,stride,num_vecs,y); 
             device_.xyInv(x,y,stride,num_vecs,z);
+            device_.Memcpy(z_host, z, sc_length, MemcpyDeviceToHost);
             
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (z[idx]-1.0>err) ? z[idx]-1 : err ;
+                err = (z_host[idx]-1.0>err) ? z_host[idx]-1 : err ;
             
             device_.Free(x);
             device_.Free(y);
             device_.Free(z);
             
+            free(x_host);
+            free(y_host);
+            free(z_host);
+
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
             cout<<"* Device::xyInv : " + res_print + " *"<<endl;
         }
         return res;
-    };
+     };
+
+    bool TestuyInv()
+    {
+        bool res = true;
+        {
+            int stride = 413, num_vecs = 2;
+            int vec_length = 3*stride*num_vecs;
+            int sc_length = stride*num_vecs;
+            T* u = device_.Malloc(vec_length);
+            T* y = device_.Malloc(sc_length);
+
+            T* u_host = (T*) malloc(vec_length * sizeof(T));
+            T* y_host = (T*) malloc(sc_length * sizeof(T));
+            
+            for(int idx=0;idx<vec_length;idx++)
+                u_host[idx] = (T) drand48();
+            
+            device_.Memcpy(u, u_host, vec_length, MemcpyHostToDevice);
+            device_.DotProduct(u, u, stride, num_vecs, y);
+            device_.Memcpy(y_host, y, sc_length, MemcpyDeviceToHost);
+            
+            for(int idx=0;idx<sc_length;idx++)
+                y_host[idx] = sqrt(y_host[idx]);
+
+            device_.Memcpy(y, y_host, sc_length, MemcpyHostToDevice);
+            device_.uyInv(u,y,stride,num_vecs,u);
+            device_.DotProduct(u,u,stride, num_vecs,y);
+            device_.Memcpy(y_host, y, sc_length, MemcpyDeviceToHost);
+            
+            T err = 0;
+            for(int idx=0;idx<sc_length;idx++)
+                err = (y_host[idx]-1.0>err) ? y_host[idx]-1 : err ;
+            
+            device_.Free(u);
+            device_.Free(y);
+            
+            free(u_host);
+            free(y_host);
+            
+            res = res && (err<eps_) ? true : false;
+            
+            string res_print = (res) ? "Passed" : "Failed";
+            cout<<"* Device::uyInv : " + res_print + " *"<<endl;
+        }
+        return res;
+     };
 
     bool Testaxpy()
     {
@@ -418,17 +530,24 @@ class DeviceTest
             T* x = device_.Malloc(sc_length);
             T* y = device_.Malloc(sc_length);
             
+            T* x_host = (T*) malloc(sc_length * sizeof(T));
+            T* y_host = (T*) malloc(sc_length * sizeof(T));
+
             for(int idx=0;idx<sc_length;idx++)
-                x[idx] = (T) drand48();
+                x_host[idx] = (T) drand48();
                         
+            device_.Memcpy(x, x_host, sc_length, MemcpyHostToDevice);
             device_.axpy(-1.0,x,x,stride,num_vecs,y);
-            
+            device_.Memcpy(y_host, y, sc_length, MemcpyDeviceToHost);
+
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (y[idx]>err) ? y[idx] : err ;
+                err = (y_host[idx]>err) ? y_host[idx] : err ;
             
             device_.Free(x);
             device_.Free(y);
+            free(x_host);
+            free(y_host);
             
             res = res && (err<eps_) ? true : false;
             
@@ -436,36 +555,46 @@ class DeviceTest
             cout<<"* Device::axpy: " + res_print + " *"<<endl;
         }
         return res;
-    }
+         return true;
+     }
 
-    bool Testaxpb()
-    {
+     bool Testaxpb()
+     {
         bool res = true;
         {
             int stride = 531, num_vecs = 3;
             int sc_length = stride*num_vecs;
             T* x = device_.Malloc(sc_length);
             T* y = device_.Malloc(sc_length);
+
+            T* x_host = (T*) malloc(sc_length * sizeof(T));
+            T* y_host = (T*) malloc(sc_length * sizeof(T));
+
             
             for(int idx=0;idx<sc_length;idx++)
-                x[idx] = (T) drand48();
+                x_host[idx] = (T) drand48();
                         
+            device_.Memcpy(x, x_host, sc_length, MemcpyHostToDevice);
             device_.axpb(-1.0,x,0.0,stride,num_vecs,y);
+            device_.Memcpy(y_host, y, sc_length, MemcpyDeviceToHost);
             
             T err = 0;
             for(int idx=0;idx<sc_length;idx++)
-                err = (x[idx]+y[idx]>err) ? (x[idx]+y[idx]) : err ;
+                err = (x_host[idx]+y_host[idx]>err) ? (x_host[idx]+y_host[idx]) : err ;
             
             device_.Free(x);
             device_.Free(y);
-            
+            free(x_host);
+            free(y_host);
+
             res = res && (err<eps_) ? true : false;
             
             string res_print = (res) ? "Passed" : "Failed";
             cout<<"* Device::axpb : " + res_print + " *"<<endl;
         }
         return res;
-    }
+        return true;
+     }
     
     bool Testxvpw()
     {
@@ -483,37 +612,58 @@ class DeviceTest
             T* b = device_.Malloc(sc_length );
             T* c = device_.Malloc(sc_length );
             T* d = device_.Malloc(sc_length );
+
+            T* x_host = (T*) malloc(vec_length * sizeof(T) );
+            T* y_host = (T*) malloc(vec_length * sizeof(T) );
+            T* z_host = (T*) malloc(vec_length * sizeof(T) );
+
+            T* a_host = (T*) malloc(sc_length  * sizeof(T) );
+            T* b_host = (T*) malloc(sc_length  * sizeof(T) );
+            T* c_host = (T*) malloc(sc_length  * sizeof(T) );
+            T* d_host = (T*) malloc(sc_length  * sizeof(T) );
+
             
             for(int idx=0;idx<vec_length;idx++)
             {
-                x[idx] = (T) drand48();
-                y[idx] = (T) drand48();
+                x_host[idx] = (T) drand48();
+                y_host[idx] = (T) drand48();
             }
 
             for(int idx=0;idx<sc_length;idx++)
-                a[idx] = (T) drand48();
+                a_host[idx] = (T) drand48();
+
+            device_.Memcpy(a, a_host, sc_length, MemcpyHostToDevice);
+            device_.Memcpy(x, x_host, vec_length, MemcpyHostToDevice);
+            device_.Memcpy(y, y_host, vec_length, MemcpyHostToDevice);
 
             device_.xvpb(a,x,0.0,stride,num_vecs,z);
             
             device_.DotProduct(x,y,stride,num_vecs,b);
             device_.DotProduct(z,y,stride,num_vecs,d);
-            
+
+            device_.Memcpy(b_host, b, sc_length, MemcpyDeviceToHost);
+            device_.Memcpy(d_host, d, sc_length, MemcpyDeviceToHost);
+
             T err = 0, diff;
             for(int idx=0;idx<sc_length;idx++)
             {
-                diff = fabs(a[idx]*b[idx]-d[idx]);
+                diff = fabs(a_host[idx]*b_host[idx]-d_host[idx]);
                 err = (diff>err) ? diff : err ;
             }
             
             device_.xvpw(a,x,y,stride,num_vecs,z);
-            
             device_.DotProduct(x,y,stride,num_vecs,b);
             device_.DotProduct(y,y,stride,num_vecs,c);
             device_.DotProduct(z,y,stride,num_vecs,d);
             
+            device_.Memcpy(a_host, a, sc_length, MemcpyDeviceToHost);
+            device_.Memcpy(b_host, b, sc_length, MemcpyDeviceToHost);
+            device_.Memcpy(c_host, c, sc_length, MemcpyDeviceToHost);
+            device_.Memcpy(d_host, d, sc_length, MemcpyDeviceToHost);
+
             for(int idx=0;idx<sc_length;idx++)
             {
-                diff = fabs(a[idx]*b[idx]+c[idx]-d[idx]);
+                diff = fabs(a_host[idx]*b_host[idx]+c_host[idx]-d_host[idx]);
                 err = (diff>err) ? diff : err ;
             }
 
@@ -524,6 +674,14 @@ class DeviceTest
             device_.Free(b);
             device_.Free(c);
             device_.Free(d);
+
+            free(x_host);
+            free(y_host);
+            free(z_host);
+            free(a_host);
+            free(b_host);
+            free(c_host);
+            free(d_host);
             
             res = res && (err<eps_) ? true : false;
             
@@ -533,51 +691,101 @@ class DeviceTest
         return res;
     }    
 
-    bool TestShufflePoints()
-    {
-        int stride = 11, num_vecs = 1;
+     bool TestShufflePoints()
+     {
+        int stride = 11, num_vecs = 2;
         int vec_length = 3*stride*num_vecs;
 
         T* x = device_.Malloc(vec_length);
         T* y = device_.Malloc(vec_length);
+        
+        T* x_host = (T*) malloc(vec_length * sizeof(T) );
+        T* y_host = (T*) malloc(vec_length * sizeof(T) );
 
         int idx;
         for(int ii=0;ii<num_vecs;++ii)
             for(int jj=0;jj<stride;jj++)
             {                
                 idx = ii*3*stride + jj;
-                x[idx              ] = jj;
-                x[idx+stride       ] = jj;
-                x[idx+stride+stride] = jj;
+                x_host[idx              ] = jj;
+                x_host[idx+stride       ] = jj;
+                x_host[idx+stride+stride] = jj;
             }
 
+        device_.Memcpy(x, x_host, vec_length, MemcpyHostToDevice);
         device_.ShufflePoints(x, AxisMajor, stride, num_vecs, y);
+        device_.Memcpy(y_host, y, vec_length, MemcpyDeviceToHost);
 
         T diff, err=0;
         for(int ii=0;ii<num_vecs;++ii)
             for(int jj=0;jj<stride;jj++)
             {                
-                idx = ii*3*stride + 3*jj;
-                diff = fabs(y[idx] + y[++idx] + y[++idx] - 3*jj);
+                idx = ii*3*stride + 3*jj;               
+                diff = fabs(y_host[idx] + y_host[++idx] + y_host[++idx] - 3*jj);
                 err = (diff>err) ? diff : err ;
             }
         bool res = (err<eps_) ? true : false;
 
         device_.ShufflePoints(y, PointMajor, stride, num_vecs, x);
+        device_.Memcpy(x_host, x, vec_length, MemcpyDeviceToHost);
 
         err=0;
         for(int ii=0;ii<num_vecs;++ii)
             for(int jj=0;jj<stride;jj++)
             {                
                 idx = ii*3*stride + jj;
-                diff = fabs(x[idx] + x[idx+stride] + x[idx+stride+stride] - 3*jj);
+                diff = fabs(x_host[idx] + x_host[idx+stride] + x_host[idx+stride+stride] - 3*jj);
                 err = (diff>err) ? diff : err ;
             }
 
         res = res && (err<eps_) ? true : false;
         string res_print = (res) ? "Passed" : "Failed";
         cout<<"* Device::ShufflePoints : " + res_print + " *"<<endl;
-                
+
+        device_.Free(x);
+        device_.Free(y);
+        free(x_host);
+        free(y_host);
+
+        return res;
+     }
+
+
+    bool TestMax()
+    {
+        bool res = true;
+        {
+            int length = 10012;
+            T* x = device_.Malloc(length);
+            T* y = device_.Malloc(length);
+
+            T* x_host = (T*) malloc(length * sizeof(T));
+            T* y_host = (T*) malloc(length * sizeof(T));
+            
+            T max = 0;
+            for(int idx=0;idx<length;idx++)
+            {
+                x_host[idx] = (T) drand48();
+                y_host[idx] = 0.5*x_host[idx] - 1.0;
+                max = (max > x_host[idx]) ? max : x_host[idx];
+            }
+            
+            device_.Memcpy(x, x_host, length, MemcpyHostToDevice);
+            device_.Memcpy(y, y_host, length, MemcpyHostToDevice);
+            T mx = device_.Max(x,length);
+            T my = device_.Max(y,length);
+            
+            device_.Free(x);
+            device_.Free(y);
+            free(x_host);
+            free(y_host);
+                        
+            T err = fabs(mx-max) + fabs(.5*max - 1.0-my);
+            res = res && (err<eps_) ? true : false;
+            
+            string res_print = (res) ? "Passed" : "Failed";
+            cout<<"* Device::Max : " + res_print + " *"<<endl;
+        }
         return res;
     }
 };

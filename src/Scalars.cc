@@ -98,18 +98,11 @@ void Scalars<T>::Sqrt()
     device_.Sqrt(data_, GetFunLength(), n_funs_, data_);
 }
 
-///@todo this may need to be device dependent.
 template<typename T> 
 T Scalars<T>::Max()
 {
     assert(data_ != 0);
-    int length = GetDataLength();
-    T max_val=*data_;
-    
-    for(int idx = 0;idx<length;idx++)
-        max_val = (max_val > data_[idx]) ? max_val : data_[idx];
-
-    return(max_val);
+    return(device_.Max(data_, GetDataLength()));
 }
 
 //Friends

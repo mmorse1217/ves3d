@@ -2,14 +2,17 @@ include ${VES3D_DIR}/makefile.in.files/makefile.in
 LIB_SRC= BlasSht.cc 
 
 ARFILES=libves3.a
-LIB_OBJ=$(LIB_SRC:.cc=.o)	
 
 ifeq ($(USE_GPU),yes)
-	LIB_OBJ_GPU= CudaSht.o #${VES3D_DIR}/include/DeviceGPU.o
+	LIB_SRC+= CudaSht.cc
+	LIB_SRC_GPU= CudaKernels.cu transpose_kernel.cu
+	LIB_OBJ_GPU=$(LIB_SRC_GPU:.cu=.o)	
 	ARFILES+= libves3dgpu.a 
 endif
 
 DEP = $(LIB_SRC:.cpp=.d)
+LIB_OBJ=$(LIB_SRC:.cc=.o)	
+
 
 all:$(ARFILES)
 
