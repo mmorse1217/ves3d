@@ -1,6 +1,9 @@
 #include "DeviceCPU.h"
 #include "DeviceTest.h"
-//#include "DeviceGPU.h"
+
+#ifdef GPU_ACTIVE
+#include "DeviceGPU.h"
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -18,17 +21,18 @@ int main(int argc, char* argv[])
     DeviceTest<float> dvt_f(cpu_f);
     dvt_f.PerformAll();
 
-
-//     //gpu
-//     cout<<"=========================================="<<endl;
-//     cout<<" GPU "<<endl;
-//     cout<<"=========================================="<<endl;
-//     DeviceGPU<float> gpu_f(0);
-//     DataIO<float> gpuIO(gpu_f," ", 0);
-//     OperatorsMats<float> gmats(gpuIO, 6, 6, readFromFile);
-//     gpu_f.InitializeSHT(gmats);
-//     DeviceTest<float> dvt_gf(gpu_f);
-//     dvt_gf.PerformAll();
+#ifdef GPU_ACTIVE
+    //gpu
+    cout<<"=========================================="<<endl;
+    cout<<" GPU "<<endl;
+    cout<<"=========================================="<<endl;
+    DeviceGPU<float> gpu_f(1);
+    DataIO<float> gpuIO(gpu_f," ", 0);
+    OperatorsMats<float> gmats(gpuIO, 6, 6, readFromFile);
+    gpu_f.InitializeSHT(gmats);
+    DeviceTest<float> dvt_gf(gpu_f);
+    dvt_gf.PerformAll();
+#endif
 
     return 0;
 }

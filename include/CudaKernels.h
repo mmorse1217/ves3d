@@ -11,8 +11,9 @@ void ReduceGpu(const float *x_in, const float *w_in, const float *q_in, int stri
 void CircShiftGpu(const float *arr_in, int n_vecs, int vec_length, int shift, float *arr_out);
 void axpyGpu(float a, const float* x_in, const float *y_in, int stride, int num_surfs, float *axpy_out);
 void axpbGpu(float a, const float* x_in, float b, int stride, int num_surfs, float *axpb_out);
-void cuda_shuffle(float *in, int stride, int n_surfs,int dim);
+void cuda_shuffle(float *in, int stride, int n_surfs, int dim, float *out);
 void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *D, float *U, const float *Q);
 void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q);
 void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, float *shc_out);
 void avpwGpu(const float *a_in, const float *v_in, const float *w_in, int stride, int num_surfs, float *avpw_out);
+float maxGpu(float *in, int n);

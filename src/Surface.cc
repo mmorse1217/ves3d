@@ -185,7 +185,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
 {
     assert(mats.fileIO_.device_ == this->device_);
 
-    shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
+    shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     alpha_p  = device_.Malloc(params_.p_ *(params_.p_ + 2));
     alpha_q  = device_.Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2));
@@ -256,12 +256,12 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
     w_sph_(device_,params_.p_,params_.n_surfs_),
     max_init_area_(-1)
 {
-    shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
+    shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
     alpha_p  = device_.Malloc(params_.p_ *(params_.p_ + 2));
     alpha_q  = device_.Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2));
 
-    tension_ = device_.Malloc(params_.n_surfs_);
+    tension_ = device_.Calloc(params_.n_surfs_);
     
     int np = 2 * params_.p_ * (params_.p_ + 1);
 
@@ -353,7 +353,7 @@ void Surface<T>::Resize(int n_surfs_in)
         work_arr = device_.Malloc(12 * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
         
         T *tension_old(this->tension_);
-        tension_ = device_.Malloc(max_n_surfs_);
+        tension_ = device_.Calloc(max_n_surfs_);
         if(tension_old != 0)
             device_.Memcpy(tension_, tension_old, params_.n_surfs_, MemcpyDeviceToDevice);
         device_.Free(tension_old);
@@ -551,6 +551,17 @@ void Surface<T>::Reparam()
     device_.ShAna(x_.data_, work_arr, params_.p_, 3*params_.n_surfs_, V10.data_);
     device_.Resample(params_.p_, 3*params_.n_surfs_, params_.rep_up_freq_, V10.data_, shc);
     device_.ShSyn(shc, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V10.data_);
+    
+//     {
+//         size_t len = 10;
+//         T* buff = (T*) malloc( len * sizeof(T));
+//         device_.Memcpy(buff, V10.data_, len, MemcpyDeviceToHost);
+        
+//         for(int ll=0;ll<len;ll++)
+//             cout<<buff[ll]<<endl;
+//         free(buff);
+//     }
+
 
     //upsample
     while(iter++ < params_.rep_iter_max_ && vel > params_.rep_max_vel_ * params_.rep_max_vel_)
@@ -567,10 +578,11 @@ void Surface<T>::Reparam()
         DotProduct(V11,V11,S10);
         ///@todo The error should be relative
         vel = S10.Max();
-#ifndef NDEBUG
+#ifndef NDEBUGX
         cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;
 #endif
     }
+    
     device_.ShAna(V10.data_, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V11.data_);
     device_.Resample(params_.rep_up_freq_, 3*params_.n_surfs_, params_.p_, V11.data_, shc);
     device_.ShSyn(shc, work_arr, params_.p_, 3*params_.n_surfs_, x_.data_);
@@ -658,6 +670,7 @@ T* Surface<T>::GetCenters(T* cnts)
     device_.ShufflePoints(work_arr                   , AxisMajor , len   , 1 , work_arr + len + len + len);
     device_.ShufflePoints(work_arr + len + len + len , PointMajor, sc_len, nv, work_arr);
 
+    device_.Reduce(NULL, work_arr, quad_weights_, sc_len, 3*nv, cnts);
     device_.Reduce(V1.data_, work_arr, quad_weights_, sc_len, 3*nv, cnts);
 
     DotProduct(x_,normal_,S1);

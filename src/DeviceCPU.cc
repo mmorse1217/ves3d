@@ -859,132 +859,77 @@ void DeviceCPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* w
         ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
         sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
     }
-    
 }
 
 template<typename T>
-void DeviceCPU<T>::ScaleFreqs(int p, int n_funs, const T *shc_in, const T *alpha, T *shc_out)
+void DeviceCPU<T>::ScaleFreqs(int p, int num_vesicles, const T * inputs, const T * alphas, T * outputs )
 {
-    const T *inp_deb = shc_in;
-    const T *alpha_deb = alpha;
-    T *out_deb = shc_out;
+#ifndef NDEBUG
+    cout<<"DeviceCPU::ScaleFreqs"<<endl;
+#endif
     
-    // we have even-order real dft; this means we don't have first sine
-    // (sine of zero frequency) and last sine (sine of half-order
-    // frequency) -------- process zeroth frequency (constant) ---------
-    int leg_order = p+1;
-    for (int v=0; v<n_funs; v++)
-        for (int i=0; i<leg_order; i++)
-            *(shc_out++) = *(shc_in++) * alpha[i];
-    alpha += leg_order;
-    leg_order--;
-
-    // process remaining frequencies except the last cosine
-    for (; leg_order>1; leg_order--) 
-    {
-        // first process cosine
-        for (int v=0; v<n_funs; v++)
-            for (int i=0; i<leg_order; i++)
-                *(shc_out++) = *(shc_in++) *alpha[i];
-        alpha += leg_order;
+    int ll = p * (p + 2);
         
-        // then process sine
-        for (int v=0; v<n_funs; v++)
-            for (int i=0; i<leg_order; i++)
-                *(shc_out++) = *(shc_in++) *alpha[i];
-        alpha += leg_order;
+    Memcpy(outputs, inputs, ll * num_vesicles, MemcpyDeviceToDevice);
+
+#pragma omp parallel for
+    for(int vv=0; vv < num_vesicles; ++vv)
+    {
+        int idx(0);
+        size_t head(vv*ll);
+
+        for(int ii=0; ii< 2 * p; ++ii)
+        {
+            int length = p + 1 - (ii+1)/2;
+            for(int jj=0; jj < length; ++jj)
+                outputs[head + idx] *= alphas[idx++];
+        }
     }
-    
-    // process last cosine
-    for (int v=0; v<n_funs; v++)
-        for (int i=0; i<leg_order; i++)
-            *(shc_out++) = *(shc_in++) * alpha[i];
-    alpha += leg_order;
-    leg_order--;
-    
-    assert(leg_order == 0);
-    assert(shc_in-inp_deb == n_funs*p*(p+2));
-    assert(shc_out-out_deb == n_funs*p*(p+2));
-    assert(alpha-alpha_deb == p*(p+2));
 }
+
 
 template<typename T>
-void DeviceCPU<T>::Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q)
+void DeviceCPU<T>::Resample(int p, int num_vesicles, int q, const T * inputs, T * outputs)
 {
-    const T * inp_deb = shc_p;
-    T * out_deb = shc_q;
+#ifndef NDEBUG
+    cout<<"DeviceCPU::Resample"<<endl;
+#endif
 
-    // we have even-order real dft; this means we don't have first sine
-    // (sine of zero frequency) and last sine (sine of half-order
-    // frequency) -------- process zeroth frequency (constant) ---------
-    int leg_order = p+1;
-    int new_leg_order = q+1;
-    int min_leg_order = (leg_order < new_leg_order) ? leg_order : new_leg_order;
+    int lp = p * (p + 2);
+    int lq = q * (q + 2);
+    int sf = (q<p) ? q : p;
 
-    for (int v=0; v<n_funs; v++)
+#pragma omp parallel for
+    for(int vv=0; vv < num_vesicles; ++vv)
     {
-        for(int i=0; i<min_leg_order; i++)
-            *(shc_q++) = *(shc_p++);
-        for (int i=leg_order; i<new_leg_order; i++)
-            *(shc_q++) = 0;
-        if (leg_order > new_leg_order)
-            shc_p += leg_order - new_leg_order;
-    }
-    leg_order--;
-    new_leg_order--;
-    min_leg_order--;
-
-    // process remaining frequencies except the last cosine
-    for (; min_leg_order>1; min_leg_order--,leg_order--,new_leg_order--) 
-    {
-        // first process cosine
-        for (int v=0; v<n_funs; v++)
+        size_t p_idx(vv*lp);
+        size_t q_idx(vv*lq);
+        for(int ii=0; ii< 2 * sf; ++ii)
         {
-            for(int i=0; i<min_leg_order; i++)
-                *(shc_q++) = *(shc_p++);
-            for (int i=leg_order; i<new_leg_order; i++)
-                *(shc_q++) = 0;
-            if (leg_order > new_leg_order)
-                shc_p += leg_order - new_leg_order;
+            int s_length = sf + 1 - (ii+1)/2;
+            int q_length = q + 1 - (ii+1)/2;
+            int p_length = p + 1 - (ii+1)/2;
+
+            for(int jj=0; jj < s_length; ++jj)
+                outputs[q_idx++] = inputs[p_idx+jj];
+
+            //padding the tail
+            for(int jj=s_length; jj < q_length; ++jj)
+                outputs[q_idx++] = 0.0;
+
+            p_idx +=p_length;
         }
 
-        // then process sine
-        for (int v=0; v<n_funs; v++)
+        //padding the corners
+        for(int ii=2 * sf; ii< 2 * q; ++ii)
         {
-            for(int i=0; i<min_leg_order; i++)
-                *(shc_q++) = *(shc_p++);
-            for (int i=leg_order; i<new_leg_order; i++)
-                *(shc_q++) = 0;
-            if (leg_order > new_leg_order)
-                shc_p += leg_order - new_leg_order;
+            int q_length = q + 1 - (ii+1)/2;
+            for(int jj=0; jj < q_length; ++jj)
+                outputs[q_idx++] = 0.0;
         }
+
     }
-
-    // process last cosine
-    for (int v=0; v<n_funs; v++)
-        *(shc_q++) = *(shc_p++);
-
-    leg_order--;
-    new_leg_order--;
-    min_leg_order--;
-
-    assert (min_leg_order == 0);
- 
-    // if q>p all remaining coefs should be zero
-    T * output_end = out_deb+n_funs*q*(q+2);
-    assert(shc_q<=output_end);
-
-    while (shc_q<output_end)
-        *(shc_q++) = 0;
-
-    if (p<=q)
-        assert(shc_p-inp_deb == n_funs*p*(p+2));
-    else
-        assert(shc_p-inp_deb < n_funs*p*(p+2));
-    
-    assert(shc_q-out_deb == n_funs*q*(q+2));
 }
-
 
 template<typename T>
 T* DeviceCPU<T>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const T *alpha, 
@@ -1079,37 +1024,34 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     return;
 } 
 
-template<>
-void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
-    const float *qw, const float *trg, const float *src, const float *den, float *pot)
-{
-#ifndef NDEBUG
-    cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
-#endif
+// template<>
+// void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
+//     const float *qw, const float *trg, const float *src, const float *den, float *pot)
+// {
+// #ifndef NDEBUG
+//     cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
+// #endif
 
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    if(qw != NULL)
-        DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, den, pot);
-    else
-        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
+//     if(qw != NULL)
+//         DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, den, pot);
+//     else
+//         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
 
-
-
-    
-#ifdef PROFILING
-    ss = get_seconds()-ss;
-    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
-#endif
-    return;
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss;
+//     cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+// #endif
+//     return;
+// }
 
 template<typename T>
 T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
 {
-    ///@transpose could be made in place
+    ///@todo transpose could be made in place
     assert(x_in !=x_out);
 
     int len = 3*stride;
@@ -1155,4 +1097,26 @@ T DeviceCPU<T>::Max(T *x_in, int length)
 
     //    Free(max_arr);
     return(max);
+}
+
+
+template<typename T>
+void DeviceCPU<T>::InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out)
+{
+    ShAna(x_in, work_arr, p, n_funs, x_out);
+    Resample(p, n_funs, q, x_out, shc);
+    
+    {
+        size_t sq = q * (q + 2);
+        size_t lq = sq * n_funs;
+        
+        T* buff = (T*) malloc(  lq * sizeof(T));
+        
+        for(int ii=0; ii< lq; ++ii)
+            buff[ii] = 1.0;
+        Memcpy(shc, buff, lq, MemcpyHostToDevice);
+        free(buff);
+    }
+
+    ShSyn(shc, work_arr, q, n_funs, x_out);
 }

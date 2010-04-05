@@ -438,7 +438,7 @@ void reduceKernel(const float *x_in, const float *w_in, const float *q_in,
   int qOff = threadIdx.x;
 
   while(xOff < (blockIdx.x + 1)* stride) {
-    threadSum = x_in[xOff] * w_in[xOff] * q_in[qOff];
+    threadSum += x_in[xOff] * w_in[xOff] * q_in[qOff];
     xOff += BLOCK_HEIGHT;
     qOff += BLOCK_HEIGHT;
   }
@@ -470,7 +470,7 @@ void reduceKernel(const float *w_in, const float *q_in,
   int qOff = threadIdx.x;
 
   while(xOff < (blockIdx.x + 1)* stride) {
-    threadSum = w_in[xOff] * q_in[qOff];
+    threadSum += w_in[xOff] * q_in[qOff];
     xOff += BLOCK_HEIGHT;
     qOff += BLOCK_HEIGHT;
   }
@@ -489,6 +489,7 @@ void reduceKernel(const float *w_in, const float *q_in,
     int_x_dw[blockIdx.x] = sum[0];
   }
 }
+
 
 void ReduceGpu(const float *x_in, const float *w_in, const float *q_in,
                 int stride, int num_surfs, float *int_x_dw) {
@@ -546,8 +547,9 @@ void axpbGpu(float a, const float* x_in, float b, int stride, int num_surfs, flo
   axpbKernel<<<grid, BLOCK_HEIGHT>>> (a, x_in, b, length, axpb_out);
 }
 
+
 __global__
-void shuffle(float *in, int m, int n, int dim) {
+void shuffle(float *in, int m, int n, int dim, float *out) {
   int sub, add;
   int block_off = blockIdx.x * dim * m;
 
@@ -561,17 +563,16 @@ void shuffle(float *in, int m, int n, int dim) {
     sub = f * m;
     add = f;
     out_off = (thread_off - sub) * dim + add;
-    float temp = in[thread_off];
-    in[thread_off] = in[out_off];
-    in[out_off] = temp;
+    out[out_off] = in[thread_off];
 
     thread_off += BLOCK_HEIGHT;
   }
 }
 
-void cuda_shuffle(float *in, int m, int n, int dim) {
+
+void cuda_shuffle(float *in, int m, int n, int dim, float *out) {
   int grid = n;
-  shuffle<<<grid, BLOCK_HEIGHT>>> (in, m, n, dim);
+  shuffle<<<grid, BLOCK_HEIGHT>>> (in, m, n, dim, out);
 }
 
 ///
@@ -613,6 +614,87 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
 
     float inv_r = rsqrtf(dis_reg.x * dis_reg.x + dis_reg.y * dis_reg.y
                           + dis_reg.z * dis_reg.z);
+
+    inv_r = inv_r + (inv_r-inv_r);
+    inv_r = fmaxf(inv_r,0.0F);
+    
+    float tmp_scal = (dis_reg.x * pot_reg.x + dis_reg.y * pot_reg.y
+                       + dis_reg.z * pot_reg.z) * inv_r * inv_r;
+    pot_reg.x += tmp_scal * dis_reg.x;
+    pot_reg.y += tmp_scal * dis_reg.y;
+    pot_reg.z += tmp_scal * dis_reg.z;
+
+    u_reg.x += pot_reg.x * inv_r;
+    u_reg.y += pot_reg.y * inv_r;
+    u_reg.z += pot_reg.z * inv_r;
+
+    block_off += BLOCK_HEIGHT;
+    s += BLOCK_HEIGHT;
+  }
+
+  u_sh[threadIdx.x].x = u_reg.x;
+  u_sh[threadIdx.x].y = u_reg.y;
+  u_sh[threadIdx.x].z = u_reg.z;
+
+  int off = 1;
+  int stride = 2;
+  while (off != BLOCK_HEIGHT) {
+    if (threadIdx.x % stride == 0) {
+      syncthreads();
+      u_sh[threadIdx.x].x += u_sh[threadIdx.x + off].x;
+      u_sh[threadIdx.x].y += u_sh[threadIdx.x + off].y;
+      u_sh[threadIdx.x].z += u_sh[threadIdx.x + off].z;
+    }
+    off = stride;
+    stride *= 2;
+  }
+  if (threadIdx.x == 0) {
+    U[t_off] = u_sh[0].x * PI_8I;
+    U[m + t_off] = u_sh[0].y * PI_8I;
+    U[m + m + t_off] = u_sh[0].z * PI_8I;
+  }
+
+}
+
+__global__
+void stokes(int m, int n, int t_head, const float *T, const float *S, const float *D, float *U) {
+  float3 trg_reg;
+  float3 src_reg;
+  float3 pot_reg;
+  float3 dis_reg;
+  float3 u_reg;
+  __shared__
+  float3 u_sh[BLOCK_HEIGHT];
+
+  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+
+  trg_reg.x = T[t_off];
+  trg_reg.y = T[m + t_off];
+  trg_reg.z = T[m + m + t_off];
+
+  u_reg = make_float3(0.0, 0.0, 0.0);
+
+  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int s = threadIdx.x;
+
+  while(block_off < blockIdx.x * 3 * m + m) {
+    src_reg.x = S[block_off];
+    src_reg.y = S[block_off + m];
+    src_reg.z = S[block_off + m + m];
+
+    pot_reg.x = D[block_off];
+    pot_reg.y = D[block_off + m];
+    pot_reg.z = D[block_off + m + m];
+
+    dis_reg.x = src_reg.x - trg_reg.x;
+    dis_reg.y = src_reg.y - trg_reg.y;
+    dis_reg.z = src_reg.z - trg_reg.z;
+
+    float inv_r = rsqrtf(dis_reg.x * dis_reg.x + dis_reg.y * dis_reg.y
+                          + dis_reg.z * dis_reg.z);
+
+    inv_r = inv_r + (inv_r-inv_r);
+    inv_r = fmaxf(inv_r,0.0F);
 
     float tmp_scal = (dis_reg.x * pot_reg.x + dis_reg.y * pot_reg.y
                        + dis_reg.z * pot_reg.z) * inv_r * inv_r;
@@ -656,7 +738,11 @@ void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const flo
   dim3 grid;
   grid.x = n;
   grid.y = t_tail - t_head;
-  stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U, Q);
+
+  if (Q != NULL)
+      stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U, Q);
+  else
+      stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U);
 }
 
 /// 
@@ -767,4 +853,40 @@ void avpwGpu(const float *a_in, const float *v_in, const float *w_in,
   dim3 grid;
   grid.x = num_surfs * stride * 3 / BLOCK_HEIGHT + 1;
   avpwKernel<<<grid, BLOCK_HEIGHT>>> (a_in, v_in, w_in, stride * 3, num_surfs * stride * 3, avpw_out);
+}
+
+
+__global__
+void reduceMaxKernel(float *in, int n) {
+  __shared__ float sdata[BLOCK_HEIGHT];
+  int idx = blockIdx.x * BLOCK_HEIGHT + threadIdx.x;
+  if (idx < n)
+    sdata[threadIdx.x] = in[idx];
+  else
+    sdata[threadIdx.x] = -1e9;
+
+  int redOff = 1;
+  int redStride = 2;
+  while(redOff != BLOCK_HEIGHT) {
+    if (threadIdx.x % redStride == 0) {
+      syncthreads();
+      sdata[threadIdx.x] = fmaxf(sdata[threadIdx.x], sdata[threadIdx.x + redOff]);
+    }
+    redOff = redStride;
+    redStride *= 2;
+  }
+  if(threadIdx.x == 0) {
+    in[blockIdx.x] = sdata[0];
+  }
+}
+
+float maxGpu(float *in, int n) {
+  while(n > 0) {
+    int grid = n / BLOCK_HEIGHT + 1;
+    reduceMaxKernel<<<grid, BLOCK_HEIGHT>>> (in, n);
+    n /= BLOCK_HEIGHT;
+  }
+  float max;
+  cudaMemcpy(&max, in, sizeof(float), cudaMemcpyDeviceToHost);
+  return max;
 }

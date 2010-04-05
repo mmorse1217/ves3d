@@ -4,6 +4,7 @@ PREFLAGS= -DNDEBUG
 
 ifeq ($(USE_GPU),yes)
 	VES3D_GPU_LIBS=-lves3dgpu
+	PREFLAGS+= -DGPU_ACTIVE
 else
 	VES3D_GPU_LIBS=
 endif

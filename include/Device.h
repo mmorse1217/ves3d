@@ -152,6 +152,7 @@ template<typename T> class Device
     virtual void Filter(int p, int n_funs, const T *x_in, const T *alpha, T* work_arr, T *shc_out, T *x_out) = 0;
     virtual void ScaleFreqs(int p, int n_funs, const T *inputs, const T *alphas, T *outputs) = 0;
     virtual void Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q) = 0;
+    virtual void InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out) = 0;
 
     ///The comparison operator for the device class
     template<typename Tlhs,typename Trhs>

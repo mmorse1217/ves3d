@@ -112,7 +112,7 @@ CudaSht::CudaSht(int p, scalar *dft_forward, scalar *dft_backward,
 
 
 CudaSht::~CudaSht() {
-    cublasShutdown();
+    //cublasShutdown();
 }
 
 
@@ -188,7 +188,7 @@ void CudaSht::InitializeCudaSht(int p, scalar *dft_forward, scalar *dft_backward
         scalar *leg_trans, scalar *leg_trans_inv, scalar* d1_leg_trans,
         scalar *d2_leg_trans)
 {
-    cublasInit();
+    //cublasInit();
     this->p = p;
     this->dft_size = 2 * p;
     this->leg_mat_size = (p + 1) * (p + 1) * (p + 2);

@@ -50,7 +50,9 @@ class DeviceTest
             Testaxpb() &&
             Testxvpw() &&
             TestShufflePoints() &&
-            TestMax();
+            TestMax() &&
+            TestReduce() &&
+            TestResample();
         
         
         string res_print = (test_result) ? "Passed" : "Failed";
@@ -693,7 +695,7 @@ class DeviceTest
 
      bool TestShufflePoints()
      {
-        int stride = 11, num_vecs = 2;
+        int stride = 100, num_vecs = 1;
         int vec_length = 3*stride*num_vecs;
 
         T* x = device_.Malloc(vec_length);
@@ -703,14 +705,8 @@ class DeviceTest
         T* y_host = (T*) malloc(vec_length * sizeof(T) );
 
         int idx;
-        for(int ii=0;ii<num_vecs;++ii)
-            for(int jj=0;jj<stride;jj++)
-            {                
-                idx = ii*3*stride + jj;
-                x_host[idx              ] = jj;
-                x_host[idx+stride       ] = jj;
-                x_host[idx+stride+stride] = jj;
-            }
+        for(int ii=0;ii<vec_length;++ii)
+            x_host[ii] = ii;
 
         device_.Memcpy(x, x_host, vec_length, MemcpyHostToDevice);
         device_.ShufflePoints(x, AxisMajor, stride, num_vecs, y);
@@ -718,26 +714,28 @@ class DeviceTest
 
         T diff, err=0;
         for(int ii=0;ii<num_vecs;++ii)
-            for(int jj=0;jj<stride;jj++)
+            for(int jj=0;jj<stride;++jj)
             {                
-                idx = ii*3*stride + 3*jj;               
-                diff = fabs(y_host[idx] + y_host[++idx] + y_host[++idx] - 3*jj);
+                idx = 3*ii*stride+3*jj;
+                T val1 = ii*3*stride+jj;
+                T val2 = ii*3*stride+jj+stride;
+                T val3 = ii*3*stride+jj+2*stride;
+                diff =  fabs(y_host[idx] -val1) + fabs(y_host[idx+1] -val2) + fabs(y_host[idx+2] -val3);
                 err = (diff>err) ? diff : err ;
             }
+
         bool res = (err<eps_) ? true : false;
 
         device_.ShufflePoints(y, PointMajor, stride, num_vecs, x);
         device_.Memcpy(x_host, x, vec_length, MemcpyDeviceToHost);
 
         err=0;
-        for(int ii=0;ii<num_vecs;++ii)
-            for(int jj=0;jj<stride;jj++)
-            {                
-                idx = ii*3*stride + jj;
-                diff = fabs(x_host[idx] + x_host[idx+stride] + x_host[idx+stride+stride] - 3*jj);
+        for(int jj=0;jj<3*num_vecs * stride;jj++)
+            {     
+                diff = fabs(x_host[jj] - jj);
                 err = (diff>err) ? diff : err ;
             }
-
+        
         res = res && (err<eps_) ? true : false;
         string res_print = (res) ? "Passed" : "Failed";
         cout<<"* Device::ShufflePoints : " + res_print + " *"<<endl;
@@ -787,6 +785,146 @@ class DeviceTest
             cout<<"* Device::Max : " + res_print + " *"<<endl;
         }
         return res;
+    }
+
+    bool TestReduce()
+    {
+        bool res = true;
+        
+        int stride = 312;
+        int ns = 5;
+        int length = ns*stride;
+        
+        T *x = device_.Malloc(length);
+        T *w = device_.Malloc(length);
+        T *q = device_.Malloc(stride);
+        T *I = device_.Malloc(ns);        
+        
+        T *x_host = (T*) malloc(length * sizeof(T));
+        T *w_host = (T*) malloc(length * sizeof(T));
+        T *q_host = (T*) malloc(length * sizeof(T));
+        T *I_host = (T*) malloc(ns * sizeof(T));
+
+        for(int ii=0;ii<ns;++ii)
+            for(int jj=0;jj<stride;++jj)
+            {
+                x_host[ii*stride+jj] = jj;
+                w_host[ii*stride+jj] = .5;
+                q_host[ii*stride+jj] = .25;
+            }
+
+         device_.Memcpy(x,x_host,length,MemcpyHostToDevice);
+         device_.Memcpy(w,w_host,length,MemcpyHostToDevice);
+         device_.Memcpy(q,q_host,stride,MemcpyHostToDevice);
+         
+         device_.Reduce(x, w, q, stride, ns, I);
+         device_.Memcpy(I_host,I,ns,MemcpyDeviceToHost);
+
+         T err = 0;
+         T II = (stride-1)*stride/16.0;
+         for(int ii=0;ii<ns;++ii)
+         {
+             T diff = fabs(I_host[ii]-II);
+             err = (err>diff) ? err : diff;
+         }
+         res = res && (err<eps_) ? true : false;
+
+
+         device_.Reduce(NULL, w, q, stride, ns, I);
+         device_.Memcpy(I_host,I,ns,MemcpyDeviceToHost);
+
+         II = stride/8.0;
+         for(int ii=0;ii<ns;++ii)
+         {
+             T diff = fabs(I_host[ii]-II);
+             err = (err>diff) ? err : diff;
+         }
+         res = res && (err<eps_) ? true : false;
+
+         device_.Reduce(w, x, q, stride, ns, I);
+         device_.Memcpy(I_host,I,ns,MemcpyDeviceToHost);
+
+         II = (stride-1)*stride/16.0;
+         for(int ii=0;ii<ns;++ii)
+         {
+             T diff = fabs(I_host[ii]-II);
+             err = (err>diff) ? err : diff;
+         }
+         res = res && (err<eps_) ? true : false;
+
+        free(x_host);
+        free(w_host);
+        free(q_host);
+        free(I_host);
+
+        device_.Free(x);
+        device_.Free(w);
+        device_.Free(q);
+        device_.Free(I);
+        
+        string res_print = (res) ? "Passed" : "Failed";
+        cout<<"* Device::Reduce : " + res_print + " *"<<endl;
+        return res;
+    }
+
+    bool TestResample()
+    {
+        int p = 12;
+        int q = 16;
+        int n_fun = 3;
+        int lp = p * (p + 2) * n_fun;
+        int lq = q * (q + 2) * n_fun;
+        int idx = 0;
+    
+        T *sp_host = (T*) malloc(lp * sizeof(T));
+        T *sq_host = (T*) malloc(lq * sizeof(T));
+        T *al_host = (T*) malloc(p * (p + 2) *sizeof(T));
+
+        T *sp = device_.Malloc(lp);
+        T *sq = device_.Malloc(lq);
+        T *al = device_.Malloc(p * (p + 2));
+
+        for(int ff=0; ff< n_fun; ++ff)
+            for(int ii=0; ii< 2 * p; ++ii)
+            {
+                int len = p + 1 - (ii+1)/2;
+                for(int jj=0; jj < len; ++jj)
+                    sp_host[idx++] = jj;
+            }
+
+        idx = 0;
+        for(int ii=0; ii< 2 * p; ++ii)
+        {
+            int len = p + 1 - (ii+1)/2;
+            for(int jj=0; jj < len; ++jj)
+                al_host[idx++] = (len-jj)<=(p-2*p/3) ? 0 : 1;
+        }
+
+        device_.Memcpy(sp, sp_host, lp, MemcpyHostToDevice);
+        device_.Memcpy(al, al_host, p * (p + 2), MemcpyHostToDevice);
+        device_.ScaleFreqs(p, n_fun, sp, al, sp);
+        device_.Resample(p, n_fun, q, sp, sq);
+        device_.Memcpy(sq_host, sq, lq, MemcpyDeviceToHost);
+    
+        idx = 0;
+        for(int ff=0; ff< n_fun; ++ff)
+            for(int ii=0; ii< 2 * q; ++ii)
+            {
+                int len = q + 1 - (ii+1)/2;
+                for(int jj=0; jj < len; ++jj)
+                    cout<<sq_host[idx++]<<" ";
+                cout<<endl;
+            }
+        
+        device_.Free(al);
+        device_.Free(sp);
+        device_.Free(sq);
+
+        free(sp_host);
+        free(sq_host);
+        free(al_host);
+
+        return false;
     }
 };
 

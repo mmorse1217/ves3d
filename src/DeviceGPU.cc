@@ -8,6 +8,7 @@ template <typename T>
 DeviceGPU<T>::DeviceGPU(int cuda_device_id)
 {
     cudaSetDevice(cuda_device_id);
+    cublasInit();
 }
 
 template <typename T>
@@ -194,6 +195,57 @@ T* DeviceGPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int st
 #ifndef NDEBUG
     cout<<"DeviceGPU::Reduce"<<endl;
 #endif
+    
+    //     int len = stride * num_surfs;
+    //     T *xx =(T*) malloc(len * sizeof(T));
+    //     T *ww =(T*) malloc(len * sizeof(T));
+    //     T *qq =(T*) malloc(stride * sizeof(T));
+    //     T *I  =(T*) malloc(num_surfs * sizeof(T));
+
+    //     Memcpy(ww,w_in, len,MemcpyDeviceToHost);
+    //     Memcpy(qq,quad_w_in, stride,MemcpyDeviceToHost);
+
+    //     T val, sum;
+    
+    //     if(x_in != NULL)
+    //     {
+    //         Memcpy(xx,x_in, len,MemcpyDeviceToHost);
+
+    // #pragma omp parallel for private(val,sum)
+    //         for (int ii = 0; ii < num_surfs; ++ii)
+    //         {
+    //             sum = 0;
+    //             for (int jj = 0; jj < stride; ++jj) 
+    //             {
+    //                 val  = xx[ii * stride + jj];
+    //                 val *= ww[ii * stride + jj];
+    //                 val *= qq[jj];
+                
+    //                 sum += val;
+    //             }
+    //             I[ii] = sum;
+    //         }
+    //     } else{
+    // #pragma omp parallel for private(val,sum)
+    //         for (int ii = 0; ii < num_surfs; ++ii)
+    //         {
+    //             sum = 0;
+    //             for (int jj = 0; jj < stride; ++jj) 
+    //             {
+    //                 val = ww[ii * stride + jj];
+    //                 val *= qq[jj];
+                
+    //                 sum += val;
+    //             }
+
+    //             I[ii] = sum;
+    //         }
+    //     }
+    //     Memcpy(int_x_dw, I, num_surfs,MemcpyHostToDevice);
+    //     free(xx);
+    //     free(qq);
+    //     free(ww);
+    //     free(I);
 
     ReduceGpu(x_in, w_in, quad_w_in, stride, num_surfs, int_x_dw);
     return int_x_dw;
@@ -240,13 +292,33 @@ T* DeviceGPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, in
 #ifndef NDEBUG
     cout<<"DeviceGPU::ShufflePoints"<<endl;
 #endif
+    assert(x_in !=x_out);
 
-    Memcpy(x_out, x_in, 3 * stride * n_surfs, MemcpyDeviceToDevice);
+    //     int len = 3*stride;
+    //     int dim1 = (order_in == AxisMajor) ? stride : 3;
+    //     int dim2 = (order_in == AxisMajor) ? 3 : stride;
+
+    //     T *xx = (T*) malloc(len *n_surfs * sizeof(T));
+    //     T *yy = (T*) malloc(len *n_surfs * sizeof(T));
+   
+    //     Memcpy(xx,x_in,len*n_surfs,MemcpyDeviceToHost);
+
+    // #pragma omp parallel for 
+    //     for(int ss=0;ss<n_surfs;++ss)
+    //         for(int ii=0;ii<dim1;++ii)
+    //             for(int jj=0;jj<dim2;++jj)
+    //                 yy[ss*len + ii*dim2+jj] = xx[ss*len + jj*dim1+ii];
+
+    //     Memcpy(x_out,yy,len*n_surfs,MemcpyHostToDevice);
+    //     free(xx);
+    //     free(yy);
+
     int dim = 3;
     if(order_in == AxisMajor)
-        cuda_shuffle(x_out, stride, n_surfs, dim);
+        cuda_shuffle(x_in, stride, n_surfs, dim, x_out);
     else
-        cuda_shuffle(x_out, dim, n_surfs, stride);
+        cuda_shuffle(x_in, dim, n_surfs, stride, x_out);
+
 
     return x_out;
 }
@@ -259,8 +331,7 @@ T DeviceGPU<T>::Max(T *x_in, int length)
     cout<<"DeviceGPU::Max"<<endl;
 #endif
 
-    cout<<"GPU MAX"<<endl;
-    return(-1);
+    return(maxGpu(x_in, length));
 }
 
 template <typename T>
@@ -317,7 +388,7 @@ DeviceGPU<T>::~DeviceGPU()
     Free(sht_up_sample_.dft_d1backward); 
     Free(sht_up_sample_.dft_d2backward); 
     
-    // for gemm 
+    // for gemm
     cublasShutdown();
 }
 
@@ -338,6 +409,7 @@ template <typename T>
 void DeviceGPU<T>::ShSyn(const T *shc_in, T *work_arr, int p, int n_funs, T *y_out)
 {
     assert(p == p_ || p == p_up_);
+    cout<<"P = "<<p<<endl;
     if ( p == p_){
         assert(sht_.leg_trans_inv != 0);
         sht_.backward(shc_in, work_arr, n_funs, y_out);
@@ -473,13 +545,110 @@ void DeviceGPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* w
 template <typename T>
 void DeviceGPU<T>::ScaleFreqs(int p, int n_funs, const T *inputs, const T *alphas, T *outputs)
 {
-    ScaleFreqsGpu(p, n_funs, inputs, alphas, outputs);
+        size_t ll = p * (p + 2);
+        size_t len = ll*n_funs;
+
+        T* shc_in = (T*) malloc(len * sizeof(T));
+        T* shc_out= (T*) malloc(len * sizeof(T));
+        T* alpha = (T*) malloc(ll * sizeof(T));
+        
+        Memcpy(shc_in, inputs, len, MemcpyDeviceToHost);
+        Memcpy(alpha, alphas, ll, MemcpyDeviceToHost);
+        
+        Memcpy(shc_out, shc_in, len, MemcpyHostToHost);
+        
+#pragma omp parallel for
+        for(int vv=0; vv < n_funs; ++vv)
+        {
+            int idx(0);
+            size_t head(vv*ll);
+            
+            for(int ii=0; ii< 2 * p; ++ii)
+            {
+                int length = p + 1 - (ii+1)/2;
+                for(int jj=0; jj < length; ++jj)
+                    shc_out[head + idx] *= alpha[idx++];
+            }
+        }
+
+        Memcpy(outputs, shc_out, len, MemcpyHostToDevice);
+        free(shc_in);
+        free(shc_out);
+        free(alpha);
+    
+    //ScaleFreqsGpu(p, n_funs, inputs, alphas, outputs);
 }
 
 template <typename T>
-void DeviceGPU<T>::Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q)
+void DeviceGPU<T>::Resample(int p, int n_funs, int q, const T *shc_p_in, T *shc_q_in)
 {
-    ResampleGpu(p, n_funs, q, shc_p, shc_q);
+    
+    cout<<"DeviceGPU::Resample Hack"<<endl;
+
+    const size_t length_p = p *(p + 2) * n_funs;
+    const size_t length_q = q *(q + 2) * n_funs;
+
+    T* shc_p = (T*) malloc( length_p * sizeof(T));
+    T* shc_q = (T*) malloc( length_q * sizeof(T));
+    Memcpy(shc_p   , shc_p_in, length_p, MemcpyDeviceToHost);
+    
+    int lp = p * (p + 2);
+    int lq = q * (q + 2);
+    int sf = (q<p) ? q : p;
+
+#pragma omp parallel for
+    for(int vv=0; vv < n_funs; ++vv)
+    {
+        size_t p_idx(vv*lp);
+        size_t q_idx(vv*lq);
+        for(int ii=0; ii< 2 * sf; ++ii)
+        {
+            int s_length = sf + 1 - (ii+1)/2;
+            int q_length = q + 1 - (ii+1)/2;
+            int p_length = p + 1 - (ii+1)/2;
+
+            for(int jj=0; jj < s_length; ++jj)
+                shc_q[q_idx++] = shc_p[p_idx+jj];
+
+            //padding the tail
+            for(int jj=s_length; jj < q_length; ++jj)
+                shc_q[q_idx++] = 0.0;
+
+            p_idx +=p_length;
+        }
+
+        //padding the corners
+        for(int ii=2 * sf; ii< 2 * q; ++ii)
+        {
+            int q_length = q + 1 - (ii+1)/2;
+            for(int jj=0; jj < q_length; ++jj)
+                shc_q[q_idx++] = 0.0;
+        }
+    }
+    Memcpy(shc_q_in,shc_q, length_q, MemcpyHostToDevice);
+    
+    free(shc_p);
+    free(shc_q);
+    //ResampleGpu(p, n_funs, q, shc_p_in, shc_q_in);
 }
 
+template<typename T>
+void DeviceGPU<T>::InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out)
+{
+    ShAna(x_in, work_arr, p, n_funs, x_out);
+    Resample(p, n_funs, q, x_out, shc);
+    
+    {
+        size_t sq = q * (q + 2);
+        size_t lq = sq * n_funs;
+        
+        T* buff = (T*) malloc(  lq * sizeof(T));
+        
+        for(int ii=0; ii< lq; ++ii)
+            buff[ii] = 1.0;
+        Memcpy(shc, buff, lq, MemcpyHostToDevice);
+        free(buff);
+    }
 
+    ShSyn(shc, work_arr, q, n_funs, x_out);
+}

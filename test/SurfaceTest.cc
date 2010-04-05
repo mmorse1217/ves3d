@@ -11,7 +11,7 @@ typedef float T;
 
 int main(int argc, char ** argv)
 {
-
+    
     int p(12), nVec(5);
 
     int fLen(2*p*(p+1));
@@ -23,12 +23,12 @@ int main(int argc, char ** argv)
     par.p_ = p;
     par.n_surfs_ = 1;
     par.kappa_ = 1e-2;
-    par.filter_freq_ = 8;
+    par.filter_freq_ = 2*p/3;
     par.rep_ts_ = 1e-1;
     par.rep_max_vel_ = 1e-1;
     par.rep_iter_max_ = 100;
-    par.rep_up_freq_ = 12;
-    par.rep_filter_freq_ = 4;
+    par.rep_up_freq_ = 2*p;
+    par.rep_filter_freq_ = p/3;
 
     //Device
     DeviceCPU<T> cpu;
@@ -51,7 +51,7 @@ int main(int argc, char ** argv)
     
     // initializing vesicle positions from text file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",dLen,S.x_.data_);
-    //myIO.ReadData("precomputed/biconcave_ra95_6",dLen,S.x_.data_);
+    //myIO.ReadData("precomputed/biconcave_ra95_12",dLen,S.x_.data_);
     
     S.Resize(nVec);
     for(int ii=1;ii<nVec;ii++)
