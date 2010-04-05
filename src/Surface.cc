@@ -548,22 +548,9 @@ void Surface<T>::Reparam()
     int iter = 0;
     T vel = 2*params_.rep_max_vel_;
 
-    device_.ShAna(x_.data_, work_arr, params_.p_, 3*params_.n_surfs_, V10.data_);
-    device_.Resample(params_.p_, 3*params_.n_surfs_, params_.rep_up_freq_, V10.data_, shc);
-    device_.ShSyn(shc, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V10.data_);
-    
-//     {
-//         size_t len = 10;
-//         T* buff = (T*) malloc( len * sizeof(T));
-//         device_.Memcpy(buff, V10.data_, len, MemcpyDeviceToHost);
-        
-//         for(int ll=0;ll<len;ll++)
-//             cout<<buff[ll]<<endl;
-//         free(buff);
-//     }
+    //up-sample
+    device_.InterpSh(params_.p_, 3*params_.n_surfs_, x_.data_, work_arr, shc, params_.rep_up_freq_, V10.data_);
 
-
-    //upsample
     while(iter++ < params_.rep_iter_max_ && vel > params_.rep_max_vel_ * params_.rep_max_vel_)
     {
         UpdateNormal();///@todo shc may have changed
@@ -578,14 +565,14 @@ void Surface<T>::Reparam()
         DotProduct(V11,V11,S10);
         ///@todo The error should be relative
         vel = S10.Max();
-#ifndef NDEBUGX
+#ifndef NDEBUG
         cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;
 #endif
     }
     
-    device_.ShAna(V10.data_, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V11.data_);
-    device_.Resample(params_.rep_up_freq_, 3*params_.n_surfs_, params_.p_, V11.data_, shc);
-    device_.ShSyn(shc, work_arr, params_.p_, 3*params_.n_surfs_, x_.data_);
+    ///inteprsh is buggy
+    device_.InterpSh(params_.rep_up_freq_, 3*params_.n_surfs_, V10.data_, work_arr, shc, params_.p_, V11.data_);
+    device_.Memcpy(x_.data_, V11.data_, x_.GetDataLength(), MemcpyDeviceToDevice);
 }
 
 template<typename T>

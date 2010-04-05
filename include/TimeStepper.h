@@ -1,3 +1,4 @@
+
 #ifndef _TIMESTEPPER_H_
 #define _TIMESTEPPER_H_
 
@@ -76,68 +77,74 @@ class TimeStepper
             //Set up the current state
             vesicle_.UpdateAll();
 
-            //Interaction
-            avpw(vesicle_.tension_, vesicle_.tensile_force_, vesicle_.bending_force_, vel_tension_);
-            
-            //vel_tension_ holds the interaction force
-            xvpb(vesicle_.w_,vel_tension_, (T) 0.0, vel_tension_);
-            
-            //up-sampling x_ to V10
-            vesicle_.device_.InterpSh(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_,
-                vesicle_.x_.data_, vesicle_.work_arr, vesicle_.shc, vesicle_.params_.rep_up_freq_, vesicle_.V10.data_);
-
-            //up-sampling vel_tension to V11
-            vesicle_.device_.InterpSh(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_,
-                vel_tension_.data_, vesicle_.work_arr, vesicle_.shc, vesicle_.params_.rep_up_freq_, vesicle_.V11.data_);
-
-            //the self-interaction -- V12
-            vesicle_.device_.DirectStokes(vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, 
-                0, vesicle_.V10.GetFunLength(), quad_weights_, vesicle_.V10.data_,
-                vesicle_.V10.data_, vesicle_.V11.data_, vesicle_.V12.data_);
-            
-            ///@todo the multiplication by the quadrature weights is slow
-            int stride = vesicle_.V11.GetFunLength();
-            for(int ii=0;ii<vesicle_.params_.n_surfs_;++ii)
+            if(Interaction_ !=NULL)
             {
-                vesicle_.device_.xvpb(quad_weights_, vesicle_.V11.data_ + 3*ii*stride,
-                    (T) 0.0, stride, 1, vesicle_.V11.data_ + 3*ii*stride);
-            }
-			
-            // Call to fast summation algorithm for vesicle--vesicle interactions. 
-            //Interaction to V13 
-            Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
-                vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, user);
-            
-            axpy((T) -1.0, vesicle_.V12, vesicle_.V13, vesicle_.V13);
-
-            {
-                size_t len = vesicle_.V12.GetDataLength();
-                T* buff = (T*) malloc( len * sizeof(T));
-                vesicle_.device_.Memcpy(buff, vesicle_.V13.data_, len, MemcpyDeviceToHost);
+                //Interaction
+                avpw(vesicle_.tension_, vesicle_.tensile_force_, vesicle_.bending_force_, vel_tension_);
                 
-                for(int ll=0;ll<10;ll++)
-                    cout<<buff[ll]<<endl;
-                free(buff);
+                //vel_tension_ holds the interaction force
+                xvpb(vesicle_.w_,vel_tension_, (T) 0.0, vel_tension_);
+                
+                //up-sampling x_ to V10
+                vesicle_.device_.InterpSh(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_,
+                    vesicle_.x_.data_, vesicle_.work_arr, vesicle_.shc, vesicle_.params_.rep_up_freq_, vesicle_.V10.data_);
+                
+                //up-sampling vel_tension to V11
+                vesicle_.device_.InterpSh(vesicle_.params_.p_, 3*vesicle_.params_.n_surfs_,
+                    vel_tension_.data_, vesicle_.work_arr, vesicle_.shc, vesicle_.params_.rep_up_freq_, vesicle_.V11.data_);
+
+                //the self-interaction -- V12
+                vesicle_.device_.DirectStokes(vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, 
+                    0, vesicle_.V10.GetFunLength(), quad_weights_, vesicle_.V10.data_,
+                    vesicle_.V10.data_, vesicle_.V11.data_, vesicle_.V12.data_);
+            
+                ///@todo the multiplication by the quadrature weights is slow
+                int stride = vesicle_.V11.GetFunLength();
+                for(int ii=0;ii<vesicle_.params_.n_surfs_;++ii)
+                {
+                    vesicle_.device_.xvpb(quad_weights_, vesicle_.V11.data_ + 3*ii*stride,
+                        (T) 0.0, stride, 1, vesicle_.V11.data_ + 3*ii*stride);
+                }
+                
+                // Call to fast summation algorithm for vesicle--vesicle interactions. 
+                //Interaction to V13 
+                Interaction_(vesicle_.V10.data_, vesicle_.V11.data_,  
+                    vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, user);
+            
+                axpy((T) -1.0, vesicle_.V12, vesicle_.V13, vesicle_.V13);
+                
+                //             {
+                //                 size_t len = vesicle_.V12.GetDataLength();
+                //                 T* buff = (T*) malloc( len * sizeof(T));
+                //                 vesicle_.device_.Memcpy(buff, vesicle_.V13.data_, len, MemcpyDeviceToHost);
+                
+                //                 for(int ll=0;ll<10;ll++)
+                //                     cout<<buff[ll]<<endl;
+                //                 free(buff);
+                //             }
+ 
+                //filtering to 1/3
+                vesicle_.device_.ShAna(vesicle_.V13.data_, vesicle_.work_arr, vesicle_.params_.rep_up_freq_, 
+                    3*vesicle_.params_.n_surfs_, vesicle_.V11.data_);
+            
+                vesicle_.device_.ScaleFreqs(vesicle_.params_.rep_up_freq_, 3*vesicle_.params_.n_surfs_, 
+                    vesicle_.V11.data_, vesicle_.alpha_q, vesicle_.V11.data_);
+
+                vesicle_.device_.Resample(vesicle_.params_.rep_up_freq_, 3*vesicle_.params_.n_surfs_, 
+                    vesicle_.params_.p_, vesicle_.V11.data_, vesicle_.shc);
+
+                vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
+                    3*vesicle_.params_.n_surfs_, velocity_.data_);
+
+                //Background flow
+                bg_flow_.GetVel(vesicle_.x_, vesicle_.S1, vel_tension_);
+                axpy((T) 1.0, vel_tension_, velocity_, velocity_);
+            }
+            else
+            {     
+                bg_flow_.GetVel(vesicle_.x_, vesicle_.S1, velocity_);
             }
 
-//             //filtering to 1/3
-//             vesicle_.device_.ShAna(vesicle_.V13.data_, vesicle_.work_arr, vesicle_.params_.rep_up_freq_, 
-//                 3*vesicle_.params_.n_surfs_, vesicle_.V11.data_);
-            
-//             vesicle_.device_.ScaleFreqs(vesicle_.params_.rep_up_freq_, 3*vesicle_.params_.n_surfs_, 
-//                 vesicle_.V11.data_, vesicle_.alpha_q, vesicle_.V11.data_);
-
-//             vesicle_.device_.Resample(vesicle_.params_.rep_up_freq_, 3*vesicle_.params_.n_surfs_, 
-//                 vesicle_.params_.p_, vesicle_.V11.data_, vesicle_.shc);
-
-//             vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
-//                 3*vesicle_.params_.n_surfs_, velocity_.data_);
-
-            //Background flow
-            bg_flow_.GetVel(vesicle_.x_, vesicle_.S1, velocity_);
-//             bg_flow_.GetVel(vesicle_.x_, vesicle_.S1, vel_tension_);
-//             axpy((T) 1.0, vel_tension_, velocity_, velocity_);
-            
             //Calculate stokes
             vesicle_.StokesMatVec(vesicle_.bending_force_, vel_bending_);
             axpy((T) 1.0, vesicle_.bending_force_, velocity_, velocity_);

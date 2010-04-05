@@ -409,7 +409,6 @@ template <typename T>
 void DeviceGPU<T>::ShSyn(const T *shc_in, T *work_arr, int p, int n_funs, T *y_out)
 {
     assert(p == p_ || p == p_up_);
-    cout<<"P = "<<p<<endl;
     if ( p == p_){
         assert(sht_.leg_trans_inv != 0);
         sht_.backward(shc_in, work_arr, n_funs, y_out);
@@ -536,119 +535,191 @@ void DeviceGPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* w
         sht_.backward(shc_out, work_arr, n_funs, x_out);
     }else{
         assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
-        ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
-        sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
+         sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
+         ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
+         sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
     }
 }
 
 template <typename T>
-void DeviceGPU<T>::ScaleFreqs(int p, int n_funs, const T *inputs, const T *alphas, T *outputs)
+void DeviceGPU<T>::ScaleFreqs(int p, int num_vesicles, const T *inputs, const T *alphas, T *outputs)
 {
-        size_t ll = p * (p + 2);
-        size_t len = ll*n_funs;
-
+#ifndef NDEBUG
+    cout<<"DeviceGPU::Filter wapper"<<endl;
+    size_t ll = p * (p + 2);
+    size_t len = ll*num_vesicles;
+    
         T* shc_in = (T*) malloc(len * sizeof(T));
-        T* shc_out= (T*) malloc(len * sizeof(T));
-        T* alpha = (T*) malloc(ll * sizeof(T));
-        
-        Memcpy(shc_in, inputs, len, MemcpyDeviceToHost);
-        Memcpy(alpha, alphas, ll, MemcpyDeviceToHost);
-        
-        Memcpy(shc_out, shc_in, len, MemcpyHostToHost);
-        
-#pragma omp parallel for
-        for(int vv=0; vv < n_funs; ++vv)
-        {
-            int idx(0);
-            size_t head(vv*ll);
-            
-            for(int ii=0; ii< 2 * p; ++ii)
-            {
-                int length = p + 1 - (ii+1)/2;
-                for(int jj=0; jj < length; ++jj)
-                    shc_out[head + idx] *= alpha[idx++];
-            }
-        }
-
-        Memcpy(outputs, shc_out, len, MemcpyHostToDevice);
-        free(shc_in);
-        free(shc_out);
-        free(alpha);
+    T* shc_out= (T*) malloc(len * sizeof(T));
+    T* alpha = (T*) malloc(ll * sizeof(T));
     
-    //ScaleFreqsGpu(p, n_funs, inputs, alphas, outputs);
+    Memcpy(shc_in, inputs, len, MemcpyDeviceToHost);
+    Memcpy(alpha, alphas, ll, MemcpyDeviceToHost);
+
+    T *inref = shc_in;
+    T *outref = shc_out;
+    T *aref = alpha;
+    ///
+    const float * inp_deb = shc_in;
+    float * out_deb = shc_out;
+    const float * alpha_deb = alpha;
+
+
+    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
+    // -------- process zeroth frequency (constant) ---------
+    int leg_order = p+1;
+    for (int v=0; v<num_vesicles; v++)
+        for (int i=0; i<leg_order; i++)
+            *(shc_out++) = *(shc_in++) * alpha[i];
+    alpha += leg_order;
+    leg_order--;
+
+    // process remaining frequencies except the last cosine
+    for (; leg_order>1; leg_order--) 
+    {
+        // first process cosine
+        for (int v=0; v<num_vesicles; v++)
+            for (int i=0; i<leg_order; i++)
+                *(shc_out++) = *(shc_in++) *alpha[i];
+        alpha += leg_order;
+
+        // then process sine
+        for (int v=0; v<num_vesicles; v++)
+            for (int i=0; i<leg_order; i++)
+                *(shc_out++) = *(shc_in++) *alpha[i];
+        alpha += leg_order;
+    }
+
+    // process last cosine
+    for (int v=0; v<num_vesicles; v++)
+        *(shc_out++) = *(shc_in++) * alpha[0];
+    alpha += leg_order;
+    leg_order--;
+
+    assert (leg_order == 0);
+    assert(shc_in-inp_deb == num_vesicles*p*(p+2));
+    assert(shc_out-out_deb == num_vesicles*p*(p+2));
+    assert(alpha-alpha_deb == p*(p+2));
+
+    Memcpy(outputs, outref, len, MemcpyHostToDevice);
+    free(inref);
+    free(outref);
+    free(aref);
+#else
+    ScaleFreqsGpu(p, num_vesicles, inputs, alphas, outputs);
+#endif
 }
 
 template <typename T>
-void DeviceGPU<T>::Resample(int p, int n_funs, int q, const T *shc_p_in, T *shc_q_in)
+void DeviceGPU<T>::Resample(int p, int num_vesicles, int q, const T *shc_p_in, T *shc_q_in)
 {
+#ifndef NDEBUG
+    cout<<"DeviceGPU::Resample wapper"<<endl;
+
+    const size_t length_p = p *(p + 2) * num_vesicles;
+    const size_t length_q = q *(q + 2) * num_vesicles;
+
+    T* inputs = (T*) malloc( length_p * sizeof(T));
+    T* outputs= (T*) malloc( length_q * sizeof(T));
+    Memcpy(inputs   , shc_p_in, length_p, MemcpyDeviceToHost);
     
-    cout<<"DeviceGPU::Resample Hack"<<endl;
-
-    const size_t length_p = p *(p + 2) * n_funs;
-    const size_t length_q = q *(q + 2) * n_funs;
-
-    T* shc_p = (T*) malloc( length_p * sizeof(T));
-    T* shc_q = (T*) malloc( length_q * sizeof(T));
-    Memcpy(shc_p   , shc_p_in, length_p, MemcpyDeviceToHost);
+    T* inref = inputs;
+    T* outref = outputs;
+    ///
+    const float * inp_deb = inputs;
+    float * out_deb = outputs;
     
-    int lp = p * (p + 2);
-    int lq = q * (q + 2);
-    int sf = (q<p) ? q : p;
+    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
+    // -------- process zeroth frequency (constant) ---------
+    int leg_order = p+1;
+    int new_leg_order = q+1;
+    int min_leg_order = std::min(leg_order, new_leg_order);
 
-#pragma omp parallel for
-    for(int vv=0; vv < n_funs; ++vv)
+    for (int v=0; v<num_vesicles; v++)
     {
-        size_t p_idx(vv*lp);
-        size_t q_idx(vv*lq);
-        for(int ii=0; ii< 2 * sf; ++ii)
+        for(int i=0; i<min_leg_order; i++)
+            *(outputs++) = *(inputs++);
+        for (int i=leg_order; i<new_leg_order; i++)
+            *(outputs++) = 0;
+        if (leg_order > new_leg_order)
+            inputs += leg_order - new_leg_order;
+    }
+    leg_order--;
+    new_leg_order--;
+    min_leg_order--;
+
+    // process remaining frequencies except the last cosine
+    for (; min_leg_order>1; min_leg_order--,leg_order--,new_leg_order--) 
+    {
+        // first process cosine
+        for (int v=0; v<num_vesicles; v++)
         {
-            int s_length = sf + 1 - (ii+1)/2;
-            int q_length = q + 1 - (ii+1)/2;
-            int p_length = p + 1 - (ii+1)/2;
-
-            for(int jj=0; jj < s_length; ++jj)
-                shc_q[q_idx++] = shc_p[p_idx+jj];
-
-            //padding the tail
-            for(int jj=s_length; jj < q_length; ++jj)
-                shc_q[q_idx++] = 0.0;
-
-            p_idx +=p_length;
+            for(int i=0; i<min_leg_order; i++)
+                *(outputs++) = *(inputs++);
+            for (int i=leg_order; i<new_leg_order; i++)
+                *(outputs++) = 0;
+            if (leg_order > new_leg_order)
+                inputs += leg_order - new_leg_order;
         }
 
-        //padding the corners
-        for(int ii=2 * sf; ii< 2 * q; ++ii)
+        // then process sine
+        for (int v=0; v<num_vesicles; v++)
         {
-            int q_length = q + 1 - (ii+1)/2;
-            for(int jj=0; jj < q_length; ++jj)
-                shc_q[q_idx++] = 0.0;
+            for(int i=0; i<min_leg_order; i++)
+                *(outputs++) = *(inputs++);
+            for (int i=leg_order; i<new_leg_order; i++)
+                *(outputs++) = 0;
+            if (leg_order > new_leg_order)
+                inputs += leg_order - new_leg_order;
         }
     }
-    Memcpy(shc_q_in,shc_q, length_q, MemcpyHostToDevice);
+
+    // process last cosine
+    for (int v=0; v<num_vesicles; v++)
+    {
+        for(int i=0; i<min_leg_order; i++)
+            *(outputs++) = *(inputs++);
+        for (int i=leg_order; i<new_leg_order; i++)
+            *(outputs++) = 0;
+        if (leg_order > new_leg_order)
+            inputs += leg_order - new_leg_order;
+    }
+
+    leg_order--;
+    new_leg_order--;
+    min_leg_order--;
+
+    // assert (leg_order == 0);
+ 
+    // if q>p all remaining coefs should be zero
+    float * output_end = out_deb+num_vesicles*q*(q+2);
+    assert(outputs<=output_end);
+
+    while (outputs<output_end)
+        *(outputs++) = 0;
+
+    if (p<=q)
+        assert(inputs-inp_deb == num_vesicles*p*(p+2));
+    else
+        assert(inputs-inp_deb < num_vesicles*p*(p+2));
     
-    free(shc_p);
-    free(shc_q);
-    //ResampleGpu(p, n_funs, q, shc_p_in, shc_q_in);
+    assert(outputs-out_deb == num_vesicles*q*(q+2));
+
+    ///
+    Memcpy(shc_q_in,outref, length_q, MemcpyHostToDevice);
+    
+    free(inref);
+    free(outref);
+#else
+    ResampleGpu(p, num_vesicles, q, shc_p_in, shc_q_in);
+#endif
 }
 
 template<typename T>
 void DeviceGPU<T>::InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out)
 {
+    ///@bug this gives segmentation fault when q<p, since x_out is small.
     ShAna(x_in, work_arr, p, n_funs, x_out);
     Resample(p, n_funs, q, x_out, shc);
-    
-    {
-        size_t sq = q * (q + 2);
-        size_t lq = sq * n_funs;
-        
-        T* buff = (T*) malloc(  lq * sizeof(T));
-        
-        for(int ii=0; ii< lq; ++ii)
-            buff[ii] = 1.0;
-        Memcpy(shc, buff, lq, MemcpyHostToDevice);
-        free(buff);
-    }
-
     ShSyn(shc, work_arr, q, n_funs, x_out);
 }

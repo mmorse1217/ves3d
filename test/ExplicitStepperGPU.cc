@@ -1,4 +1,3 @@
-#include "DeviceCPU.h"
 #include "DeviceGPU.h"
 #include "DataIO.h"
 #include "TimeStepper.h"
@@ -33,9 +32,9 @@ int main(int argc, char *argv[])
     //Setting up the device
     int device_id=0;
     DeviceGPU<T> gpu_device(device_id);
-
+    
     //IO classes
-    DataIO<T> gpuIO(gpu_device,file_list.simulation_out_file_ + "gpu", 5*data_length);
+    DataIO<T> gpuIO(gpu_device,file_list.simulation_out_file_ + "gpu", 10*data_length);
 
     //Reading operators from file
     bool readFromFile = true;
@@ -80,36 +79,19 @@ int main(int argc, char *argv[])
     cout<<" - Populated"<<endl;
     delete[] cnts_host;
     
-    ////Writing to file
-    //gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());
-    //cout<<" - Written back to file"<<endl;
-
-    //Getting centers
-    //T *cnts_gpu = gpu_device.Malloc(3 * vesicle_gpu.params_.n_surfs_);
-    //vesicle_gpu.GetCenters(cnts_gpu);
-    
-    //T *cnts_recov = (T*) malloc(3 * vesicle_gpu.params_.n_surfs_ * sizeof(T));
-    //gpu_device.Memcpy(cnts_recov, cnts_gpu, 3 * vesicle_gpu.params_.n_surfs_, MemcpyDeviceToHost); 
-    
-    //for(int ii=0;ii<vesicle_gpu.params_.n_surfs_;ii++)
-    //    printf("%2.2f\t%2.2f\t%2.2f\n",cnts_recov[3*ii],cnts_recov[3*ii+1],cnts_recov[3*ii+2]);
-
-    //delete[] cnts_recov;
-    //gpu_device.Free(cnts_gpu);
-
-    //Time stepper
+    //Time stepper -- no interaction
     TimeStepper<T> stepper_gpu(ts, n_steps, vesicle_gpu, gpuIO, flow_field, 
-        mats_gpu.quad_weights_p_up_, &DirectInteraction);
+        mats_gpu.quad_weights_p_up_, NULL);
     
     stepper_gpu.saveData = false;
     stepper_gpu.verbose = true;
     stepper_gpu.userMonitor =NULL;
-    stepper_gpu.user = (void*) vesicle_gpu.work_arr; //Work space for the direct interaction.
     
     //Evolve
     stepper_gpu.EvolveInTime();
     
     cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
-    gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());            
+
+    //gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());            
     return 0;
 }

@@ -868,25 +868,47 @@ void DeviceCPU<T>::ScaleFreqs(int p, int num_vesicles, const T * inputs, const T
     cout<<"DeviceCPU::ScaleFreqs"<<endl;
 #endif
     
-    int ll = p * (p + 2);
-        
-    Memcpy(outputs, inputs, ll * num_vesicles, MemcpyDeviceToDevice);
+    const float * inp_deb = inputs;
+    float * out_deb = outputs;
+    const float * alphas_deb = alphas;
 
-#pragma omp parallel for
-    for(int vv=0; vv < num_vesicles; ++vv)
+
+    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
+    // -------- process zeroth frequency (constant) ---------
+    int leg_order = p+1;
+    for (int v=0; v<num_vesicles; v++)
+        for (int i=0; i<leg_order; i++)
+            *(outputs++) = *(inputs++) * alphas[i];
+    alphas += leg_order;
+    leg_order--;
+
+    // process remaining frequencies except the last cosine
+    for (; leg_order>1; leg_order--) 
     {
-        int idx(0);
-        size_t head(vv*ll);
+        // first process cosine
+        for (int v=0; v<num_vesicles; v++)
+            for (int i=0; i<leg_order; i++)
+                *(outputs++) = *(inputs++) *alphas[i];
+        alphas += leg_order;
 
-        for(int ii=0; ii< 2 * p; ++ii)
-        {
-            int length = p + 1 - (ii+1)/2;
-            for(int jj=0; jj < length; ++jj)
-                outputs[head + idx] *= alphas[idx++];
-        }
+        // then process sine
+        for (int v=0; v<num_vesicles; v++)
+            for (int i=0; i<leg_order; i++)
+                *(outputs++) = *(inputs++) *alphas[i];
+        alphas += leg_order;
     }
-}
 
+    // process last cosine
+    for (int v=0; v<num_vesicles; v++)
+        *(outputs++) = *(inputs++) * alphas[0];
+    alphas += leg_order;
+    leg_order--;
+
+    assert (leg_order == 0);
+    assert(inputs-inp_deb == num_vesicles*p*(p+2));
+    assert(outputs-out_deb == num_vesicles*p*(p+2));
+    assert(alphas-alphas_deb == p*(p+2));
+}
 
 template<typename T>
 void DeviceCPU<T>::Resample(int p, int num_vesicles, int q, const T * inputs, T * outputs)
@@ -895,40 +917,84 @@ void DeviceCPU<T>::Resample(int p, int num_vesicles, int q, const T * inputs, T 
     cout<<"DeviceCPU::Resample"<<endl;
 #endif
 
-    int lp = p * (p + 2);
-    int lq = q * (q + 2);
-    int sf = (q<p) ? q : p;
+    const float * inp_deb = inputs;
+    float * out_deb = outputs;
+    
+    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
+    // -------- process zeroth frequency (constant) ---------
+    int leg_order = p+1;
+    int new_leg_order = q+1;
+    int min_leg_order = std::min(leg_order, new_leg_order);
 
-#pragma omp parallel for
-    for(int vv=0; vv < num_vesicles; ++vv)
+    for (int v=0; v<num_vesicles; v++)
     {
-        size_t p_idx(vv*lp);
-        size_t q_idx(vv*lq);
-        for(int ii=0; ii< 2 * sf; ++ii)
-        {
-            int s_length = sf + 1 - (ii+1)/2;
-            int q_length = q + 1 - (ii+1)/2;
-            int p_length = p + 1 - (ii+1)/2;
-
-            for(int jj=0; jj < s_length; ++jj)
-                outputs[q_idx++] = inputs[p_idx+jj];
-
-            //padding the tail
-            for(int jj=s_length; jj < q_length; ++jj)
-                outputs[q_idx++] = 0.0;
-
-            p_idx +=p_length;
-        }
-
-        //padding the corners
-        for(int ii=2 * sf; ii< 2 * q; ++ii)
-        {
-            int q_length = q + 1 - (ii+1)/2;
-            for(int jj=0; jj < q_length; ++jj)
-                outputs[q_idx++] = 0.0;
-        }
-
+        for(int i=0; i<min_leg_order; i++)
+            *(outputs++) = *(inputs++);
+        for (int i=leg_order; i<new_leg_order; i++)
+            *(outputs++) = 0;
+        if (leg_order > new_leg_order)
+            inputs += leg_order - new_leg_order;
     }
+    leg_order--;
+    new_leg_order--;
+    min_leg_order--;
+
+    // process remaining frequencies except the last cosine
+    for (; min_leg_order>1; min_leg_order--,leg_order--,new_leg_order--) 
+    {
+        // first process cosine
+        for (int v=0; v<num_vesicles; v++)
+        {
+            for(int i=0; i<min_leg_order; i++)
+                *(outputs++) = *(inputs++);
+            for (int i=leg_order; i<new_leg_order; i++)
+                *(outputs++) = 0;
+            if (leg_order > new_leg_order)
+                inputs += leg_order - new_leg_order;
+        }
+
+        // then process sine
+        for (int v=0; v<num_vesicles; v++)
+        {
+            for(int i=0; i<min_leg_order; i++)
+                *(outputs++) = *(inputs++);
+            for (int i=leg_order; i<new_leg_order; i++)
+                *(outputs++) = 0;
+            if (leg_order > new_leg_order)
+                inputs += leg_order - new_leg_order;
+        }
+    }
+
+    // process last cosine
+    for (int v=0; v<num_vesicles; v++)
+    {
+        for(int i=0; i<min_leg_order; i++)
+            *(outputs++) = *(inputs++);
+        for (int i=leg_order; i<new_leg_order; i++)
+            *(outputs++) = 0;
+        if (leg_order > new_leg_order)
+            inputs += leg_order - new_leg_order;
+    }
+
+    leg_order--;
+    new_leg_order--;
+    min_leg_order--;
+
+    // assert (leg_order == 0);
+ 
+    // if q>p all remaining coefs should be zero
+    float * output_end = out_deb+num_vesicles*q*(q+2);
+    assert(outputs<=output_end);
+
+    while (outputs<output_end)
+        *(outputs++) = 0;
+
+    if (p<=q)
+        assert(inputs-inp_deb == num_vesicles*p*(p+2));
+    else
+        assert(inputs-inp_deb < num_vesicles*p*(p+2));
+    
+    assert(outputs-out_deb == num_vesicles*q*(q+2));
 }
 
 template<typename T>
@@ -1103,20 +1169,8 @@ T DeviceCPU<T>::Max(T *x_in, int length)
 template<typename T>
 void DeviceCPU<T>::InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out)
 {
+    ///@bug this gives segmentation fault when q<p, since x_out is small.
     ShAna(x_in, work_arr, p, n_funs, x_out);
     Resample(p, n_funs, q, x_out, shc);
-    
-    {
-        size_t sq = q * (q + 2);
-        size_t lq = sq * n_funs;
-        
-        T* buff = (T*) malloc(  lq * sizeof(T));
-        
-        for(int ii=0; ii< lq; ++ii)
-            buff[ii] = 1.0;
-        Memcpy(shc, buff, lq, MemcpyHostToDevice);
-        free(buff);
-    }
-
     ShSyn(shc, work_arr, q, n_funs, x_out);
 }
