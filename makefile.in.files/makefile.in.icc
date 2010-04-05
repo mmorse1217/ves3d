@@ -11,23 +11,28 @@ CUDA_DIR = /usr/local/cuda
 NVCC = $(CUDA_DIR)/bin/nvcc
 
 ifeq ($(USE_GPU),yes)
-		 CUDA_LIBS= -L$(CUDA_DIR)/lib64 -lcublas -lcudart -Wl,-rpath           \
-		            $(CUDA_DIR)/lib64
-		 CUDA_INCLUDE=-I$(CUDA_DIR)/include
+        CUDA_LIBS= -L$(CUDA_DIR)/lib64 -lcublas -lcudart                   \
+		-Wl,-rpath $(CUDA_DIR)/lib64
+        CUDA_INCLUDE=-I$(CUDA_DIR)/include
 else
-		CUDA_LIBS=
-		CUDA_INCLUDE=
+	CUDA_LIBS=
+	CUDA_INCLUDE=
 endif
 
 include ${VES3D_DIR}/makefile.in.files/makefile.in.common
 
-ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE)
+ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE) 
 PREFLAGS+= -DHAS_MKL_LIB
 
 # overall flags used in the compilers
-CPPFLAGS = -g -O0 -openmp -msse3 $(ALL_INCLUDE) -fPIC $(PREFLAGS)
+CPPFLAGS = -g -O0 -openmp -msse3 $(ALL_INCLUDE) -fPIC $(PREFLAGS) 
 CUDAFLAGS =  ${ALL_INCLUDE} 
 LDFLAGS  = ${VES3D_LIBS} ${CUDA_LIBS} ${BLAS_LIBS} -lpthread 
+
+ifeq ($(USE_GPU),yes)
+%.o: %.cu
+	$(NVCC) $(ALL_INCLUDE) -c $*.cu
+endif
 
 
 
