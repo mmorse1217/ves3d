@@ -92,6 +92,6 @@ int main(int argc, char *argv[])
     
     cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 
-    //gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());            
+    gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());            
     return 0;
 }
