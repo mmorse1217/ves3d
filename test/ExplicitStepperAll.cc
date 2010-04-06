@@ -49,37 +49,39 @@ int main(int argc, char *argv[])
     //Setting up the surface
     Surface<T> cpu_vesicle(cpu_device, surf_par,cpu_mats);
 
+    //Reading the base shape
     char fname[200]; 
     file_list.initial_shape_file_ += "%u";
     sprintf(fname,file_list.initial_shape_file_.c_str(),surf_par.p_);
     cpuIO.ReadData(fname, one_ves_length, cpu_vesicle.x_.data_);
     
-    //Making centers
-    T *cnts_host = new T[3 * surf_par.n_surfs_];
-    T h[3] = {5,5,5};
-    T zero[3] = {0, 0, 0};
-	for(int k=0; k<nd; k++){
-		for(int j=0; j<nd;j++){ 
-			for(int i=0; i<nd; i++){
-				unsigned int idx = 3*k*nd*nd + 3*j*nd + 3*i;
-				cnts_host[idx   ] = zero[0] + i*h[0];
-				cnts_host[idx +1] = zero[1] + j*h[1];
-				cnts_host[idx +2] = zero[2] + k*h[2];
-			}
-		}
-	}
-
-
     double ss=get_seconds();
+    
     //Setting up the all devices
 #pragma omp parallel num_threads(3)
     {
         ///cpu device thread
         if(omp_get_thread_num() == 0)
         {
+            //Making centers
+            T *cnts_host = new T[3 * surf_par.n_surfs_];
+            T h[3] = {5,5,5};
+            T zero[3] = {0, 0, 0};
+            for(int k=0; k<nd; k++){
+                for(int j=0; j<nd;j++){ 
+                    for(int i=0; i<nd; i++){
+                        unsigned int idx = 3*k*nd*nd + 3*j*nd + 3*i;
+                        cnts_host[idx   ] = zero[0] + i*h[0];
+                        cnts_host[idx +1] = zero[1] + j*h[1];
+                        cnts_host[idx +2] = zero[2] + k*h[2];
+                    }
+                }
+            }
+
             //Populate cpu
             cpu_vesicle.Populate(cnts_host);
-            
+            delete[] cnts_host;
+
             //Updating
             cpu_vesicle.UpdateAll();
             cout<<" - Populated and updated on cpu."<<endl;
@@ -100,7 +102,7 @@ int main(int argc, char *argv[])
 
         if(omp_get_thread_num() != 0)
         {
-            int this_thread = omp_get_thread_num(); 
+            int this_thread = omp_get_thread_num()-1; 
             int device_id=  this_thread;
             DeviceGPU<T> gpu_device(device_id);
                 
@@ -122,6 +124,9 @@ int main(int argc, char *argv[])
             gpu_device.Memcpy(gpu_vesicle.x_.data_, cpu_vesicle.x_.data_, one_ves_length, MemcpyHostToDevice);
 
             //Making centers
+            T *cnts_host = new T[3 * surf_par.n_surfs_];
+            T h[3] = {5,5,5};
+            T zero[3] = {0, 0, 0};
             zero[0] = omp_get_thread_num() * nd * h[0];
             for(int k=0; k<nd; k++){
                 for(int j=0; j<nd;j++){ 
@@ -133,7 +138,8 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-            
+            delete[] cnts_host;
+
             //Populate gpu
             gpu_vesicle.Populate(cnts_host); //NOTE THAT CENTERS ARE ALWAYS ON THE HOST
             
@@ -158,8 +164,6 @@ int main(int argc, char *argv[])
 ss=get_seconds()-ss;
     
 cout<<"Total time :"<<ss<<endl;
-
-delete[] cnts_host;
 cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 return 0;
 }
