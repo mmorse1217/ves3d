@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
             
             //Time stepper 
             TimeStepper<T> cpu_stepper(ts, n_steps, cpu_vesicle, cpuIO, flow_field, 
-                cpu_mats.quad_weights_p_up_, NULL);
+                cpu_mats.quad_weights_p_up_, &DirectInteraction);
             
             cpu_stepper.saveData = false;
             cpu_stepper.verbose = true;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
             cout<<" - Populated and updated."<<endl;
             
             TimeStepper<T> gpu_stepper(ts, n_steps, gpu_vesicle, gpuIO, flow_field, 
-                gpu_mats.quad_weights_p_up_, NULL);
+                gpu_mats.quad_weights_p_up_, &DirectInteraction);
             
             gpu_stepper.saveData = false;
             gpu_stepper.verbose = true;

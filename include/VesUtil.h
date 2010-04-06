@@ -91,6 +91,9 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
     cout<<"DirectInteraction()"<<endl;
 #endif
 
+#pragma omp barrier
+    ///Still there is no interaction between processors.
+
     T *work = (T*) user;
 
     size_t np = n_surfs * stride;
