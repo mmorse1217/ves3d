@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
 
     double ss=get_seconds();
-//Setting up the all devices
+    //Setting up the all devices
 #pragma omp parallel num_threads(3)
     {
         ///cpu device thread
@@ -98,25 +98,28 @@ int main(int argc, char *argv[])
             cpuIO.Append(cpu_vesicle.x_.data_, cpu_vesicle.x_.GetDataLength());            
         }
 
-        //gpu 0 thread
-        if(omp_get_thread_num() == 1)
+        if(omp_get_thread_num() != 0)
         {
-            int device_id = omp_get_thread_num() - 1;
-            DeviceGPU<T> gpu_0_device(device_id);
-         
-            DataIO<T> gpu_0IO(gpu_0_device,file_list.simulation_out_file_ + "gpu_0", 10*data_length);
+            int this_thread = omp_get_thread_num(); 
+            int device_id=  this_thread;
+            DeviceGPU<T> gpu_device(device_id);
+                
+            char fname[300];
+            string fstring = file_list.simulation_out_file_ + "gpu_" + "%u";
+            sprintf(fname, fstring.c_str(), this_thread);
+            DataIO<T> gpuIO(gpu_device, fname, 2*data_length);
             
-            OperatorsMats<T> gpu_0_mats(gpu_0IO, surf_par.p_, surf_par.rep_up_freq_, false);
-            gpu_0_device.Memcpy(gpu_0_mats.data_, cpu_mats.data_, cpu_mats.GetDataLength(),MemcpyHostToDevice);
-            cout<<" - MATS loaded and copied to device 0"<<endl;
+            OperatorsMats<T> gpu_mats(gpuIO, surf_par.p_, surf_par.rep_up_freq_, false);
+            gpu_device.Memcpy(gpu_mats.data_, cpu_mats.data_, cpu_mats.GetDataLength(),MemcpyHostToDevice);
+            cout<<" - MATS loaded and copied to device "<<this_thread<<endl;
 
-            gpu_0_device.InitializeSHT(gpu_0_mats);
-            cout<<" - SHT intialized on device 0"<<endl;
+            gpu_device.InitializeSHT(gpu_mats);
+            cout<<" - SHT intialized on device "<<this_thread<<endl;
 
-            Surface<T> gpu_0_vesicle(gpu_0_device, surf_par,gpu_0_mats);
-            cout<<" - Surface built on device 0"<<endl;
+            Surface<T> gpu_vesicle(gpu_device, surf_par,gpu_mats);
+            cout<<" - Surface built on device "<<this_thread<<endl;
             
-            gpu_0_device.Memcpy(gpu_0_vesicle.x_.data_, cpu_vesicle.x_.data_, one_ves_length, MemcpyHostToDevice);
+            gpu_device.Memcpy(gpu_vesicle.x_.data_, cpu_vesicle.x_.data_, one_ves_length, MemcpyHostToDevice);
 
             //Making centers
             zero[0] = omp_get_thread_num() * nd * h[0];
@@ -130,84 +133,33 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-
-            //Populate gpu_0
-            gpu_0_vesicle.Populate(cnts_host); //NOTE THAT CENTERS ARE ALWAYS ON THE HOST
             
-            gpu_0_vesicle.UpdateAll();
+            //Populate gpu
+            gpu_vesicle.Populate(cnts_host); //NOTE THAT CENTERS ARE ALWAYS ON THE HOST
+            
+            gpu_vesicle.UpdateAll();
             cout<<" - Populated and updated."<<endl;
             
-            TimeStepper<T> gpu_0_stepper(ts, n_steps, gpu_0_vesicle, gpu_0IO, flow_field, 
-                gpu_0_mats.quad_weights_p_up_, NULL);
+            TimeStepper<T> gpu_stepper(ts, n_steps, gpu_vesicle, gpuIO, flow_field, 
+                gpu_mats.quad_weights_p_up_, NULL);
             
-            gpu_0_stepper.saveData = false;
-            gpu_0_stepper.verbose = true;
-            gpu_0_stepper.userMonitor =NULL;
-            gpu_0_stepper.user = (void*) gpu_0_vesicle.work_arr;
+            gpu_stepper.saveData = false;
+            gpu_stepper.verbose = true;
+            gpu_stepper.userMonitor =NULL;
+            gpu_stepper.user = (void*) gpu_vesicle.work_arr;
             
-            gpu_0_stepper.EvolveInTime();
+            gpu_stepper.EvolveInTime();
             
-            gpu_0IO.Append(gpu_0_vesicle.x_.data_, gpu_0_vesicle.x_.GetDataLength());            
+            gpuIO.Append(gpu_vesicle.x_.data_, gpu_vesicle.x_.GetDataLength());            
         }
-
-        ///gpu 2 thread
-        if(omp_get_thread_num() == 2)
-        {
-            int device_id= omp_get_thread_num() - 1;
-            DeviceGPU<T> gpu_1_device(device_id);
-         
-            DataIO<T> gpu_1IO(gpu_1_device,file_list.simulation_out_file_ + "gpu_1", 10*data_length);
-            
-            OperatorsMats<T> gpu_1_mats(gpu_1IO, surf_par.p_, surf_par.rep_up_freq_, false);
-            gpu_1_device.Memcpy(gpu_1_mats.data_, cpu_mats.data_, cpu_mats.GetDataLength(),MemcpyHostToDevice);
-            cout<<" - MATS loaded and copied to device 0"<<endl;
-
-            gpu_1_device.InitializeSHT(gpu_1_mats);
-            cout<<" - SHT intialized on device 0"<<endl;
-
-            Surface<T> gpu_1_vesicle(gpu_1_device, surf_par,gpu_1_mats);
-            cout<<" - Surface built on device 0"<<endl;
-            
-            gpu_1_device.Memcpy(gpu_1_vesicle.x_.data_, cpu_vesicle.x_.data_, one_ves_length, MemcpyHostToDevice);
-
-            //Making centers
-            zero[0] = omp_get_thread_num() * nd * h[0];
-            for(int k=0; k<nd; k++){
-                for(int j=0; j<nd;j++){ 
-                    for(int i=0; i<nd; i++){
-                        unsigned int idx = 3*k*nd*nd + 3*j*nd + 3*i;
-                        cnts_host[idx   ] = zero[0] + i*h[0];
-                        cnts_host[idx +1] = zero[1] + j*h[1];
-                        cnts_host[idx +2] = zero[2] + k*h[2];
-                    }
-                }
-            }
-
-            //Populate gpu_1
-            gpu_1_vesicle.Populate(cnts_host); //NOTE THAT CENTERS ARE ALWAYS ON THE HOST
-            
-            gpu_1_vesicle.UpdateAll();
-            cout<<" - Populated and updated."<<endl;
-            
-            TimeStepper<T> gpu_1_stepper(ts, n_steps, gpu_1_vesicle, gpu_1IO, flow_field, 
-                gpu_1_mats.quad_weights_p_up_, NULL);
-            
-            gpu_1_stepper.saveData = false;
-            gpu_1_stepper.verbose = true;
-            gpu_1_stepper.userMonitor =NULL;
-            gpu_1_stepper.user = (void*) gpu_1_vesicle.work_arr;
-            
-            gpu_1_stepper.EvolveInTime();
-            
-            gpu_1IO.Append(gpu_1_vesicle.x_.data_, gpu_1_vesicle.x_.GetDataLength());            
-        }
-        
-    }
-    ss=get_seconds()-ss;
     
-    cout<<"Total time :"<<ss<<endl;
+    }
 
-    delete[] cnts_host;
-    cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
-    return 0;
+ss=get_seconds()-ss;
+    
+cout<<"Total time :"<<ss<<endl;
+
+delete[] cnts_host;
+cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
+return 0;
 }
