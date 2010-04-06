@@ -49,15 +49,18 @@ int main(int argc, char *argv[])
     
     //Reading initial shape to the first vesicle
     char fname[200]; 
-    file_list.initial_shape_file_ += "%u";
+    file_list.initial_shape_file_ = file_list.initial_shape_file_ + "%u";
     sprintf(fname,file_list.initial_shape_file_.c_str(),surf_par.p_);
-    myIO.ReadData(fname, data_length, vesicle.x_.data_);
+    myIO.ReadData(fname, one_vec_length, vesicle.x_.data_);
+    
+    for(int ii=1;ii<surf_par.n_surfs_;++ii)
+      memcpy(vesicle.x_.data_ + ii*one_vec_length, vesicle.x_.data_, one_vec_length *sizeof(T));
 
     vesicle.UpdateAll();
 
     //Time stepper
     TimeStepper<T> exp_stepper(ts, n_steps, vesicle, myIO, flow_field, 
-        mats.quad_weights_p_up_, &DirectInteraction);
+			       mats.quad_weights_p_up_, NULL);//&DirectInteraction);
 
     exp_stepper.saveData = false;
     exp_stepper.verbose = true;
