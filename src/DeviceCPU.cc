@@ -1090,29 +1090,29 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     return;
 } 
 
-// template<>
-// void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
-//     const float *qw, const float *trg, const float *src, const float *den, float *pot)
-// {
-// #ifndef NDEBUG
-//     cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
-// #endif
+template<>
+void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
+    const float *qw, const float *trg, const float *src, const float *den, float *pot)
+{
+#ifndef NDEBUG
+    cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
+#endif
 
-// #ifdef PROFILING
-//     double ss = get_seconds();
-// #endif
+#ifdef PROFILING
+    double ss = get_seconds();
+#endif
 
-//     if(qw != NULL)
-//         DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, den, pot);
-//     else
-//         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
+    if(qw != NULL)
+        DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, den, pot);
+    else
+        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
 
-// #ifdef PROFILING
-//     ss = get_seconds()-ss;
-//     cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
-// #endif
-//     return;
-// }
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+#endif
+    return;
+}
 
 template<typename T>
 T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)

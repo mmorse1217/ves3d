@@ -547,7 +547,6 @@ void axpbGpu(float a, const float* x_in, float b, int stride, int num_surfs, flo
   axpbKernel<<<grid, BLOCK_HEIGHT>>> (a, x_in, b, length, axpb_out);
 }
 
-
 __global__
 void shuffle(float *in, int m, int n, int dim, float *out) {
   int sub, add;
@@ -695,7 +694,7 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
 
     inv_r = inv_r + (inv_r-inv_r);
     inv_r = fmaxf(inv_r,0.0F);
-
+    
     float tmp_scal = (dis_reg.x * pot_reg.x + dis_reg.y * pot_reg.y
                        + dis_reg.z * pot_reg.z) * inv_r * inv_r;
     pot_reg.x += tmp_scal * dis_reg.x;
@@ -734,6 +733,7 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
 
 }
 
+
 void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *D, float *U, const float *Q) {
   dim3 grid;
   grid.x = n;
@@ -747,6 +747,8 @@ void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const flo
 
 /// 
 void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
+
+
   int leg_order = p + 1;
   int new_leg_order = q + 1;
   int min_leg_order = (leg_order < new_leg_order) ? leg_order : new_leg_order;

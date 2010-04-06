@@ -289,37 +289,38 @@ void DeviceGPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int t
 template <typename T> 
 T* DeviceGPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
 {
-#ifndef NDEBUG
+#ifndef NDEBUGX
     cout<<"DeviceGPU::ShufflePoints"<<endl;
-#endif
+    //#endif
     assert(x_in !=x_out);
 
-    //     int len = 3*stride;
-    //     int dim1 = (order_in == AxisMajor) ? stride : 3;
-    //     int dim2 = (order_in == AxisMajor) ? 3 : stride;
+    int len = 3*stride;
+    int dim1 = (order_in == AxisMajor) ? stride : 3;
+    int dim2 = (order_in == AxisMajor) ? 3 : stride;
+    
+    T *xx = (T*) malloc(len *n_surfs * sizeof(T));
+    T *yy = (T*) malloc(len *n_surfs * sizeof(T));
+    
+    Memcpy(xx,x_in,len*n_surfs,MemcpyDeviceToHost);
 
-    //     T *xx = (T*) malloc(len *n_surfs * sizeof(T));
-    //     T *yy = (T*) malloc(len *n_surfs * sizeof(T));
-   
-    //     Memcpy(xx,x_in,len*n_surfs,MemcpyDeviceToHost);
+#pragma omp parallel for 
+    for(int ss=0;ss<n_surfs;++ss)
+        for(int ii=0;ii<dim1;++ii)
+            for(int jj=0;jj<dim2;++jj)
+                yy[ss*len + ii*dim2+jj] = xx[ss*len + jj*dim1+ii];
+    
+    Memcpy(x_out,yy,len*n_surfs,MemcpyHostToDevice);
+    free(xx);
+    free(yy);
 
-    // #pragma omp parallel for 
-    //     for(int ss=0;ss<n_surfs;++ss)
-    //         for(int ii=0;ii<dim1;++ii)
-    //             for(int jj=0;jj<dim2;++jj)
-    //                 yy[ss*len + ii*dim2+jj] = xx[ss*len + jj*dim1+ii];
-
-    //     Memcpy(x_out,yy,len*n_surfs,MemcpyHostToDevice);
-    //     free(xx);
-    //     free(yy);
-
+#else
     int dim = 3;
     if(order_in == AxisMajor)
         cuda_shuffle(x_in, stride, n_surfs, dim, x_out);
     else
         cuda_shuffle(x_in, dim, n_surfs, stride, x_out);
 
-
+#endif
     return x_out;
 }
 
@@ -544,7 +545,7 @@ void DeviceGPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* w
 template <typename T>
 void DeviceGPU<T>::ScaleFreqs(int p, int num_vesicles, const T *inputs, const T *alphas, T *outputs)
 {
-#ifndef NDEBUG
+#ifndef NDEBUGX
     cout<<"DeviceGPU::Filter wapper"<<endl;
     size_t ll = p * (p + 2);
     size_t len = ll*num_vesicles;
@@ -565,8 +566,10 @@ void DeviceGPU<T>::ScaleFreqs(int p, int num_vesicles, const T *inputs, const T 
     const float * alpha_deb = alpha;
 
 
-    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
-    // -------- process zeroth frequency (constant) ---------
+    // we have even-order real dft; this means we don't have first
+    // sine (sine of zero frequency) and last sine (sine of half-order
+    // frequency) -------- process zeroth frequency (constant)
+    // ---------
     int leg_order = p+1;
     for (int v=0; v<num_vesicles; v++)
         for (int i=0; i<leg_order; i++)
@@ -613,7 +616,7 @@ void DeviceGPU<T>::ScaleFreqs(int p, int num_vesicles, const T *inputs, const T 
 template <typename T>
 void DeviceGPU<T>::Resample(int p, int num_vesicles, int q, const T *shc_p_in, T *shc_q_in)
 {
-#ifndef NDEBUG
+#ifndef NDEBUGX
     cout<<"DeviceGPU::Resample wapper"<<endl;
 
     const size_t length_p = p *(p + 2) * num_vesicles;
@@ -629,8 +632,10 @@ void DeviceGPU<T>::Resample(int p, int num_vesicles, int q, const T *shc_p_in, T
     const float * inp_deb = inputs;
     float * out_deb = outputs;
     
-    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
-    // -------- process zeroth frequency (constant) ---------
+    // we have even-order real dft; this means we don't have first
+    // sine (sine of zero frequency) and last sine (sine of half-order
+    // frequency) -------- process zeroth frequency (constant)
+    // ---------
     int leg_order = p+1;
     int new_leg_order = q+1;
     int min_leg_order = std::min(leg_order, new_leg_order);

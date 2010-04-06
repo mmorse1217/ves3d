@@ -81,11 +81,12 @@ int main(int argc, char *argv[])
     
     //Time stepper -- no interaction
     TimeStepper<T> stepper_gpu(ts, n_steps, vesicle_gpu, gpuIO, flow_field, 
-        mats_gpu.quad_weights_p_up_, NULL);
+        mats_gpu.quad_weights_p_up_, &DirectInteraction);//NULL);
     
     stepper_gpu.saveData = false;
     stepper_gpu.verbose = true;
     stepper_gpu.userMonitor =NULL;
+    stepper_gpu.user = (void*) vesicle_gpu.work_arr;
     
     //Evolve
     stepper_gpu.EvolveInTime();

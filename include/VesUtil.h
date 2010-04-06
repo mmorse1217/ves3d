@@ -110,7 +110,7 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
     
     device.DirectStokes(np, n_surfs_direct, trg_idx_head, trg_idx_tail, 
         NULL, x_in, x_in, density_in, vel_out);
-
+    
     //reordering x to the original
     device.ShufflePoints(x_in,  AxisMajor,     np, n_surfs_direct, work);
     device.ShufflePoints(work, PointMajor, stride, n_surfs       , x_in);
