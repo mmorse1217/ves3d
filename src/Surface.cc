@@ -565,7 +565,7 @@ void Surface<T>::Reparam()
         DotProduct(V11,V11,S10);
         ///@todo The error should be relative
         vel = S10.Max();
-#ifndef NDEBUGX
+#ifndef NDEBUG
         cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;
 #endif
     }

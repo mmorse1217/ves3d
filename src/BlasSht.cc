@@ -77,6 +77,7 @@ void BlasSht::gen_dft_d2backward() {
 
 void BlasSht::transpose(scalar *out, scalar *in, int width, int height) {
     int leg_input_pointer = 0;
+    ///@todo this should be threaded.
     for (int freq=0; freq<width; freq++)
         for (int i=0; i<height; i++) {
             out[leg_input_pointer++] = in[i * width + freq];
