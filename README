@@ -6,6 +6,19 @@ cp makefile.in.files/makefile.in.machine makefile.in.files/makefile.in
 # if necessary modify makefile for CXX flags and BLAS paths
 ./build.sh
 
+if you want the GPU code compiled
+set
+export USE_GPU=yes
+
+
+to test the gpu
+in the same directory that this README is located:
+export VES3D_DIR=$PWD
+cd test
+make ExplicitTimeStepperGPU
+ln -s ../precomputed precomputed
+./ExplicitTimeStepperGPU
+
 
 
 
