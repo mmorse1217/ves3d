@@ -112,17 +112,7 @@ class TimeStepper
                     vesicle_.V10.GetFunLength(), vesicle_.params_.n_surfs_, vesicle_.V13.data_, vesicle_.device_, user);
             
                 axpy((T) -1.0, vesicle_.V12, vesicle_.V13, vesicle_.V13);
-                
-                //             {
-                //                 size_t len = vesicle_.V12.GetDataLength();
-                //                 T* buff = (T*) malloc( len * sizeof(T));
-                //                 vesicle_.device_.Memcpy(buff, vesicle_.V13.data_, len, MemcpyDeviceToHost);
-                
-                //                 for(int ll=0;ll<10;ll++)
-                //                     cout<<buff[ll]<<endl;
-                //                 free(buff);
-                //             }
- 
+
                 //filtering to 1/3
                 vesicle_.device_.ShAna(vesicle_.V13.data_, vesicle_.work_arr, vesicle_.params_.rep_up_freq_, 
                     3*vesicle_.params_.n_surfs_, vesicle_.V11.data_);
@@ -135,7 +125,7 @@ class TimeStepper
 
                 vesicle_.device_.ShSyn(vesicle_.shc, vesicle_.work_arr, vesicle_.params_.p_, 
                     3*vesicle_.params_.n_surfs_, velocity_.data_);
-
+                
                 //Background flow
                 bg_flow_.GetVel(vesicle_.x_, vesicle_.S1, vel_tension_);
                 axpy((T) 1.0, vel_tension_, velocity_, velocity_);

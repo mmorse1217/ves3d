@@ -695,7 +695,7 @@ class DeviceTest
 
      bool TestShufflePoints()
      {
-        int stride = 100, num_vecs = 1;
+        int stride = 312, num_vecs = 8;
         int vec_length = 3*stride*num_vecs;
 
         T* x = device_.Malloc(vec_length);
@@ -869,60 +869,60 @@ class DeviceTest
 
     bool TestResample()
     {
-        int p = 12;
-        int q = 16;
-        int n_fun = 3;
-        int lp = p * (p + 2) * n_fun;
-        int lq = q * (q + 2) * n_fun;
-        int idx = 0;
+//         int p = 12;
+//         int q = 16;
+//         int n_fun = 3;
+//         int lp = p * (p + 2) * n_fun;
+//         int lq = q * (q + 2) * n_fun;
+//         int idx = 0;
     
-        T *sp_host = (T*) malloc(lp * sizeof(T));
-        T *sq_host = (T*) malloc(lq * sizeof(T));
-        T *al_host = (T*) malloc(p * (p + 2) *sizeof(T));
+//         T *sp_host = (T*) malloc(lp * sizeof(T));
+//         T *sq_host = (T*) malloc(lq * sizeof(T));
+//         T *al_host = (T*) malloc(p * (p + 2) *sizeof(T));
 
-        T *sp = device_.Malloc(lp);
-        T *sq = device_.Malloc(lq);
-        T *al = device_.Malloc(p * (p + 2));
+//         T *sp = device_.Malloc(lp);
+//         T *sq = device_.Malloc(lq);
+//         T *al = device_.Malloc(p * (p + 2));
 
-        for(int ff=0; ff< n_fun; ++ff)
-            for(int ii=0; ii< 2 * p; ++ii)
-            {
-                int len = p + 1 - (ii+1)/2;
-                for(int jj=0; jj < len; ++jj)
-                    sp_host[idx++] = jj;
-            }
+//         for(int ff=0; ff< n_fun; ++ff)
+//             for(int ii=0; ii< 2 * p; ++ii)
+//             {
+//                 int len = p + 1 - (ii+1)/2;
+//                 for(int jj=0; jj < len; ++jj)
+//                     sp_host[idx++] = jj;
+//             }
 
-        idx = 0;
-        for(int ii=0; ii< 2 * p; ++ii)
-        {
-            int len = p + 1 - (ii+1)/2;
-            for(int jj=0; jj < len; ++jj)
-                al_host[idx++] = (len-jj)<=(p-2*p/3) ? 0 : 1;
-        }
+//         idx = 0;
+//         for(int ii=0; ii< 2 * p; ++ii)
+//         {
+//             int len = p + 1 - (ii+1)/2;
+//             for(int jj=0; jj < len; ++jj)
+//                 al_host[idx++] = (len-jj)<=(p-2*p/3) ? 0 : 1;
+//         }
 
-        device_.Memcpy(sp, sp_host, lp, MemcpyHostToDevice);
-        device_.Memcpy(al, al_host, p * (p + 2), MemcpyHostToDevice);
-        device_.ScaleFreqs(p, n_fun, sp, al, sp);
-        device_.Resample(p, n_fun, q, sp, sq);
-        device_.Memcpy(sq_host, sq, lq, MemcpyDeviceToHost);
+//         device_.Memcpy(sp, sp_host, lp, MemcpyHostToDevice);
+//         device_.Memcpy(al, al_host, p * (p + 2), MemcpyHostToDevice);
+//         device_.ScaleFreqs(p, n_fun, sp, al, sp);
+//         device_.Resample(p, n_fun, q, sp, sq);
+//         device_.Memcpy(sq_host, sq, lq, MemcpyDeviceToHost);
     
-        idx = 0;
-        for(int ff=0; ff< n_fun; ++ff)
-            for(int ii=0; ii< 2 * q; ++ii)
-            {
-                int len = q + 1 - (ii+1)/2;
-                for(int jj=0; jj < len; ++jj)
-                    cout<<sq_host[idx++]<<" ";
-                cout<<endl;
-            }
+//         idx = 0;
+//         for(int ff=0; ff< n_fun; ++ff)
+//             for(int ii=0; ii< 2 * q; ++ii)
+//             {
+//                 int len = q + 1 - (ii+1)/2;
+//                 for(int jj=0; jj < len; ++jj)
+//                     cout<<sq_host[idx++]<<" ";
+//                 cout<<endl;
+//             }
         
-        device_.Free(al);
-        device_.Free(sp);
-        device_.Free(sq);
+//         device_.Free(al);
+//         device_.Free(sp);
+//         device_.Free(sq);
 
-        free(sp_host);
-        free(sq_host);
-        free(al_host);
+//         free(sp_host);
+//         free(sq_host);
+//         free(al_host);
 
         return false;
     }
