@@ -58,6 +58,16 @@ T* DeviceCPU<T>::Memcpy(T* destination, const T* source, unsigned long int num, 
     }
 }
 
+template<typename T>
+T* DeviceCPU<T>::Memset(T *ptr, int value, unsigned long int num)
+{
+#ifndef NDEBUG
+    cout<<" DeviceCPU::Memset"<<endl;
+#endif
+    
+    return((T*) ::memset(ptr, value, num * sizeof(T)));
+}
+
 template<typename T>  
 T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out)
 {
@@ -86,7 +96,7 @@ T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    device_time_.DotProduct_time +=ss;
+    CpuTime::DotProduct_time +=ss;
     //cout<<"DeviceCPU::DotProduct takes (sec) : "<<ss<<endl;
 #endif
 
@@ -216,7 +226,7 @@ T* DeviceCPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* 
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    device_time_.xy_time +=ss;
+    CpuTime::xy_time +=ss;
     //cout<<"DeviceCPU::xy takes (sec) : "<<ss<<endl;
 #endif
 
@@ -509,7 +519,7 @@ T*  DeviceCPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int nu
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    device_time_.xvpb_time +=ss;
+    CpuTime::xvpb_time +=ss;
     //cout<<"DeviceCPU::xvpb takes (sec) : "<<ss<<endl;
 #endif
     
@@ -624,11 +634,12 @@ DeviceCPU<T>::~DeviceCPU()
 #ifdef PROFILING_LITE
   cout<<"=========================================="<<endl;
   cout<<"=========================================="<<endl;
-  cout<<"gemm  : "<<device_time_.gemm_time<<endl;
-  cout<<"stokes: "<<device_time_.stokes_time<<endl;
-  cout<<"xvpb  : "<<device_time_.xvpb_time<<endl;
-  cout<<"xy    : "<<device_time_.xy_time<<endl;
-  cout<<"Dot   : "<<device_time_.DotProduct_time<<endl;
+  cout<<"DeviceCPU::gemm  : "<<CpuTime::gemm_time<<endl;
+  cout<<"DeviceCPU::stokes: "<<CpuTime::stokes_time<<endl;
+  cout<<"DeviceCPU::xvpb  : "<<CpuTime::xvpb_time<<endl;
+  cout<<"DeviceCPU::xy    : "<<CpuTime::xy_time<<endl;
+  cout<<"DeviceCPU::Dot   : "<<CpuTime::DotProduct_time<<endl;
+  cout<<"DeviceCPU::Shift : "<<CpuTime::Shift_time<<endl;
   cout<<"=========================================="<<endl;
   cout<<"=========================================="<<endl;
 #endif
@@ -1035,9 +1046,10 @@ float* DeviceCPU<float>::gemm(const char *transA, const char *transB, const int 
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    device_time_.gemm_time +=ss;    
+    CpuTime::gemm_time +=ss;    
 //cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
 #endif
+
     return C;
 }
 
@@ -1049,7 +1061,7 @@ T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shif
     cout<<"DeviceCPU::CircShift"<<endl;
 #endif
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
 
@@ -1073,9 +1085,10 @@ T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shif
             arr_out[base_out + jj] = arr_in[base_in + jj];
     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::CircShift takes (sec) : "<<ss<<endl;
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss;
+    CpuTime::Shift_time +=ss;    
+    //cout<<"DeviceCPU::CircShift takes (sec) : "<<ss<<endl;
 #endif
 
     return arr_out;
@@ -1100,7 +1113,7 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss;
-    device_time_.stokes_time +=ss;
+    CpuTime::stokes_time +=ss;
     //cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
 #endif
     return;
@@ -1125,7 +1138,7 @@ void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, i
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss;
-    device_time_.stokes_time += ss;
+    CpuTime::stokes_time += ss;
     //cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
 #endif
     return;

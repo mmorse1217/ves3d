@@ -70,6 +70,8 @@ template<typename T> class Device
     ///MemcpyHostToHost, MemcpyHostToDevice, MemcpyDeviceToHost, or
     ///MemcpyDeviceToDevice</code>.
     virtual T* Memcpy(T* destination, const T* source, unsigned long int num, enum MemcpyKind kind) = 0;
+
+    virtual T* Memset (T *ptr, int value, unsigned long int num) = 0;
     
     ///Geometric dot product of two (Cartesian) vectors. 
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out) = 0;

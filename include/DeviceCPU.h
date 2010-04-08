@@ -21,19 +21,21 @@
 
 using namespace std;
 
-struct Time{
-  static double gemm_time;
-  static double stokes_time;
-  static double xvpb_time;
-  static double xy_time;
-  static double DotProduct_time;
+struct CpuTime{
+    static double gemm_time;
+    static double stokes_time;
+    static double xvpb_time;
+    static double xy_time;
+    static double DotProduct_time;
+    static double Shift_time;
 };
 
-double Time::gemm_time = 0;
-double Time::stokes_time = 0;
-double Time::xvpb_time = 0;
-double Time::xy_time = 0;
-double Time::DotProduct_time = 0;
+double CpuTime::gemm_time = 0;
+double CpuTime::stokes_time = 0;
+double CpuTime::xvpb_time = 0;
+double CpuTime::xy_time = 0;
+double CpuTime::DotProduct_time = 0;
+double CpuTime::Shift_time = 0;
  
 ///The CPU subclass of the Device class.
 template<typename T>
@@ -43,10 +45,6 @@ class DeviceCPU : public Device<T>
     BlasSht sht_;
     BlasSht sht_up_sample_;
     int p_, p_up_;
-
-#ifdef PROFILING_LITE
-    Time device_time_;
-#endif
 
   public:
     DeviceCPU();
@@ -59,6 +57,7 @@ class DeviceCPU : public Device<T>
 
     ///@todo Memcpy is incomplete
     virtual T* Memcpy (T* destination, const T* source, unsigned long int num, enum MemcpyKind kind);
+    virtual T* Memset (T *ptr, int value, size_t num);
 
     //Algebraic operators
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out);

@@ -160,7 +160,11 @@ template <typename T> class Surface
     Scalars<T> w_sph_;
     T *rot_mat;
     T *sing_quad_weights_;
+
+    double StokesMatVec_time_;
 };
+
+
 
 #include "Surface.cc"
 #endif //_SURFACE_H_

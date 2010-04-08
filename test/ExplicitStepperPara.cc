@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
     cout<<" - SHT intialized"<<endl;
 
     //Background flow
+    ShearFlow<T> flow_field;
     ParabolicFlow<T> flow_field;
     flow_field.R = 30;
     flow_field.U = 5;
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
 
      //Time stepper
     TimeStepper<T> stepper(ts, n_steps, vesicle, IO, flow_field, 
-        mats.quad_weights_p_up_, &DirectInteraction);
+        mats.quad_weights_p_up_, NULL);//&DirectInteraction);
     
     stepper.saveData = false;
     stepper.verbose = true;

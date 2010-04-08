@@ -58,6 +58,17 @@ T* DeviceGPU<T>::Memcpy (T* destination, const T* source, unsigned long int num,
     return destination;
 }
 
+template<typename T>
+T* DeviceGPU<T>::Memset(T *ptr, int value, unsigned long int num)
+{
+#ifndef NDEBUG
+    cout<<" DeviceGPU::Memset"<<endl;
+#endif
+    
+    cudaMemset(ptr, value, num * sizeof(T));
+    return(ptr);
+}
+
 template <typename T> 
 T* DeviceGPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out)
 {
@@ -65,8 +76,17 @@ T* DeviceGPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
     cout<<"DeviceGPU::DotProduct"<<endl;
 #endif
 
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
+
     DotProductGpu(u_in, v_in, stride, num_surfs, x_out);
     return x_out;
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    GpuTime::DotProduct_time +=ss;
+#endif
 }
 
 template <typename T> 
@@ -108,7 +128,17 @@ T* DeviceGPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* 
     cout<<"DeviceGPU::xy"<<endl;
 #endif
 
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
+
     xyGpu(x_in, y_in, stride, num_surfs, xy_out);
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    GpuTime::xy_time +=ss;    
+#endif
+
     return xy_out;
 }
 
@@ -151,7 +181,7 @@ T* DeviceGPU<T>::axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs 
 #ifndef NDEBUG
     cout<<"DeviceGPU::axpb"<<endl;
 #endif
-
+    
     axpbGpu(a_in, x_in, b_in, stride, num_surfs, axpb_out);
     return axpb_out;
 }
@@ -185,7 +215,17 @@ T* DeviceGPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num
     cout<<"DeviceGPU::xvpb"<<endl;
 #endif
 
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
+
     xvpbGpu(v_in, x_in, b_in, stride, num_surfs, xvpb_out);
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    GpuTime::xvpb_time +=ss;    
+#endif
+
     return xvpb_out;
 }
 
@@ -259,8 +299,18 @@ T* DeviceGPU<T>::gemm(const char *transA, const char *transB, const int *m, cons
     cout<<"DeviceGPU::gemm"<<endl;
 #endif
 
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
+
     ///@bug transA may not be consistent
     cublasSgemm(*transA, *transB, *m, *n, *k, *alpha, A, *lda, B, *ldb, *beta, C, *ldc); 
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    GpuTime::gemm_time +=ss;    
+#endif
+
     return C;
 }
 
@@ -271,7 +321,17 @@ T* DeviceGPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shif
     cout<<"DeviceGPU::CircShift"<<endl;
 #endif
 
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
+
     CircShiftGpu(arr_in, n_vecs, vec_length, shift, arr_out);
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    GpuTime::Shift_time +=ss;    
+#endif
+
     return arr_out;
 }
 
@@ -283,7 +343,19 @@ void DeviceGPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int t
 #ifndef NDEBUG
     cout<<"DeviceGPU::DirectStokes"<<endl;
 #endif
+
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
+
     cuda_stokes(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot, qw);
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    GpuTime::stokes_time +=ss;    
+    //cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
+#endif
+
 }
 
 template <typename T> 
@@ -298,7 +370,7 @@ T* DeviceGPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, in
         cuda_shuffle(x_in, stride, n_surfs, dim, x_out);
     else
         cuda_shuffle(x_in, dim, n_surfs, stride, x_out);
-
+    
     return x_out;
 }
 
@@ -356,6 +428,20 @@ void DeviceGPU<T>::InitializeSHT(OperatorsMats<T> &mats)
 template <typename T>
 DeviceGPU<T>::~DeviceGPU()
 {
+
+#ifdef PROFILING_LITE
+    cout<<"=========================================="<<endl;
+    cout<<"=========================================="<<endl;
+    cout<<"DeviceGPU::gemm  : "<<GpuTime::gemm_time<<endl;
+    cout<<"DeviceGPU::stokes: "<<GpuTime::stokes_time<<endl;
+    cout<<"DeviceGPU::xvpb  : "<<GpuTime::xvpb_time<<endl;
+    cout<<"DeviceGPU::xy    : "<<GpuTime::xy_time<<endl;
+    cout<<"DeviceGPU::Dot   : "<<GpuTime::DotProduct_time<<endl;
+    cout<<"DeviceGPU::Shift : "<<GpuTime::Shift_time<<endl;
+    cout<<"=========================================="<<endl;
+    cout<<"=========================================="<<endl;
+#endif
+
     Free(sht_.dft_forward); 
     Free(sht_.dft_backward); 
     Free(sht_.dft_d1backward); 
@@ -514,9 +600,9 @@ void DeviceGPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* w
         sht_.backward(shc_out, work_arr, n_funs, x_out);
     }else{
         assert(sht_up_sample_.leg_trans != 0);
-         sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
-         ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
-         sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
+        sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
+        ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
+        sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
     }
 }
 
@@ -528,7 +614,7 @@ void DeviceGPU<T>::ScaleFreqs(int p, int num_vesicles, const T *inputs, const T 
     size_t ll = p * (p + 2);
     size_t len = ll*num_vesicles;
     
-        T* shc_in = (T*) malloc(len * sizeof(T));
+    T* shc_in = (T*) malloc(len * sizeof(T));
     T* shc_out= (T*) malloc(len * sizeof(T));
     T* alpha = (T*) malloc(ll * sizeof(T));
     

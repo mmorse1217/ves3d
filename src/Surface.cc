@@ -149,7 +149,8 @@ Surface<T>::Surface(Device<T> &device_in) :
     S10(device_),
     rot_mat(0),
     w_sph_(device_),
-    max_init_area_(-1)
+    max_init_area_(-1),
+    StokesMatVec_time_(0)
 {}
 
 template <typename T> 
@@ -166,7 +167,7 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
     cv_(device_,params_.p_,params_.n_surfs_),
     bending_force_(device_,params_.p_,params_.n_surfs_),
     tensile_force_(device_,params_.p_,params_.n_surfs_),
-		//GB: the code below is ugly, must be fixed after sc10
+    //GB: the code below is ugly, must be fixed after sc10
     S1(device_,params_.p_,params_.n_surfs_),
     S2(device_,params_.p_,params_.n_surfs_),
     S3(device_,params_.p_,params_.n_surfs_),
@@ -181,7 +182,8 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
     V13(device_,params_.rep_up_freq_,params_.n_surfs_),
     S10(device_,params_.rep_up_freq_,params_.n_surfs_),
     w_sph_(device_,params_.p_,params_.n_surfs_),
-    max_init_area_(-1)
+    max_init_area_(-1),
+    StokesMatVec_time_(0)
 {
     assert(mats.fileIO_.device_ == this->device_);
 
@@ -254,7 +256,8 @@ Surface<T>::Surface(Device<T> &device_in, SurfaceParams<T> params_in, const Oper
     V13(device_,params_.rep_up_freq_,params_.n_surfs_),
     S10(device_,params_.rep_up_freq_,params_.n_surfs_),
     w_sph_(device_,params_.p_,params_.n_surfs_),
-    max_init_area_(-1)
+    max_init_area_(-1),
+    StokesMatVec_time_(0)
 {
     shc      = device_.Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * params_.n_surfs_);
     work_arr = device_.Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
@@ -308,9 +311,9 @@ Surface<T>::~Surface()
     device_.Free(tension_);
     device_.Free(rot_mat);
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     cout<<"==================================="<<endl;
-    cout<<"StokesMatVec : "<<StokesMatVec_time_<<endl;
+    cout<<"StokesMatVec (Singular) : "<<StokesMatVec_time_<<endl;
     cout<<"==================================="<<endl;
 #endif
 }
@@ -348,8 +351,8 @@ void Surface<T>::Resize(int n_surfs_in)
     if(n_surfs_in > max_n_surfs_)
     {
 #ifndef NDEBUG
-    cout<<"  . The new size is larger than the current allocated memory, allocating new memory. "<<endl;
-    cout<<"  . New size "<<n_surfs_in<<endl;
+        cout<<"  . The new size is larger than the current allocated memory, allocating new memory. "<<endl;
+        cout<<"  . New size "<<n_surfs_in<<endl;
 #endif
         this->max_n_surfs_ = n_surfs_in;
         device_.Free(shc);
@@ -475,8 +478,8 @@ template <typename T>
 void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out)
 {
 
-#ifdef PROFILING
-  double ss = get_seconds();
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
 #endif
         
     int np = 2 * params_.p_ * (params_.p_ + 1);
@@ -494,13 +497,13 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
             device_.CircShift( all_rot_mats_ + ii * np * np, params_.p_ + 1, rot_chunck, jj * np, rot_mat);
             
             device_.gemm("N", "N", &np, &nvX3, &np, 
-			 &alpha,rot_mat, &np, x_.data_, &np, &beta, V1.data_, &np);
+                &alpha,rot_mat, &np, x_.data_, &np, &beta, V1.data_, &np);
     
             device_.gemm("N", "N", &np, &nvX3, &np,
-			 &alpha,rot_mat,&np,density_in.data_,&np,&beta, V2.data_, &np);
+                &alpha,rot_mat,&np,density_in.data_,&np,&beta, V2.data_, &np);
             
             device_.gemm("N", "N", &np,&params_.n_surfs_, &np,
-			 &alpha, rot_mat, &np, S1.data_, &np, &beta, S2.data_, &np);
+                &alpha, rot_mat, &np, S1.data_, &np, &beta, S2.data_, &np);
     
             xy(S2, w_sph_, S2);
             xvpb(S2, V2, (T) 0.0, V2);
@@ -512,9 +515,10 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
     }
 
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss;
-    cout<<"StokesMatVec (sec) : "<<ss<<endl;
+    StokesMatVec_time_ +=ss;
+    //    cout<<"StokesMatVec (sec) : "<<ss<<endl;
 #endif
 
 #ifndef NOLOGGING
@@ -607,8 +611,8 @@ void Surface<T>::Volume()
     DotProduct(x_,normal_,S1);
     axpb((T) 1/3,S1,(T) 0.0, S1);
     device_.Reduce(S1.data_, w_.data_, quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
-//     for(int ii=0;ii<params_.n_surfs_;++ii)
-//         cout<<work_arr[ii]<<endl;
+    //     for(int ii=0;ii<params_.n_surfs_;++ii)
+    //         cout<<work_arr[ii]<<endl;
 }
 
 template<typename T>
@@ -634,7 +638,7 @@ void Surface<T>::Populate(const T *centers)
         device_.axpb((T) 1.0, x_.data_ + idx                  , centers[3*ii  ], length, 1, x_.data_ + idx                  );
         device_.axpb((T) 1.0, x_.data_ + idx + length         , centers[3*ii+1], length, 1, x_.data_ + idx + length         );
         device_.axpb((T) 1.0, x_.data_ + idx + length + length, centers[3*ii+2], length, 1, x_.data_ + idx + length + length);
-     }
+    }
 
     //treating the first surface
     device_.axpb((T) 1.0, x_.data_                  , centers[0], length, 1, x_.data_                  );

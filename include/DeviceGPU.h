@@ -18,11 +18,27 @@
 
 using namespace std;
 
+struct GpuTime{
+    static double gemm_time;
+    static double stokes_time;
+    static double xvpb_time;
+    static double xy_time;
+    static double DotProduct_time;
+    static double Shift_time;
+};
+
+double GpuTime::gemm_time = 0;
+double GpuTime::stokes_time = 0;
+double GpuTime::xvpb_time = 0;
+double GpuTime::xy_time = 0;
+double GpuTime::DotProduct_time = 0;
+double GpuTime::Shift_time = 0;
+
 ///The GPU subclass of the Device class.
 template<typename T>
 class DeviceGPU : public Device<T>
 {
-public:
+  public:
     CudaSht sht_;
     CudaSht sht_up_sample_;
     int p_, p_up_;
@@ -34,6 +50,7 @@ public:
     virtual void Free(T* ptr);
     virtual T* Calloc(unsigned long int num);
     virtual T* Memcpy(T* destination, const T* source, unsigned long int num, enum MemcpyKind kind);
+    virtual T* Memset (T *ptr, int value, size_t num);
     
     virtual T* DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out);
     virtual T* CrossProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* w_out);
@@ -51,7 +68,7 @@ public:
 
     virtual T* Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int stride, int num_surfs, T  *int_x_dw);
     virtual T* gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const T *alpha, 
-		    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc);
+        const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc);
 
     virtual T* CircShift(const T *arr_in, int n_vecs, int vec_length, int shift, T *arr_out);
     

@@ -60,25 +60,33 @@ class ParabolicFlow : public VelField<T>
         assert(x_in.device_ == vel_out.device_);
         assert(x_in.GetDataLength() == vel_out.GetDataLength());
 
-        int n_surfs = x_in.n_vecs_;
+        size_t idx;
         int stride = x_in.GetFunLength();
-        int idx;
-        axpb( (T) 0.0, x_in, (T) 0.0, vel_out); //To fill it with zeros
+        int n_surfs= x_in.n_vecs_;
+
+        //setting vel_out to zero
+        vel_out.device_.Memset(vel_out.data_, 0, 3 * stride * n_surfs);
         
+        //copy y and z to the vel_out
         for(int ii=0;ii<n_surfs;ii++)
         {
             idx = 3 * ii * stride + stride;
             x_in.device_.Memcpy(vel_out.data_ + idx, x_in.data_ + idx 
                 ,2 * stride, MemcpyDeviceToDevice);
         }
-        
-        DotProduct(vel_out,vel_out,work);
+
+        //calculating r^2 = y^2 + z^2
+        DotProduct(vel_out, vel_out, work);
+        //scaling r
         axpb( (T) -U/R/R, work, (T) U, work);
 
-        axpb( (T) 0.0, x_in, (T) 0.0, vel_out); //To fill it with zeros
+        //setting to zero
+        vel_out.device_.Memset(vel_out.data_, 0, 3 * stride * n_surfs);
+        
+        //setting u_x = r;
         for(int ii=0;ii<n_surfs;ii++)
-            x_in.device_.Memcpy(vel_out.data_ + 3 * ii * stride, work.data_ + ii * stride
-                , stride, MemcpyDeviceToDevice);
+            vel_out.device_.Memcpy(vel_out.data_ + 3 * ii * stride, 
+                work.data_ + ii * stride, stride, MemcpyDeviceToDevice);
     }
     
 };
@@ -179,9 +187,9 @@ void DirectInteractionMultiThread(T *x_in, T *density_in, int stride,
         NP = *(*n_surfs_per_thread + nt -1) + tmp1;
        
         NP *= stride;
-        *x_all = device.Malloc(DIM * NP);
-        *d_all = device.Malloc(DIM * NP);
-        *v_all = device.Malloc(DIM * NP);
+        *x_all = (T*) malloc(DIM * NP * sizeof(T));
+        *d_all = (T*) malloc(DIM * NP * sizeof(T));
+        *v_all = (T*) malloc(DIM * NP * sizeof(T));
     }
 
     //Shuffling the points and copying to the master location
@@ -190,11 +198,11 @@ void DirectInteractionMultiThread(T *x_in, T *density_in, int stride,
     T *work = (T*) user;
     size_t np = n_surfs * stride;
 
-    //reordering x
+    //reordering x and copying
     device.ShufflePoints(x_in,  AxisMajor, stride, n_surfs, work);
     device.Memcpy(*x_all + *(*n_surfs_per_thread + omp_get_thread_num()), work, DIM * np , MemcpyDeviceToHost);
     
-    //reordering den
+    //reordering density and copying
     device.ShufflePoints(density_in,  AxisMajor, stride, n_surfs, work);
     device.Memcpy(*d_all + *(*n_surfs_per_thread + omp_get_thread_num()), work, DIM * np , MemcpyDeviceToHost);
 
@@ -227,6 +235,7 @@ void DirectInteractionMultiThread(T *x_in, T *density_in, int stride,
     device.Memcpy(work, *v_all + *(*n_surfs_per_thread + omp_get_thread_num()), DIM * np , MemcpyHostToDevice);
     device.ShufflePoints(work, PointMajor, stride, n_surfs, vel_out);
 
+    //Freeing memory
 #pragma omp barrier
     if(omp_get_thread_num() == 0)
     {
