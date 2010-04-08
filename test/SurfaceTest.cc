@@ -50,7 +50,9 @@ int main(int argc, char ** argv)
     Scalars<T> Z(cpu,p,nVec);
     
     // initializing vesicle positions from text file
-    myIO.ReadData("precomputed/dumbbell_cart12_single.txt",dLen,S.x_.data_);
+    char fname[400];
+    sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
+    myIO.ReadData(fname,dLen,S.x_.data_);
     //myIO.ReadData("precomputed/biconcave_ra95_12",dLen,S.x_.data_);
     
     S.Resize(nVec);

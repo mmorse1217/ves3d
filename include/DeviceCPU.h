@@ -21,7 +21,20 @@
 
 using namespace std;
 
+struct Time{
+  static double gemm_time;
+  static double stokes_time;
+  static double xvpb_time;
+  static double xy_time;
+  static double DotProduct_time;
+};
 
+double Time::gemm_time = 0;
+double Time::stokes_time = 0;
+double Time::xvpb_time = 0;
+double Time::xy_time = 0;
+double Time::DotProduct_time = 0;
+ 
 ///The CPU subclass of the Device class.
 template<typename T>
 class DeviceCPU : public Device<T>
@@ -30,6 +43,10 @@ class DeviceCPU : public Device<T>
     BlasSht sht_;
     BlasSht sht_up_sample_;
     int p_, p_up_;
+
+#ifdef PROFILING_LITE
+    Time device_time_;
+#endif
 
   public:
     DeviceCPU();
@@ -91,7 +108,6 @@ class DeviceCPU : public Device<T>
     virtual void Resample(int p, int n_funs, int q, const T *shc_p, T *shc_q);
     virtual void InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out);
 };
-
 
 #include "DeviceCPU.cc"
 #endif //_DEVICECPU_H_

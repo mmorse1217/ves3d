@@ -65,7 +65,7 @@ T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
     cout<<"DeviceCPU::DotProduct"<<endl;
 #endif
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
     
@@ -84,9 +84,10 @@ T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
         }
     }
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::DotProduct takes (sec) : "<<ss<<endl;
+    device_time_.DotProduct_time +=ss;
+    //cout<<"DeviceCPU::DotProduct takes (sec) : "<<ss<<endl;
 #endif
 
     return x_out;
@@ -198,7 +199,7 @@ T* DeviceCPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* 
     cout<<"DeviceCPU::xy"<<endl;
 #endif
     
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
     
@@ -213,9 +214,10 @@ T* DeviceCPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* 
         xy_out[idx] = xTy;
     }
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::xy takes (sec) : "<<ss<<endl;
+    device_time_.xy_time +=ss;
+    //cout<<"DeviceCPU::xy takes (sec) : "<<ss<<endl;
 #endif
 
     return xy_out;
@@ -468,7 +470,7 @@ T*  DeviceCPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int nu
     cout<<"DeviceCPU::xvpb"<<endl;
 #endif
     
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
 
@@ -505,9 +507,10 @@ T*  DeviceCPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int nu
         }
     }
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::xvpb takes (sec) : "<<ss<<endl;
+    device_time_.xvpb_time +=ss;
+    //cout<<"DeviceCPU::xvpb takes (sec) : "<<ss<<endl;
 #endif
     
     return xvpb_out;
@@ -618,7 +621,18 @@ DeviceCPU<T>::DeviceCPU()
 template<typename T>
 DeviceCPU<T>::~DeviceCPU()
 {
-    
+#ifdef PROFILING_LITE
+  cout<<"=========================================="<<endl;
+  cout<<"=========================================="<<endl;
+  cout<<"gemm  : "<<device_time_.gemm_time<<endl;
+  cout<<"stokes: "<<device_time_.stokes_time<<endl;
+  cout<<"xvpb  : "<<device_time_.xvpb_time<<endl;
+  cout<<"xy    : "<<device_time_.xy_time<<endl;
+  cout<<"Dot   : "<<device_time_.DotProduct_time<<endl;
+  cout<<"=========================================="<<endl;
+  cout<<"=========================================="<<endl;
+#endif
+
     Free(sht_.dft_forward); 
     Free(sht_.dft_backward); 
     Free(sht_.dft_d1backward); 
@@ -1014,14 +1028,15 @@ float* DeviceCPU<float>::gemm(const char *transA, const char *transB, const int 
 #ifndef NDEBUG
     cout<<"DeviceCPU::gemm"<<endl;
 #endif
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
     sgemm(transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
+    device_time_.gemm_time +=ss;    
+//cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
 #endif
     return C;
 }
@@ -1074,7 +1089,7 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     cout<<"DeviceCPU::DirectStokes"<<endl;
 #endif
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
 
@@ -1083,9 +1098,10 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
     else
         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss;
-    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+    device_time_.stokes_time +=ss;
+    //cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
 #endif
     return;
 } 
@@ -1098,7 +1114,7 @@ void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, i
     cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
 #endif
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     double ss = get_seconds();
 #endif
 
@@ -1107,9 +1123,10 @@ void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, i
     else
         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot);
 
-#ifdef PROFILING
+#ifdef PROFILING_LITE
     ss = get_seconds()-ss;
-    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+    device_time_.stokes_time += ss;
+    //cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
 #endif
     return;
 }

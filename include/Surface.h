@@ -162,7 +162,5 @@ template <typename T> class Surface
     T *sing_quad_weights_;
 };
 
-
-
 #include "Surface.cc"
 #endif //_SURFACE_H_
