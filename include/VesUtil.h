@@ -84,6 +84,8 @@ class ParabolicFlow : public VelField<T>
 };
 
 // Interaction /////////////////////////////////////////////////////////////////
+#define DIM 3
+
 template<typename T>
 void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
 {
@@ -91,37 +93,95 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
     cout<<"DirectInteraction()"<<endl;
 #endif
 
-    T *work = (T*) user;
+    static size_t **n_surfs_per_thread = new size_t*;
+    static T **x_all = new T*;
+    static T **d_all = new T*;
+    static T **v_all = new T*;
+    
+    const int nt = omp_get_num_threads();
+    size_t NP;    
+    
+    if(omp_get_thread_num() == 0)
+        *n_surfs_per_thread = (size_t*) malloc(nt * sizeof(size_t));
+    
+    //each thread fills the number of points is has
+#pragma omp barrier
+    *(*n_surfs_per_thread + omp_get_thread_num()) = n_surfs;
 
+    //Making space for the points on master    
+#pragma omp barrier
+    if(omp_get_thread_num() == 0)
+    {
+        size_t tmp1, tmp2;
+        tmp1 = **n_surfs_per_thread;
+        **n_surfs_per_thread = 0;
+
+        for(int ii=1;ii<nt;++ii)
+        {
+            tmp2 = *(*n_surfs_per_thread + ii);
+            *(*n_surfs_per_thread + ii) = tmp1 +  *(*n_surfs_per_thread + ii-1);
+            tmp1 = tmp2;
+        }
+        
+        NP = *(*n_surfs_per_thread + nt -1) + tmp1;
+       
+        NP *= stride;
+        *x_all = device.Malloc(DIM * NP);
+        *d_all = device.Malloc(DIM * NP);
+        *v_all = device.Malloc(DIM * NP);
+    }
+
+    //Shuffling the points and copying to the master location
+#pragma omp barrier
+    
+    T *work = (T*) user;
     size_t np = n_surfs * stride;
-    size_t n_surfs_direct = 1;
 
     //reordering x
-    device.ShufflePoints(x_in,  AxisMajor, stride, n_surfs       , work);
-    device.ShufflePoints(work, PointMajor, np    , n_surfs_direct, x_in);
+    device.ShufflePoints(x_in,  AxisMajor, stride, n_surfs, work);
+    device.Memcpy(*x_all + *(*n_surfs_per_thread + omp_get_thread_num()), work, DIM * np , MemcpyDeviceToHost);
     
     //reordering den
-    device.ShufflePoints(density_in,  AxisMajor, stride, n_surfs       ,       work);
-    device.ShufflePoints(      work, PointMajor, np    , n_surfs_direct, density_in);
+    device.ShufflePoints(density_in,  AxisMajor, stride, n_surfs, work);
+    device.Memcpy(*d_all + *(*n_surfs_per_thread + omp_get_thread_num()), work, DIM * np , MemcpyDeviceToHost);
 
-    //Direct stokes of Device
-    size_t trg_idx_head = 0;
-    size_t trg_idx_tail = np;
-    
-    device.DirectStokes(np, n_surfs_direct, trg_idx_head, trg_idx_tail, 
-        NULL, x_in, x_in, density_in, vel_out);
-    
-    //reordering x to the original
-    device.ShufflePoints(x_in,  AxisMajor,     np, n_surfs_direct, work);
-    device.ShufflePoints(work, PointMajor, stride, n_surfs       , x_in);
-    
-    //reordering density to the original
-    device.ShufflePoints(density_in,  AxisMajor,     np, n_surfs_direct,       work);
-    device.ShufflePoints(      work, PointMajor, stride, n_surfs       , density_in);
+#pragma omp barrier
+    //Calculating the potential
+    if(omp_get_thread_num() == 0)
+    {
+        size_t n_surfs_direct = 1;
+        
+        device.ShufflePoints(*x_all, PointMajor, NP, n_surfs_direct, *v_all);
+        device.Memcpy(*x_all, *v_all, DIM * NP, MemcpyHostToHost);
 
-    //reordering vel to the original
-    device.ShufflePoints(vel_out,  AxisMajor,     np, n_surfs_direct, work);
-    device.ShufflePoints(   work, PointMajor, stride, n_surfs       , vel_out);
+        device.ShufflePoints(*d_all, PointMajor, NP, n_surfs_direct, *v_all);
+        device.Memcpy(*d_all, *v_all, DIM * NP, MemcpyHostToHost);
+
+        //Direct stokes of Device
+        size_t trg_idx_head = 0;
+        size_t trg_idx_tail = NP;
+    
+        device.DirectStokes(NP, n_surfs_direct, trg_idx_head, trg_idx_tail, 
+            NULL, *x_all, *x_all, *d_all, *v_all);
+
+        device.ShufflePoints(*v_all, AxisMajor, NP, n_surfs_direct, *d_all);
+        device.Memcpy(*v_all, *d_all, DIM * NP, MemcpyHostToHost);
+
+    }
+    
+    //Distributing the potential
+#pragma omp barrier
+    device.Memcpy(work, *v_all + *(*n_surfs_per_thread + omp_get_thread_num()), DIM * np , MemcpyHostToDevice);
+    device.ShufflePoints(work, PointMajor, stride, n_surfs, vel_out);
+
+#pragma omp barrier
+    if(omp_get_thread_num() == 0)
+    {
+        free(*n_surfs_per_thread);
+        device.Free(*x_all);
+        device.Free(*d_all);
+        device.Free(*v_all);
+    }
 
 #ifdef PROFILING
     ss = get_seconds()-ss;

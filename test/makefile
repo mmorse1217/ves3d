@@ -26,6 +26,9 @@ ExplicitStepperPara:
 ExplicitStepperGPU:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
+ExplicitStepperAll:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
 SHTransTest:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 

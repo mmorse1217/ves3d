@@ -553,6 +553,7 @@ void shuffle(float *in, int m, int n, int dim, float *out) {
   int block_off = blockIdx.x * dim * m;
 
   in += block_off;
+  out += block_off;
 
   int thread_off = threadIdx.x;
   int out_off;
@@ -745,10 +746,9 @@ void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const flo
       stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U);
 }
 
-/// 
 void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
 
-
+  float *out_deb = shc_q;
   int leg_order = p + 1;
   int new_leg_order = q + 1;
   int min_leg_order = (leg_order < new_leg_order) ? leg_order : new_leg_order;
@@ -757,8 +757,10 @@ void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
     cudaMemcpy(shc_q, shc_p, sizeof(float) * min_leg_order, cudaMemcpyDeviceToDevice);
     shc_q += min_leg_order;
     shc_p += min_leg_order;
-    cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
-    shc_q += (new_leg_order - leg_order);
+    if (new_leg_order > leg_order) {
+      cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
+      shc_q += (new_leg_order - leg_order);
+    }
     if (leg_order > new_leg_order)
       shc_p += (leg_order - new_leg_order);
   }
@@ -771,8 +773,10 @@ void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
       cudaMemcpy(shc_q, shc_p, sizeof(float) * min_leg_order, cudaMemcpyDeviceToDevice);
       shc_q += min_leg_order;
       shc_p += min_leg_order;
-      cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
-      shc_q += (new_leg_order - leg_order);
+      if (new_leg_order > leg_order) {
+        cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
+        shc_q += (new_leg_order - leg_order);
+      }
       if (leg_order > new_leg_order)
         shc_p += (leg_order - new_leg_order);
     }
@@ -780,8 +784,10 @@ void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
       cudaMemcpy(shc_q, shc_p, sizeof(float) * min_leg_order, cudaMemcpyDeviceToDevice);
       shc_q += min_leg_order;
       shc_p += min_leg_order;
-      cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
-      shc_q += (new_leg_order - leg_order);
+      if (new_leg_order > leg_order) {
+        cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
+        shc_q += (new_leg_order - leg_order);
+      }
       if (leg_order > new_leg_order)
         shc_p += (leg_order - new_leg_order);
     }
@@ -791,10 +797,21 @@ void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
     cudaMemcpy(shc_q, shc_p, sizeof(float) * min_leg_order, cudaMemcpyDeviceToDevice);
     shc_q += min_leg_order;
     shc_p += min_leg_order;
-    cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
-    shc_q += (new_leg_order - leg_order);
+    if (new_leg_order > leg_order) {
+      cudaMemset(shc_q, 0, sizeof(float) * (new_leg_order - leg_order));
+      shc_q += (new_leg_order - leg_order);
+    }
     if (leg_order > new_leg_order)
       shc_p += (leg_order - new_leg_order);
+  }
+
+  leg_order--;
+  new_leg_order--;
+  min_leg_order--;
+
+  float *outputs_end = out_deb + n_funs * q * (q + 2);
+  if (shc_q < outputs_end) {
+    cudaMemset(shc_q, 0, sizeof(float) * (outputs_end - shc_q));
   }
 }
 

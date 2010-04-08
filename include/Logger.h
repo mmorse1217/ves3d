@@ -52,6 +52,7 @@ void Logger::Log(enum LogLevel events_log_level, const char *msg)
 
 void Logger::Add2Flops(double flops_in)
 {
+#pragma omp critical
     flop_count_ += flops_in;
 }
 

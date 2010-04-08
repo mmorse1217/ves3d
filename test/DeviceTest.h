@@ -695,7 +695,7 @@ class DeviceTest
 
      bool TestShufflePoints()
      {
-        int stride = 312, num_vecs = 8;
+        int stride = 311, num_vecs = 13;
         int vec_length = 3*stride*num_vecs;
 
         T* x = device_.Malloc(vec_length);
@@ -924,7 +924,7 @@ class DeviceTest
 //         free(sq_host);
 //         free(al_host);
 
-        return false;
+        return true;
     }
 };
 
