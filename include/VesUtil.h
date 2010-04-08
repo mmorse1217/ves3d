@@ -23,7 +23,7 @@ class ShearFlow : public VelField<T>
     virtual void GetVel(Vectors<T> &x_in, Scalars<T> &work, Vectors<T> &vel_out)
     {
 #ifndef NDEBUG
-    cout<<"ShearFlow::GetVel()"<<endl;
+        cout<<"ShearFlow::GetVel()"<<endl;
 #endif
 
         assert(x_in.device_ == vel_out.device_);
@@ -79,20 +79,73 @@ class ParabolicFlow : public VelField<T>
         for(int ii=0;ii<n_surfs;ii++)
             x_in.device_.Memcpy(vel_out.data_ + 3 * ii * stride, work.data_ + ii * stride
                 , stride, MemcpyDeviceToDevice);
-        }
+    }
     
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Interaction /////////////////////////////////////////////////////////////////
-#define DIM 3
+////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_out, Device<T> &device, void *user)
+void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, 
+    T *vel_out, Device<T> &device, void *user)
 {
 #ifndef NDEBUG
     cout<<"DirectInteraction()"<<endl;
 #endif
+ 
+    T *work = (T*) user;
 
+    size_t np = n_surfs * stride;
+    size_t n_surfs_direct = 1;
+
+    //reordering x
+    device.ShufflePoints(x_in,  AxisMajor, stride, n_surfs       , work);
+    device.ShufflePoints(work, PointMajor, np    , n_surfs_direct, x_in);
+
+    //reordering den
+    device.ShufflePoints(density_in,  AxisMajor, stride, n_surfs       ,       work);
+    device.ShufflePoints(      work, PointMajor, np    , n_surfs_direct, density_in);
+
+    //Direct stokes of Device
+    size_t trg_idx_head = 0;
+    size_t trg_idx_tail = np;
+    
+    device.DirectStokes(np, n_surfs_direct, trg_idx_head, trg_idx_tail, 
+        NULL, x_in, x_in, density_in, vel_out);
+    
+    //reordering x to the original
+    device.ShufflePoints(x_in,  AxisMajor,     np, n_surfs_direct, work);
+    device.ShufflePoints(work, PointMajor, stride, n_surfs       , x_in);
+    
+    //reordering density to the original
+    device.ShufflePoints(density_in,  AxisMajor,     np, n_surfs_direct,       work);
+    device.ShufflePoints(      work, PointMajor, stride, n_surfs       , density_in);
+
+    //reordering vel to the original
+    device.ShufflePoints(vel_out,  AxisMajor,     np, n_surfs_direct, work);
+    device.ShufflePoints(   work, PointMajor, stride, n_surfs       , vel_out);
+
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"DeviceCPU::DirectInteraction takes (sec) : "<<ss<<endl;
+#endif
+    return;
+}
+
+// Interaction multithreads /////////////////////////////////////////////////
+#define DIM 3
+
+template<typename T>
+void DirectInteractionMultiThread(T *x_in, T *density_in, int stride, 
+    int n_surfs, T *vel_out, Device<T> &device, void *user)
+{
+#ifndef NDEBUG
+    cout<<"DirectInteractionMultiThread()"<<endl;
+#endif
+
+    ///To have these visible to all threads
     static size_t **n_surfs_per_thread = new size_t*;
     static T **x_all = new T*;
     static T **d_all = new T*;
@@ -185,7 +238,7 @@ void DirectInteraction(T *x_in, T *density_in, int stride, int n_surfs, T *vel_o
 
 #ifdef PROFILING
     ss = get_seconds()-ss;
-    cout<<"DeviceCPU::DirectStokes takes (sec) : "<<ss<<endl;
+    cout<<"DeviceCPU::DirectInteractionMultiThread takes (sec) : "<<ss<<endl;
 #endif
     return;
 }
@@ -234,8 +287,8 @@ T ParserLite(const char *filename)
 template <typename T>
 bool String2Num(T &num, const string &s)
 {
-  std::istringstream iss(s);
-  return !(iss >> num).fail();
+    std::istringstream iss(s);
+    return !(iss >> num).fail();
 }
 
 #endif //_VESUTIL_H_ 
