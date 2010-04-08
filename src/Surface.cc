@@ -307,6 +307,12 @@ Surface<T>::~Surface()
     device_.Free(alpha_q);
     device_.Free(tension_);
     device_.Free(rot_mat);
+
+#ifdef PROFILING
+    cout<<"==================================="<<endl;
+    cout<<"StokesMatVec : "<<StokesMatVec_time_<<endl;
+    cout<<"==================================="<<endl;
+#endif
 }
 
 template<typename T>
@@ -470,7 +476,7 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
 {
 
 #ifdef PROFILING
- double ss = Logger::Now();
+  double ss = get_seconds();
 #endif
         
     int np = 2 * params_.p_ * (params_.p_ + 1);
@@ -505,17 +511,17 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
         }
     }
 
+
+#ifdef PROFILING
+    ss = get_seconds()-ss;
+    cout<<"StokesMatVec (sec) : "<<ss<<endl;
+#endif
+
 #ifndef NOLOGGING
     double np3 = np * np * np;
     double flops = np3 + (44 * np * np + 14 * np3) * params_.n_surfs_; 
     Logger::Add2Flops(flops);
 #endif
-
-#ifdef PROFILING
-    ss = Logger::Now();
-    cout<<"StokesMatVec (sec) : "<<ss<<endl;
-#endif
-
 }
 
 template <typename T> 

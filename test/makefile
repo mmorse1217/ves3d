@@ -32,6 +32,9 @@ SHTransTest:
 StokesTest:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
+BlasToyTest:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
+
 .PHONY: clean
 
 clean: 	
