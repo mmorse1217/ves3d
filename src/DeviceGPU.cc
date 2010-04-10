@@ -81,12 +81,12 @@ T* DeviceGPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
 #endif
 
     DotProductGpu(u_in, v_in, stride, num_surfs, x_out);
-    return x_out;
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
     GpuTime::DotProduct_time +=ss;
 #endif
+    return x_out;
 }
 
 template <typename T> 
@@ -305,6 +305,7 @@ T* DeviceGPU<T>::gemm(const char *transA, const char *transB, const int *m, cons
 
     ///@bug transA may not be consistent
     cublasSgemm(*transA, *transB, *m, *n, *k, *alpha, A, *lda, B, *ldb, *beta, C, *ldc); 
+    cudaThreadSynchronize();
 
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
@@ -353,7 +354,6 @@ void DeviceGPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int t
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss ;
     GpuTime::stokes_time +=ss;    
-    //cout<<"DeviceCPU::gemm takes (sec) : "<<ss<<endl;
 #endif
 
 }

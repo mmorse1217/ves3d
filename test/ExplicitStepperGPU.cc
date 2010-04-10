@@ -20,8 +20,8 @@ int main(int argc, char *argv[])
     FileList file_list = all_par.f_list;
 
     //Length and other derived parameters
-    int nd = surf_par.n_surfs_; //number of vesicles per dimension
-    surf_par.n_surfs_ = surf_par.n_surfs_ * surf_par.n_surfs_ * surf_par.n_surfs_;
+    //int nd = surf_par.n_surfs_; //number of vesicles per dimension
+    //surf_par.n_surfs_ = surf_par.n_surfs_ * surf_par.n_surfs_ * surf_par.n_surfs_;
     int one_ves_length = 6 * surf_par.p_ * (surf_par.p_+1);
     int data_length    = one_ves_length * surf_par.n_surfs_;
     
@@ -57,31 +57,33 @@ int main(int argc, char *argv[])
     file_list.initial_shape_file_ += "%u";
     sprintf(fname,file_list.initial_shape_file_.c_str(),surf_par.p_);
     gpuIO.ReadData(fname, one_ves_length, vesicle_gpu.x_.data_);
-
+    for(int ii=1;ii<surf_par.n_surfs_;++ii)
+        gpu_device.Memcpy(vesicle_gpu.x_.data_ + ii*one_ves_length, vesicle_gpu.x_.data_, one_ves_length, MemcpyDeviceToDevice);
+    
     //Making centers
-    T *cnts_host = new T[3 * surf_par.n_surfs_];
-    T h[3] = {5,5,5};
-    T zero[3] = {0, 0, 0};
-	for(int k=0; k<nd; k++){
-		for(int j=0; j<nd;j++){ 
-			for(int i=0; i<nd; i++){
-				unsigned int idx = 3*k*nd*nd + 3*j*nd + 3*i;
-				cnts_host[idx   ] = zero[0] + i*h[0];
-				cnts_host[idx +1] = zero[1] + j*h[1];
-				cnts_host[idx +2] = zero[2] + k*h[2];
-			}
-		}
-	}
-
+    //     T *cnts_host = new T[3 * surf_par.n_surfs_];
+    //     T h[3] = {5,5,5};
+    //     T zero[3] = {0, 0, 0};
+    // 	for(int k=0; k<nd; k++){
+    // 		for(int j=0; j<nd;j++){ 
+    // 			for(int i=0; i<nd; i++){
+    // 				unsigned int idx = 3*k*nd*nd + 3*j*nd + 3*i;
+    // 				cnts_host[idx   ] = zero[0] + i*h[0];
+    // 				cnts_host[idx +1] = zero[1] + j*h[1];
+    // 				cnts_host[idx +2] = zero[2] + k*h[2];
+    // 			}
+    // 		}
+    // 	}
+    
     //Populate
-    vesicle_gpu.Populate(cnts_host); //NOTE THAT CENTERS ARE ALWAYS ON THE HOST
+    //    vesicle_gpu.Populate(cnts_host); //NOTE THAT CENTERS ARE ALWAYS ON THE HOST
     vesicle_gpu.UpdateAll();
     cout<<" - Populated"<<endl;
-    delete[] cnts_host;
+    //    delete[] cnts_host;
     
     //Time stepper -- no interaction
     TimeStepper<T> stepper_gpu(ts, n_steps, vesicle_gpu, gpuIO, flow_field, 
-        mats_gpu.quad_weights_p_up_, &DirectInteraction);//NULL);
+        mats_gpu.quad_weights_p_up_, NULL);// &DirectInteraction);
     
     stepper_gpu.saveData = false;
     stepper_gpu.verbose = true;
@@ -89,10 +91,18 @@ int main(int argc, char *argv[])
     stepper_gpu.user = (void*) vesicle_gpu.work_arr;
     
     //Evolve
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
     stepper_gpu.EvolveInTime();
-    
-    cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 
-    gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());            
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    cout<<" . EvolveInTime (sec) : "<<ss<<endl;
+#endif
+    
+    cout<<" . Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
+
+    //gpuIO.Append(vesicle_gpu.x_.data_, vesicle_gpu.x_.GetDataLength());            
     return 0;
 }

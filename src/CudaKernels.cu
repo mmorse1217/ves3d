@@ -69,6 +69,7 @@ void DotProductGpu(const float *a, const float *b, int stride, int num_surfs, fl
   dotProdKernel<<<GridDim, BLOCK_HEIGHT>>>
       (a, b, stride, num_surfs, aDb);
 
+  cudaThreadSynchronize();
 #ifdef GPU_PROF
   cudaEventRecord(kernelStop, 0);
   cudaEventSynchronize(kernelStop);
@@ -140,6 +141,7 @@ void CrossProductGpu(const float *a, const float *b, int stride, int num_surfs, 
   crossProdKernel<<<GridDim, BLOCK_HEIGHT>>>
       (a, b, stride, num_surfs, aCb);
 
+  cudaThreadSynchronize();
 #ifdef GPU_PROF
   cudaEventRecord(kernelStop, 0);
   cudaEventSynchronize(kernelStop);
@@ -201,6 +203,7 @@ void xvpwKernel(const float *x, const float *a, const float *y, int stride, int 
     AxPy[off + stride] = AxPyYReg;
     AxPy[off + stride + stride] = AxPyZReg;
   }
+
 }
 
 void xvpwGpu(const float *x, const float *a, const float *y, int stride, int num_surfs, float *AxPy) {
@@ -217,6 +220,8 @@ void xvpwGpu(const float *x, const float *a, const float *y, int stride, int num
   int GridDim = num_surfs;
   xvpwKernel<<<GridDim, BLOCK_HEIGHT>>>
       (x, a, y, stride, num_surfs, AxPy);
+
+  cudaThreadSynchronize();
 
 #ifdef GPU_PROF
   cudaEventRecord(kernelStop, 0);
@@ -290,6 +295,8 @@ void xvpbGpu(const float *x, const float *a, float y, int stride, int num_surfs,
   xvpbKernel<<<GridDim, BLOCK_HEIGHT>>>
       (x, a, y, stride, num_surfs, AxPy);
 
+  cudaThreadSynchronize();
+
 #ifdef GPU_PROF
   cudaEventRecord(kernelStop, 0);
   cudaEventSynchronize(kernelStop);
@@ -362,6 +369,8 @@ void uyInvGpu(const float *x, const float *y, int stride, int num_surfs, float *
   uyInvKernel<<<GridDim, BLOCK_HEIGHT>>>
       (x, y, stride, num_surfs, xDy);
 
+  cudaThreadSynchronize();
+
 #ifdef GPU_PROF
   cudaEventRecord(kernelStop, 0);
   cudaEventSynchronize(kernelStop);
@@ -383,6 +392,7 @@ void SqrtGpu(const float* x_in, int stride, int num_surfs, float *x_out) {
   int length = stride * num_surfs;
   int grid = length / BLOCK_HEIGHT + 1;
   sqrtKernel<<<grid, BLOCK_HEIGHT>>> (x_in, length, x_out);
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -397,6 +407,7 @@ void InvGpu(const float* x_in, int stride, int num_surfs, float *x_out) {
   int length = stride * num_surfs;
   int grid = length / BLOCK_HEIGHT + 1;
   invKernel<<<grid, BLOCK_HEIGHT>>> (x_in, length, x_out);
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -411,6 +422,7 @@ void xyGpu(const float* x_in, const float *y_in, int stride, int num_surfs, floa
   int length = stride * num_surfs;
   int grid = length / BLOCK_HEIGHT + 1;
   xyKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, xy_out);
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -425,6 +437,7 @@ void xyInvGpu(const float* x_in, const float *y_in, int stride, int num_surfs, f
   int length = stride * num_surfs;
   int grid = length / BLOCK_HEIGHT + 1;
   xyInvKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, xDy_out);
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -498,6 +511,7 @@ void ReduceGpu(const float *x_in, const float *w_in, const float *q_in,
     reduceKernel<<<grid, BLOCK_HEIGHT>>> (x_in, w_in, q_in, stride, int_x_dw);
   else
     reduceKernel<<<grid, BLOCK_HEIGHT>>> (w_in, q_in, stride, int_x_dw);
+  cudaThreadSynchronize();
 }
 
 void CircShiftGpu(const float *arr_in, int n_vecs, int vec_length, int shift, float *arr_out) {
@@ -512,9 +526,9 @@ void CircShiftGpu(const float *arr_in, int n_vecs, int vec_length, int shift, fl
     cudaMemcpy(arr_out + base_out, arr_in + base_in, sizeof(float) * shift, cudaMemcpyDeviceToDevice);
     base_in = base_out;
     base_out += shift;
-    cudaMemcpy(arr_out + base_out, arr_in + base_in, sizeof(float) * (vec_length - shift),
-               cudaMemcpyDeviceToDevice);
+    cudaMemcpy(arr_out + base_out, arr_in + base_in, sizeof(float) * (vec_length - shift), cudaMemcpyDeviceToDevice);
   }
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -545,6 +559,7 @@ void axpbGpu(float a, const float* x_in, float b, int stride, int num_surfs, flo
   int length = stride * num_surfs;
   int grid = length / BLOCK_HEIGHT + 1;
   axpbKernel<<<grid, BLOCK_HEIGHT>>> (a, x_in, b, length, axpb_out);
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -573,6 +588,7 @@ void shuffle(float *in, int m, int n, int dim, float *out) {
 void cuda_shuffle(float *in, int m, int n, int dim, float *out) {
   int grid = n;
   shuffle<<<grid, BLOCK_HEIGHT>>> (in, m, n, dim, out);
+  cudaThreadSynchronize();
 }
 
 ///
@@ -744,6 +760,7 @@ void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const flo
       stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U, Q);
   else
       stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U);
+  cudaThreadSynchronize();
 }
 
 void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
@@ -813,6 +830,7 @@ void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q) {
   if (shc_q < outputs_end) {
     cudaMemset(shc_q, 0, sizeof(float) * (outputs_end - shc_q));
   }
+  cudaThreadSynchronize();
 }
 
 __global__
@@ -827,6 +845,7 @@ void xyMGpu(const float* x_in, const float *y_in, int stride, int num_surfs, flo
   int length = stride * num_surfs;
   int grid = length / BLOCK_HEIGHT + 1;
   xyMKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, stride, xy_out);
+  cudaThreadSynchronize();
 }
 
 void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, float *shc_out) {
@@ -855,6 +874,7 @@ void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, f
     
     // process last cosine
     xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
+    cudaThreadSynchronize();
 }
 
 __global__
@@ -872,6 +892,7 @@ void avpwGpu(const float *a_in, const float *v_in, const float *w_in,
   dim3 grid;
   grid.x = num_surfs * stride * 3 / BLOCK_HEIGHT + 1;
   avpwKernel<<<grid, BLOCK_HEIGHT>>> (a_in, v_in, w_in, stride * 3, num_surfs * stride * 3, avpw_out);
+  cudaThreadSynchronize();
 }
 
 
@@ -907,5 +928,6 @@ float maxGpu(float *in, int n) {
   }
   float max;
   cudaMemcpy(&max, in, sizeof(float), cudaMemcpyDeviceToHost);
+  cudaThreadSynchronize();
   return max;
 }

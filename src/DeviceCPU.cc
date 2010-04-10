@@ -634,12 +634,12 @@ DeviceCPU<T>::~DeviceCPU()
 #ifdef PROFILING_LITE
   cout<<"=========================================="<<endl;
   cout<<"=========================================="<<endl;
-  cout<<"DeviceCPU::gemm  : "<<CpuTime::gemm_time<<endl;
-  cout<<"DeviceCPU::stokes: "<<CpuTime::stokes_time<<endl;
-  cout<<"DeviceCPU::xvpb  : "<<CpuTime::xvpb_time<<endl;
-  cout<<"DeviceCPU::xy    : "<<CpuTime::xy_time<<endl;
-  cout<<"DeviceCPU::Dot   : "<<CpuTime::DotProduct_time<<endl;
-  cout<<"DeviceCPU::Shift : "<<CpuTime::Shift_time<<endl;
+  cout<<"DeviceCPU::gemm  (sec) : "<<CpuTime::gemm_time<<endl;
+  cout<<"DeviceCPU::stokes(sec) : "<<CpuTime::stokes_time<<endl;
+  cout<<"DeviceCPU::xvpb  (sec) : "<<CpuTime::xvpb_time<<endl;
+  cout<<"DeviceCPU::xy    (sec) : "<<CpuTime::xy_time<<endl;
+  cout<<"DeviceCPU::Dot   (sec) : "<<CpuTime::DotProduct_time<<endl;
+  cout<<"DeviceCPU::Shift (sec) : "<<CpuTime::Shift_time<<endl;
   cout<<"=========================================="<<endl;
   cout<<"=========================================="<<endl;
 #endif

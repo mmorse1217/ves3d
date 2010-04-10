@@ -313,7 +313,7 @@ Surface<T>::~Surface()
 
 #ifdef PROFILING_LITE
     cout<<"==================================="<<endl;
-    cout<<"StokesMatVec (Singular) : "<<StokesMatVec_time_<<endl;
+    cout<<"StokesMatVec--Singular (sec) : "<<StokesMatVec_time_<<endl;
     cout<<"==================================="<<endl;
 #endif
 }
@@ -518,12 +518,11 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
 #ifdef PROFILING_LITE
     ss = get_seconds()-ss;
     StokesMatVec_time_ +=ss;
-    //    cout<<"StokesMatVec (sec) : "<<ss<<endl;
 #endif
 
 #ifndef NOLOGGING
     double np3 = np * np * np;
-    double flops = np3 + (44 * np * np + 14 * np3) * params_.n_surfs_; 
+    double flops = np3 + 14 * np3 * params_.n_surfs_; //np3 + (44 * np * np + 14 * np3) * params_.n_surfs_; 
     Logger::Add2Flops(flops);
 #endif
 }

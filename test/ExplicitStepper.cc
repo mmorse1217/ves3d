@@ -66,7 +66,18 @@ int main(int argc, char *argv[])
     exp_stepper.verbose = true;
     exp_stepper.userMonitor =NULL;
     exp_stepper.user = (void*) vesicle.work_arr;
+
+
+#ifdef PROFILING_LITE
+    double ss = get_seconds();
+#endif
     exp_stepper.EvolveInTime();
+
+#ifdef PROFILING_LITE
+    ss = get_seconds()-ss ;
+    cout<<" . EvolveInTime (sec) : "<<ss<<endl;
+#endif
+
     
-    cout<<"Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
+    cout<<" . Total Flops : "<<Logger::GetGFlops()<< "GFlops."<<endl;
 }
