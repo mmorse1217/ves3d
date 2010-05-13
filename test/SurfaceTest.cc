@@ -40,45 +40,42 @@ int main(int argc, char ** argv)
     bool readFromFile = true;
     OperatorsMats<T> mats(myIO, par.p_, 2*par.p_, readFromFile);
     
-    //initialing device
-    cpu.InitializeSHT(mats);
-    
     // memory allocation
-    Surface<T> S(cpu,par,mats);
-    Scalars<T> X(cpu,p,nVec);
-    Scalars<T> Y(cpu,p,nVec);
-    Scalars<T> Z(cpu,p,nVec);
+    Surface<T> S(&cpu,par,mats);
+    Scalars<T> X(&cpu,p,nVec);
+    Scalars<T> Y(&cpu,p,nVec);
+    Scalars<T> Z(&cpu,p,nVec);
     
     // initializing vesicle positions from text file
     char fname[400];
     sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
-    myIO.ReadData(fname,dLen,S.x_.data_);
-    //myIO.ReadData("precomputed/biconcave_ra95_12",dLen,S.x_.data_);
+    myIO.ReadData(fname,dLen,S.x_.begin());
+    //myIO.ReadData("precomputed/biconcave_ra95_12",dLen,S.x_.begin());
     
     S.Resize(nVec);
     for(int ii=1;ii<nVec;ii++)
         for(int idx=0;idx<dLen;idx++)
-            S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];
+            *(S.x_.begin() + ii*dLen + idx) = *(S.x_.begin() + idx);
     S.UpdateAll();
     
     for(int ii=0;ii<nVec;ii++)
         for(int idx=0;idx<fLen;idx++)
         {
-            X.data_[ ii*fLen + idx] = S.x_.data_[idx];
-            Y.data_[ ii*fLen + idx] = S.x_.data_[idx + fLen];
-            Z.data_[ ii*fLen + idx] = S.x_.data_[idx + fLen + fLen];
+            *(X.begin() +  ii*fLen + idx) = *(S.x_.begin() + idx);
+            *(Y.begin() +  ii*fLen + idx) = *(S.x_.begin() + idx + fLen);
+            *(Z.begin() +  ii*fLen + idx) = *(S.x_.begin() + idx + fLen + fLen);
         }
     
     // Checking the grad and div operator
     S.Resize(3); 
-    Scalars<T> div_n(cpu,p,3);
+    Scalars<T> div_n(&cpu,p,3);
     S.SurfDiv(S.normal_, div_n);
     axpy((T) .5, div_n, S.h_,div_n);
         
     T err = 0, err2;
     for(int ii=0;ii<div_n.GetDataLength(); ii++)
     {
-        err2 = fabs(div_n.data_[ii]);
+        err2 = fabs(*(div_n.begin() + ii));
         err = (err>err2) ? err : err2;
     }
     cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
@@ -86,11 +83,11 @@ int main(int argc, char ** argv)
     S.Resize(nVec);
     for(int ii=1;ii<nVec;ii++)
         for(int idx=0;idx<dLen;idx++)
-            S.x_.data_[ ii*dLen + idx] = S.x_.data_[idx];
+            *(S.x_.begin() +  ii*dLen + idx) = *(S.x_.begin() + idx);
 
     dLen *=nVec;
     S.UpdateAll();
-    Vectors<T> grad(cpu,p,nVec), lap(cpu,p,nVec);
+    Vectors<T> grad(&cpu,p,nVec), lap(&cpu,p,nVec);
 
     S.SurfGrad(X,grad);
     S.SurfDiv(grad,X);
@@ -104,19 +101,19 @@ int main(int argc, char ** argv)
     for(int ii=0;ii<nVec;ii++)
         for(int idx=0;idx<fLen;idx++)
         {
-            lap.data_[ 3*ii*fLen + idx              ] = X.data_[ii*fLen + idx];
-            lap.data_[ 3*ii*fLen + idx + fLen       ] = Y.data_[ii*fLen + idx];
-            lap.data_[ 3*ii*fLen + idx + fLen + fLen] = Z.data_[ii*fLen + idx];
+            *(lap.begin() +  3*ii*fLen + idx              ) = *(X.begin() + ii*fLen + idx);
+            *(lap.begin() +  3*ii*fLen + idx + fLen       ) = *(Y.begin() + ii*fLen + idx);
+            *(lap.begin() +  3*ii*fLen + idx + fLen + fLen) = *(Z.begin() + ii*fLen + idx);
         }
 
-    Scalars<T> hh(cpu, p, nVec);
+    Scalars<T> hh(&cpu, p, nVec);
     DotProduct(lap,S.normal_,hh);
     axpy((T) -.5, hh, S.h_,hh);
         
     err = 0;
     for(int ii=0;ii<hh.GetDataLength(); ii++)
     {
-        err2 = fabs(hh.data_[ii]);
+        err2 = fabs(hh.begin()[ii]);
         err = (err>err2) ? err : err2;
     }
     cout<<"\n The error in the surface grad (For the dumbbell .13703 expected)= "<<err<<endl;

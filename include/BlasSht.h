@@ -36,10 +36,10 @@ class BlasSht {
     //void read_leg_mat(scalar *leg_ptr, const char *fname);
 
     void leg_transform(scalar *trans, const scalar *inputs, scalar *outputs,
-        int m, int n , int k, int mf, int nf, int kf);
+        int m, int n , int k, int mf, int nf, int kf) const;
     void back(const scalar *inputs, scalar *work_arr, int n_funs,
-               scalar *outputs, scalar *trans, scalar *dft);
-    void transpose(scalar *out, scalar *in, int width, int height);
+               scalar *outputs, scalar *trans, scalar *dft) const;
+    void transpose(scalar *out, scalar *in, int width, int height) const;
 
   public:
     BlasSht();
@@ -50,13 +50,13 @@ class BlasSht {
         scalar *d2_leg_trans);
     ~BlasSht();
 
-    void forward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
-    void backward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
-    void backward_du(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
-    void backward_dv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
-    void backward_d2u(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
-    void backward_d2v(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
-    void backward_duv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs);
+    void forward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const;
+    void backward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const;
+    void backward_du(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const;
+    void backward_dv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const;
+    void backward_d2u(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const;
+    void backward_d2v(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs)const;
+    void backward_duv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const;
 
     void InitializeBlasSht(int p, scalar *dft_forward, scalar *dft_backward, 
         scalar *dft_d1backward, scalar *dft_d2backward, scalar *leg_trans, 

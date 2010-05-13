@@ -9,7 +9,7 @@
 #ifndef _SURFACE_H_
 #define _SURFACE_H_
 
-#include "Device.h"
+#include "DeviceCPU.h"
 #include "Scalars.h"
 #include "Vectors.h"
 #include "DataIO.h"
@@ -42,7 +42,8 @@ template <typename T> class Surface
 {
   public:
     
-    Device<T> &device_;
+    DeviceCPU<T> *device_;
+    BlasSht sht_;
 
     SurfaceParams<T> params_;
     
@@ -101,9 +102,7 @@ template <typename T> class Surface
     //Quadrature weights
     T *quad_weights_;
     
-    Surface(Device<T> &device_in);
-    Surface(Device<T> &device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats);
-    Surface(Device<T> &device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats, const Vectors<T> &x_in);
+    Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats);
     ~Surface();
     
     /** 

@@ -9,7 +9,7 @@
 
 // Device ////////////////////////////////////////////////////////////
 template<typename T>
-T* DeviceCPU<T>::Malloc(unsigned long int length)
+T* DeviceCPU<T>::Malloc(unsigned long int length) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::Malloc, length="<<length<<endl;
@@ -19,7 +19,7 @@ T* DeviceCPU<T>::Malloc(unsigned long int length)
 }
 
 template<typename T>
-void DeviceCPU<T>::Free(T* ptr)
+void DeviceCPU<T>::Free(T* ptr) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::Free"<<endl;
@@ -29,7 +29,7 @@ void DeviceCPU<T>::Free(T* ptr)
 }
 
 template<typename T>
-T* DeviceCPU<T>::Calloc(unsigned long int num)
+T* DeviceCPU<T>::Calloc(unsigned long int num) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::Calloc, num="<<num<<endl;
@@ -39,7 +39,7 @@ T* DeviceCPU<T>::Calloc(unsigned long int num)
 }
 
 template<typename T>
-T* DeviceCPU<T>::Memcpy(T* destination, const T* source, unsigned long int num, enum MemcpyKind kind)
+T* DeviceCPU<T>::Memcpy(T* destination, const T* source, unsigned long int num, enum MemcpyKind kind) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::Memcpy"<<endl;
@@ -57,9 +57,8 @@ T* DeviceCPU<T>::Memcpy(T* destination, const T* source, unsigned long int num, 
         return((T*) ::memcpy(destination, source, num * sizeof(T)));
     }
 }
-
 template<typename T>
-T* DeviceCPU<T>::Memset(T *ptr, int value, unsigned long int num)
+T* DeviceCPU<T>::Memset(T *ptr, int value, unsigned long int num) const
 {
 #ifndef NDEBUG
     cout<<" DeviceCPU::Memset"<<endl;
@@ -69,7 +68,7 @@ T* DeviceCPU<T>::Memset(T *ptr, int value, unsigned long int num)
 }
 
 template<typename T>  
-T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out)
+T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* x_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::DotProduct"<<endl;
@@ -104,7 +103,7 @@ T* DeviceCPU<T>::DotProduct(const T* u_in, const T* v_in, int stride, int num_su
 }
 
 template<typename T>
-T* DeviceCPU<T>::CrossProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* w_out)
+T* DeviceCPU<T>::CrossProduct(const T* u_in, const T* v_in, int stride, int num_surfs, T* w_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::CrossProduct"<<endl;
@@ -145,7 +144,7 @@ T* DeviceCPU<T>::CrossProduct(const T* u_in, const T* v_in, int stride, int num_
 }
 
 template<typename T>
-T* DeviceCPU<T>::Sqrt(const T* x_in, int stride, int num_surfs, T* sqrt_out)
+T* DeviceCPU<T>::Sqrt(const T* x_in, int stride, int num_surfs, T* sqrt_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::sqrt"<<endl;
@@ -172,7 +171,7 @@ T* DeviceCPU<T>::Sqrt(const T* x_in, int stride, int num_surfs, T* sqrt_out)
 }
 
 template<typename T>
-T* DeviceCPU<T>::xInv(const T* x_in, int stride, int num_surfs, T* xInv_out)
+T* DeviceCPU<T>::xInv(const T* x_in, int stride, int num_surfs, T* xInv_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::xInv"<<endl;
@@ -203,7 +202,7 @@ T* DeviceCPU<T>::xInv(const T* x_in, int stride, int num_surfs, T* xInv_out)
 }
 
 template<typename T>
-T* DeviceCPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* xy_out)
+T* DeviceCPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* xy_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::xy"<<endl;
@@ -234,7 +233,7 @@ T* DeviceCPU<T>::xy(const T* x_in, const T* y_in, int stride, int num_surfs, T* 
 }
 
 template<typename T>
-T* DeviceCPU<T>::xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, T* xyInv_out)
+T* DeviceCPU<T>::xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, T* xyInv_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::xyInv"<<endl;
@@ -266,7 +265,7 @@ T* DeviceCPU<T>::xyInv(const T* x_in, const T* y_in, int stride, int num_surfs, 
 }
 
 template<typename T>
-T*  DeviceCPU<T>::uyInv(const T* u_in, const T* y_in, int stride, int num_surfs, T* uyInv_out)
+T*  DeviceCPU<T>::uyInv(const T* u_in, const T* y_in, int stride, int num_surfs, T* uyInv_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::uyInv"<<endl;
@@ -314,7 +313,7 @@ T*  DeviceCPU<T>::uyInv(const T* u_in, const T* y_in, int stride, int num_surfs,
 ///so we have temporary variables created, either make a variable or
 ///remove the option that in and out the same.
 template<typename T>
-T*  DeviceCPU<T>::axpy(T a_in, const T*  x_in, const T*  y_in, int stride, int num_surfs , T*  axpy_out)
+T*  DeviceCPU<T>::axpy(T a_in, const T*  x_in, const T*  y_in, int stride, int num_surfs , T*  axpy_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::axpy"<<endl;
@@ -345,7 +344,7 @@ T*  DeviceCPU<T>::axpy(T a_in, const T*  x_in, const T*  y_in, int stride, int n
 }
 
 template<typename T>
-T*  DeviceCPU<T>::axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs , T*  axpb_out)
+T*  DeviceCPU<T>::axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs , T*  axpb_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::axpb"<<endl;
@@ -376,7 +375,7 @@ T*  DeviceCPU<T>::axpb(T a_in, const T*  x_in, T b_in, int stride, int num_surfs
 }
 
 template<typename T>
-T*  DeviceCPU<T>::avpw(const T* a_in, const T*  v_in, const T*  w_in, int stride, int num_surfs, T*  avpw_out)
+T*  DeviceCPU<T>::avpw(const T* a_in, const T*  v_in, const T*  w_in, int stride, int num_surfs, T*  avpw_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::avpw"<<endl;
@@ -423,7 +422,7 @@ T*  DeviceCPU<T>::avpw(const T* a_in, const T*  v_in, const T*  w_in, int stride
 }
 
 template<typename T>
-T*  DeviceCPU<T>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, int stride, int num_surfs, T*  xvpw_out)
+T*  DeviceCPU<T>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, int stride, int num_surfs, T*  xvpw_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::xvpw"<<endl;
@@ -474,7 +473,7 @@ T*  DeviceCPU<T>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, int stride
 }
 
 template<typename T>
-T*  DeviceCPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num_surfs, T*  xvpb_out)
+T*  DeviceCPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int num_surfs, T*  xvpb_out) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::xvpb"<<endl;
@@ -527,7 +526,7 @@ T*  DeviceCPU<T>::xvpb(const T* x_in, const T*  v_in, T b_in, int stride, int nu
 }
 
 template<typename T>
-T*  DeviceCPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int stride, int num_surfs, T  *int_x_dw)
+T*  DeviceCPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int stride, int num_surfs, T  *int_x_dw) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::Reduce"<<endl;
@@ -580,49 +579,49 @@ T*  DeviceCPU<T>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, int s
     return int_x_dw;
 }
 
-template<typename T>
-void  DeviceCPU<T>::InitializeSHT(OperatorsMats<T> &mats)
-{
-    assert(sht_.dft_forward == 0);
-    assert(mats.fileIO_.device_ == *this);
+// template<typename T>
+// void  DeviceCPU<T>::InitializeSHT(OperatorsMats<T> &mats)
+// {
+//     assert(sht_.dft_forward == 0);
+//     assert(mats.fileIO_.device_ == *this);
 
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    p_ = mats.p_;
-    p_up_ = mats.p_up_;
+//     p_ = mats.p_;
+//     p_up_ = mats.p_up_;
 
-    T *dft_forward;
-    T *dft_backward;
-    T *dft_d1backward;
-    T *dft_d2backward;
+//     T *dft_forward;
+//     T *dft_backward;
+//     T *dft_d1backward;
+//     T *dft_d2backward;
 
-    //p version_
-    dft_forward    = DeviceCPU<T>::Malloc(4 * p_ * p_); 
-    dft_backward   = DeviceCPU<T>::Malloc(4 * p_ * p_); 
-    dft_d1backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
-    dft_d2backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+//     //p version_
+//     dft_forward    = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+//     dft_backward   = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+//     dft_d1backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
+//     dft_d2backward = DeviceCPU<T>::Malloc(4 * p_ * p_); 
     
-    sht_.InitializeBlasSht(p_, dft_forward, dft_backward, dft_d1backward, 
-        dft_d2backward, mats.leg_trans_p_, mats.leg_trans_inv_p_, 
-        mats.d1_leg_trans_p_, mats.d2_leg_trans_p_);
+//     sht_.InitializeBlasSht(p_, dft_forward, dft_backward, dft_d1backward, 
+//         dft_d2backward, mats.leg_trans_p_, mats.leg_trans_inv_p_, 
+//         mats.d1_leg_trans_p_, mats.d2_leg_trans_p_);
 
-    //p_up version
-    dft_forward    = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
-    dft_backward   = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_);
-    dft_d1backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
-    dft_d2backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+//     //p_up version
+//     dft_forward    = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+//     dft_backward   = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_);
+//     dft_d1backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
+//     dft_d2backward = DeviceCPU<T>::Malloc(4 * p_up_ * p_up_); 
 
-    sht_up_sample_.InitializeBlasSht(p_up_, dft_forward, dft_backward, dft_d1backward, 
-        dft_d2backward, mats.leg_trans_p_up_, mats.leg_trans_inv_p_up_, 
-        mats.d1_leg_trans_p_up_, mats.d2_leg_trans_p_up_);
+//     sht_up_sample_.InitializeBlasSht(p_up_, dft_forward, dft_backward, dft_d1backward, 
+//         dft_d2backward, mats.leg_trans_p_up_, mats.leg_trans_inv_p_up_, 
+//         mats.d1_leg_trans_p_up_, mats.d2_leg_trans_p_up_);
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::InitializeSHT takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::InitializeSHT takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
 template<typename T>
 DeviceCPU<T>::DeviceCPU()
@@ -644,387 +643,387 @@ DeviceCPU<T>::~DeviceCPU()
   cout<<"=========================================="<<endl;
 #endif
 
-    Free(sht_.dft_forward); 
-    Free(sht_.dft_backward); 
-    Free(sht_.dft_d1backward); 
-    Free(sht_.dft_d2backward); 
+//     Free(sht_.dft_forward); 
+//     Free(sht_.dft_backward); 
+//     Free(sht_.dft_d1backward); 
+//     Free(sht_.dft_d2backward); 
 
-    // up sample
-    Free(sht_up_sample_.dft_forward); 
-    Free(sht_up_sample_.dft_backward); 
-    Free(sht_up_sample_.dft_d1backward); 
-    Free(sht_up_sample_.dft_d2backward); 
+//     // up sample
+//     Free(sht_up_sample_.dft_forward); 
+//     Free(sht_up_sample_.dft_backward); 
+//     Free(sht_up_sample_.dft_d1backward); 
+//     Free(sht_up_sample_.dft_d2backward); 
 }
 
-template<typename T>
-void  DeviceCPU<T>::ShAna(const T *x_in, T *work_arr, int p, int n_funs, T *shc_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::ShAna(const T *x_in, T *work_arr, int p, int n_funs, T *shc_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans != 0);
-        sht_.forward(x_in, work_arr, n_funs, shc_out);
-    }else{
-        assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans != 0);
+//         sht_.forward(x_in, work_arr, n_funs, shc_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans != 0);
+//         sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
+//     }
         
         
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::ShAna takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::ShAna takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::ShSyn(const T *shc_in, T *work_arr, int p, int n_funs, T *x_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans_inv != 0);
-        sht_.backward(shc_in, work_arr, n_funs, x_out);
-    }else{
-        assert(sht_up_sample_.leg_trans_inv != 0);
-        sht_up_sample_.backward(shc_in, work_arr, n_funs, x_out);
-    }
+// template<typename T>
+// void  DeviceCPU<T>::ShSyn(const T *shc_in, T *work_arr, int p, int n_funs, T *x_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans_inv != 0);
+//         sht_.backward(shc_in, work_arr, n_funs, x_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans_inv != 0);
+//         sht_up_sample_.backward(shc_in, work_arr, n_funs, x_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::shSyn takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::shSyn takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::ShSynDu(const T *shc_in, T *work_arr, int p, int n_funs, T *xu_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::ShSynDu(const T *shc_in, T *work_arr, int p, int n_funs, T *xu_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.d1_leg_trans != 0);
-        sht_.backward_du(shc_in, work_arr, n_funs, xu_out);
-    }else{
-        assert(sht_up_sample_.d1_leg_trans != 0);
-        sht_up_sample_.backward_du(shc_in, work_arr, n_funs, xu_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.d1_leg_trans != 0);
+//         sht_.backward_du(shc_in, work_arr, n_funs, xu_out);
+//     }else{
+//         assert(sht_up_sample_.d1_leg_trans != 0);
+//         sht_up_sample_.backward_du(shc_in, work_arr, n_funs, xu_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::ShSynDu takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::ShSynDu takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::ShSynDv(const T *shc_in, T *work_arr, int p, int n_funs, T *xv_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::ShSynDv(const T *shc_in, T *work_arr, int p, int n_funs, T *xv_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans != 0);
-        sht_.backward_dv(shc_in, work_arr, n_funs, xv_out);
-    }else{
-        assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.backward_dv(shc_in, work_arr, n_funs, xv_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans != 0);
+//         sht_.backward_dv(shc_in, work_arr, n_funs, xv_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans != 0);
+//         sht_up_sample_.backward_dv(shc_in, work_arr, n_funs, xv_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::ShSynDv takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::ShSynDv takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::ShSynDuu(const T *shc_in, T *work_arr, int p, int n_funs, T *xuu_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::ShSynDuu(const T *shc_in, T *work_arr, int p, int n_funs, T *xuu_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.d2_leg_trans != 0);
-        sht_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
-    }else{
-        assert(sht_up_sample_.d2_leg_trans != 0);
-        sht_up_sample_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.d2_leg_trans != 0);
+//         sht_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
+//     }else{
+//         assert(sht_up_sample_.d2_leg_trans != 0);
+//         sht_up_sample_.backward_d2u(shc_in, work_arr, n_funs, xuu_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::ShSynDuu takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::ShSynDuu takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::ShSynDvv(const T *shc_in, T *work_arr, int p, int n_funs, T *xvv_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::ShSynDvv(const T *shc_in, T *work_arr, int p, int n_funs, T *xvv_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans != 0);
-        sht_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
-    }else{
-        assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans != 0);
+//         sht_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans != 0);
+//         sht_up_sample_.backward_d2v(shc_in, work_arr, n_funs, xvv_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::ShSynDvv takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::ShSynDvv takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::ShSynDuv(const T *shc_in, T *work_arr, int p, int n_funs, T *xuv_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::ShSynDuv(const T *shc_in, T *work_arr, int p, int n_funs, T *xuv_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
     
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.d1_leg_trans != 0);
-        sht_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
-    }else{
-        assert(sht_up_sample_.d1_leg_trans != 0);
-        sht_up_sample_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.d1_leg_trans != 0);
+//         sht_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
+//     }else{
+//         assert(sht_up_sample_.d1_leg_trans != 0);
+//         sht_up_sample_.backward_duv(shc_in, work_arr, n_funs, xuv_out);
+//     }
     
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::ShSynDuv takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::ShSynDuv takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::AllDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, 
-    T *Dvx_out,T *Duux_out, T *Duvx_out, T *Dvvx_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T>
+// void  DeviceCPU<T>::AllDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, 
+//     T *Dvx_out,T *Duux_out, T *Duvx_out, T *Dvvx_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans != 0);
-        sht_.forward(     x_in , work_arr, n_funs, shc_x);
-        sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
-        sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
-        sht_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
-        sht_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
-        sht_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
-    }else{
-        assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.forward(     x_in , work_arr, n_funs, shc_x);
-        sht_up_sample_.backward_du( shc_x, work_arr, n_funs, Dux_out);
-        sht_up_sample_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
-        sht_up_sample_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
-        sht_up_sample_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
-        sht_up_sample_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans != 0);
+//         sht_.forward(     x_in , work_arr, n_funs, shc_x);
+//         sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+//         sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+//         sht_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
+//         sht_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
+//         sht_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans != 0);
+//         sht_up_sample_.forward(     x_in , work_arr, n_funs, shc_x);
+//         sht_up_sample_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+//         sht_up_sample_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+//         sht_up_sample_.backward_d2u(shc_x, work_arr, n_funs, Duux_out);
+//         sht_up_sample_.backward_d2v(shc_x, work_arr, n_funs, Dvvx_out);
+//         sht_up_sample_.backward_duv(shc_x, work_arr, n_funs, Duvx_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::AllDerivatives takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::AllDerivatives takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out)
-{
-#ifdef PROFILING
-    double ss = get_seconds();
-#endif
+// template<typename T> 
+// void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out) const
+// {
+// #ifdef PROFILING
+//     double ss = get_seconds();
+// #endif
 
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans != 0);
-        sht_.forward(     x_in , work_arr, n_funs, shc_x);
-        sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
-        sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
-    }else{
-        assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.forward(     x_in , work_arr, n_funs, shc_x);
-        sht_up_sample_.backward_du( shc_x, work_arr, n_funs, Dux_out);
-        sht_up_sample_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
-    }
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans != 0);
+//         sht_.forward(     x_in , work_arr, n_funs, shc_x);
+//         sht_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+//         sht_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans != 0);
+//         sht_up_sample_.forward(     x_in , work_arr, n_funs, shc_x);
+//         sht_up_sample_.backward_du( shc_x, work_arr, n_funs, Dux_out);
+//         sht_up_sample_.backward_dv( shc_x, work_arr, n_funs, Dvx_out);
+//     }
 
-#ifdef PROFILING
-    ss = get_seconds()-ss ;
-    cout<<"DeviceCPU::FirstDerivatives takes (sec) : "<<ss<<endl;
-#endif
-}
+// #ifdef PROFILING
+//     ss = get_seconds()-ss ;
+//     cout<<"DeviceCPU::FirstDerivatives takes (sec) : "<<ss<<endl;
+// #endif
+// }
 
-template<typename T>
-void DeviceCPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* work_arr, T *shc_out, T *x_out)
-{
-    assert(p == p_ || p == p_up_);
-    if ( p == p_){
-        assert(sht_.leg_trans != 0);
-        sht_.forward(x_in, work_arr, n_funs, shc_out);
-        ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
-        sht_.backward(shc_out, work_arr, n_funs, x_out);
-    }else{
-        assert(sht_up_sample_.leg_trans != 0);
-        sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
-        ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
-        sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
-    }
-}
+// template<typename T>
+// void DeviceCPU<T>::Filter(int p, int n_funs, const T *x_in, const T *alpha, T* work_arr, T *shc_out, T *x_out) const
+// {
+//     assert(p == p_ || p == p_up_);
+//     if ( p == p_){
+//         assert(sht_.leg_trans != 0);
+//         sht_.forward(x_in, work_arr, n_funs, shc_out);
+//         ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
+//         sht_.backward(shc_out, work_arr, n_funs, x_out);
+//     }else{
+//         assert(sht_up_sample_.leg_trans != 0);
+//         sht_up_sample_.forward(x_in, work_arr, n_funs, shc_out);
+//         ScaleFreqs(p, n_funs, shc_out, alpha, shc_out);
+//         sht_up_sample_.backward(shc_out, work_arr, n_funs, x_out);
+//     }
+// }
 
-template<typename T>
-void DeviceCPU<T>::ScaleFreqs(int p, int num_vesicles, const T * inputs, const T * alphas, T * outputs )
-{
-#ifndef NDEBUG
-    cout<<"DeviceCPU::ScaleFreqs"<<endl;
-#endif
+// template<typename T>
+// void DeviceCPU<T>::ScaleFreqs(int p, int num_vesicles, const T * inputs, const T * alphas, T * outputs ) const
+// {
+// #ifndef NDEBUG
+//     cout<<"DeviceCPU::ScaleFreqs"<<endl;
+// #endif
     
-    const float * inp_deb = inputs;
-    float * out_deb = outputs;
-    const float * alphas_deb = alphas;
+//     const float * inp_deb = inputs;
+//     float * out_deb = outputs;
+//     const float * alphas_deb = alphas;
 
 
-    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
-    // -------- process zeroth frequency (constant) ---------
-    int leg_order = p+1;
-    for (int v=0; v<num_vesicles; v++)
-        for (int i=0; i<leg_order; i++)
-            *(outputs++) = *(inputs++) * alphas[i];
-    alphas += leg_order;
-    leg_order--;
+//     // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
+//     // -------- process zeroth frequency (constant) ---------
+//     int leg_order = p+1;
+//     for (int v=0; v<num_vesicles; v++)
+//         for (int i=0; i<leg_order; i++)
+//             *(outputs++) = *(inputs++) * alphas[i];
+//     alphas += leg_order;
+//     leg_order--;
 
-    // process remaining frequencies except the last cosine
-    for (; leg_order>1; leg_order--) 
-    {
-        // first process cosine
-        for (int v=0; v<num_vesicles; v++)
-            for (int i=0; i<leg_order; i++)
-                *(outputs++) = *(inputs++) *alphas[i];
-        alphas += leg_order;
+//     // process remaining frequencies except the last cosine
+//     for (; leg_order>1; leg_order--) 
+//     {
+//         // first process cosine
+//         for (int v=0; v<num_vesicles; v++)
+//             for (int i=0; i<leg_order; i++)
+//                 *(outputs++) = *(inputs++) *alphas[i];
+//         alphas += leg_order;
 
-        // then process sine
-        for (int v=0; v<num_vesicles; v++)
-            for (int i=0; i<leg_order; i++)
-                *(outputs++) = *(inputs++) *alphas[i];
-        alphas += leg_order;
-    }
+//         // then process sine
+//         for (int v=0; v<num_vesicles; v++)
+//             for (int i=0; i<leg_order; i++)
+//                 *(outputs++) = *(inputs++) *alphas[i];
+//         alphas += leg_order;
+//     }
 
-    // process last cosine
-    for (int v=0; v<num_vesicles; v++)
-        *(outputs++) = *(inputs++) * alphas[0];
-    alphas += leg_order;
-    leg_order--;
+//     // process last cosine
+//     for (int v=0; v<num_vesicles; v++)
+//         *(outputs++) = *(inputs++) * alphas[0];
+//     alphas += leg_order;
+//     leg_order--;
 
-    assert (leg_order == 0);
-    assert(inputs-inp_deb == num_vesicles*p*(p+2));
-    assert(outputs-out_deb == num_vesicles*p*(p+2));
-    assert(alphas-alphas_deb == p*(p+2));
-}
+//     assert (leg_order == 0);
+//     assert(inputs-inp_deb == num_vesicles*p*(p+2));
+//     assert(outputs-out_deb == num_vesicles*p*(p+2));
+//     assert(alphas-alphas_deb == p*(p+2));
+// }
 
-template<typename T>
-void DeviceCPU<T>::Resample(int p, int num_vesicles, int q, const T * inputs, T * outputs)
-{
-#ifndef NDEBUG
-    cout<<"DeviceCPU::Resample"<<endl;
-#endif
+// template<typename T>
+// void DeviceCPU<T>::Resample(int p, int num_vesicles, int q, const T * inputs, T * outputs) const
+// {
+// #ifndef NDEBUG
+//     cout<<"DeviceCPU::Resample"<<endl;
+// #endif
 
-    const float * inp_deb = inputs;
-    float * out_deb = outputs;
+//     const float * inp_deb = inputs;
+//     float * out_deb = outputs;
     
-    // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
-    // -------- process zeroth frequency (constant) ---------
-    int leg_order = p+1;
-    int new_leg_order = q+1;
-    int min_leg_order = std::min(leg_order, new_leg_order);
+//     // we have even-order real dft; this means we don't have first sine (sine of zero frequency) and last sine (sine of half-order frequency)
+//     // -------- process zeroth frequency (constant) ---------
+//     int leg_order = p+1;
+//     int new_leg_order = q+1;
+//     int min_leg_order = std::min(leg_order, new_leg_order);
 
-    for (int v=0; v<num_vesicles; v++)
-    {
-        for(int i=0; i<min_leg_order; i++)
-            *(outputs++) = *(inputs++);
-        for (int i=leg_order; i<new_leg_order; i++)
-            *(outputs++) = 0;
-        if (leg_order > new_leg_order)
-            inputs += leg_order - new_leg_order;
-    }
-    leg_order--;
-    new_leg_order--;
-    min_leg_order--;
+//     for (int v=0; v<num_vesicles; v++)
+//     {
+//         for(int i=0; i<min_leg_order; i++)
+//             *(outputs++) = *(inputs++);
+//         for (int i=leg_order; i<new_leg_order; i++)
+//             *(outputs++) = 0;
+//         if (leg_order > new_leg_order)
+//             inputs += leg_order - new_leg_order;
+//     }
+//     leg_order--;
+//     new_leg_order--;
+//     min_leg_order--;
 
-    // process remaining frequencies except the last cosine
-    for (; min_leg_order>1; min_leg_order--,leg_order--,new_leg_order--) 
-    {
-        // first process cosine
-        for (int v=0; v<num_vesicles; v++)
-        {
-            for(int i=0; i<min_leg_order; i++)
-                *(outputs++) = *(inputs++);
-            for (int i=leg_order; i<new_leg_order; i++)
-                *(outputs++) = 0;
-            if (leg_order > new_leg_order)
-                inputs += leg_order - new_leg_order;
-        }
+//     // process remaining frequencies except the last cosine
+//     for (; min_leg_order>1; min_leg_order--,leg_order--,new_leg_order--) 
+//     {
+//         // first process cosine
+//         for (int v=0; v<num_vesicles; v++)
+//         {
+//             for(int i=0; i<min_leg_order; i++)
+//                 *(outputs++) = *(inputs++);
+//             for (int i=leg_order; i<new_leg_order; i++)
+//                 *(outputs++) = 0;
+//             if (leg_order > new_leg_order)
+//                 inputs += leg_order - new_leg_order;
+//         }
 
-        // then process sine
-        for (int v=0; v<num_vesicles; v++)
-        {
-            for(int i=0; i<min_leg_order; i++)
-                *(outputs++) = *(inputs++);
-            for (int i=leg_order; i<new_leg_order; i++)
-                *(outputs++) = 0;
-            if (leg_order > new_leg_order)
-                inputs += leg_order - new_leg_order;
-        }
-    }
+//         // then process sine
+//         for (int v=0; v<num_vesicles; v++)
+//         {
+//             for(int i=0; i<min_leg_order; i++)
+//                 *(outputs++) = *(inputs++);
+//             for (int i=leg_order; i<new_leg_order; i++)
+//                 *(outputs++) = 0;
+//             if (leg_order > new_leg_order)
+//                 inputs += leg_order - new_leg_order;
+//         }
+//     }
 
-    // process last cosine
-    for (int v=0; v<num_vesicles; v++)
-    {
-        for(int i=0; i<min_leg_order; i++)
-            *(outputs++) = *(inputs++);
-        for (int i=leg_order; i<new_leg_order; i++)
-            *(outputs++) = 0;
-        if (leg_order > new_leg_order)
-            inputs += leg_order - new_leg_order;
-    }
+//     // process last cosine
+//     for (int v=0; v<num_vesicles; v++)
+//     {
+//         for(int i=0; i<min_leg_order; i++)
+//             *(outputs++) = *(inputs++);
+//         for (int i=leg_order; i<new_leg_order; i++)
+//             *(outputs++) = 0;
+//         if (leg_order > new_leg_order)
+//             inputs += leg_order - new_leg_order;
+//     }
 
-    leg_order--;
-    new_leg_order--;
-    min_leg_order--;
+//     leg_order--;
+//     new_leg_order--;
+//     min_leg_order--;
 
-    // assert (leg_order == 0);
+//     // assert (leg_order == 0);
  
-    // if q>p all remaining coefs should be zero
-    float * output_end = out_deb+num_vesicles*q*(q+2);
-    assert(outputs<=output_end);
+//     // if q>p all remaining coefs should be zero
+//     float * output_end = out_deb+num_vesicles*q*(q+2);
+//     assert(outputs<=output_end);
 
-    while (outputs<output_end)
-        *(outputs++) = 0;
+//     while (outputs<output_end)
+//         *(outputs++) = 0;
 
-    if (p<=q)
-        assert(inputs-inp_deb == num_vesicles*p*(p+2));
-    else
-        assert(inputs-inp_deb < num_vesicles*p*(p+2));
+//     if (p<=q)
+//         assert(inputs-inp_deb == num_vesicles*p*(p+2));
+//     else
+//         assert(inputs-inp_deb < num_vesicles*p*(p+2));
     
-    assert(outputs-out_deb == num_vesicles*q*(q+2));
-}
+//     assert(outputs-out_deb == num_vesicles*q*(q+2));
+// }
 
 template<typename T>
 T* DeviceCPU<T>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const T *alpha, 
-    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc)
+    const T *A, const int *lda, const T *B, const int *ldb, const T *beta, T *C, const int *ldc) const
 {
     cerr<<"gemm is not implemented for this data type"<<endl;
     abort();
@@ -1034,7 +1033,7 @@ T* DeviceCPU<T>::gemm(const char *transA, const char *transB, const int *m, cons
 
 template<>
 float* DeviceCPU<float>::gemm(const char *transA, const char *transB, const int *m, const int *n, const int *k, const float *alpha, 
-    const float *A, const int *lda, const float *B, const int *ldb, const float *beta, float *C, const int *ldc)
+    const float *A, const int *lda, const float *B, const int *ldb, const float *beta, float *C, const int *ldc) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::gemm"<<endl;
@@ -1054,7 +1053,7 @@ float* DeviceCPU<float>::gemm(const char *transA, const char *transB, const int 
 }
 
 template<typename T>
-T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shift, T *arr_out)
+T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shift, T *arr_out) const
 {
 
 #ifndef NDEBUG
@@ -1096,7 +1095,7 @@ T* DeviceCPU<T>::CircShift(const T *arr_in, int n_vecs, int vec_length, int shif
 
 template<typename T>
 void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
-    int trg_idx_tail, const T *qw, const T *trg, const T *src, const T *den, T *pot)
+    int trg_idx_tail, const T *qw, const T *trg, const T *src, const T *den, T *pot) const
 {                              
 #ifndef NDEBUG
     cout<<"DeviceCPU::DirectStokes"<<endl;
@@ -1121,7 +1120,7 @@ void DeviceCPU<T>::DirectStokes(int stride, int n_surfs, int trg_idx_head,
 
 template<>
 void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
-    const float *qw, const float *trg, const float *src, const float *den, float *pot)
+    const float *qw, const float *trg, const float *src, const float *den, float *pot) const
 {
 #ifndef NDEBUG
     cout<<"DeviceCPU::DirectStokes (SSE)"<<endl;
@@ -1145,7 +1144,7 @@ void DeviceCPU<float>::DirectStokes(int stride, int n_surfs, int trg_idx_head, i
 }
 
 template<typename T>
-T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out)
+T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, int n_surfs, T *x_out) const
 {
     ///@todo transpose could be made in place
     assert(x_in !=x_out);
@@ -1166,7 +1165,7 @@ T* DeviceCPU<T>::ShufflePoints(T *x_in, CoordinateOrder order_in, int stride, in
 
 
 template<typename T>
-T DeviceCPU<T>::Max(T *x_in, int length)
+T DeviceCPU<T>::Max(T *x_in, int length) const
 { 
     T max = *x_in;
     for(int idx = 0;idx<length;idx++)
@@ -1196,11 +1195,11 @@ T DeviceCPU<T>::Max(T *x_in, int length)
 }
 
 
-template<typename T>
-void DeviceCPU<T>::InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out)
-{
-    ///@bug this gives segmentation fault when q<p, since x_out is small.
-    ShAna(x_in, work_arr, p, n_funs, x_out);
-    Resample(p, n_funs, q, x_out, shc);
-    ShSyn(shc, work_arr, q, n_funs, x_out);
-}
+// template<typename T>
+// void DeviceCPU<T>::InterpSh(int p, int n_funs, const T *x_in, T* work_arr, T *shc, int q, T *x_out) const
+// {
+//     ///@bug this gives segmentation fault when q<p, since x_out is small.
+//     ShAna(x_in, work_arr, p, n_funs, x_out);
+//     Resample(p, n_funs, q, x_out, shc);
+//     ShSyn(shc, work_arr, q, n_funs, x_out);
+// }

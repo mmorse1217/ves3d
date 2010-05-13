@@ -10,126 +10,128 @@
 using namespace std;
 //Constructors
 template<typename T> 
-Scalars<T>::Scalars(Device<T> &device_in) :
-    device_(device_in), data_(0), p_(0), n_funs_(0), max_n_funs_(0)
-{}
-
-template<typename T> 
-Scalars<T>::Scalars(Device<T> &device_in, int p_in, int n_funs_in) : 
-    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in),
-    max_n_funs_(0)
+Scalars<T>::Scalars(Device<T> *device_in, int p_in, int num_funs_in) : 
+    device_(device_in), data_(0), p_(p_in), num_funs_(num_funs_in),
+    capacity_(0)
 {
-    Resize(n_funs_);
+    Resize(num_funs_);
 }
 
-template<typename T> 
-Scalars<T>::Scalars(Device<T> &device_in, int p_in, int n_funs_in, const T *data_in) :
-    device_(device_in), data_(0), p_(p_in), n_funs_(n_funs_in),
-    max_n_funs_(0)
-{
-    Resize(n_funs_);
-    SetData(data_in);
-}
-
-//Destructor
 template<typename T> 
 Scalars<T>::~Scalars()
 {
-    device_.Free(data_);
+    device_->Free(data_);
     data_ = 0;
 }
 
 //Utility functions
 template<typename T> 
-void Scalars<T>::Resize(int n_funs_in)
+void Scalars<T>::Resize(int num_funs_in)
 {
-    if(n_funs_in > max_n_funs_)
+    if(num_funs_in > capacity_)
     {
         T *data_old(this->data_);
-        this->max_n_funs_ = n_funs_in;
-        data_ = device_.Malloc(max_n_funs_ * GetFunLength());
+        this->capacity_ = num_funs_in;
+        data_ = device_->Malloc(capacity_ * GetFunLength());
         if(data_old != 0) 
-            device_.Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
-        device_.Free(data_old);
+            device_->Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
+        device_->Free(data_old);
     }
-    this->n_funs_ = n_funs_in;
+    this->num_funs_ = num_funs_in;
 }
 
 template<typename T> 
-int Scalars<T>::GetFunLength() const
+size_t Scalars<T>::GetFunLength() const
 {
     return(2*p_*(p_ + 1));
 }
 
 template<typename T> 
-int Scalars<T>::GetDataLength() const
-{
-    return(n_funs_ * GetFunLength());
-}
-
-template<typename T> 
-void Scalars<T>::SetData(const T *data_in)
-{
-    ///If memory is not allocated return.
-    assert(data_ != 0);
-    device_.Memcpy(data_, data_in, GetDataLength(), MemcpyHostToDevice);
-}
-
-template<typename T> 
-const T* Scalars<T>::GetFunctionAt(int fun_idx_in) const
-{
-    assert(data_ != 0);
-    assert(fun_idx_in<n_funs_ && fun_idx_in>=0);
-    return(data_ + fun_idx_in*GetFunLength());
-}
-
-template<typename T> 
-void Scalars<T>::SetFunctionAt(const T *fun_in, int fun_idx_in)
-{
-    assert(data_ != 0);
-    assert(fun_idx_in<n_funs_ && fun_idx_in>=0);
-
-    device_.Memcpy(data_ + fun_idx_in*GetFunLength(), fun_in, GetFunLength(), MemcpyHostToDevice);
-}
-
-template<typename T> 
 void Scalars<T>::Sqrt()
 {
-    device_.Sqrt(data_, GetFunLength(), n_funs_, data_);
+    device_->Sqrt(data_, GetFunLength(), num_funs_, data_);
 }
 
 template<typename T> 
 T Scalars<T>::Max()
 {
     assert(data_ != 0);
-    return(device_.Max(data_, GetDataLength()));
+    return(device_->Max(data_, GetDataLength()));
 }
 
 //Friends
 template<typename T> 
 void axpy(T a_in, const Scalars<T>& x_in, const Scalars<T>& y_in, Scalars<T>& axpy_out)
 {
-    assert(x_in.device_ == y_in.device_ && y_in.device_ == axpy_out.device_);
-    x_in.device_.axpy(a_in,x_in.data_, y_in.data_, x_in.GetFunLength(), x_in.n_funs_, axpy_out.data_);
+    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == axpy_out.GetDevicePtr());
+    axpy_out.GetDevicePtr()->axpy(a_in,x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.GetNumFuns(), axpy_out.begin());
 }
 
 template<typename T> 
 void axpb(T a_in, const Scalars<T> &x_in, T y_in, Scalars<T> &axpb_out)
 {
-    assert(x_in.device_ == axpb_out.device_);
-    x_in.device_.axpb(a_in,x_in.data_, y_in, x_in.GetFunLength(), x_in.n_funs_, axpb_out.data_);
+    assert(x_in.GetDevicePtr() == axpb_out.GetDevicePtr());
+    axpb_out.GetDevicePtr()->axpb(a_in,x_in.begin(), y_in, x_in.GetFunLength(), x_in.GetNumFuns(), axpb_out.begin());
 }
 
 template<typename T> 
 void xy(const Scalars<T> &x_in, const Scalars<T> &y_in, Scalars<T> &xy_out)
 {
-    assert(x_in.device_ == y_in.device_ && y_in.device_ == xy_out.device_);
-    x_in.device_.xy(x_in.data_, y_in.data_, x_in.GetFunLength(), x_in.n_funs_,xy_out.data_);
+    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == xy_out.GetDevicePtr());
+    xy_out.GetDevicePtr()->xy(x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.GetNumFuns(),xy_out.begin());
 }
 
 template<typename T> 
 void xyInv(const Scalars<T> &x_in, const Scalars<T> &y_in, Scalars<T> &xyInv_out)
 {
-    assert(x_in.device_ == y_in.device_ && y_in.device_ == xyInv_out.device_);
-    x_in.device_.xyInv(x_in.data_, y_in.data_, x_in.GetFunLength(), x_in.n_funs_,xyInv_out.data_);
+    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == xyInv_out.GetDevicePtr());
+    xyInv_out.GetDevicePtr()->xyInv(x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.GetNumFuns(),xyInv_out.begin());
+}
+
+template<typename T> 
+Scalars<T>::iterator Scalars<T>::begin()
+{
+    return(data_);
+}
+
+template<typename T> 
+Scalars<T>::const_iterator Scalars<T>::begin() const
+{
+    return(data_);
+}
+
+template<typename T> 
+Scalars<T>::iterator Scalars<T>::end()
+{
+    return(data_ + stride_ * num_funs_);
+}
+
+template<typename T> 
+Scalars<T>::const_iterator Scalars<T>::end() const
+{
+    return(data_ + stride_ * num_funs_);
+}
+
+template<typename T> 
+const Device<T>* Scalars<T>::GetDevicePtr() const
+{
+    return(device_);
+}
+
+template<typename T> 
+int Scalars<T>::GetShOrder() const
+{
+    return(p_);
+}
+
+template<typename T> 
+size_t Scalars<T>::GetNumFuns() const
+{
+    return(num_funs_);
+}
+
+template<typename T> 
+size_t Scalars<T>::GetDataLength() const
+{
+    return(num_funs_ * GetFunLength());
 }

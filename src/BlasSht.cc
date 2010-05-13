@@ -75,7 +75,7 @@ void BlasSht::gen_dft_d2backward() {
 // }
 
 
-void BlasSht::transpose(scalar *out, scalar *in, int width, int height) {
+void BlasSht::transpose(scalar *out, scalar *in, int width, int height) const{
     int leg_input_pointer = 0;
     ///@todo this should be threaded.
     for (int freq=0; freq<width; freq++)
@@ -115,7 +115,7 @@ BlasSht::~BlasSht()
 {}
 
 void BlasSht::leg_transform(scalar *trans, const scalar *inputs, scalar *outputs,
-    int m, int n , int k, int mf, int nf, int kf) {
+    int m, int n , int k, int mf, int nf, int kf) const{
     for (int freq = 0; freq <= p; freq++) {
         int num_legendre_inputs = n;
         if (freq == 0 || freq == p) num_legendre_inputs = n / 2;
@@ -134,7 +134,7 @@ void BlasSht::leg_transform(scalar *trans, const scalar *inputs, scalar *outputs
 
 
 void BlasSht::back(const scalar *inputs, scalar *work_arr, int n_funs,
-                    scalar *outputs, scalar *trans, scalar *dft) {
+                    scalar *outputs, scalar *trans, scalar *dft) const{
     scalar *trans_in = work_arr;
     scalar *trans_out = work_arr + 2 * p * (p + 1) * n_funs;
     int num_dft_inputs = n_funs * (p + 1);
@@ -145,7 +145,7 @@ void BlasSht::back(const scalar *inputs, scalar *work_arr, int n_funs,
 }
 
 void BlasSht::forward(const scalar *inputs, scalar *work_arr, int n_funs,
-                       scalar *outputs) {
+                       scalar *outputs) const{
     scalar *trans_in = work_arr;
     scalar *trans_out = work_arr + 2 * p * (p + 1) * n_funs;
     int num_dft_inputs = n_funs * (p + 1);
@@ -156,32 +156,32 @@ void BlasSht::forward(const scalar *inputs, scalar *work_arr, int n_funs,
 }
 
 
-void BlasSht::backward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+void BlasSht::backward(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const{
     back(inputs, work_arr, n_funs, outputs, leg_trans_inv, dft_backward);
 }
 
 
-void BlasSht::backward_du(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+void BlasSht::backward_du(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const{
     back(inputs, work_arr, n_funs, outputs, d1_leg_trans, dft_backward);
 }
 
 
-void BlasSht::backward_d2u(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+void BlasSht::backward_d2u(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const{
     back(inputs, work_arr, n_funs, outputs, d2_leg_trans, dft_backward);
 }
 
 
-void BlasSht::backward_dv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+void BlasSht::backward_dv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const{
     back(inputs, work_arr, n_funs, outputs,leg_trans_inv, dft_d1backward);
 }
 
 
-void BlasSht::backward_d2v(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+void BlasSht::backward_d2v(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const{
     back(inputs, work_arr, n_funs, outputs, leg_trans_inv, dft_d2backward);
 }
 
 
-void BlasSht::backward_duv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) {
+void BlasSht::backward_duv(const scalar *inputs, scalar *work_arr, int n_funs, scalar *outputs) const{
     back(inputs, work_arr, n_funs, outputs, d1_leg_trans, dft_d1backward);
 }
 

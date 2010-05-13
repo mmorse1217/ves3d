@@ -8,15 +8,15 @@
 
 // Constructors
 template<typename T> 
-Vectors<T>::Vectors(Device<T> &device_in) :
+Vectors<T>::Vectors(Device<T> *device_in) :
     Scalars<T>(device_in) , n_vecs_(0){}
 
 template<typename T> 
-Vectors<T>::Vectors(Device<T> &device_in, int p_in, int num_vecs_in) :
+Vectors<T>::Vectors(Device<T> *device_in, int p_in, int num_vecs_in) :
     Scalars<T>(device_in, p_in, 3*num_vecs_in) , n_vecs_(num_vecs_in){}
 
 template<typename T> 
-Vectors<T>::Vectors(Device<T> &device_in, int p_in, int num_vecs_in, const T *vec_data_in) :
+Vectors<T>::Vectors(Device<T> *device_in, int p_in, int num_vecs_in, const T *vec_data_in) :
     Scalars<T>(device_in, p_in, 3*num_vecs_in, vec_data_in) , n_vecs_(num_vecs_in){}
 
 // Utility functions
@@ -39,9 +39,9 @@ void DotProduct(const Vectors<T> &x_in,
 {
     assert(x_in.GetDataLength() == y_in.GetDataLength());
     assert(x_in.GetDataLength() <= 3*xDy_out.GetDataLength());
-    assert(x_in.device_ == y_in.device_ && y_in.device_ == xDy_out.device_);
+    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == xDy_out.GetDevicePtr());
     
-    x_in.device_.DotProduct(x_in.data_, y_in.data_, x_in.GetFunLength(), x_in.n_vecs_, xDy_out.data_);
+    x_in.GetDevicePtr()->DotProduct(x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.n_vecs_, xDy_out.begin());
 }
 
 template<typename T> 
@@ -50,9 +50,9 @@ void CrossProduct(const Vectors<T>& x_in,
 {
     assert(x_in.GetDataLength() == y_in.GetDataLength() &&
         y_in.GetDataLength() == xCy_out.GetDataLength());
-    assert(x_in.device_ == y_in.device_ && y_in.device_ == xCy_out.device_);
+    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == xCy_out.GetDevicePtr());
     
-    x_in.device_.CrossProduct(x_in.data_, y_in.data_, x_in.GetFunLength(), x_in.n_vecs_, xCy_out.data_);
+    x_in.GetDevicePtr()->CrossProduct(x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.n_vecs_, xCy_out.begin());
 }
 
 template<typename T> 
@@ -62,9 +62,9 @@ void xvpw(const Scalars<T>& x_in, const Vectors<T>& v_in,
     assert(3*x_in.GetDataLength() == v_in.GetDataLength());
     assert(v_in.GetDataLength() == w_in.GetDataLength() &&
         w_in.GetDataLength() == xvpw_out.GetDataLength());
-    assert(x_in.device_ == v_in.device_ && v_in.device_ == w_in.device_ && w_in.device_ == xvpw_out.device_);
+    assert(x_in.GetDevicePtr() == v_in.GetDevicePtr() && v_in.GetDevicePtr() == w_in.GetDevicePtr() && w_in.GetDevicePtr() == xvpw_out.GetDevicePtr());
 
-    x_in.device_.xvpw(x_in.data_, v_in.data_, w_in.data_, v_in.GetFunLength(), v_in.n_vecs_, xvpw_out.data_);
+    x_in.GetDevicePtr()->xvpw(x_in.begin(), v_in.begin(), w_in.begin(), v_in.GetFunLength(), v_in.n_vecs_, xvpw_out.begin());
 }
 
 template<typename T> 
@@ -73,9 +73,9 @@ void xvpb(const Scalars<T>& x_in, const Vectors<T>& v_in,
 {
     assert(3*x_in.GetDataLength() == v_in.GetDataLength());
     assert(v_in.GetDataLength() == xvpb_out.GetDataLength());
-    assert(x_in.device_ == v_in.device_ && v_in.device_ == xvpb_out.device_);
+    assert(x_in.GetDevicePtr() == v_in.GetDevicePtr() && v_in.GetDevicePtr() == xvpb_out.GetDevicePtr());
 
-    x_in.device_.xvpb(x_in.data_, v_in.data_, w_in, v_in.GetFunLength(), v_in.n_vecs_, xvpb_out.data_);
+    x_in.GetDevicePtr()->xvpb(x_in.begin(), v_in.begin(), w_in, v_in.GetFunLength(), v_in.n_vecs_, xvpb_out.begin());
 }
 
 template<typename T> 
@@ -84,9 +84,9 @@ void uyInv(const Vectors<T>& u_in, const Scalars<T>& y_in,
 {
     assert(3*y_in.GetDataLength() == u_in.GetDataLength());
     assert(u_in.GetDataLength() == uyInv_out.GetDataLength());
-    assert(y_in.device_ == u_in.device_ && u_in.device_ == uyInv_out.device_);
+    assert(y_in.GetDevicePtr() == u_in.GetDevicePtr() && u_in.GetDevicePtr() == uyInv_out.GetDevicePtr());
 
-    u_in.device_.uyInv(u_in.data_, y_in.data_, u_in.GetFunLength(), u_in.n_vecs_, uyInv_out.data_);
+    u_in.GetDevicePtr()->uyInv(u_in.begin(), y_in.begin(), u_in.GetFunLength(), u_in.n_vecs_, uyInv_out.begin());
 }
 
 template<typename T> 
@@ -96,7 +96,7 @@ void avpw(const T* a_in, const Vectors<T> &v_in,
     ///@todo there is no guarantee  that a_in is on the same device.
     assert(v_in.GetDataLength() == w_in.GetDataLength() &&
         w_in.GetDataLength() == avpw_out.GetDataLength());
-    assert(v_in.device_ == w_in.device_ && w_in.device_ == avpw_out.device_);
+    assert(v_in.GetDevicePtr() == w_in.GetDevicePtr() && w_in.GetDevicePtr() == avpw_out.GetDevicePtr());
 
-    v_in.device_.avpw(a_in, v_in.data_, w_in.data_, v_in.GetFunLength(), v_in.n_vecs_, avpw_out.data_);
+    v_in.GetDevicePtr()->avpw(a_in, v_in.begin(), w_in.begin(), v_in.GetFunLength(), v_in.n_vecs_, avpw_out.begin());
 }

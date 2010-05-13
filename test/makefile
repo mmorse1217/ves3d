@@ -1,4 +1,4 @@
-all:ScalarsTest ExplicitStepper VectorsTest SurfaceTest #DeviceTest 
+all:SurfaceTest
 
 include ${VES3D_DIR}/makefile.in.files/makefile.in
 

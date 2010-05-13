@@ -54,7 +54,7 @@ class Vectors : public Scalars<T>
 {
  public:
     /// Default constructor, no memory allocation.
-    Vectors(Device<T> &device_in);
+    Vectors(Device<T> *device_in);
     
     /** 
      * Constructor with size argument. In this case
@@ -63,7 +63,7 @@ class Vectors : public Scalars<T>
      * @param p_in The grid size variable
      * @param num_vecs_in Number of vectors
      */
-    Vectors(Device<T> &device_in, int p_in, int num_vecs_in);
+    Vectors(Device<T> *device_in, int p_in, int num_vecs_in);
     
     /** 
      * Constructor with size argument and input initializing data.
@@ -72,7 +72,7 @@ class Vectors : public Scalars<T>
      * @param num_vecs_in The number of vectors
      * @param vec_data_in The initializing data (assumed to be of correct size).
      */
-    Vectors(Device<T> &device_in, int p_in, int num_vecs_in, const T *vec_data_in);
+    Vectors(Device<T> *device_in, int p_in, int num_vecs_in, const T *vec_data_in);
 
     /** 
      * Returns the length of the vector, that is 3*GetFunLength()
