@@ -9,11 +9,14 @@
 #ifndef _SURFACE_H_
 #define _SURFACE_H_
 
-#include "DeviceCPU.h"
+#include "Device.h"
 #include "Scalars.h"
 #include "Vectors.h"
 #include "DataIO.h"
-#include "VesUtil.h"
+#include "SHTrans.h"
+
+#include "OperatorsMats.h"
+#include "HelperFuns.h"
 #include "Logger.h"
 #include <map>
 
@@ -38,14 +41,13 @@ struct SurfaceParams
 
 };
 
-template <typename T> class Surface
+template <typename T, enum DeviceType DT> class Surface
 {
   public:
     
-    DeviceCPU<T> *device_;
-    BlasSht sht_;
-
+    Device<DT> *device_;
     SurfaceParams<T> params_;
+    SHTrans<T,DT> sht_;
     
     int max_n_surfs_;
     
@@ -56,24 +58,24 @@ template <typename T> class Surface
      * points on the first surface; on each surface we sweep through
      * the points in a latitude major fashion.
      */
-    Vectors<T> x_;
+    Vectors<T,DT> x_;
 
     /** 
      * The normal vector to the surface, that is given by \f[
      * \mathbf{n} = \frac{\mathbf{x_u \times x_v}}{W}, \f] where
      * \f$(u,v)\f$ are the parameters and W is the area element.
      */
-    Vectors<T> normal_;
+    Vectors<T,DT> normal_;
 
     
-    Vectors<T> cu_, cv_;
+    Vectors<T,DT> cu_, cv_;
     
     /** 
      * The area element size at the grid point, defined as \f[ W =
      * \sqrt{EG-F^2}, \f] where \f$E, F, G\f$ are the first
      * fundamental form coefficients.
      */
-    Scalars<T> w_;
+    Scalars<T,DT> w_;
 
     /** 
      * The mean curvature at grid points, that is calculated according
@@ -81,7 +83,7 @@ template <typename T> class Surface
      * G\f$ are the first fundamental form coefficients and \f$L, M,
      * N\f$ are the second fundamental form coefficients.
      */
-    Scalars<T> h_;
+    Scalars<T,DT> h_;
 
     /** 
      * The Gaussian curvature at grid points, that is calculated
@@ -89,12 +91,12 @@ template <typename T> class Surface
      * \f$E, F, G\f$ are the first fundamental form coefficients and
      * \f$L, M, N\f$ are the second fundamental form coefficients.
      */
-    Scalars<T> k_;
+    Scalars<T,DT> k_;
 
-    Vectors<T> bending_force_;
+    Vectors<T,DT> bending_force_;
 
     T *tension_;
-    Vectors<T> tensile_force_;
+    Vectors<T,DT> tensile_force_;
     
     //Rotation matrix
     T *all_rot_mats_;
@@ -102,7 +104,7 @@ template <typename T> class Surface
     //Quadrature weights
     T *quad_weights_;
     
-    Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats);
+    Surface(Device<DT> *device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats);
     ~Surface();
     
     /** 
@@ -111,7 +113,7 @@ template <typename T> class Surface
      * UpdateProps() that update the geometric properties of the
      * surface accordingly.
      */
-    void SetX(const Vectors<T> &x_in);
+    void SetX(const Vectors<T,DT> &x_in);
 
     /// Recalculates the geometric properties of the surface.
     void UpdateFirstForms();
@@ -120,14 +122,14 @@ template <typename T> class Surface
     void Reparam();
 
     /// The surface gradient operator.
-    void SurfGrad(const Scalars<T> &f_in, Vectors<T> &grad_f_out);
+    void SurfGrad(const Scalars<T,DT> &f_in, Vectors<T,DT> &grad_f_out);
     
     ///The surface divergence operator.
-    void SurfDiv(const Vectors<T> &f_in, Scalars<T> &div_f_out);
+    void SurfDiv(const Vectors<T,DT> &f_in, Scalars<T,DT> &div_f_out);
 
-    void StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out);
+    void StokesMatVec(const Vectors<T,DT> &density_in, Vectors<T,DT> &velocity_out);
 
-    void GetTension(const Vectors<T> &v_in, const Vectors<T> &v_ten_in, T *tension_out);
+    void GetTension(const Vectors<T,DT> &v_in, const Vectors<T,DT> &v_ten_in, T *tension_out);
 
     T Area();
     void Volume();
@@ -142,21 +144,21 @@ template <typename T> class Surface
 
   public://private:
     //Work space
-    Scalars<T> S1, S2, S3, S4, S5, S6;
-    Vectors<T> V1, V2;
+    Scalars<T,DT> S1, S2, S3, S4, S5, S6;
+    Vectors<T,DT> V1, V2;
     T *shc, *work_arr, *alpha_p;
     
     T max_init_area_;
     //Work vectors for the up-sampling
-    Scalars<T> S10;
-    Vectors<T> V10, V11, V12, V13;
+    Scalars<T,DT> S10;
+    Vectors<T,DT> V10, V11, V12, V13;
 
     T *alpha_q;
 
     void UpdateNormal();
 
     //Rotation
-    Scalars<T> w_sph_;
+    Scalars<T,DT> w_sph_;
     T *rot_mat;
     T *sing_quad_weights_;
 

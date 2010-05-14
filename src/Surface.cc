@@ -115,8 +115,8 @@ ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
 }    
 
 // Surface methods ////////////////////////////////////////////////////////////////////
-template <typename T> 
-Surface<T>::Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats) :
+template <typename T, enum DeviceType DT> 
+Surface<T,DT>::Surface(Device<DT> *device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats) :
     device_(device_in), 
     params_(params_in),
     max_n_surfs_(params_.n_surfs_),
@@ -145,16 +145,17 @@ Surface<T>::Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const O
     S10(device_,params_.rep_up_freq_,params_.n_surfs_),
     w_sph_(device_,params_.p_,params_.n_surfs_),
     max_init_area_(-1),
-    StokesMatVec_time_(0)
+    StokesMatVec_time_(0),
+    sht_(device_,params_.p_)
 {
     assert(mats.fileIO_.device_ == this->device_);
 
-    shc      = device_->Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * params_.n_surfs_);
-    work_arr = device_->Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_);
-    alpha_p  = device_->Malloc(params_.p_ *(params_.p_ + 2));
-    alpha_q  = device_->Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2));
+    shc      = (T*) device_->Malloc(6  * params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * params_.n_surfs_ * sizeof(T));
+    work_arr = (T*) device_->Malloc(12 * params_.rep_up_freq_ *(params_.rep_up_freq_ + 1) * params_.n_surfs_ * sizeof(T));
+    alpha_p  = (T*) device_->Malloc(params_.p_ *(params_.p_ + 2) * sizeof(T));
+    alpha_q  = (T*) device_->Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * sizeof(T));
 
-    tension_ = device_->Calloc(params_.n_surfs_);
+    tension_ = (T*) device_->Calloc(params_.n_surfs_, sizeof(T));
 
     int np = 2 * params_.p_ * (params_.p_ + 1);
 
@@ -162,11 +163,11 @@ Surface<T>::Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const O
     all_rot_mats_ = mats.all_rot_mats_;
     sing_quad_weights_ = mats.sing_quad_weights_;
     
-    device_->Memcpy(w_sph_.begin(), mats.w_sph_, np, MemcpyDeviceToDevice);
+    device_->Memcpy(w_sph_.begin(), mats.w_sph_, np * sizeof(T), MemcpyDeviceToDevice);
     for(int ii=1;ii<params_.n_surfs_;++ii)
-        device_->Memcpy(w_sph_.begin() + ii*np, w_sph_.begin(), np, MemcpyDeviceToDevice);
+        device_->Memcpy(w_sph_.begin() + ii*np, w_sph_.begin(), np * sizeof(T), MemcpyDeviceToDevice);
 
-    rot_mat = device_->Malloc(np * np);
+    rot_mat = (T*) device_->Malloc(np * np * sizeof(T));
     T *buffer = (T*) malloc(np * np * (params_.p_ + 1) * sizeof(T));
 
     int idx = 0, len;
@@ -176,7 +177,7 @@ Surface<T>::Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const O
         for(int jj=0; jj < len; ++jj)
             buffer[idx++] = (len-jj)<=(params_.p_-params_.filter_freq_) ? 0 : 1;
     }
-    device_->Memcpy(alpha_p, buffer, params_.p_ *(params_.p_ + 2), MemcpyHostToDevice);
+    device_->Memcpy(alpha_p, buffer, params_.p_ *(params_.p_ + 2) * sizeof(T), MemcpyHostToDevice);
 
     idx = 0;
     for(int ii=0; ii< 2 * params_.rep_up_freq_; ++ii)
@@ -186,28 +187,20 @@ Surface<T>::Surface(DeviceCPU<T> *device_in, SurfaceParams<T> params_in, const O
             buffer[idx++] = (len-jj)<=(params_.rep_up_freq_-params_.rep_filter_freq_) ? 0 : 1;
     }
 
-    device_->Memcpy(alpha_q, buffer, params_.rep_up_freq_ *(params_.rep_up_freq_ + 2), MemcpyHostToDevice);
+    device_->Memcpy(alpha_q, buffer, params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * sizeof(T), MemcpyHostToDevice);
 
     free(buffer);
 
-    T *dft_forward;
-    T *dft_backward;
-    T *dft_d1backward;
-    T *dft_d2backward;
-    int p_ = params_.p_;
-
-    dft_forward    = device_->Malloc(4 * p_ * p_); 
-    dft_backward   = device_->Malloc(4 * p_ * p_); 
-    dft_d1backward = device_->Malloc(4 * p_ * p_); 
-    dft_d2backward = device_->Malloc(4 * p_ * p_); 
-    
-    sht_.InitializeBlasSht(p_, dft_forward, dft_backward, dft_d1backward, 
-        dft_d2backward, mats.leg_trans_p_, mats.leg_trans_inv_p_, 
-        mats.d1_leg_trans_p_, mats.d2_leg_trans_p_);
+    int p = params_.p_;
+    size_t dlt_length = (p+1)*(p+1)*(p+2) * sizeof(T);
+    device_->Memcpy(sht_.leg_trans    , mats.leg_trans_p_    , dlt_length, MemcpyDeviceToDevice);
+    device_->Memcpy(sht_.leg_trans_inv, mats.leg_trans_inv_p_, dlt_length, MemcpyDeviceToDevice);
+    device_->Memcpy(sht_.d1_leg_trans , mats.d1_leg_trans_p_ , dlt_length, MemcpyDeviceToDevice);
+    device_->Memcpy(sht_.d2_leg_trans , mats.d2_leg_trans_p_ , dlt_length, MemcpyDeviceToDevice);
 }
 
-template<typename T>
-Surface<T>::~Surface()
+template<typename T, enum DeviceType DT>
+Surface<T,DT>::~Surface()
 {
     device_->Free(shc);
     device_->Free(work_arr);
@@ -215,11 +208,6 @@ Surface<T>::~Surface()
     device_->Free(alpha_q);
     device_->Free(tension_);
     device_->Free(rot_mat);
-    device_->Free(sht_.dft_forward); 
-    device_->Free(sht_.dft_backward); 
-    device_->Free(sht_.dft_d1backward); 
-    device_->Free(sht_.dft_d2backward); 
-
 
 #ifdef PROFILING_LITE
     cout<<"==================================="<<endl;
@@ -228,8 +216,8 @@ Surface<T>::~Surface()
 #endif
 }
 
-template<typename T>
-void Surface<T>::Resize(int n_surfs_in)
+template<typename T, enum DeviceType DT>
+void Surface<T,DT>::Resize(int n_surfs_in)
 {
     x_.Resize(n_surfs_in);
     normal_.Resize(n_surfs_in); 
@@ -266,34 +254,34 @@ void Surface<T>::Resize(int n_surfs_in)
 #endif
         this->max_n_surfs_ = n_surfs_in;
         device_->Free(shc);
-        shc = device_->Malloc(6  * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
+        shc = (T*) device_->Malloc(6  * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_ * sizeof(T));
         
         device_->Free(work_arr);
-        work_arr = device_->Malloc(12 * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_);
+        work_arr = (T*) device_->Malloc(12 * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_ * sizeof(T));
         
         T *tension_old(this->tension_);
-        tension_ = device_->Calloc(max_n_surfs_);
+        tension_ = (T*) device_->Calloc(max_n_surfs_, sizeof(T));
         if(tension_old != 0)
-            device_->Memcpy(tension_, tension_old, params_.n_surfs_, MemcpyDeviceToDevice);
+            device_->Memcpy(tension_, tension_old, params_.n_surfs_ * sizeof(T), MemcpyDeviceToDevice);
         device_->Free(tension_old);
         
         w_sph_.Resize(max_n_surfs_);
         int np = 2 * params_.p_ * (params_.p_ + 1);
         for(int ii=params_.n_surfs_;ii<max_n_surfs_;++ii)
-            device_->Memcpy(w_sph_.begin() + ii*np, w_sph_.begin(), np, MemcpyDeviceToDevice);
+            device_->Memcpy(w_sph_.begin() + ii*np, w_sph_.begin(), np * sizeof(T), MemcpyDeviceToDevice);
     }
     this->params_.n_surfs_ = n_surfs_in;
 }
 
-template <typename T> 
-void Surface<T>::SetX(const Vectors<T> &x_in)
+template <typename T, enum DeviceType DT> 
+void Surface<T,DT>::SetX(const Vectors<T,DT> &x_in)
 {
     x_.SetData(x_in.begin());
     UpdateAll();
 }
 
-template <typename T> 
-void Surface<T>::UpdateFirstForms()
+template <typename T, enum DeviceType DT> 
+void Surface<T,DT>::UpdateFirstForms()
 {
     // Spherical harmonic coefficient
     sht_.forward(x_.begin(), work_arr, 3*params_.n_surfs_, shc);
@@ -318,22 +306,22 @@ void Surface<T>::UpdateFirstForms()
     xyInv(S1, w_, S1);
     xyInv(S2, w_, S2);
     xyInv(S3, w_, S3);
-    w_.Sqrt();
+    Sqrt(w_, w_);
     uyInv(normal_,w_,normal_);
 }
 
-template <typename T> 
-void Surface<T>::UpdateAll()
+template <typename T, enum DeviceType DT> 
+void Surface<T,DT>::UpdateAll()
 {
     UpdateFirstForms();///@todo This may lead to a bug. Since there is no guarantee that S1,S2,S3 hold their values.
 
     //Div and Grad coefficients
-    xvpb(S2, V2, (T) 0.0, cu_);//F*xv
-    axpb((T) -1.0,cu_, (T) 0.0, cu_);
+    xv(S2, V2, cu_);//F*xv
+    axpy((T) -1.0,cu_, cu_);
     xvpw(S3, V1, cu_, cu_);
      
-    xvpb(S2, V1, (T) 0.0, cv_);//F*xu
-    axpb((T) -1.0,cv_, (T) 0.0, cv_);
+    xv(S2, V1, cv_);//F*xu
+    axpy((T) -1.0,cv_, cv_);
     xvpw(S1, V2, cv_, cv_);
 
     // Second derivatives
@@ -360,13 +348,13 @@ void Surface<T>::UpdateAll()
     
     // Mean curvature
     xy(S1,S6,h_);
-    axpb((T) .5,h_, (T) 0.0,h_);
+    axpy((T) .5,h_,h_);
     
     xy(S2,S5,S6);
     axpy((T)-1.0, S6, h_, h_);
     
     xy(S3,S4,S6);
-    axpb((T) .5,S6, (T) 0.0, S6);
+    axpy((T) .5,S6, S6);
     
     axpy((T)1.0 ,h_,S6, h_);
 
@@ -375,23 +363,23 @@ void Surface<T>::UpdateAll()
     //Bending force
     SurfGrad(h_, bending_force_);
     SurfDiv(bending_force_, S1);
-    axpb((T) -1.0,S1, (T) 0.0, S1);
+    axpy((T) -1.0,S1, S1);
     xy(h_,h_,S2);
     axpy((T) -1.0, S2, k_, S2);
     xy(S2, h_, S2);
     axpy((T) 2.0, S2, S1, S1);
-    xvpb(S1, normal_, (T) 0.0, bending_force_);
-    axpb(params_.kappa_,bending_force_, (T) 0.0, bending_force_);
+    xv(S1, normal_, bending_force_);
+    axpy(params_.kappa_,bending_force_, bending_force_);
     
     //Tensile force
-    xvpb(h_,normal_,(T) 0.0, tensile_force_);
+    xv(h_,normal_, tensile_force_);
 
     if(max_init_area_<0)
         max_init_area_ = this->Area();
 }
 
-template <typename T>
-void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity_out)
+template <typename T, enum DeviceType DT>
+void Surface<T,DT>::StokesMatVec(const Vectors<T,DT> &density_in, Vectors<T,DT> &velocity_out)
 {
 
 #ifdef PROFILING_LITE
@@ -443,25 +431,25 @@ void Surface<T>::StokesMatVec(const Vectors<T> &density_in, Vectors<T> &velocity
 #endif
 }
 
-template <typename T> 
-void Surface<T>::SurfGrad(const Scalars<T> &f_in, Vectors<T> &grad_f_out)
+template <typename T, enum DeviceType DT> 
+void Surface<T,DT>::SurfGrad(const Scalars<T,DT> &f_in, Vectors<T,DT> &grad_f_out)
 {
     //device_->FirstDerivatives(f_in.begin(), work_arr, params_.p_, params_.n_surfs_, shc, S5.begin(), S6.begin());
-    // void  DeviceCPU<T>::FirstDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out) const
+    // void  DeviceDT<T>::FirstDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out) const
 
     sht_.forward( f_in.begin(), work_arr, params_.n_surfs_, shc);
     sht_.backward_du( shc, work_arr, params_.n_surfs_, S5.begin());
     sht_.backward_dv( shc, work_arr, params_.n_surfs_, S6.begin());
 
-    xvpb(S5,cu_, (T) 0.0, grad_f_out);
+    xv(S5,cu_, grad_f_out);
     xvpw(S6,cv_, grad_f_out, grad_f_out);
 
     //device_->Filter(params_.p_, 3*params_.n_surfs_, grad_f_out.begin(), alpha_p, work_arr, shc, grad_f_out.begin());
 }
 
 ///@todo this can be done in place so that we'll only need one extra work space.
-template <typename T> 
-void Surface<T>::SurfDiv(const Vectors<T> &f_in, Scalars<T> &div_f_out) 
+template <typename T, enum DeviceType DT> 
+void Surface<T,DT>::SurfDiv(const Vectors<T,DT> &f_in, Scalars<T,DT> &div_f_out) 
 {
     //device_->FirstDerivatives(f_in.begin(), work_arr, params_.p_, 3*params_.n_surfs_, shc, V1.begin(), V2.begin());
 
@@ -476,8 +464,8 @@ void Surface<T>::SurfDiv(const Vectors<T> &f_in, Scalars<T> &div_f_out)
     //device_->Filter(params_.p_, params_.n_surfs_, div_f_out.begin(), alpha_p, work_arr, shc, div_f_out.begin());
 }
 
-template <typename T> 
-void Surface<T>::Reparam()
+template <typename T, enum DeviceType DT> 
+void Surface<T,DT>::Reparam()
 {
     int iter = 0;
     T vel = 2*params_.rep_max_vel_;
@@ -509,8 +497,8 @@ void Surface<T>::Reparam()
     device_->Memcpy(x_.begin(), V11.begin(), x_.GetDataLength(), MemcpyDeviceToDevice);
 }
 
-template<typename T>
-void Surface<T>::UpdateNormal()
+template<typename T, enum DeviceType DT>
+void Surface<T,DT>::UpdateNormal()
 {
     device_->ShAna(V10.begin(), work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, shc);
     device_->ShSynDu(shc, work_arr, params_.rep_up_freq_, 3*params_.n_surfs_, V11.begin());
@@ -522,25 +510,26 @@ void Surface<T>::UpdateNormal()
     uyInv(V13,S10,V13);
 }
 
-template<typename T>
-T Surface<T>::Area()
+template<typename T, enum DeviceType DT>
+T Surface<T,DT>::Area()
 {
-    device_->Reduce(NULL, w_.begin(), quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
-    return device_->Max(work_arr, params_.n_surfs_);
+    //Reduce(w_.begin(), quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
+    //return Max(work_arr, params_.n_surfs_);
+    return 0;
 }
 
-template<typename T>
-void Surface<T>::Volume()
+template<typename T, enum DeviceType DT>
+void Surface<T,DT>::Volume()
 {
     DotProduct(x_,normal_,S1);
-    axpb((T) 1/3,S1,(T) 0.0, S1);
-    device_->Reduce(S1.begin(), w_.begin(), quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
+    axpy((T) 1/3,S1, S1);
+    Reduce(S1.begin(), w_.begin(), quad_weights_, S1.GetFunLength(), params_.n_surfs_, work_arr);
     //     for(int ii=0;ii<params_.n_surfs_;++ii)
     //         cout<<work_arr[ii]<<endl;
 }
 
-template<typename T>
-void Surface<T>::GetTension(const Vectors<T> &v_in, const Vectors<T> &v_ten_in, T *tension_out)
+template<typename T, enum DeviceType DT>
+void Surface<T,DT>::GetTension(const Vectors<T,DT> &v_in, const Vectors<T,DT> &v_ten_in, T *tension_out)
 {
     SurfDiv(v_in, S1);
     SurfDiv(v_ten_in, S2);
@@ -551,8 +540,8 @@ void Surface<T>::GetTension(const Vectors<T> &v_in, const Vectors<T> &v_ten_in, 
     device_->xyInv(tension_out, work_arr, 1, params_.n_surfs_, tension_out);
 }
 
-template<typename T>
-void Surface<T>::Populate(const T *centers)
+template<typename T, enum DeviceType DT>
+void Surface<T,DT>::Populate(const T *centers)
 {
     int length = this->x_.GetFunLength();
     for(int ii=1;ii<params_.n_surfs_;ii++)
@@ -570,8 +559,8 @@ void Surface<T>::Populate(const T *centers)
     device_->axpb((T) 1.0, x_.begin() + length + length, centers[2], length, 1, x_.begin() + length + length);
 }
 
-template<typename T>
-T* Surface<T>::GetCenters(T* cnts)
+template<typename T, enum DeviceType DT>
+T* Surface<T,DT>::GetCenters(T* cnts)
 {
     UpdateFirstForms();
     

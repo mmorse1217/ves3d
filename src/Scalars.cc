@@ -6,132 +6,127 @@
  * @brief  Implementation for the Scalars class. 
  */
 
-#include <iostream>
-using namespace std;
-//Constructors
-template<typename T> 
-Scalars<T>::Scalars(Device<T> *device_in, int p_in, int num_funs_in) : 
-    device_(device_in), data_(0), p_(p_in), num_funs_(num_funs_in),
-    capacity_(0)
-{
-    Resize(num_funs_);
-}
+template<typename T, enum DeviceType DT> 
+Scalars<T, DT>::Scalars() :
+    device_(NULL),
+    grid_dim_(EMPTY_GRID)
+    data_(NULL)
+{}
 
-template<typename T> 
-Scalars<T>::~Scalars()
+template<typename T, enum DeviceType DT> 
+Scalars<T, DT>::Scalars(Device<DT> *device, int sh_order, 
+    size_t num_funs, pair<int, int> grid_dim) :
+    device_(device),
+    sh_order_(sh_order),
+    grid_dim_((grid_dim == EMPTY_GRID) ? GridDimOf(sh_order_) : grid_dim),
+    fun_length_(grid_dim_.first * grid_dim_.second),
+    num_funs_(num_funs),
+    capacity_(fun_length_ * num_funs_),
+    data_((T*) device_->Malloc(the_dim_ * capacity_ * sizeof(T)))
+{}
+
+template<typename T, enum DeviceType DT> 
+Scalars<T, DT>::~Scalars()
 {
     device_->Free(data_);
-    data_ = 0;
 }
 
-//Utility functions
-template<typename T> 
-void Scalars<T>::Resize(int num_funs_in)
+template<typename T, enum DeviceType DT> 
+void Scalars<T,DT>::Resize(size_t new_num_funs, int new_sh_order,
+    pair<int, int> new_grid_dim)
 {
-    if(num_funs_in > capacity_)
+    sh_order_ = (new_sh_order == 0) ? sh_order_ : new_sh_order;
+    grid_dim_ = (new_grid_dim == EMPTY_GRID) ? GridDimOf(sh_order_) : new_grid_dim;
+    
+    size_t new_stride(grid_dim_.first * grid_dim_.second);
+    size_t new_capacity(new_stride * new_num_funs);
+    
+    if(new_capacity > capacity_)
     {
-        T *data_old(this->data_);
-        this->capacity_ = num_funs_in;
-        data_ = device_->Malloc(capacity_ * GetFunLength());
-        if(data_old != 0) 
-            device_->Memcpy(data_, data_old, GetDataLength(), MemcpyDeviceToDevice);
+        T *data_old(data_);
+        data_ = (T*) device_->Malloc(the_dim_ * new_capacity * sizeof(T));
+
+        if(data_old != NULL) 
+            device_->Memcpy(data_, data_old, 
+                the_dim_ * fun_length_ * num_funs_ * sizeof(T), 
+                MemcpyDeviceToDevice);
         device_->Free(data_old);
-    }
-    this->num_funs_ = num_funs_in;
+        capacity_ = new_capacity;
+    }    
+
+    fun_length_ = new_stride;
+    num_funs_ = new_num_funs;
 }
 
-template<typename T> 
-size_t Scalars<T>::GetFunLength() const
-{
-    return(2*p_*(p_ + 1));
-}
-
-template<typename T> 
-void Scalars<T>::Sqrt()
-{
-    device_->Sqrt(data_, GetFunLength(), num_funs_, data_);
-}
-
-template<typename T> 
-T Scalars<T>::Max()
-{
-    assert(data_ != 0);
-    return(device_->Max(data_, GetDataLength()));
-}
-
-//Friends
-template<typename T> 
-void axpy(T a_in, const Scalars<T>& x_in, const Scalars<T>& y_in, Scalars<T>& axpy_out)
-{
-    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == axpy_out.GetDevicePtr());
-    axpy_out.GetDevicePtr()->axpy(a_in,x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.GetNumFuns(), axpy_out.begin());
-}
-
-template<typename T> 
-void axpb(T a_in, const Scalars<T> &x_in, T y_in, Scalars<T> &axpb_out)
-{
-    assert(x_in.GetDevicePtr() == axpb_out.GetDevicePtr());
-    axpb_out.GetDevicePtr()->axpb(a_in,x_in.begin(), y_in, x_in.GetFunLength(), x_in.GetNumFuns(), axpb_out.begin());
-}
-
-template<typename T> 
-void xy(const Scalars<T> &x_in, const Scalars<T> &y_in, Scalars<T> &xy_out)
-{
-    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == xy_out.GetDevicePtr());
-    xy_out.GetDevicePtr()->xy(x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.GetNumFuns(),xy_out.begin());
-}
-
-template<typename T> 
-void xyInv(const Scalars<T> &x_in, const Scalars<T> &y_in, Scalars<T> &xyInv_out)
-{
-    assert(x_in.GetDevicePtr() == y_in.GetDevicePtr() && y_in.GetDevicePtr() == xyInv_out.GetDevicePtr());
-    xyInv_out.GetDevicePtr()->xyInv(x_in.begin(), y_in.begin(), x_in.GetFunLength(), x_in.GetNumFuns(),xyInv_out.begin());
-}
-
-template<typename T> 
-Scalars<T>::iterator Scalars<T>::begin()
-{
-    return(data_);
-}
-
-template<typename T> 
-Scalars<T>::const_iterator Scalars<T>::begin() const
-{
-    return(data_);
-}
-
-template<typename T> 
-Scalars<T>::iterator Scalars<T>::end()
-{
-    return(data_ + stride_ * num_funs_);
-}
-
-template<typename T> 
-Scalars<T>::const_iterator Scalars<T>::end() const
-{
-    return(data_ + stride_ * num_funs_);
-}
-
-template<typename T> 
-const Device<T>* Scalars<T>::GetDevicePtr() const
+template<typename T, enum DeviceType DT> 
+const Device<DT>* Scalars<T,DT>::GetDevicePtr() const
 {
     return(device_);
 }
 
-template<typename T> 
-int Scalars<T>::GetShOrder() const
+template<typename T, enum DeviceType DT> 
+int Scalars<T,DT>::GetShOrder() const
 {
-    return(p_);
+    return(sh_order_);
 }
 
-template<typename T> 
-size_t Scalars<T>::GetNumFuns() const
+template<typename T, enum DeviceType DT> 
+pair<int, int> Scalars<T,DT>::GetGridDim() const
+{
+    return(grid_dim_);
+}
+
+template<typename T, enum DeviceType DT> 
+size_t Scalars<T,DT>::GetFunLength() const
+{
+    return(fun_length_);
+}
+
+template<typename T, enum DeviceType DT> 
+size_t Scalars<T,DT>::GetNumFuns() const
 {
     return(num_funs_);
 }
 
-template<typename T> 
-size_t Scalars<T>::GetDataLength() const
+template<typename T, enum DeviceType DT> 
+size_t Scalars<T,DT>::Size() const
 {
-    return(num_funs_ * GetFunLength());
+    return(the_dim_ * fun_length_ * num_funs_);
+}
+
+template<typename T, enum DeviceType DT> 
+T& Scalars<T,DT>::operator[](size_t idx)
+{
+    return(data_[idx]);
+}
+
+template<typename T, enum DeviceType DT> 
+const T& Scalars<T,DT>::operator[](size_t idx) const
+{
+    return(data_[idx]);
+}
+
+
+template<typename T, enum DeviceType DT> 
+Scalars<T,DT>::iterator Scalars<T,DT>::begin()
+{
+    return(data_);
+}
+
+template<typename T, enum DeviceType DT> 
+Scalars<T,DT>::const_iterator Scalars<T,DT>::begin() const
+{
+    return(data_);
+}
+
+template<typename T, enum DeviceType DT> 
+Scalars<T,DT>::iterator Scalars<T,DT>::end()
+{
+    return(data_ + the_dim_ * fun_length_ * num_funs_);
+}
+
+template<typename T, enum DeviceType DT> 
+Scalars<T,DT>::const_iterator Scalars<T,DT>::end() const
+{
+    return(data_ + the_dim_ * fun_length_ * num_funs_);
 }

@@ -1,16 +1,12 @@
 #include "VectorsTest.h"
-#include "DeviceCPU.h"
 
 int main(int argc, char* argv[])
 {
-    DeviceCPU<float> cpu;
-    VectorsTest<float> vectest(cpu);
-    vectest.performAll();
+    VectorsTest<float,CPU> vectest;
+    vectest.PerformAll();
     
     return 0;
 }
-
-
 
     
 

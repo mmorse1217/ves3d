@@ -7,70 +7,32 @@
  */
 
 #include "Scalars.h"
-#include <iostream>
+#include "HelperFuns.h"
 
 using namespace std;
 
-template<typename T>
+template<typename T, enum DeviceType DT>
 class ScalarsTest
 {
   public:
-    Scalars<T> &sc;
-
-    ScalarsTest(Scalars<T> &scIn) :
-        sc(scIn)
-    { }
-
-    bool performAll()
-    {
-        cout<<" ---------------------------"<<endl;
-        cout<<" Testing the SHScalars class"<<endl;
-        cout<<" ---------------------------"<<endl<<endl;
-
-        
-        int p(4), nFun(7);
-        int dLen(2*p*(p+1)*nFun);
-        T *data_in = new T[dLen];
-        for(int idx=0;idx<dLen;++idx)
-            data_in[idx] = idx;
-        
-        sc.p_ = p;
-        sc.Resize(nFun);
-        sc.n_funs_ = nFun;
-        sc.SetData(data_in);
-        
-        sc.Resize(10*nFun);
-        sc.Resize(nFun);
-                    
-        cout<<" GetFunLength()      [40]: "<<sc.GetFunLength()<<endl;
-        cout<<" GetDataLength()    [280]: "<<sc.GetDataLength()<<endl;
-        cout<<" GetFunctionAt() [0, 200]: "<<*sc.GetFunctionAt(0)<<", "<<*sc.GetFunctionAt(5)<<endl;
-            
-        const T *fp=sc.GetFunctionAt(1);
-        sc.SetFunctionAt(fp,0);
-        cout<<" SetFunctionAt()       [0]: "<<*sc.GetFunctionAt(0)-*sc.GetFunctionAt(1)<<endl;
-        
-        axpb((T) 1.0,sc,(T) 2.0,sc);
-        cout<<" axpb()               [42]: "<<*sc.GetFunctionAt(0)<<endl;
-        axpy((T) 1.0,sc,sc,sc);
-        cout<<" axpy()               [84]: "<<*sc.GetFunctionAt(0)<<endl;
-        axpb((T) .5,sc,(T) -2.0,sc);
-        cout<<" axpb()               [40]: "<<*sc.GetFunctionAt(0)<<endl;
-        xy(sc,sc,sc);
-        cout<<" xy()               [1600]: "<<*sc.GetFunctionAt(0)<<endl;
-        sc.Sqrt();
-        cout<<" Sqrt()            [40,41]: "<<*sc.GetFunctionAt(0)<<", "<<*(sc.GetFunctionAt(0)+1)<<endl<<endl;
-        xyInv(sc,sc,sc);
-        cout<<" xyInv()               [1]: "<<*sc.GetFunctionAt(0)<<endl<<endl;
-            
-        cout<<" ------------ "<<endl;
-        cout<<" End of test. "<<endl;
-        cout<<" ------------ "<<endl;
-        
-        return false;
-    }
+    bool PerformAll();
 };
 
+template<typename T, enum DeviceType DT>
+bool ScalarsTest<T,DT>::PerformAll()
+{
+    Device<DT> dev;
+    int p = 12;
+    int num_funs(3);
+    Scalars<T,DT> sc(&dev, p, num_funs);
+    
+    typename Scalars<T,DT>::iterator it;
+    for(it = sc.begin(); it != sc.end(); ++it)
+        *it = 10;
+
+    cout<<sc<<endl;
+    return true;
+}
     
 
 

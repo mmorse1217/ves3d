@@ -6,7 +6,7 @@
 template <typename T>
 struct OperatorsMats
 {
-    DataIO<T> &fileIO_;
+    DataIO<T,CPU> &fileIO_;
     int p_;
     int p_up_;
     
@@ -28,7 +28,7 @@ struct OperatorsMats
     T *d2_leg_trans_p_up_;
 
     long int GetDataLength();
-    OperatorsMats(DataIO<T> &fileIO_in, int p_in, int p_up_in, bool readFromFile);
+    OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in, bool readFromFile);
     ~OperatorsMats();
 
   private:
@@ -49,7 +49,7 @@ long int OperatorsMats<T>::GetDataLength()
 }
 
 template <typename T>
-OperatorsMats<T>::OperatorsMats(DataIO<T> &fileIO_in, int p_in, int p_up_in, bool readFromFile) :
+OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in, bool readFromFile) :
     fileIO_(fileIO_in),
     p_(p_in), 
     p_up_(p_up_in)
@@ -60,7 +60,7 @@ OperatorsMats<T>::OperatorsMats(DataIO<T> &fileIO_in, int p_in, int p_up_in, boo
     int leg_size = (p_ + 1) * (p_ + 1) * (p_ + 2);
     int leg_size_up = (p_up_ + 1) * (p_up_ + 1) * (p_up_ + 2);
     
-    data_ = (T*) fileIO_.device_.Malloc(GetDataLength());
+    data_ = (T*) fileIO_.device_->Malloc(GetDataLength() * sizeof(T));
 
     quad_weights_       = data_;
     all_rot_mats_       = quad_weights_       + np;
@@ -142,7 +142,7 @@ OperatorsMats<T>::OperatorsMats(DataIO<T> &fileIO_in, int p_in, int p_up_in, boo
 template <typename T>
 OperatorsMats<T>::~OperatorsMats()
 {
-    fileIO_.device_.Free(data_);
+    fileIO_.device_->Free(data_);
 }
 
 #endif //_OPERATORSMATS_H_

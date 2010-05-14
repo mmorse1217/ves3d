@@ -1,5 +1,5 @@
 #include <iostream>
-#include "DeviceCPU.h"
+#include "Device.h"
 #include "DataIO.h"
 #include "Scalars.h"
 #include "Vectors.h"
@@ -31,20 +31,20 @@ int main(int argc, char ** argv)
     par.rep_filter_freq_ = p/3;
 
     //Device
-    DeviceCPU<T> cpu;
+    Device<CPU> cpu;
 
     //IO
-    DataIO<T> myIO(cpu,"",0);
+    DataIO<T,CPU> myIO(&cpu,"",0);
 
     //Reading data
     bool readFromFile = true;
     OperatorsMats<T> mats(myIO, par.p_, 2*par.p_, readFromFile);
     
     // memory allocation
-    Surface<T> S(&cpu,par,mats);
-    Scalars<T> X(&cpu,p,nVec);
-    Scalars<T> Y(&cpu,p,nVec);
-    Scalars<T> Z(&cpu,p,nVec);
+    Surface<T,CPU> S(&cpu,par,mats);
+    Scalars<T,CPU> X(&cpu,p,nVec);
+    Scalars<T,CPU> Y(&cpu,p,nVec);
+    Scalars<T,CPU> Z(&cpu,p,nVec);
     
     // initializing vesicle positions from text file
     char fname[400];
@@ -68,12 +68,12 @@ int main(int argc, char ** argv)
     
     // Checking the grad and div operator
     S.Resize(3); 
-    Scalars<T> div_n(&cpu,p,3);
+    Scalars<T,CPU> div_n(&cpu,p,3);
     S.SurfDiv(S.normal_, div_n);
     axpy((T) .5, div_n, S.h_,div_n);
         
     T err = 0, err2;
-    for(int ii=0;ii<div_n.GetDataLength(); ii++)
+    for(int ii=0;ii<div_n.Size(); ii++)
     {
         err2 = fabs(*(div_n.begin() + ii));
         err = (err>err2) ? err : err2;
@@ -87,7 +87,7 @@ int main(int argc, char ** argv)
 
     dLen *=nVec;
     S.UpdateAll();
-    Vectors<T> grad(&cpu,p,nVec), lap(&cpu,p,nVec);
+    Vectors<T,CPU> grad(&cpu,p,nVec), lap(&cpu,p,nVec);
 
     S.SurfGrad(X,grad);
     S.SurfDiv(grad,X);
@@ -106,12 +106,12 @@ int main(int argc, char ** argv)
             *(lap.begin() +  3*ii*fLen + idx + fLen + fLen) = *(Z.begin() + ii*fLen + idx);
         }
 
-    Scalars<T> hh(&cpu, p, nVec);
+    Scalars<T,CPU> hh(&cpu, p, nVec);
     DotProduct(lap,S.normal_,hh);
     axpy((T) -.5, hh, S.h_,hh);
         
     err = 0;
-    for(int ii=0;ii<hh.GetDataLength(); ii++)
+    for(int ii=0;ii<hh.Size(); ii++)
     {
         err2 = fabs(hh.begin()[ii]);
         err = (err>err2) ? err : err2;
@@ -121,12 +121,10 @@ int main(int argc, char ** argv)
 //     S.Area();
 //     S.Volume();
 
-//     S.Reparam();
-//     char fname[300];
-//     sprintf(fname,"X.txt");
+//     S.Reparam(); char fname[300]; sprintf(fname,"X.txt");
 //     myIO.WriteData(fname, 3*fLen, S.x_.data_);
 
-//     Vectors<T> den(cpu,p,nVec),vel(cpu,p,nVec);
+//     Vectors<T,CPU> den(cpu,p,nVec),vel(cpu,p,nVec);
 //     xvpb(S.h_,S.normal_, (T) 0,den);
 //     S.StokesMatVec(den,vel);
     
