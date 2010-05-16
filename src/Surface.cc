@@ -6,115 +6,6 @@
  * @brief  The implementation of the surface class.
  */
 
-// The parameter struct methods
-template<typename T>
-SurfaceParams<T>::SurfaceParams()
-{
-    this->mapStringValues["p"]               = 1;
-    this->mapStringValues["n_surfs"]         = 2;
-    this->mapStringValues["kappa"]           = 3;
-    this->mapStringValues["filter_freq"]     = 4;
-    this->mapStringValues["rep_ts"]          = 5;
-    this->mapStringValues["rep_max_vel"]     = 6;
-    this->mapStringValues["rep_iter_max"]    = 7;
-    this->mapStringValues["rep_up_freq"]     = 8;
-    this->mapStringValues["rep_filter_freq"] = 9;
-}
-
-template<typename T>
-void SurfaceParams<T>::SetMember(string var_name, string var_val)
-{
-    char *cstr = new char [var_val.size()+1];
-    float val_num;
-    
-    switch (this->mapStringValues[var_name])
-    {
-        case 1:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->p_ = val_num;
-            break;
-
-        case 2:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->n_surfs_ = val_num;
-            break;
-
-        case 3:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->kappa_ = val_num;
-            break;
-
-        case 4:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->filter_freq_ = val_num;
-            break;
-
-        case 5:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->rep_ts_ = val_num;
-            break;
-
-        case 6:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->rep_max_vel_ = val_num;
-            break;
-
-        case 7:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->rep_iter_max_ = val_num;
-            break;
-    
-        case 8:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->rep_up_freq_ = val_num;
-            break;
-
-        case 9:
-            strcpy(cstr, var_val.c_str());
-            sscanf(cstr," %g",&val_num);
-            this->rep_filter_freq_ = val_num;
-            break;
-
-        default:
-            cout << "'" << var_name
-                 << "' is an invalid parameter."
-                 << endl;
-            
-            break;
-    }
-    delete cstr;
-}
-
-template<typename T>
-ostream& operator<<(ostream& output, const SurfaceParams<T>& par)
-{
-    
-    output<<"\n ------------------------------------"<<endl;
-    output<<"  Surface properties"<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  p                 : "<<par.p_<<endl;
-    output<<"  Number of surfaces: "<<par.n_surfs_<<endl;
-    output<<"  kappa             : "<<par.kappa_<<endl;
-    output<<"  filter_freq       : "<<par.filter_freq_<<endl;
-    output<<"  rep_ts            : "<<par.rep_ts_<<endl;
-    output<<"  rep_max_iter      : "<<par.rep_iter_max_<<endl;
-    output<<"  rep_max_vel       : "<<par.rep_max_vel_<<endl;
-    output<<"  rep_up_freq       : "<<par.rep_up_freq_<<endl;
-    output<<"  rep_filter_freq   : "<<par.rep_filter_freq_<<endl;
-    output<<" ------------------------------------"<<endl<<endl;
-    
-    return output;
-}    
-
-// Surface methods ////////////////////////////////////////////////////////////////////
 template <typename T, enum DeviceType DT> 
 Surface<T,DT>::Surface(Device<DT> *device_in, SurfaceParams<T> params_in, const OperatorsMats<T> &mats) :
     device_(device_in), 
@@ -128,6 +19,7 @@ Surface<T,DT>::Surface(Device<DT> *device_in, SurfaceParams<T> params_in, const 
     cu_(device_,params_.p_,params_.n_surfs_), 
     cv_(device_,params_.p_,params_.n_surfs_),
     bending_force_(device_,params_.p_,params_.n_surfs_),
+    tension_(device_, params_.p_, params_.n_surfs_, make_pair(1,1)),
     tensile_force_(device_,params_.p_,params_.n_surfs_),
     //GB: the code below is ugly, must be fixed after sc10
     S1(device_,params_.p_,params_.n_surfs_),
@@ -155,7 +47,7 @@ Surface<T,DT>::Surface(Device<DT> *device_in, SurfaceParams<T> params_in, const 
     alpha_p  = (T*) device_->Malloc(params_.p_ *(params_.p_ + 2) * sizeof(T));
     alpha_q  = (T*) device_->Malloc(params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * sizeof(T));
 
-    tension_ = (T*) device_->Calloc(params_.n_surfs_, sizeof(T));
+    //tension_ = (T*) device_->Calloc(params_.n_surfs_, sizeof(T));
 
     int np = 2 * params_.p_ * (params_.p_ + 1);
 
@@ -190,13 +82,6 @@ Surface<T,DT>::Surface(Device<DT> *device_in, SurfaceParams<T> params_in, const 
     device_->Memcpy(alpha_q, buffer, params_.rep_up_freq_ *(params_.rep_up_freq_ + 2) * sizeof(T), MemcpyHostToDevice);
 
     free(buffer);
-
-    int p = params_.p_;
-    size_t dlt_length = (p+1)*(p+1)*(p+2) * sizeof(T);
-    device_->Memcpy(sht_.leg_trans    , mats.leg_trans_p_    , dlt_length, MemcpyDeviceToDevice);
-    device_->Memcpy(sht_.leg_trans_inv, mats.leg_trans_inv_p_, dlt_length, MemcpyDeviceToDevice);
-    device_->Memcpy(sht_.d1_leg_trans , mats.d1_leg_trans_p_ , dlt_length, MemcpyDeviceToDevice);
-    device_->Memcpy(sht_.d2_leg_trans , mats.d2_leg_trans_p_ , dlt_length, MemcpyDeviceToDevice);
 }
 
 template<typename T, enum DeviceType DT>
@@ -206,14 +91,8 @@ Surface<T,DT>::~Surface()
     device_->Free(work_arr);
     device_->Free(alpha_p);
     device_->Free(alpha_q);
-    device_->Free(tension_);
+    //device_->Free(tension_);
     device_->Free(rot_mat);
-
-#ifdef PROFILING_LITE
-    cout<<"==================================="<<endl;
-    cout<<"StokesMatVec--Singular (sec) : "<<StokesMatVec_time_<<endl;
-    cout<<"==================================="<<endl;
-#endif
 }
 
 template<typename T, enum DeviceType DT>
@@ -241,7 +120,8 @@ void Surface<T,DT>::Resize(int n_surfs_in)
     V11.Resize(n_surfs_in);
     V12.Resize(n_surfs_in); 
     V13.Resize(n_surfs_in);
-
+    tension_.Resize(n_surfs_in, params_.p_, make_pair(1,1));
+    
 #ifndef NDEBUG
     cout<<"Resizing form "<<params_.n_surfs_<<" to "<<n_surfs_in<<endl;
 #endif
@@ -259,11 +139,11 @@ void Surface<T,DT>::Resize(int n_surfs_in)
         device_->Free(work_arr);
         work_arr = (T*) device_->Malloc(12 * params_.rep_up_freq_ * (params_.rep_up_freq_ + 1) * max_n_surfs_ * sizeof(T));
         
-        T *tension_old(this->tension_);
-        tension_ = (T*) device_->Calloc(max_n_surfs_, sizeof(T));
-        if(tension_old != 0)
-            device_->Memcpy(tension_, tension_old, params_.n_surfs_ * sizeof(T), MemcpyDeviceToDevice);
-        device_->Free(tension_old);
+//         T *tension_old(this->tension_);
+//         tension_ = (T*) device_->Calloc(max_n_surfs_, sizeof(T));
+//         if(tension_old != 0)
+//             device_->Memcpy(tension_, tension_old, params_.n_surfs_ * sizeof(T), MemcpyDeviceToDevice);
+//         device_->Free(tension_old);
         
         w_sph_.Resize(max_n_surfs_);
         int np = 2 * params_.p_ * (params_.p_ + 1);
@@ -271,13 +151,6 @@ void Surface<T,DT>::Resize(int n_surfs_in)
             device_->Memcpy(w_sph_.begin() + ii*np, w_sph_.begin(), np * sizeof(T), MemcpyDeviceToDevice);
     }
     this->params_.n_surfs_ = n_surfs_in;
-}
-
-template <typename T, enum DeviceType DT> 
-void Surface<T,DT>::SetX(const Vectors<T,DT> &x_in)
-{
-    x_.SetData(x_in.begin());
-    UpdateAll();
 }
 
 template <typename T, enum DeviceType DT> 
@@ -289,9 +162,6 @@ void Surface<T,DT>::UpdateFirstForms()
     // First derivatives
     sht_.backward_du(shc, work_arr, 3*params_.n_surfs_, V1.begin());
     sht_.backward_dv(shc, work_arr, 3*params_.n_surfs_, V2.begin());
-
-//     device_->ShSynDu(shc, work_arr, params_.p_, 3*params_.n_surfs_, V1.begin());//V1 is holding xu
-//     device_->ShSynDv(shc, work_arr, params_.p_, 3*params_.n_surfs_, V2.begin());//V2 is holding xv
 
     // First fundamental coefficients
     DotProduct(V1,V1, S1);
@@ -326,15 +196,12 @@ void Surface<T,DT>::UpdateAll()
 
     // Second derivatives
     sht_.backward_d2u(shc, work_arr, 3*params_.n_surfs_, V1.begin());
-    //device_->ShSynDuu(shc, work_arr, params_.p_, 3*params_.n_surfs_, V1.begin());//V1 is holding xuu
     DotProduct(V1, normal_, S4);
     
     sht_.backward_duv(shc, work_arr, 3*params_.n_surfs_, V1.begin());
-    //device_->ShSynDuv(shc, work_arr, params_.p_, 3*params_.n_surfs_, V1.begin());//V1 is holding xuv
     DotProduct(V1, normal_, S5);
 
     sht_.backward_d2v(shc, work_arr, 3*params_.n_surfs_, V1.begin());
-    //device_->ShSynDvv(shc, work_arr, params_.p_, 3*params_.n_surfs_, V1.begin());//V1 is holding xvv
     DotProduct(V1, normal_, S6);
     
     // Gaussian curvature
@@ -374,18 +241,13 @@ void Surface<T,DT>::UpdateAll()
     //Tensile force
     xv(h_,normal_, tensile_force_);
 
-    if(max_init_area_<0)
-        max_init_area_ = this->Area();
+    //if(max_init_area_<0)
+    //    max_init_area_ = this->Area();
 }
 
 template <typename T, enum DeviceType DT>
 void Surface<T,DT>::StokesMatVec(const Vectors<T,DT> &density_in, Vectors<T,DT> &velocity_out)
 {
-
-#ifdef PROFILING_LITE
-    double ss = get_seconds();
-#endif
-        
     int np = 2 * params_.p_ * (params_.p_ + 1);
     int rot_chunck = 2 * params_.p_ * np;
     T alpha(1.0), beta(0.0);
@@ -418,25 +280,11 @@ void Surface<T,DT>::StokesMatVec(const Vectors<T,DT> &density_in, Vectors<T,DT> 
         }
     }
 
-
-#ifdef PROFILING_LITE
-    ss = get_seconds()-ss;
-    StokesMatVec_time_ +=ss;
-#endif
-
-#ifndef NOLOGGING
-    double np3 = np * np * np;
-    double flops = np3 + 14 * np3 * params_.n_surfs_; //np3 + (44 * np * np + 14 * np3) * params_.n_surfs_; 
-    Logger::Add2Flops(flops);
-#endif
 }
 
 template <typename T, enum DeviceType DT> 
 void Surface<T,DT>::SurfGrad(const Scalars<T,DT> &f_in, Vectors<T,DT> &grad_f_out)
 {
-    //device_->FirstDerivatives(f_in.begin(), work_arr, params_.p_, params_.n_surfs_, shc, S5.begin(), S6.begin());
-    // void  DeviceDT<T>::FirstDerivatives(const T *x_in, T *work_arr, int p, int n_funs, T *shc_x, T *Dux_out, T *Dvx_out) const
-
     sht_.forward( f_in.begin(), work_arr, params_.n_surfs_, shc);
     sht_.backward_du( shc, work_arr, params_.n_surfs_, S5.begin());
     sht_.backward_dv( shc, work_arr, params_.n_surfs_, S6.begin());
@@ -451,8 +299,6 @@ void Surface<T,DT>::SurfGrad(const Scalars<T,DT> &f_in, Vectors<T,DT> &grad_f_ou
 template <typename T, enum DeviceType DT> 
 void Surface<T,DT>::SurfDiv(const Vectors<T,DT> &f_in, Scalars<T,DT> &div_f_out) 
 {
-    //device_->FirstDerivatives(f_in.begin(), work_arr, params_.p_, 3*params_.n_surfs_, shc, V1.begin(), V2.begin());
-
     sht_.forward( f_in.begin(), work_arr, 3*params_.n_surfs_, shc);
     sht_.backward_du( shc, work_arr, 3*params_.n_surfs_, V1.begin());
     sht_.backward_dv( shc, work_arr, 3*params_.n_surfs_, V2.begin());

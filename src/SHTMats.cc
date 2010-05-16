@@ -24,6 +24,22 @@ SHTMats<T, DT>::SHTMats(Device<DT> *dev, int sh_order,
     gen_dft_backward();
     gen_dft_d1backward();
     gen_dft_d2backward();
+
+    ///@todo this should be computed rather than read from file
+    DataIO<T,DT> IO(device_,"",0);
+    char fname[500];
+
+    sprintf(fname,"precomputed/legTrans%u_single.txt",sh_order_);
+    IO.ReadData(fname, dlt_size, dlt_);
+    
+    sprintf(fname,"precomputed/legTransInv%u_single.txt",sh_order_);
+    IO.ReadData(fname, dlt_size, dlt_inv_);
+    
+    sprintf(fname,"precomputed/d1legTrans%u_single.txt",sh_order_);
+    IO.ReadData(fname, dlt_size, dlt_inv_d1_);
+    
+    sprintf(fname,"precomputed/d2legTrans%u_single.txt",sh_order_);
+    IO.ReadData(fname, dlt_size, dlt_inv_d2_);
 }
 
 template<typename T, enum DeviceType DT>

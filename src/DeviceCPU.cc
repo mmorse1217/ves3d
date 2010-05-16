@@ -72,6 +72,7 @@ template<enum DeviceType DT>
 Device<DT>::Device(int device_id, enum DeviceError *err)
 {
     if(err!=0) *err = Success;
+
 }
 
 template<enum DeviceType DT>

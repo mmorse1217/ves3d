@@ -1,5 +1,5 @@
 include ${VES3D_DIR}/makefile.in.files/makefile.in
-LIB_SRC= BlasSht.cc CPUKernels.cc Logger.cc
+LIB_SRC= CPUKernels.cc Logger.cc
 
 ARFILES=libves3.a
 
