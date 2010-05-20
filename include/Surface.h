@@ -71,6 +71,7 @@ class Surface
     Scalars<T,DT> S10;
     Vectors<T,DT> V10, V11, V12, V13;
     T *alpha_q;
+    
     //Rotation
     Scalars<T,DT> w_sph_;
     T *rot_mat;

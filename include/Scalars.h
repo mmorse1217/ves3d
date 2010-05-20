@@ -11,6 +11,7 @@
 #define _SCALARS_H_
 
 #include "Device.h"
+#include "BiCGStab.h"
 
 template <typename T, enum DeviceType DT> 
 class Scalars
@@ -32,6 +33,7 @@ class Scalars
   public:
     typedef T* iterator;
     typedef const T* const_iterator;
+    typedef T value_type;
 
     Scalars();
     Scalars(Device<DT> *device, int sh_order = 0, 
@@ -56,6 +58,13 @@ class Scalars
     
     inline iterator end();
     inline const_iterator end() const;
+    
+    friend enum BiCGSReturn BiCGStab<Scalars<T,DT> >(
+        void (*MatVec)(Scalars<T,DT> &in, Scalars<T,DT> &out),
+        Scalars<T,DT> &x, const Scalars<T,DT> &b, int &max_iter, 
+        typename Scalars<T,DT>::value_type &tol,
+        void (*Precond)(Scalars<T,DT> &in, Scalars<T,DT> &out));
+
 };
 
 #include "Scalars.cc"

@@ -20,6 +20,15 @@ VectorsTest:
 SHTransTest:
 	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
+BiCGStabTest:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 	
+
+TimeStepperTest:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 	
+
+EvolveSurfaceTest:
+	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 	
+
 .PHONY: clean
 
 clean: 	
@@ -28,7 +37,6 @@ clean:
 ###########################################################
 ArrayTest: 
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
 
 SurfaceTest: 
 	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 

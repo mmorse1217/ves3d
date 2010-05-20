@@ -243,3 +243,13 @@ std::ostream& operator<<(std::ostream& output, Scalars<T,DT> &sc)
     }
     return(output);
 }
+
+///@todo this need to be implemented for the GPU
+template<typename T>
+T Dot(const Scalars<T,CPU> &x, const Scalars<T,CPU> &y)
+{
+    T dot(0);
+    for(size_t idx=0;idx<x.Size(); ++idx)
+        dot+= x[idx] * y[idx];
+    return dot;
+}

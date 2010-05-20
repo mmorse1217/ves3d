@@ -9,7 +9,7 @@
 template<typename T, enum DeviceType DT> 
 Scalars<T, DT>::Scalars() :
     device_(NULL),
-    grid_dim_(EMPTY_GRID)
+    grid_dim_(EMPTY_GRID),
     data_(NULL)
 {}
 
@@ -24,6 +24,20 @@ Scalars<T, DT>::Scalars(Device<DT> *device, int sh_order,
     capacity_(fun_length_ * num_funs_),
     data_((T*) device_->Malloc(the_dim_ * capacity_ * sizeof(T)))
 {}
+
+template<typename T, enum DeviceType DT> 
+Scalars<T, DT>::Scalars(Scalars<T,DT> const& sc_in) :
+    device_(sc_in.device_),
+    sh_order_(sc_in.sh_order_),
+    grid_dim_(sc_in.grid_dim_),
+    fun_length_(grid_dim_.first * grid_dim_.second),
+    num_funs_(sc_in.num_funs_),
+    capacity_(fun_length_ * num_funs_),
+    data_((T*) device_->Malloc(the_dim_ * capacity_ * sizeof(T)))
+{
+    device_->Memcpy(data_, sc_in.begin(), sc_in.Size() * sizeof(T), 
+        MemcpyDeviceToDevice);
+}
 
 template<typename T, enum DeviceType DT> 
 Scalars<T, DT>::~Scalars()

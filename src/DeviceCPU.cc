@@ -11,7 +11,7 @@ inline pair<int, int> GridDimOf(int sh_order)
     return(make_pair(sh_order + 1, 2 * sh_order));
 }
 
-std::ostream& operator<<(std::ostream& output, enum DeviceType &DT)
+std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT)
 {
     switch (DT)
     {
@@ -26,7 +26,7 @@ std::ostream& operator<<(std::ostream& output, enum DeviceType &DT)
     return output;
 }    
 
-std::ostream& operator<<(std::ostream& output, enum MemcpyKind &MK)
+std::ostream& operator<<(std::ostream& output, const enum MemcpyKind &MK)
 {
     switch (MK)
     {
@@ -50,7 +50,7 @@ std::ostream& operator<<(std::ostream& output, enum MemcpyKind &MK)
     return output;
 }    
 
-std::ostream& operator<<(std::ostream& output, enum DeviceError &err)
+std::ostream& operator<<(std::ostream& output, const enum DeviceError &err)
 {
     switch (err)
     {

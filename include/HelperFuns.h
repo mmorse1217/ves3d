@@ -103,6 +103,10 @@ inline void ShufflePoints(const Vectors<T,DT> &x_in,
 template<typename T, enum DeviceType DT>
 std::ostream& operator<<(std::ostream& output, Scalars<T,DT> &sc);
 
+///@todo this need to be implemented for the GPU
+template<typename T>
+T Dot(const Scalars<T,CPU> &x, const Scalars<T,CPU> &y);
+
 #include "HelperFuns.cc"
 
 #endif _HELPERFUNS_H_

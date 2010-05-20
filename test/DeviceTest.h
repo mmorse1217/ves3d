@@ -74,9 +74,8 @@ bool DeviceTest<DT,T>::PerformAll()
         && TestTranspose()
         && TestMax();
     
-    enum DeviceType DD=DT;
     string res_print = (test_result) ? "Passed" : "Failed";
-    cout<<"\n*** Device Class tests with DT="<<DD
+    cout<<"\n*** Device Class tests with DT="<<DT
         <<" and T="<< typeid(T).name()<< ": " + res_print + " ***\n"<<endl;
     
     return test_result;
