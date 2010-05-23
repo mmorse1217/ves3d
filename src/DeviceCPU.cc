@@ -536,12 +536,12 @@ void Device<DT>::DirectStokes(const double *src, const double *den, const double
     size_t trg_idx_tail, double *pot) const
 {                  
     PROFILESTART();            
-    if(qw != NULL)
-        DirectStokesKernel(stride, n_surfs, trg_idx_head, 
-            trg_idx_tail, qw, trg, src, den, pot);
-    else
-        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, 
-            trg_idx_tail, trg, src, den, pot);
+//     if(qw != NULL)
+//         DirectStokesKernel(stride, n_surfs, trg_idx_head, 
+//             trg_idx_tail, qw, trg, src, den, pot);
+//     else
+//         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, 
+//             trg_idx_tail, trg, src, den, pot);
     
     PROFILEEND("CPU",0);
     return;

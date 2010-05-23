@@ -14,6 +14,7 @@
 #include <omp.h>
 #include "VesBlas.h"
 #include "Logger.h"
+#include "CPUKernels.h"
 
 #ifdef GPU_ACTIVE
 #include "cuda_runtime.h"
@@ -77,7 +78,7 @@ class Device
     ///The constructor of the class. device_id is a user-specified ID
     ///and err is the return error type corresponding to the
     ///instantiation action. Both of these parameter are optional.
-    Device(int device_id = 0, enum DeviceError *err = 0);
+    explicit Device(int device_id = 0, enum DeviceError *err = 0);
 
     ///Destructor
     ~Device();

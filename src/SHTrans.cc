@@ -5,7 +5,7 @@ template<typename T, enum DeviceType DT>
 const T SHTrans<T,DT>::beta_;
 
 template<typename T, enum DeviceType DT>
-SHTrans<T,DT>::SHTrans(Device<DT> *dev, int p_in) :
+SHTrans<T,DT>::SHTrans(const Device<DT> *dev, int p_in) :
     device_(dev),
     mats_(device_, p_in),
     p(p_in),
@@ -18,7 +18,8 @@ SHTrans<T,DT>::~SHTrans()
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::DLT(T *trans, const T *inputs, T *outputs,
-    int m, int n , int k, int mf, int nf, int kf) {
+    int m, int n , int k, int mf, int nf, int kf) const 
+{
     for (int freq = 0; freq <= p; freq++) {
         int num_legendre_inputs = n;
         if (freq == 0 || freq == p) num_legendre_inputs = n / 2;
@@ -38,7 +39,8 @@ void SHTrans<T,DT>::DLT(T *trans, const T *inputs, T *outputs,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::back(const T *inputs, T *work_arr, int n_funs,
-                    T *outputs, T *trans, T *dft) {
+                    T *outputs, T *trans, T *dft) const 
+{
     T *trans_in = work_arr;
     T *trans_out = work_arr + 2 * p * (p + 1) * n_funs;
     int num_dft_inputs = n_funs * (p + 1);
@@ -52,7 +54,8 @@ void SHTrans<T,DT>::back(const T *inputs, T *work_arr, int n_funs,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::forward(const T *inputs, T *work_arr, int n_funs,
-                       T *outputs) {
+                       T *outputs) const
+{
     T *trans_in = work_arr;
     T *trans_out = work_arr + 2 * p * (p + 1) * n_funs;
     int num_dft_inputs = n_funs * (p + 1);
@@ -66,7 +69,7 @@ void SHTrans<T,DT>::forward(const T *inputs, T *work_arr, int n_funs,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::backward(const T *inputs, T *work_arr, 
-    int n_funs, T *outputs)
+    int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs, mats_.dlt_inv_, mats_.dft_inv_);
 }
@@ -74,7 +77,7 @@ void SHTrans<T,DT>::backward(const T *inputs, T *work_arr,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::backward_du(const T *inputs, T *work_arr, 
-    int n_funs, T *outputs) 
+    int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs, mats_.dlt_inv_d1_, mats_.dft_inv_);
 }
@@ -82,7 +85,7 @@ void SHTrans<T,DT>::backward_du(const T *inputs, T *work_arr,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::backward_d2u(const T *inputs, T *work_arr, 
-    int n_funs, T *outputs) 
+    int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs, mats_.dlt_inv_d2_, mats_.dft_inv_);
 }
@@ -90,7 +93,7 @@ void SHTrans<T,DT>::backward_d2u(const T *inputs, T *work_arr,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::backward_dv(const T *inputs, T *work_arr, 
-    int n_funs, T *outputs)
+    int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs,mats_.dlt_inv_, mats_.dft_inv_d1_);
 }
@@ -98,7 +101,7 @@ void SHTrans<T,DT>::backward_dv(const T *inputs, T *work_arr,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::backward_d2v(const T *inputs, T *work_arr,
-    int n_funs, T *outputs)
+    int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs, mats_.dlt_inv_, mats_.dft_inv_d2_);
 }
@@ -106,7 +109,7 @@ void SHTrans<T,DT>::backward_d2v(const T *inputs, T *work_arr,
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::backward_duv(const T *inputs, T *work_arr,
-    int n_funs, T *outputs)
+    int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs, mats_.dlt_inv_d1_, mats_.dft_inv_d1_);
 }

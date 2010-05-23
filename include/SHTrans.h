@@ -3,12 +3,11 @@
 
 #include "Device.h"
 #include "SHTMats.h"
-#include <map>
 
 template<typename T, enum DeviceType DT>
 class SHTrans {
   private:
-    Device<DT> *device_;
+    const Device<DT> *device_;
     SHTMats<T,DT> mats_;
 
     static const T alpha_ = (T) 1.0;
@@ -18,21 +17,21 @@ class SHTrans {
     int dft_size;
         
     void DLT(T *trans, const T *inputs, T *outputs, int m, int n , 
-        int k, int mf, int nf, int kf);
+        int k, int mf, int nf, int kf) const;
     void back(const T *inputs, T *work_arr, int n_funs, T *outputs, 
-        T *trans, T *dft);
+        T *trans, T *dft) const;
 
   public:
-    SHTrans(Device<DT> *dev, int sh_order_in);
+    SHTrans(const Device<DT> *dev, int sh_order_in);
     ~SHTrans();
 
-    void forward(const T *inputs, T *work_arr, int n_funs, T *outputs);
-    void backward(const T *inputs, T *work_arr, int n_funs, T *outputs);
-    void backward_du(const T *inputs, T *work_arr, int n_funs, T *outputs);
-    void backward_dv(const T *inputs, T *work_arr, int n_funs, T *outputs);
-    void backward_d2u(const T *inputs, T *work_arr, int n_funs, T *outputs);
-    void backward_d2v(const T *inputs, T *work_arr, int n_funs, T *outputs);
-    void backward_duv(const T *inputs, T *work_arr, int n_funs, T *outputs);
+    void forward(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void backward(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void backward_du(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void backward_dv(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void backward_d2u(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void backward_d2v(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void backward_duv(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
 };
 
 #include "SHTrans.cc"

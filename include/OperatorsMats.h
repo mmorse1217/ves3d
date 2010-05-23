@@ -60,7 +60,7 @@ OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in,
     int leg_size = (p_ + 1) * (p_ + 1) * (p_ + 2);
     int leg_size_up = (p_up_ + 1) * (p_up_ + 1) * (p_up_ + 2);
     
-    data_ = (T*) fileIO_.device_->Malloc(GetDataLength() * sizeof(T));
+    data_ = (T*) fileIO_.device_.Malloc(GetDataLength() * sizeof(T));
 
     quad_weights_       = data_;
     all_rot_mats_       = quad_weights_       + np;
@@ -142,7 +142,7 @@ OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in,
 template <typename T>
 OperatorsMats<T>::~OperatorsMats()
 {
-    fileIO_.device_->Free(data_);
+    fileIO_.device_.Free(data_);
 }
 
 #endif //_OPERATORSMATS_H_

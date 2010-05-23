@@ -8,7 +8,7 @@ class SHTMats{
   protected:
     int sh_order_;
     pair<int, int> grid_dim_;
-    Device<DT> *device_;
+    const Device<DT> *device_;
     T *data_;
     
     inline size_t GetDFTLength() const;
@@ -22,7 +22,7 @@ class SHTMats{
     int dft_size;
 
   public:
-    SHTMats(Device<DT> *dev, int sh_order,  
+    SHTMats(const Device<DT> *dev, int sh_order,  
         pair<int,int> grid_dim = EMPTY_GRID);
     ~SHTMats();
     

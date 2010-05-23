@@ -1,5 +1,5 @@
 template<typename T, enum DeviceType DT>
-SHTMats<T, DT>::SHTMats(Device<DT> *dev, int sh_order, 
+SHTMats<T, DT>::SHTMats(const Device<DT> *dev, int sh_order, 
     pair<int,int> grid_dim) :
     sh_order_(sh_order),
     grid_dim_((grid_dim == EMPTY_GRID) ? GridDimOf(sh_order_) : grid_dim),
@@ -26,7 +26,7 @@ SHTMats<T, DT>::SHTMats(Device<DT> *dev, int sh_order,
     gen_dft_d2backward();
 
     ///@todo this should be computed rather than read from file
-    DataIO<T,DT> IO(device_,"",0);
+    DataIO<T,DT> IO(*device_,"",0);
     char fname[500];
 
     sprintf(fname,"precomputed/legTrans%u_single.txt",sh_order_);

@@ -1,5 +1,5 @@
 template<typename T, enum DeviceType DT>
-DataIO<T,DT>::DataIO(Device<DT> *device_in, 
+DataIO<T,DT>::DataIO(const Device<DT> &device_in, 
     string file_name_in, size_t buffer_size_in) :
     out_size_(buffer_size_in),
     out_used_(0),
@@ -34,7 +34,7 @@ bool DataIO<T,DT>::ReadData(const char* file_name_in,
         data_file>>in_buffer[idx++];
     
     data_file.close();
-    device_->Memcpy(data_array_out, in_buffer, 
+    device_.Memcpy(data_array_out, in_buffer, 
         data_size_in * sizeof(T), MemcpyHostToDevice);
 
     free(in_buffer);

@@ -12,22 +12,21 @@
 
 #include "Scalars.h"
 
-template <typename T, enum DeviceType DT> 
-class Vectors : public Scalars<T,DT>
+template <typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+class Vectors : public Scalars<T, DT, DEVICE>
 {
   protected:
     size_t num_vecs_;
     enum CoordinateOrder point_order_;
-    static const int the_dim_ = 3;
     
   public: 
-    Vectors();
-    Vectors(Device<DT> *device, int sh_order = 0,
-        size_t num_vecs = 0, pair<int, int> grid_dim = EMPTY_GRID);
+    Vectors(int sh_order = 0, size_t num_vecs = 0, 
+        pair<int, int> grid_dim = EMPTY_GRID);
     
     virtual void Resize(size_t new_num_vecs, int new_sh_order = 0,
         pair<int, int> new_grid_dim = EMPTY_GRID);
 
+    static const int the_dim_ = 3;
     inline size_t GetNumVecs() const;
     inline void SetPointOrder(enum CoordinateOrder new_order);    
     inline enum CoordinateOrder GetPointOrder() const;

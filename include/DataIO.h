@@ -30,15 +30,14 @@ class DataIO
     mutable size_t out_size_;
     mutable size_t out_used_;
     string out_file_name_;
-    //Device<DT> *device_;
     mutable T* out_buffer_; 
     int resize_factor_;
 
   public:
     ///@todo device should be private, be OperatorMats needs it!!
-    Device<DT> *device_;
+    const Device<DT> &device_;
   public:
-    DataIO(Device<DT> *device_in, string file_name_in = "", 
+    DataIO(const Device<DT> &device_in, string file_name_in = "", 
         size_t buffer_size_in = 0);
     ~DataIO();
     

@@ -1,4 +1,4 @@
-/**
+ /**
  * @file   Scalars.h
  * @author Abtin Rahimian <arahimian@acm.org>
  * @date   Tue Jan 26 14:44:00 2010
@@ -13,11 +13,10 @@
 #include "Device.h"
 #include "BiCGStab.h"
 
-template <typename T, enum DeviceType DT> 
+template <typename T, enum DeviceType DT, const Device<DT> &DEVICE>
 class Scalars
 {
   protected:
-    Device<DT> *device_;
     int sh_order_;
     pair<int, int> grid_dim_;
     size_t fun_length_;
@@ -27,23 +26,22 @@ class Scalars
 
     static const int the_dim_ = 1;
 
-    Scalars(Scalars<T,DT> const& sc_in);
-    Scalars<T,DT>& operator=(const Scalars<T,DT>& rhs);
+    Scalars(Scalars<T, DT, DEVICE> const& sc_in);
+    Scalars<T, DT, DEVICE>& operator=(const Scalars<T, DT, DEVICE>& rhs);
 
   public:
     typedef T* iterator;
     typedef const T* const_iterator;
     typedef T value_type;
 
-    Scalars();
-    Scalars(Device<DT> *device, int sh_order = 0, 
-        size_t num_funs = 0 , pair<int, int> grid_dim = EMPTY_GRID);
+    Scalars(int sh_order = 0, size_t num_funs = 0 , 
+        pair<int, int> grid_dim = EMPTY_GRID);
     virtual ~Scalars();
 
     virtual void Resize(size_t new_num_funs, int new_sh_order = 0,
         pair<int, int> new_grid_dim = EMPTY_GRID);
     
-    inline const Device<DT>* GetDevicePtr() const;
+    inline const Device<DT>& GetDevice() const;
     inline int GetShOrder() const;
     inline pair<int, int> GetGridDim() const;
     inline size_t GetFunLength() const;
@@ -58,14 +56,16 @@ class Scalars
     
     inline iterator end();
     inline const_iterator end() const;
-    
-    friend enum BiCGSReturn BiCGStab<Scalars<T,DT> >(
-        void (*MatVec)(Scalars<T,DT> &in, Scalars<T,DT> &out),
-        Scalars<T,DT> &x, const Scalars<T,DT> &b, int &max_iter, 
-        typename Scalars<T,DT>::value_type &tol,
-        void (*Precond)(Scalars<T,DT> &in, Scalars<T,DT> &out));
-
+     
+    friend enum BiCGSReturn BiCGStab<Scalars<T,DT,DEVICE> >(
+        void (*MatVec)(Scalars<T,DT,DEVICE> &in, Scalars<T,DT,DEVICE> &out),
+        Scalars<T,DT,DEVICE> &x, const Scalars<T,DT,DEVICE> &b, int &max_iter, 
+        typename Scalars<T,DT,DEVICE>::value_type &tol,
+        void (*Precond)(Scalars<T,DT,DEVICE> &in, Scalars<T,DT,DEVICE> &out));
 };
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
+std::ostream& operator<<(std::ostream& output, Scalars<T, DT, DEVICE>&sc);
 
 #include "Scalars.cc"
 
