@@ -7,9 +7,10 @@ class InterfacialForce
 {
   public:
     void BendingForce(const SurfContainer<ScalarContainer, VectorContainer> &S, 
-        VectorContainer &Fb);
+        VectorContainer &Fb) const;
+
     void TensileForce(const SurfContainer<ScalarContainer, VectorContainer> &S, 
-        const ScalarContainer &tension, VectorContainer &Fs);
+        const ScalarContainer &tension, VectorContainer &Fs) const;
 };
 
 #include "InterfacialForce.cc"

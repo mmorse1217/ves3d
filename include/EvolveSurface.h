@@ -3,6 +3,7 @@
 
 #include "TimeStepper.h"
 #include "HelperFuns.h"
+#include "InterfacialForce.h"
 #include <iostream>
 
 template<typename Container, typename SurfContainer>
@@ -34,6 +35,19 @@ class SurfaceEvolMonitor : Monitor<Container>
         std::cout<<"Monitor"<<std::endl;
         return false;
     }
+};
+
+template<typename ScalarContainer, typename VectorContainer,
+         template<typename SC, typename VC> class SurfContainer>
+class GetTension
+{
+  private:
+    SurfContainer<ScalarContainer, VectorContainer> *S_;
+    InterfacialForce<ScalarContainer, VectorContainer, SurfContainer> IF;
+    
+  public:
+    GetTension(SurfContainer<ScalarContainer, VectorContainer> *S_in); 
+    void operator()(ScalarContainer &rhs, ScalarContainer &tension) const;
 };
 
 // template<typename Container, typename Forcing>

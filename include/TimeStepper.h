@@ -1,50 +1,23 @@
 #ifndef _TIMESTEPPER_H_
 #define _TIMESTEPPER_H_
 
-template<typename Container>
-class Forcing
-{
-  public:
-    virtual void  operator()(const Container &state, 
-        const typename Container::value_type &t, 
-        Container &val) const = 0;
-};
-
-template<typename Container>
-class Monitor
-{
-  public:
-    virtual bool operator()(const Container &state, 
-        const typename Container::value_type &t, 
-        typename Container::value_type &dt) const = 0;
-};
-
-template<typename Container, typename Forcing>
-class Discretization
-{
-  public:
-    virtual void operator()(const Container &old_state, 
-        const typename Container::value_type &t, 
-        const Forcing &F, const typename Container::value_type &dt, 
-        Container &new_state) const = 0;
-};
-
-template<typename Container, typename Forcing>
+template<typename Container,
+         typename Forcing,
+         typename Updater,
+         typename Monitor>
 class TimeStepper
 {
-  public:
+  private:
     typedef typename Container::value_type value_type;
 
-    void operator()(Container &state, 
-        typename Container::value_type &time,
-        typename Container::value_type &dt, Forcing &F, 
-        Discretization<Container, Forcing> &D, 
-        Monitor<Container> &M)
+  public:
+    void operator()(Container &state, value_type &t, value_type &dt,
+        Forcing &F, Updater &U, Monitor &M)
     {
-        while ( M(state, time, dt) )
+        while ( M(state, t, dt))
         {
-            D(state, time, F, dt, state);
-            time+=dt;
+            U(state, t, dt, F, state);
+            t += dt;
         }
     }
 };

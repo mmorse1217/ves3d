@@ -3,7 +3,7 @@ template<typename ScalarContainer, typename VectorContainer,
 void InterfacialForce<ScalarContainer, VectorContainer, 
                       SurfContainer>::BendingForce(const 
                           SurfContainer<ScalarContainer, VectorContainer> &S, 
-                          VectorContainer &Fb)
+                          VectorContainer &Fb) const
 {
     ///@todo resize Fb to match the size of input.
     ///@todo This instantiation is not correct; it assumes to much about the container.
@@ -26,7 +26,7 @@ template<typename ScalarContainer, typename VectorContainer,
 void InterfacialForce<ScalarContainer, VectorContainer, 
                       SurfContainer>::TensileForce(const 
                           SurfContainer<ScalarContainer, VectorContainer> &S, 
-                          const ScalarContainer &tension, VectorContainer &Fs)
+                          const ScalarContainer &tension, VectorContainer &Fs) const
 {
     ///@todo resize Fs to match with input
     ///@todo This instantiation is not correct; it assumes to much about the container.

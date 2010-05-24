@@ -48,7 +48,8 @@ class Surface
     void Div(const VectorContainer &f_in, ScalarContainer &div_f_out) const;
  
     void Resize(int n_surfs_in);
-    
+
+    ///@todo The size function should be added.
   private:
     VectorContainer cu_;
     VectorContainer cv_;

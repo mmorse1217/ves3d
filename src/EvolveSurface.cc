@@ -56,3 +56,24 @@ void Stokes<Container, SurfContainer>::operator()(const
         }
     }
 }
+
+template<typename ScalarContainer, typename VectorContainer,
+         template<typename SC, typename VC> class SurfContainer>
+void GetTension<ScalarContainer, VectorContainer, SurfContainer>::operator()(
+    ScalarContainer &rhs, ScalarContainer &tension) const
+{
+    int p = tension.GetShOrder();
+    int nv = tension.GetNumFuns();
+    VectorContainer v1(p, nv);
+    
+    IF.TensileForce(*S_, tension, v1);
+    
+    cout<<"HI"<<endl;
+}
+
+template<typename ScalarContainer, typename VectorContainer,
+         template<typename SC, typename VC> class SurfContainer>
+GetTension<ScalarContainer, VectorContainer, SurfContainer>::GetTension(
+    SurfContainer<ScalarContainer, VectorContainer> *S_in) :
+    S_(S_in)
+{}
