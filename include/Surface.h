@@ -11,10 +11,6 @@
 
 #include "HelperFuns.h"
 #include "SHTrans.h"
-#include "SurfaceParams.h"
-///@todo These two headers need to me moved out
-#include "DataIO.h"
-#include "OperatorsMats.h"
 
 template <typename ScalarContainer, typename VectorContainer> 
 class Surface
@@ -24,62 +20,55 @@ class Surface
     typedef VectorContainer Vec;
     typedef ScalarContainer Sca;
 
-  private:
-    SurfaceParams<value_type> params_;
-    SHTrans<value_type, CPU> sht_;
-    size_t capacity_;
-  
-  public:
-    Surface(SurfaceParams<value_type> &params_in, 
-        const OperatorsMats<value_type> &mats);
-    ~Surface();
+    ///@todo add a default constructor
+    Surface(const Vec& x_in);
+    
+    void setPosition(const Vec& x_in);
+    Vec& getPosition();
+    const Vec& getPosition() const;
+    const Vec& getNormal() const;
+    const Sca& getAreaElement() const;
+    const Sca& getMeanCurv() const;
+    const Sca& getGaussianCurv() const;
 
+    void updateFirstForms() const;
+    void updateAll() const;
+
+    void grad(const Sca &f_in, Vec &grad_f_out) const;
+    void div(const Vec &f_in, Sca &div_f_out) const;
+ 
+    void resize(int n_surfs_in);
+
+    void area(Sca &area) const;
+    void volume(Sca &vol) const;
+    void populate(const Sca &centers);
+    void getCenters(Sca &centers) const;
+
+  private:
     VectorContainer x_;
-    VectorContainer normal_;
+    mutable VectorContainer normal_;
 
-    ScalarContainer w_;
-    ScalarContainer h_;
-    ScalarContainer k_;
-   
-    void UpdateFirstForms();
-    void UpdateAll();
+    mutable ScalarContainer w_;
+    mutable ScalarContainer h_;
+    mutable ScalarContainer k_;
 
-    void Grad(const ScalarContainer &f_in, VectorContainer &grad_f_out) const;
-    void Div(const VectorContainer &f_in, ScalarContainer &div_f_out) const;
+    mutable VectorContainer cu_;
+    mutable VectorContainer cv_;
  
-    void Resize(int n_surfs_in);
+    SHTrans<value_type, CPU> sht_;
 
-    ///@todo The size function should be added.
-  private:
-    VectorContainer cu_;
-    VectorContainer cv_;
- 
+    mutable bool position_has_changed_outside_;
+    mutable bool first_forms_are_stale_;
+    mutable bool second_forms_are_stale_;
+
+    void checkContainers() const;
+    Surface(Surface<Sca, Vec> const& s_in);
+    Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
+
     ///@todo remove the work vectors
-    mutable value_type *shc, *work_arr;    
+    mutable VectorContainer shc, work_arr;    
     mutable ScalarContainer S1, S2, S3, S4, S5, S6;
     mutable VectorContainer V1, V2;
-    //ScalarContainer S10;
-    //VectorContainer V10, V11, V12, V13;    
-    
-    //void Reparam();
-    //T *alpha_p;
-    //T *all_rot_mats_;
-    //T *quad_weights_;
-    //void StokesMatVec(const VectorContainer &density_in, VectorContainer &velocity_out);
-    //void GetTension(const VectorContainer &v_in, const VectorContainer &v_ten_in, T *tension_out);
-    //T Area();
-    //void Volume();
-    //void Populate(const T *centers);
-    //bool IsAccurate();
-    //T* GetCenters(T* cnts);
-    //void UpdateNormal();
-    //T max_init_area_;  
-    //T *alpha_q;
-    //Rotation
-    //ScalarContainer w_sph_;
-    //T *rot_mat;
-    //T *sing_quad_weights_;
-    //double StokesMatVec_time_;
 };
 
 #include "Surface.cc"

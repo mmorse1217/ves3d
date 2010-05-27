@@ -5,61 +5,105 @@
 #include "HelperFuns.h"
 #include "InterfacialForce.h"
 #include <iostream>
+#include "DataIO.h"
+#include "BiCGStab.h"
 
-template<typename Container, typename SurfContainer>
-class Stokes : public Forcing<Container>
+template<typename SurfContainer>
+class InterfacialVelocity
 {
   private:
-    SurfContainer *S_;
-    typename SurfContainer::Sca w_sph_;
-    typename SurfContainer::Sca all_rot_mats_;
-    typename SurfContainer::Sca rot_mat_;
-    typename SurfContainer::Sca sing_quad_weights_;
-
+    typedef typename SurfContainer::value_type value_type;
+    typedef typename SurfContainer::Sca Sca;
+    typedef typename SurfContainer::Vec Vec;
+    
   public:
-    Stokes(SurfContainer *S_in);
+    InterfacialVelocity(SurfContainer *S_in);
+    void  operator()(const value_type &t, Vec &velocity) const;
+    void operator()(const Sca &tension, Sca &div_stokes_fs) const;
 
-    virtual void  operator()(const Container &interfacial_force, 
-        const typename Container::value_type &t, 
-        Container &velocity) const;
+    class TensionPrecond
+    {
+      public:
+        void operator()(const Sca &in, Sca &out) const;
+    } precond_;
+
+  private:
+    SurfContainer *S_;
+    
+    Sca w_sph_;
+    Sca all_rot_mats_;
+    Sca rot_mat_;
+    Sca sing_quad_weights_;
+
+    mutable Vec u1_, u2_;
+    mutable Sca tension_;
+
+    InterfacialForce<SurfContainer> Intfcl_force_;
+    void GetTension(const Vec &vel_in, Sca &tension) const;
+    void BgFlow(const Vec &pos, Vec &vel_Inf) const;
+    void Stokes(const Vec &force, Vec &vel) const;
 };
 
-template<typename Container>
-class SurfaceEvolMonitor : Monitor<Container>
+template<typename SurfContainer>
+class Monitor
 {
-  public:    
-    virtual bool operator()(const Container &state, 
-        const typename Container::value_type &t, 
-        typename Container::value_type &dt) const
+  private:
+    typedef typename SurfContainer::value_type value_type;
+    value_type time_hor_;
+    
+  public:
+    Monitor(value_type th) : time_hor_(th) {};
+    
+    bool operator()(const SurfContainer &state, 
+        value_type &t, value_type &dt)
     {
-        std::cout<<"Monitor"<<std::endl;
-        return false;
+        std::cout<<t<<std::endl;
+        return(t<time_hor_);
+    }       
+};
+
+template<typename SurfContainer, typename Forcing>
+class ForwardEuler
+{
+  private:
+    typedef typename SurfContainer::value_type value_type;
+    
+   public:
+     void operator()(SurfContainer &S_in, value_type &t, value_type &dt, 
+         Forcing &F, SurfContainer &S_out)
+    {
+        typename SurfContainer::Vec velocity(S_in.x_.getNumSubs(), 
+            S_in.x_.getShOrder());
+        S_in.UpdateAll();
+        F(t, velocity);
+        axpy(dt, velocity, S_in.x_, S_out.x_);
+        ///@todo add reparam
     }
 };
 
-template<typename ScalarContainer, typename VectorContainer,
-         template<typename SC, typename VC> class SurfContainer>
-class GetTension
+template<typename Container>
+class EvolveSurface
 {
   private:
-    SurfContainer<ScalarContainer, VectorContainer> *S_;
-    InterfacialForce<ScalarContainer, VectorContainer, SurfContainer> IF;
+    typedef typename Container::value_type value_type;
     
   public:
-    GetTension(SurfContainer<ScalarContainer, VectorContainer> *S_in); 
-    void operator()(ScalarContainer &rhs, ScalarContainer &tension) const;
+    
+    void operator()(Container &S, value_type &time_horizon, value_type &dt)
+    {
+        value_type t = 0.0;
+        InterfacialVelocity<Container> F(&S);
+        Monitor<Container> M(time_horizon);
+        ForwardEuler<Container, InterfacialVelocity<Container> > U;
+        
+        TimeStepper<Container, 
+            InterfacialVelocity<Container>, 
+            ForwardEuler<Container, InterfacialVelocity<Container> >,
+            Monitor<Container> > Ts;
+    
+        Ts(S, t, dt, F, U, M);
+    }
 };
-
-// template<typename Container, typename Forcing>
-// class Discretization
-// {
-//   public:
-//     typedef typename Container::value_type value_type;
-
-//     virtual void operator()(const Container &old_state, 
-//         const value_type &t, const Forcing &F, 
-//         const value_type &dt, Container &new_state) const = 0;
-// };
 
 #include "EvolveSurface.cc"
 

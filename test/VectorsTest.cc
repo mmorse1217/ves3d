@@ -1,28 +1,22 @@
-#include "VectorsTest.h"
+//#include "VectorsTest.h"
+
+#include "Vectors.h"
+
+extern const Device<CPU> cpu_dev;
 
 int main(int argc, char* argv[])
 {
-//     VectorsTest<float,CPU> vectest;
-//     vectest.PerformAll();
+    int p(2);
+    int num_vecs(2);
 
-    Device<CPU> dev;
-    int p(12);
-    int num_vecs(3);
-    Vectors<float,CPU> vec(&dev, p, num_vecs);
-    Scalars<float,CPU> sc(&dev, p, num_vecs);
-
-    typename Scalars<float,CPU>::iterator it;
-    for(it = vec.begin(); it != vec.end(); ++it)
-        *it = 2;
+    containers::Vectors<float,CPU,cpu_dev> vec(num_vecs, p);
+    containers::Scalars<float,CPU,cpu_dev> sc(num_vecs, p);
+    containers::Scalars<float,CPU,cpu_dev> vec2;
     
-    DotProduct(vec,vec,sc);
-    cout<<sc<<endl;
+    vec2.replicate(vec);
     
-//     cout<<vec<<endl;
-    
+    cout<<vec<<endl;
+    cout<<vec2<<endl;
+        
     return 0;
 }
-
-    
-
-

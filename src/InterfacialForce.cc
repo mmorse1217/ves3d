@@ -1,14 +1,11 @@
-template<typename ScalarContainer, typename VectorContainer,
-         template<typename SC, typename VC> class SurfContainer>
-void InterfacialForce<ScalarContainer, VectorContainer, 
-                      SurfContainer>::BendingForce(const 
-                          SurfContainer<ScalarContainer, VectorContainer> &S, 
-                          VectorContainer &Fb) const
+template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::BendingForce(const SurfContainer &S, 
+    Vec &Fb) const
 {
     ///@todo resize Fb to match the size of input.
     ///@todo This instantiation is not correct; it assumes to much about the container.
-    ScalarContainer t1(Fb.GetShOrder(), Fb.GetNumFuns());
-    ScalarContainer t2(Fb.GetShOrder(), Fb.GetNumFuns());
+    Sca t1(Fb.getNumSubs(),Fb.getShOrder());
+    Sca t2(Fb.getNumSubs(),Fb.getShOrder());
  
     S.Grad(S.h_, Fb);
     S.Div(Fb, t1);
@@ -21,16 +18,13 @@ void InterfacialForce<ScalarContainer, VectorContainer,
     xv(t1, S.normal_, Fb);
 }
 
-template<typename ScalarContainer, typename VectorContainer,
-         template<typename SC, typename VC> class SurfContainer>
-void InterfacialForce<ScalarContainer, VectorContainer, 
-                      SurfContainer>::TensileForce(const 
-                          SurfContainer<ScalarContainer, VectorContainer> &S, 
-                          const ScalarContainer &tension, VectorContainer &Fs) const
+template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::TensileForce(const SurfContainer &S, 
+    const Sca &tension, Vec &Fs) const
 {
     ///@todo resize Fs to match with input
     ///@todo This instantiation is not correct; it assumes to much about the container.
-    VectorContainer temp(Fs.GetShOrder(), Fs.GetNumFuns());
+    Vec temp(Fs.getNumSubs(), Fs.getShOrder());
     xv(S.h_, S.normal_, Fs);
     xv(tension, Fs, Fs);
     S.Grad(tension, temp);

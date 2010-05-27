@@ -3,6 +3,8 @@
 
 using namespace std;
 
+#ifndef Doxygen_skip
+
 class BB
 {
   public:
@@ -57,6 +59,8 @@ class ForwardEuler : public Discretization<CC, FC>
 
     mutable BB temp;
 };
+
+#endif //Doxygen_skip
 
 int main(int argc, char **argv)
 {

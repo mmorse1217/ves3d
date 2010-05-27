@@ -1,17 +1,17 @@
+#include "EvolveSurface.h"
 #include "Device.h"
 #include "Scalars.h"
 #include "Vectors.h"
 #include "SurfaceParams.h"
 #include "OperatorsMats.h"
 #include "Surface.h"
-#include "CurvatureFlow.h"
 
 extern const Device<CPU> the_cpu_dev(0);
 
 int main(int argc, char **argv)
 {
-    typedef Scalars<float, CPU, the_cpu_dev> Sc;
-    typedef Vectors<float, CPU, the_cpu_dev> Vc;
+    typedef containers::Scalars<float, CPU, the_cpu_dev> Sc;
+    typedef containers::Vectors<float, CPU, the_cpu_dev> Vc;
     typedef Surface<Sc,Vc> Sur;
 
     int p(12), nSur(1);
@@ -41,16 +41,14 @@ int main(int argc, char **argv)
 
     // initializing vesicle positions from text file
     char fname[400];
-    sprintf(fname,"%s/precomputed/two_ellipse_12", 
+    sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt", 
         getenv("VES3D_DIR"));
     myIO.ReadData(fname,dLen,S.x_.begin());
 
-    float T = 10;
-    float dt = .001;
-    CurvatureFlow<Sur> Cf;
-    Cf(S, T, dt);
-    
-    myIO.WriteData("EvolveSurf.txt", S.x_.Size(), S.x_.begin());
+    float dt = .01;
+    float T = 5 * dt;    
+    EvolveSurface<Sur> Es;
+    Es(S, T, dt);
+
+    myIO.WriteData("EvolveSurf.txt", S.x_.size(), S.x_.begin());
 }
-
-

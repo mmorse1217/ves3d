@@ -117,6 +117,9 @@ class Device
     template<typename T>
     T* Sqrt(const T* x_in, size_t length, T* sqrt_out) const;
 
+    template<typename T>
+    T* ax(const T* a, const T* x, size_t length, size_t n_vecs, T* ax_out) const;
+
     ///Element-wise multiplication of scalar fields.
     template<typename T>
     T* xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const;

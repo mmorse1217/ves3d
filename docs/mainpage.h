@@ -125,7 +125,4 @@
 /*!@page Developer Developers' Documentation
   This page is for advanced users.
   Make sure you have first read \ref intro "the introduction".
-
-  @section shTran Spherical Harmonics Transform
-  @section diff Differentiation
  */

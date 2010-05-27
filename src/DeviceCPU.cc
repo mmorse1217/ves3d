@@ -93,6 +93,7 @@ void Device<DT>::Free(void* ptr) const
 {
     PROFILESTART();
     ::free(ptr);
+    ptr = 0;
     PROFILEEND("CPU",0);
 }
 
@@ -203,6 +204,22 @@ T* Device<DT>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
 
 template<enum DeviceType DT>
 template<typename T>
+T* Device<DT>::ax(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_out) const
+{
+    PROFILESTART();
+        
+#pragma omp parallel for
+    for(size_t n = 0;  n < n_vecs; ++n)
+        for (size_t idx = 0; idx < stride; ++idx)
+            ax_out[n*stride + idx]  = a[idx] * x[n * stride + idx];
+    
+
+    PROFILEEND("CPU",0);
+    return ax_out;
+}
+
+template<enum DeviceType DT>
+template<typename T>
 T* Device<DT>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
 {
     PROFILESTART();
@@ -293,8 +310,9 @@ T*  Device<DT>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  
 {
     PROFILESTART();
     assert(x_in != NULL);
+    
     T val;
-
+    
     if(y_in !=NULL)
     {
 #pragma omp parallel for private(val)

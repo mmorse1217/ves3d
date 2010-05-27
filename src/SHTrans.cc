@@ -9,12 +9,29 @@ SHTrans<T,DT>::SHTrans(const Device<DT> *dev, int p_in) :
     device_(dev),
     mats_(device_, p_in),
     p(p_in),
-    dft_size(2*p)
-{}
+    dft_size(2*p),
+    filter_coeff_((T*) device_->Malloc(p * (p + 2) * sizeof(T)))
+{
+    int ll = p * (p + 2);
+    T *buffer = (T*) malloc(p * (p + 2) * sizeof(T));
+    
+    int idx = 0, len;
+    for(int ii=0; ii< 2 * p; ++ii)
+    {
+        len = p + 1 - (ii+1)/2;
+        for(int jj=0; jj < len; ++jj)
+             buffer[idx++] = (len-jj)<=(p-2*p/3) ? 0 : 1;
+    }
+    device_->Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(T), 
+        MemcpyHostToDevice);
+    free(buffer);
+}
 
 template<typename T, enum DeviceType DT>
 SHTrans<T,DT>::~SHTrans() 
-{}
+{
+    device_->Free(filter_coeff_);
+}
 
 template<typename T, enum DeviceType DT>
 void SHTrans<T,DT>::DLT(T *trans, const T *inputs, T *outputs,
@@ -112,4 +129,43 @@ void SHTrans<T,DT>::backward_duv(const T *inputs, T *work_arr,
     int n_funs, T *outputs) const
 {
     back(inputs, work_arr, n_funs, outputs, mats_.dlt_inv_d1_, mats_.dft_inv_d1_);
+}
+
+template<typename T, enum DeviceType DT>
+void SHTrans<T,DT>::Filter(const T *inputs, T *work_arr, int n_funs, T* shc, T *outputs) const
+{
+    forward(inputs, work_arr, n_funs, shc);
+    ScaleFreq(shc, n_funs, this->filter_coeff_, shc);
+    backward(shc, work_arr, n_funs, outputs);
+}
+
+template<typename T, enum DeviceType DT>
+void SHTrans<T,DT>::ScaleFreq(const T *shc_in, int n_funs, const T* scaling_coeff, T *shc_out) const
+{
+    int leg_order = p+1;
+    
+    device_->ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
+    scaling_coeff += leg_order;
+    shc_in += n_funs * leg_order;
+    shc_out += n_funs * leg_order;
+    leg_order--;
+
+    // process remaining frequencies except the last cosine
+    for (; leg_order>1; leg_order--) 
+    {
+        // first process cosine
+        device_->ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
+        scaling_coeff += leg_order;
+        shc_in += n_funs * leg_order;
+        shc_out += n_funs * leg_order;
+        
+        // then process sine
+        device_->ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
+        scaling_coeff += leg_order;
+        shc_in += n_funs * leg_order;
+        shc_out += n_funs * leg_order;
+    }
+    
+    // process last cosine
+    device_->ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
 }

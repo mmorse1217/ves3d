@@ -24,8 +24,8 @@ bool ScalarsTest<Container>::PerformAll()
     int num_funs(3);
 
     Container sc;
-    sc.Resize(num_funs, p);
-
+    sc.resize(num_funs, p);
+    
     typename Container::iterator it;
     for(it = sc.begin(); it != sc.end(); ++it)
         *it = 10;

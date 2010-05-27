@@ -21,6 +21,8 @@ class SHTrans {
     void back(const T *inputs, T *work_arr, int n_funs, T *outputs, 
         T *trans, T *dft) const;
 
+    T* filter_coeff_;
+    
   public:
     SHTrans(const Device<DT> *dev, int sh_order_in);
     ~SHTrans();
@@ -32,6 +34,8 @@ class SHTrans {
     void backward_d2u(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
     void backward_d2v(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
     void backward_duv(const T *inputs, T *work_arr, int n_funs, T *outputs) const;
+    void Filter(const T *inputs, T *work_arr, int n_funs, T* shc, T *outputs) const;
+    void ScaleFreq(const T *shc_in, int n_funs, const T* scaling_coeff, T *shc_out) const;
 };
 
 #include "SHTrans.cc"

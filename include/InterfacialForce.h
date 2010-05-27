@@ -1,16 +1,17 @@
 #ifndef _INTERFACIALFORCE_H_
 #define _INTERFACIALFORCE_H_
 
-template<typename ScalarContainer, typename VectorContainer,
-         template<typename SC, typename VC> class SurfContainer>
+template<typename SurfContainer>
 class InterfacialForce
 {
-  public:
-    void BendingForce(const SurfContainer<ScalarContainer, VectorContainer> &S, 
-        VectorContainer &Fb) const;
+  private:
+    typedef typename SurfContainer::Sca Sca;
+    typedef typename SurfContainer::Vec Vec;
 
-    void TensileForce(const SurfContainer<ScalarContainer, VectorContainer> &S, 
-        const ScalarContainer &tension, VectorContainer &Fs) const;
+  public:
+    void BendingForce(const SurfContainer &S, Vec &Fb) const;
+
+    void TensileForce(const SurfContainer &S, const Sca &tension, Vec &Fs) const;
 };
 
 #include "InterfacialForce.cc"
