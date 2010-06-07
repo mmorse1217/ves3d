@@ -72,11 +72,11 @@ class ForwardEuler
      void operator()(SurfContainer &S_in, value_type &t, value_type &dt, 
          Forcing &F, SurfContainer &S_out)
     {
-        typename SurfContainer::Vec velocity(S_in.x_.getNumSubs(), 
-            S_in.x_.getShOrder());
-        S_in.UpdateAll();
+        typename SurfContainer::Vec velocity(S_in.getPosition().getNumSubs(), 
+            S_in.getPosition().getShOrder());
         F(t, velocity);
-        axpy(dt, velocity, S_in.x_, S_out.x_);
+        axpy(dt, velocity, S_in.getPosition(), velocity);
+        S_out.setPosition(velocity);
         ///@todo add reparam
     }
 };

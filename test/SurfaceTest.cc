@@ -24,6 +24,7 @@ int main(int argc, char ** argv)
         Vec x0(nVec, p);
                        
         char fname[400];
+        //sprintf(fname,"%s/precomputed/sphere_cart12_single.txt",getenv("VES3D_DIR"));
         sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
         myIO.ReadData(fname,x0.size(),x0.begin());
 
@@ -33,7 +34,7 @@ int main(int argc, char ** argv)
         Sca Y(nVec,p);
         Sca Z(nVec,p);
 
-        size_t fLen = S.getPosition().getStride();
+        size_t fLen = x0.getStride();
         for(int ii=0;ii<nVec;ii++)
             for(int idx=0;idx<fLen;idx++)
             {
@@ -42,20 +43,19 @@ int main(int argc, char ** argv)
                 *(Z.begin() +  ii*fLen + idx) = *(x0.begin() + idx + fLen + fLen);
             }
         
-        // Checking the grad and div operator
-        containers::Scalars<T,CPU, the_cpu_dev> div_n(3,p);
-        S.div(S.getNormal(), div_n);
-        axpy((T) .5, div_n, S.getMeanCurv(),div_n);
+        //Area and volume
+        Sca Area(nVec, p, make_pair(1,1));
+        Sca Vol(nVec, p, make_pair(1,1));
         
+        S.area(Area);
+        S.volume(Vol);
+
+        cout<<" Area :\n"<<Area<<endl;
+        cout<<" Volume :\n"<<Vol<<endl;
+
         T err = 0, err2;
-        for(int ii=0;ii<div_n.size(); ii++)
-        {
-            err2 = fabs(*(div_n.begin() + ii));
-            err = (err>err2) ? err : err2;
-        }
-        cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
-    
-        containers::Vectors<T,CPU,the_cpu_dev> grad(nVec,p), lap(nVec,p);
+        // Checking the grad and div operator
+        Vec grad(nVec,p), lap(nVec,p);
 
         S.grad(X,grad);
         S.div(grad,X);
@@ -74,7 +74,7 @@ int main(int argc, char ** argv)
                 *(lap.begin() +  3*ii*fLen + idx + fLen + fLen) = *(Z.begin() + ii*fLen + idx);
             }
 
-        containers::Scalars<T,CPU,the_cpu_dev> hh(nVec,p);
+        Sca hh(nVec,p);
         GeometricDot(lap,S.getNormal(),hh);
         axpy((T) -.5, hh, S.getMeanCurv(),hh);
         
@@ -85,6 +85,19 @@ int main(int argc, char ** argv)
             err = (err>err2) ? err : err2;
         }
         cout<<"\n The error in the surface grad (For the dumbbell .13703 expected)= "<<err<<endl;
+ 
+        Sca div_n(nVec,p);
+        S.div(S.getNormal(), div_n);
+        axpy((T) .5, div_n, S.getMeanCurv(),div_n);
+        
+        err = 0;
+        for(int ii=0;ii<div_n.size(); ii++)
+        {
+            err2 = fabs(*(div_n.begin() + ii));
+            err = (err>err2) ? err : err2;
+        }
+
+        cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
     }
     PROFILEREPORT(SortTime);
     return 0;

@@ -88,7 +88,7 @@ void Reduce(const ScalarContainer &x_in, const ScalarContainer &w_in,
     assert(quad_w_in.getNumFuns() >= 1);
     
     x_in.getDevice().Reduce(x_in.begin(), w_in.begin(), quad_w_in.begin(), 
-        x_in.getStride(), x_in.getNumFuns(), int_x_dw.begin());
+        x_in.getStride(), x_in.getNumSubs(), int_x_dw.begin());
 }
  
 template<typename ScalarContainer>
@@ -99,15 +99,16 @@ void Reduce(const ScalarContainer &w_in, const ScalarContainer &quad_w_in,
     assert(quad_w_in.getStride() == w_in.getStride());
     assert(quad_w_in.getNumFuns() >= 1);
 
-    w_in.getDevice().Reduce(0, w_in.begin(), quad_w_in.begin(), 
-        w_in.getStride(), w_in.getNumFuns(), int_x_dw.begin());
+    w_in.getDevice().Reduce(static_cast<typename ScalarContainer::value_type* >(0), 
+        w_in.begin(), quad_w_in.begin(), w_in.getStride(), 
+        w_in.getNumSubs(), int_x_dw.begin());
 }
    
 template<typename ScalarContainer>
 typename ScalarContainer::value_type Max(const ScalarContainer &x_in)
 {
     return(x_in.getDevice().Max(x_in.begin(), 
-            x_in.getStride() * x_in.getNumFuns()));
+            x_in.getStride() * x_in.getNumSubs()));
 }
 
 template<typename ScalarContainer, typename VectorContainer>

@@ -11,6 +11,7 @@
 
 #include "HelperFuns.h"
 #include "SHTrans.h"
+#include "GLIntegrator.h"
 
 template <typename ScalarContainer, typename VectorContainer> 
 class Surface
@@ -24,7 +25,7 @@ class Surface
     Surface(const Vec& x_in);
     
     void setPosition(const Vec& x_in);
-    Vec& getPosition();
+   
     const Vec& getPosition() const;
     const Vec& getNormal() const;
     const Sca& getAreaElement() const;
@@ -36,8 +37,6 @@ class Surface
 
     void grad(const Sca &f_in, Vec &grad_f_out) const;
     void div(const Vec &f_in, Sca &div_f_out) const;
- 
-    void resize(int n_surfs_in);
 
     void area(Sca &area) const;
     void volume(Sca &vol) const;
@@ -45,30 +44,31 @@ class Surface
     void getCenters(Sca &centers) const;
 
   private:
-    VectorContainer x_;
-    mutable VectorContainer normal_;
+    Vec x_;
+    mutable Vec normal_;
 
-    mutable ScalarContainer w_;
-    mutable ScalarContainer h_;
-    mutable ScalarContainer k_;
+    mutable Sca w_;
+    mutable Sca h_;
+    mutable Sca k_;
 
-    mutable VectorContainer cu_;
-    mutable VectorContainer cv_;
+    mutable Vec cu_;
+    mutable Vec cv_;
  
     SHTrans<value_type, CPU> sht_;
+    GaussLegendreIntegrator<Sca> integrator_;
 
     mutable bool position_has_changed_outside_;
     mutable bool first_forms_are_stale_;
     mutable bool second_forms_are_stale_;
-
+    
     void checkContainers() const;
     Surface(Surface<Sca, Vec> const& s_in);
     Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
 
     ///@todo remove the work vectors
     mutable VectorContainer shc, work_arr;    
-    mutable ScalarContainer S1, S2, S3, S4, S5, S6;
-    mutable VectorContainer V1, V2;
+    mutable ScalarContainer E, F, G, L, M, N;
+    mutable VectorContainer Xu, Xv;
 };
 
 #include "Surface.cc"

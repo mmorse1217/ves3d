@@ -46,7 +46,8 @@ namespace containers
         void resize(size_t new_num_funs, int new_sh_order = 0,
             pair<int, int> new_grid_dim = EMPTY_GRID);
         
-        inline const Device<DT>& getDevice() const;
+        static const Device<DT>& getDevice();
+        
         inline int getShOrder() const;
         inline pair<int, int> getGridDim() const;
         inline size_t getStride() const;
@@ -68,7 +69,7 @@ namespace containers
     };
     
     template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
-    std::ostream& operator<<(std::ostream& output, Scalars<T, DT, DEVICE>&sc);
+    std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE>&sc);
     
 #include "Scalars.cc"
 }

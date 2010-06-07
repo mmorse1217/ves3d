@@ -2,9 +2,12 @@
 *~
 *.out
 *.exe
-*.txt 
+*.txt
+*.tar
+*.bk
 results/
-/precomputed/
+precomputed
 makefile.in.files/makefile.in
 docs/html/
 docs/latex/
+TAGS

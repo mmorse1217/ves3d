@@ -45,15 +45,6 @@ namespace containers
         const ScalarContainer &x_in, ScalarContainer &axpy_out);
 
     template<typename ScalarContainer>
-    inline void Reduce(const ScalarContainer &x_in, 
-        const ScalarContainer &w_in, const ScalarContainer &quad_w_in, 
-        ScalarContainer &int_x_dw);
-    
-    template<typename ScalarContainer>
-    inline void Reduce(const ScalarContainer &w_in, 
-        const ScalarContainer &quad_w_in, ScalarContainer &int_x_dw);
-
-    template<typename ScalarContainer>
     inline typename ScalarContainer::value_type Max(const ScalarContainer &x_in);
 
     template<typename ScalarContainer, typename VectorContainer>
@@ -94,7 +85,7 @@ namespace containers
     template<typename ScalarContainer>
     inline void CircShift(const typename ScalarContainer::value_type *x_in,
         int shift, ScalarContainer &x_out);
-
+    
     ///@todo this need to be implemented for the GPU
     template<typename ScalarContainer>
     typename ScalarContainer::value_type AlgebraicDot( 

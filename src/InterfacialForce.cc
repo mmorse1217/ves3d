@@ -7,15 +7,15 @@ void InterfacialForce<SurfContainer>::BendingForce(const SurfContainer &S,
     Sca t1(Fb.getNumSubs(),Fb.getShOrder());
     Sca t2(Fb.getNumSubs(),Fb.getShOrder());
  
-    S.Grad(S.h_, Fb);
-    S.Div(Fb, t1);
+    S.grad(S.getMeanCurv(), Fb);
+    S.div(Fb, t1);
     axpy( -1.0, t1, t1);
     
-    xy(S.h_,S.h_,t2);
-    axpy(-1.0, t2, S.k_, t2);
-    xy(t2, S.h_, t2);
+    xy(S.getMeanCurv(),S.getMeanCurv(),t2);
+    axpy(-1.0, t2, S.getGaussianCurv(), t2);
+    xy(t2, S.getMeanCurv(), t2);
     axpy(2.0, t2, t1, t1);
-    xv(t1, S.normal_, Fb);
+    xv(t1, S.getNormal(), Fb);
 }
 
 template<typename SurfContainer>
@@ -25,9 +25,9 @@ void InterfacialForce<SurfContainer>::TensileForce(const SurfContainer &S,
     ///@todo resize Fs to match with input
     ///@todo This instantiation is not correct; it assumes to much about the container.
     Vec temp(Fs.getNumSubs(), Fs.getShOrder());
-    xv(S.h_, S.normal_, Fs);
+    xv(S.getMeanCurv(), S.getNormal(), Fs);
     xv(tension, Fs, Fs);
-    S.Grad(tension, temp);
+    S.grad(tension, temp);
     axpy(2.0, Fs, temp, Fs);
 }
 

@@ -50,7 +50,7 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_funs, int new_sh_order,
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-const Device<DT>& Scalars<T, DT, DEVICE>::getDevice() const
+const Device<DT>& Scalars<T, DT, DEVICE>::getDevice()
 {
     return(DEVICE);
 }
@@ -143,7 +143,7 @@ Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() const
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
-std::ostream& operator<<(std::ostream& output, Scalars<T, DT, DEVICE> &sc)
+std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
 {
     output<<"=====================================================\n"
           <<"SH order            : "<<sc.getShOrder()<<"\n"
@@ -153,7 +153,7 @@ std::ostream& operator<<(std::ostream& output, Scalars<T, DT, DEVICE> &sc)
           <<"Number of functions : "<<sc.getNumSubs()<<"\n"
           <<"=====================================================\n";
     
-    for(typename Scalars<T,DT,DEVICE>::iterator it = sc.begin(); it !=sc.end(); ++it)
+    for(typename Scalars<T,DT,DEVICE>::const_iterator it = sc.begin(); it !=sc.end(); ++it)
     {
         output<<*it<<" ";
 

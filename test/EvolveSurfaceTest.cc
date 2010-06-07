@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     typedef containers::Vectors<float, CPU, the_cpu_dev> Vc;
     typedef Surface<Sc,Vc> Sur;
 
-    int p(12), nSur(1);
+    int p(12), nSur(2);
     //int fLen(2*p*(p+1));
     int dLen(6*p*(p+1));
     
@@ -32,23 +32,20 @@ int main(int argc, char **argv)
     //IO
     DataIO<Sc::value_type, CPU> myIO(the_cpu_dev);
     
-    //Reading data
-    bool readFromFile = true;
-    OperatorsMats<Sc::value_type> mats(myIO, par.p_, 2*par.p_, readFromFile);
-    
-    // memory allocation
-    Sur S(par, mats);  
-
     // initializing vesicle positions from text file
+    Vc x0(nSur, p);
+                       
     char fname[400];
-    sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt", 
+    sprintf(fname,"%s/precomputed/two_ellipse_12", //dumbbell_cart12_single.txt",
         getenv("VES3D_DIR"));
-    myIO.ReadData(fname,dLen,S.x_.begin());
+    myIO.ReadData(fname,x0.size(),x0.begin());
+    
+    Sur S(x0);  
 
     float dt = .01;
-    float T = 5 * dt;    
+    float T = 1000 * dt;    
     EvolveSurface<Sur> Es;
     Es(S, T, dt);
 
-    myIO.WriteData("EvolveSurf.txt", S.x_.size(), S.x_.begin());
+    myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), S.getPosition().begin());
 }
