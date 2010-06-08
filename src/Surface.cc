@@ -7,7 +7,7 @@
  */
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in) :
-    sht_(&x_.getDevice(), x_in.getShOrder()), ///@todo fix this
+    sht_(x_in.getShOrder()), ///@todo make sht_ autonomous
     position_has_changed_outside_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true)
@@ -23,7 +23,18 @@ void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec& x_in)
     second_forms_are_stale_ = true;
 
     x_.replicate(x_in);
-    axpy(1.0, x_in, x_);
+    axpy(static_cast<value_type>(1), x_in, x_);
+}
+
+template <typename ScalarContainer, typename VectorContainer>  
+VectorContainer& Surface<ScalarContainer, 
+                         VectorContainer>::getPositionModifiable()
+{
+    position_has_changed_outside_ = true;
+    first_forms_are_stale_ = true;
+    second_forms_are_stale_ = true;
+
+    return(x_);
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
@@ -75,13 +86,8 @@ void Surface<ScalarContainer, VectorContainer>::updateFirstForms() const
     if(position_has_changed_outside_)
         checkContainers();
         
-    size_t nv3 = x_.getTheDim() * x_.getNumSubs();
     // Spherical harmonic coefficient
-    sht_.forward(x_.begin(), work_arr.begin(), nv3, shc.begin());
-    
-    // First derivatives
-    sht_.backward_du(shc.begin(), work_arr.begin(), nv3, Xu.begin());
-    sht_.backward_dv(shc.begin(), work_arr.begin(), nv3, Xv.begin());
+    sht_.FirstDerivatives(x_, work_arr, shc, Xu, Xv);
     
     // First fundamental coefficients
     GeometricDot(Xu, Xu, E);
@@ -101,11 +107,11 @@ void Surface<ScalarContainer, VectorContainer>::updateFirstForms() const
 
     //Div and Grad coefficients
     xv(F, Xv, cu_);
-    axpy((value_type) -1.0,cu_, cu_);
+    axpy(static_cast<value_type>(-1), cu_, cu_);
     xvpw(G, Xu, cu_, cu_);
     
     xv(F, Xu, cv_);
-    axpy((value_type) -1.0,cv_, cv_);
+    axpy(static_cast<value_type>(-1), cv_, cv_);
     xvpw(E, Xv, cv_, cv_);
 
     first_forms_are_stale_ = false;
@@ -116,43 +122,39 @@ void Surface<ScalarContainer, VectorContainer>::updateAll() const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
-
-    size_t nv3 = x_.getTheDim() * x_.getNumSubs();
     
     // Second derivatives
-    sht_.forward(x_.begin(), work_arr.begin(), nv3, shc.begin());
+    sht_.forward(x_, work_arr, shc);
 
-    sht_.backward_d2u(shc.begin(), work_arr.begin(), nv3, Xu.begin());
+    sht_.backward_d2u(shc, work_arr, Xu);
     GeometricDot(Xu, normal_, L);
     
-    sht_.backward_duv(shc.begin(), work_arr.begin(), nv3, Xu.begin());
+    sht_.backward_duv(shc, work_arr, Xu);
     GeometricDot(Xu, normal_, M);
 
-    sht_.backward_d2v(shc.begin(), work_arr.begin(), nv3, Xu.begin());
+    sht_.backward_d2v(shc, work_arr, Xu);
     GeometricDot(Xu, normal_, N);
     
     // Gaussian curvature
     xy(L,N,k_);
     xy(M,M,h_);
-    axpy((value_type)-1.0,h_,k_,k_);
+    axpy(static_cast<value_type>(-1), h_, k_, k_);
     xyInv(k_,w_,k_);
     xyInv(k_,w_,k_);
     
-    sht_.Filter(k_.begin(),work_arr.begin(), k_.getNumSubs(), 
-        shc.begin(), k_.begin());
+    sht_.Filter(k_,work_arr, shc, k_);
     
     // Mean curvature
     xy(E,N,h_);
-    axpy((value_type) .5, h_, h_);
+    axpy(static_cast<value_type>(.5), h_, h_);
     
     xy(F,M,N);
-    axpy((value_type)-1.0, N, h_, h_);
+    axpy(static_cast<value_type>(-1), N, h_, h_);
     
     xy(G,L,N);
-    axpy((value_type).5 , N, h_, h_);
+    axpy(static_cast<value_type>(.5), N, h_, h_); 
 
-    sht_.Filter(h_.begin(),work_arr.begin(), h_.getNumSubs(), 
-        shc.begin(), h_.begin());
+    sht_.Filter(h_, work_arr, shc, h_);
 
     second_forms_are_stale_ = false;
 }
@@ -164,15 +166,11 @@ void Surface<ScalarContainer, VectorContainer>::grad(const ScalarContainer
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    sht_.forward(f_in.begin(), work_arr.begin(), f_in.getNumSubs(), shc.begin());
-    sht_.backward_du(shc.begin(), work_arr.begin(), f_in.getNumSubs(), M.begin());
-    sht_.backward_dv(shc.begin(), work_arr.begin(), f_in.getNumSubs(), N.begin());
+    sht_.FirstDerivatives(f_in, work_arr, shc, M, N);
 
     xv(M, cu_, grad_f_out);
     xvpw(N, cv_, grad_f_out, grad_f_out);
-    sht_.Filter(grad_f_out.begin(), work_arr.begin(), 
-        grad_f_out.getTheDim() * grad_f_out.getNumSubs(),
-        shc.begin(), grad_f_out.begin());
+    sht_.Filter(grad_f_out, work_arr, shc, grad_f_out);
 }
 
 template <typename ScalarContainer, typename VectorContainer> 
@@ -182,22 +180,18 @@ void Surface<ScalarContainer, VectorContainer>::div(const VectorContainer
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    size_t nv3 = f_in.getTheDim() * f_in.getNumSubs();
+    sht_.FirstDerivatives(f_in, work_arr, shc, Xu, Xv);
 
-    sht_.forward(f_in.begin(), work_arr.begin(), nv3, shc.begin());
-    sht_.backward_du( shc.begin(), work_arr.begin(), nv3, Xu.begin());
-    sht_.backward_dv( shc.begin(), work_arr.begin(), nv3, Xv.begin());
-    
     GeometricDot(Xu,cu_, N);
     GeometricDot(Xv,cv_, div_f_out);
-    axpy((value_type)1.0,div_f_out, N, div_f_out);
+    axpy(static_cast<value_type>(1),div_f_out, N, div_f_out);
 
-    sht_.Filter(div_f_out.begin(),work_arr.begin(), div_f_out.getNumSubs(), 
-        shc.begin(), div_f_out.begin());
+    sht_.Filter(div_f_out,work_arr, shc, div_f_out);
 }
 
 template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::area(ScalarContainer &area_out) const
+void Surface<ScalarContainer, VectorContainer>::area(ScalarContainer 
+    &area_out) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -206,80 +200,35 @@ void Surface<ScalarContainer, VectorContainer>::area(ScalarContainer &area_out) 
 }
 
 template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::volume(ScalarContainer &vol_out) const
+void Surface<ScalarContainer, VectorContainer>::volume(ScalarContainer 
+    &vol_out) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
     
     GeometricDot(x_,normal_,N);
-    axpy(static_cast<typename ScalarContainer::value_type>(1)/3, N, N);
+    axpy(static_cast<value_type>(1)/3, N, N);
 
     integrator_(N, w_, vol_out);
 }
 
 template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::populate(const Sca &centers)
+void Surface<ScalarContainer, VectorContainer>::getCenters(Vec &centers) const
 {
+    if(first_forms_are_stale_)
+        updateFirstForms();
+
+    GeometricDot(x_, x_, N);
+    axpy(static_cast<value_type>(.5), N, N);
+    xv(N, normal_, Xu);
+    
+    integrator_(Xu, w_, centers);
+    
+    M.replicate(centers);
+    volume(M);
+    uyInv(centers, M, centers);
+    M.replicate(x_);
 }
-
-template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::getCenters(Sca &centers) const
-{
-}
-// template< typename ScalarContainer, typename VectorContainer >
-// void Surface<ScalarContainer, VectorContainer>::Populate(const T *centers)
-// {
-//     int length = this->x_.getFunLength();
-//     for(int ii=1;ii<params_.n_surfs_;ii++)
-//     {
-//         int idx = 3 * ii * length;
-//         x_.getDevice().Memcpy(x_.begin() + idx, x_.begin(), 3 * length, MemcpyDeviceToDevice);
-//         x_.getDevice().axpb((T) 1.0, x_.begin() + idx                  , centers[3*ii  ], length, 1, x_.begin() + idx                  );
-//         x_.getDevice().axpb((T) 1.0, x_.begin() + idx + length         , centers[3*ii+1], length, 1, x_.begin() + idx + length         );
-//         x_.getDevice().axpb((T) 1.0, x_.begin() + idx + length + length, centers[3*ii+2], length, 1, x_.begin() + idx + length + length);
-//     }
-
-//     //treating the first surface
-//     x_.getDevice().axpb((T) 1.0, x_.begin()                  , centers[0], length, 1, x_.begin()                  );
-//     x_.getDevice().axpb((T) 1.0, x_.begin() + length         , centers[1], length, 1, x_.begin() + length         );
-//     x_.getDevice().axpb((T) 1.0, x_.begin() + length + length, centers[2], length, 1, x_.begin() + length + length);
-// }
-
-// template<typename ScalarContainer, typename VectorContainer >
-// T* Surface<ScalarContainer, VectorContainer>::GetCenters(T* cnts)
-// {
-//     UpdateFirstForms();
-    
-//     GeometricDot(x_, x_, S1);
-//     axpb((T) 1/2, S1,(T) 0.0, S1);
-//     xvpb(S1, normal_, (T) 0.0, V1);
-    
-//     size_t idx = 0;
-//     size_t len = w_.GetDataLength();
-//     size_t sc_len = w_.GetFunLength();
-//     size_t nv = params_.n_surfs_;
-
-//     x_.GetDevice().Memcpy(work_arr.begin()            , w_.begin(), len, MemcpyDeviceToDevice);
-//     x_.GetDevice().Memcpy(work_arr.begin() + len      , w_.begin(), len, MemcpyDeviceToDevice);
-//     x_.GetDevice().Memcpy(work_arr.begin() + len + len, w_.begin(), len, MemcpyDeviceToDevice);
-
-//     x_.GetDevice().ShufflePoints(work_arr.begin()                   , AxisMajor , len   , 1 , work_arr.begin() + len + len + len);
-//     x_.GetDevice().ShufflePoints(work_arr.begin() + len + len + len , PointMajor, sc_len, nv, work_arr.begin());
-
-//     x_.GetDevice().Reduce(NULL, work_arr.begin(), quad_weights_, sc_len, 3*nv, cnts);
-//     x_.GetDevice().Reduce(V1.begin(), work_arr.begin(), quad_weights_, sc_len, 3*nv, cnts);
-
-//     GeometricDot(x_,normal_,S1);
-//     axpb((T) 1/3,S1,(T) 0.0, S1);
-//     x_.GetDevice().Reduce(S1.begin(), w_.begin(), quad_weights_, sc_len, nv, work_arr.begin());
-    
-//     x_.GetDevice().Memcpy(work_arr.begin() + nv     , work_arr.begin(), nv, MemcpyDeviceToDevice); 
-//     x_.GetDevice().Memcpy(work_arr.begin() + nv + nv, work_arr.begin(), nv, MemcpyDeviceTDevice); 
-//     x_.GetDevice().ShufflePoints(work_arr.begin(), AxisMajor, nv, 1, work_arr.begin() + 3*nv);
-//     x_.GetDevice().xyInv(cnts, work_arr.begin() + 3*nv, 3, nv, cnts);
-
-//     return cnts;
-// }
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::checkContainers() const

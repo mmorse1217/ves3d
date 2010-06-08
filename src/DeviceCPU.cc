@@ -482,7 +482,8 @@ T*  Device<DT>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t strid
 
 template<enum DeviceType DT>
 template<typename T>
-T*  Device<DT>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, size_t stride, size_t num_surfs, T  *size_t_x_dw) const
+T*  Device<DT>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in, 
+    const size_t stride, const size_t ns, T *x_dw) const
 {
     PROFILESTART();
     T val, sum;
@@ -490,22 +491,28 @@ T*  Device<DT>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, size_t 
     if(x_in != NULL)
     {
 #pragma omp parallel for private(val,sum)
-        for (size_t ii = 0; ii < num_surfs; ++ii)
+        for (size_t ii = 0; ii < ns; ++ii)
         {
-            sum = 0;
-            for (size_t jj = 0; jj < stride; ++jj) 
+            int wbase = ii * stride;
+            for(int kk = 0; kk < x_dim; ++kk)
             {
-                val  = x_in[ii * stride + jj];
-                val *= w_in[ii * stride + jj];
-                val *= quad_w_in[jj];
+                sum = 0;
+                int xbase = ii * x_dim * stride + kk * stride;
                 
-                sum += val;
+                for (size_t jj = 0; jj < stride; ++jj) 
+                {
+                    val  = x_in[xbase + jj];
+                    val *= w_in[wbase + jj];
+                    val *= quad_w_in[jj];
+                    
+                    sum += val;
+                }
+                x_dw[ii*x_dim + kk] = sum;
             }
-            size_t_x_dw[ii] = sum;
         }
     } else{
 #pragma omp parallel for private(val,sum)
-        for (size_t ii = 0; ii < num_surfs; ++ii)
+        for (size_t ii = 0; ii < ns; ++ii)
         {
             sum = 0;
             for (size_t jj = 0; jj < stride; ++jj) 
@@ -516,12 +523,12 @@ T*  Device<DT>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, size_t 
                 sum += val;
             }
 
-            size_t_x_dw[ii] = sum;
+           x_dw[ii] = sum;
         }
     }
 
     PROFILEEND("CPU",0);
-    return size_t_x_dw;
+    return x_dw;
 }
 
 template<enum DeviceType DT>

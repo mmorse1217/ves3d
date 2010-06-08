@@ -75,8 +75,7 @@ class ForwardEuler
         typename SurfContainer::Vec velocity(S_in.getPosition().getNumSubs(), 
             S_in.getPosition().getShOrder());
         F(t, velocity);
-        axpy(dt, velocity, S_in.getPosition(), velocity);
-        S_out.setPosition(velocity);
+        axpy(dt, velocity, S_in.getPosition(), S_out.getPositionModifiable());
         ///@todo add reparam
     }
 };

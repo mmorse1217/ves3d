@@ -10,10 +10,12 @@ class GaussLegendreIntegrator
     GaussLegendreIntegrator();
     ~GaussLegendreIntegrator();
 
-    inline void operator()(const Container &x_in, 
-        const Container &w_in, Container &x_dw) const;
+    template<typename InputContainer>
+    inline void operator()(const InputContainer &x_in, 
+        const Container &w_in, InputContainer &x_dw) const;
     
-    inline void operator()(const Container &w_in, Container &dw) const;
+    inline void operator()(const Container &w_in, 
+        Container &dw) const;
 
   private:
     inline Container* getQuadWeight(int key) const;

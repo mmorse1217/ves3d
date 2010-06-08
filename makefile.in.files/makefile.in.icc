@@ -5,12 +5,12 @@ ARFLAGS = -r
 RANLIB = ranlib
 
 BLAS_INCLUDE=-I/usr/local/apps/intel/mkl/10.0.3.020/include
-BLAS_LIBS = -L/opt/intel/Compiler/11.1/059/mkl/lib/em64t -Wl,--start-group \
+BLAS_LIBS = -L/opt/intel/Compiler/11.1/046/mkl/lib/em64t -Wl,--start-group \
       -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group
-CUDA_DIR = /usr/local/cuda
-NVCC = $(CUDA_DIR)/bin/nvcc
 
 ifeq ($(USE_GPU),yes)
+	CUDA_DIR = /usr/local/cuda
+	NVCC = $(CUDA_DIR)/bin/nvcc
         CUDA_LIBS= -L$(CUDA_DIR)/lib64 -lcublas -lcudart                   \
 		-Wl,-rpath $(CUDA_DIR)/lib64
         CUDA_INCLUDE=-I$(CUDA_DIR)/include
@@ -22,10 +22,17 @@ endif
 include ${VES3D_DIR}/makefile.in.files/makefile.in.common
 
 ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE) 
-PREFLAGS+= -DHAS_MKL_LIB
 
-# overall flags used in the compilers
-CPPFLAGS = -g -O0 -openmp -msse3 $(ALL_INCLUDE) -fPIC $(PREFLAGS) 
+PREFLAGS+= -DHAS_MKL_LIB -early-template-check -sox
+
+ifeq ($(VES3D_TESTING),yes)
+	PREFLAGS+= -g -O0 -msse3 -DPROFILING 
+else
+	PREFLAGS+= -O3 -msse3 -finline -unroll-agressive
+endif
+
+CPPFLAGS = $(ALL_INCLUDE) $(PREFLAGS)
+
 CUDAFLAGS =  ${ALL_INCLUDE} 
 LDFLAGS  = ${VES3D_LIBS} ${CUDA_LIBS} ${BLAS_LIBS} -lpthread 
 
@@ -33,15 +40,5 @@ ifeq ($(USE_GPU),yes)
 %.o: %.cu
 	$(NVCC) $(ALL_INCLUDE) -c $*.cu
 endif
-
-
-
-
-
-
-
-
-
-
 
 

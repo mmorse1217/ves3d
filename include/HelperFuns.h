@@ -7,17 +7,9 @@
 
 namespace containers 
 {
-    template<typename Container>
-    inline bool AreCompatible(const Container &lhs, 
-        const Container &rhs);
-
-    template<typename ScalarContainer, typename VectorContainer>
-    inline bool AreCompatible(const VectorContainer &lhs,
-        const ScalarContainer &rhs);
-
-    template<typename ScalarContainer, typename VectorContainer>
-    inline bool AreCompatible(const ScalarContainer &lhs, 
-        const VectorContainer &rhs);
+    template<typename lhsContainer, typename rhsContainer>
+    inline bool AreCompatible(const lhsContainer &lhs,
+        const rhsContainer &rhs);
 
     template<typename ScalarContainer>
     inline void Sqrt(const ScalarContainer &x_in, 
@@ -73,10 +65,14 @@ namespace containers
     inline void xv(const ScalarContainer &x_in, 
         const VectorContainer &v_in, VectorContainer &xvpw_out);
     
-    template<typename ScalarContainer, typename VectorContainer>
-    inline void Reduce(const VectorContainer &x_in, 
+    template<typename ScalarContainer, typename IntegrandContainer>
+    inline void Reduce(const IntegrandContainer &x_in, 
         const ScalarContainer &w_in, const ScalarContainer &quad_w_in, 
-        VectorContainer &int_x_dw);
+        IntegrandContainer &x_dw);
+
+    template<typename Container>
+    inline void Reduce(const Container &w_in, const Container &quad_w_in, 
+        Container &dw);
     
     template<typename VectorContainer>
     inline void ShufflePoints(const VectorContainer &x_in, 

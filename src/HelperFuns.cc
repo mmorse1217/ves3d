@@ -1,22 +1,9 @@
-template<typename Container>
-inline bool AreCompatible(const Container &lhs, const Container &rhs)
-{
-    return(lhs.getStride() == rhs.getStride()
-        && lhs.getNumSubs() == rhs.getNumSubs());
-}
-
-template<typename ScalarContainer, typename VectorContainer>
-inline bool AreCompatible(const VectorContainer &lhs, const  ScalarContainer &rhs)
+template<typename lhsContainer, typename rhsContainer>
+inline bool AreCompatible(const lhsContainer &lhs, const  rhsContainer &rhs)
 {
     return(lhs.getDevice() == rhs.getDevice()
         && lhs.getStride() == rhs.getStride()
         && lhs.getNumSubs() == rhs.getNumSubs());
-}
-
-template<typename ScalarContainer, typename VectorContainer>
-inline bool AreCompatible(const ScalarContainer &lhs, const VectorContainer &rhs)
-{
-    return(AreCompatible(rhs, lhs));
 }
 
 template<typename ScalarContainer>
@@ -78,32 +65,32 @@ void axpy(typename ScalarContainer::value_type a_in,
         a_in, x_in.begin(), 0, x_in.size(), axpy_out.begin());
 }
 
-template<typename ScalarContainer>
-void Reduce(const ScalarContainer &x_in, const ScalarContainer &w_in, 
-    const ScalarContainer &quad_w_in, ScalarContainer &int_x_dw)
+
+template<typename ScalarContainer, typename IntegrandContainer>
+void Reduce(const IntegrandContainer &x_in, 
+    const ScalarContainer &w_in, const ScalarContainer &quad_w_in, 
+    IntegrandContainer &x_dw)
 {
     assert(AreCompatible(x_in,w_in));
-    assert(AreCompatible(w_in,int_x_dw));
     assert(quad_w_in.getStride() == w_in.getStride());
-    assert(quad_w_in.getNumFuns() >= 1);
+    assert(quad_w_in.getNumSubs() >= 1);
     
-    x_in.getDevice().Reduce(x_in.begin(), w_in.begin(), quad_w_in.begin(), 
-        x_in.getStride(), x_in.getNumSubs(), int_x_dw.begin());
+    x_in.getDevice().Reduce(x_in.begin(), x_in.getTheDim(), w_in.begin(), 
+        quad_w_in.begin(), x_in.getStride(), x_in.getNumSubs(), x_dw.begin());
+}
+
+template<typename Container>
+void Reduce(const Container &w_in, const Container &quad_w_in, 
+    Container &dw)
+{
+    assert(quad_w_in.getStride() == w_in.getStride());
+    assert(quad_w_in.getNumSubs() >= 1);
+    
+    w_in.getDevice().Reduce(static_cast<typename Container::value_type* >(0), 
+        0, w_in.begin(), quad_w_in.begin(), w_in.getStride(), 
+        w_in.getNumSubs(), dw.begin());
 }
  
-template<typename ScalarContainer>
-void Reduce(const ScalarContainer &w_in, const ScalarContainer &quad_w_in, 
-    ScalarContainer &int_x_dw)
-{
-    assert(AreCompatible(w_in,int_x_dw));
-    assert(quad_w_in.getStride() == w_in.getStride());
-    assert(quad_w_in.getNumFuns() >= 1);
-
-    w_in.getDevice().Reduce(static_cast<typename ScalarContainer::value_type* >(0), 
-        w_in.begin(), quad_w_in.begin(), w_in.getStride(), 
-        w_in.getNumSubs(), int_x_dw.begin());
-}
-   
 template<typename ScalarContainer>
 typename ScalarContainer::value_type Max(const ScalarContainer &x_in)
 {
@@ -137,7 +124,7 @@ template<typename ScalarContainer, typename VectorContainer>
 inline void uyInv(const VectorContainer &u_in, 
     const ScalarContainer &y_in, VectorContainer &uyInv_out)
 {
-    assert(AreCompatible(u_in,y_in));
+    assert(AreCompatible(u_in, y_in));
     assert(AreCompatible(y_in,uyInv_out));
 
     u_in.getDevice().uyInv(u_in.begin(), y_in.begin(), 

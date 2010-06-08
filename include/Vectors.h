@@ -17,14 +17,11 @@ namespace containers
     template <typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
     class Vectors : public Scalars<T, DT, DEVICE>
     {
-      protected:
-        size_t num_vecs_;
-        enum CoordinateOrder point_order_;
-        
-        static const int the_dim_ = 3;
-
       public: 
-        Vectors(size_t num_vecs = 0, int sh_order = 0,
+        using typename Scalars<T,DT, DEVICE>::iterator;
+        using typename Scalars<T,DT, DEVICE>::const_iterator;
+        
+        explicit Vectors(size_t num_vecs = 0, int sh_order = 0,
             pair<int, int> grid_dim = EMPTY_GRID);
         
         virtual void resize(size_t new_num_vecs, int new_sh_order = 0,
@@ -37,7 +34,16 @@ namespace containers
         inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);        
         inline void setPointOrder(enum CoordinateOrder new_order);    
         inline enum CoordinateOrder getPointOrder() const;
-    };
+
+        inline iterator getSubN(size_t n);
+        inline const_iterator getSubN(size_t n) const;
+
+      protected:
+        size_t num_vecs_;
+        enum CoordinateOrder point_order_;
+        
+        static const int the_dim_ = 3;
+};
 
 #include "Vectors.cc"
 }

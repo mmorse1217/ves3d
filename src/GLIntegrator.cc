@@ -33,8 +33,9 @@ Container* GaussLegendreIntegrator<Container>::getQuadWeight(int key) const
 }
 
 template<typename Container>
-void GaussLegendreIntegrator<Container>::operator()(const Container &x_in, 
-    const Container &w_in, Container &x_dw) const
+template<typename InputContainer>
+void GaussLegendreIntegrator<Container>::operator()(const InputContainer &x_in, 
+    const Container &w_in, InputContainer &x_dw) const
 {
     Reduce(x_in, w_in, *getQuadWeight(x_in.getShOrder()), x_dw);
 }

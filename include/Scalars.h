@@ -21,25 +21,12 @@ namespace containers
     template <typename T, enum DeviceType DT, const Device<DT> &DEVICE>
     class Scalars
     {
-      protected:
-        int sh_order_;
-        pair<int, int> grid_dim_;
-        size_t stride_;
-        size_t num_sub_arr_;
-        size_t capacity_;
-        T *data_;
-
-        static const int the_dim_ = 1;
-
-        Scalars(Scalars<T, DT, DEVICE> const& sc_in);
-        Scalars<T, DT, DEVICE>& operator=(const Scalars<T, DT, DEVICE>& rhs);
-
       public:
         typedef T* iterator;
         typedef const T* const_iterator;
         typedef T value_type;
 
-        Scalars(size_t num_funs = 0, int sh_order = 0, 
+        explicit Scalars(size_t num_funs = 0, int sh_order = 0, 
             pair<int, int> grid_dim = EMPTY_GRID);
         virtual ~Scalars();
 
@@ -63,10 +50,26 @@ namespace containers
     
         inline iterator begin();
         inline const_iterator begin() const;
-    
+
+        inline iterator getSubN(size_t n);
+        inline const_iterator getSubN(size_t n) const;
+
         inline iterator end();
         inline const_iterator end() const;
-    };
+
+      protected:
+        int sh_order_;
+        pair<int, int> grid_dim_;
+        size_t stride_;
+        size_t num_sub_arr_;
+        size_t capacity_;
+        T *data_;
+
+        static const int the_dim_ = 1;
+
+        Scalars(Scalars<T, DT, DEVICE> const& sc_in);
+        Scalars<T, DT, DEVICE>& operator=(const Scalars<T, DT, DEVICE>& rhs);
+};
     
     template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
     std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE>&sc);

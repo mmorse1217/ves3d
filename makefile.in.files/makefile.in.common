@@ -1,6 +1,6 @@
 VES3D_TEMPLATES=-I${VES3D_DIR}/src
 VES3D_INCLUDE=-I${VES3D_DIR}/include ${VES3D_TEMPLATES}
-PREFLAGS= -openmp -fPIC -DNDEBUG -early-template-check -sox
+PREFLAGS= -openmp -fPIC 
 
 ifeq ($(USE_GPU),yes)
 	VES3D_GPU_LIBS=-lves3dgpu

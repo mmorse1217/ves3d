@@ -13,8 +13,8 @@
   
   This manual is divided in the following sections:
   - @subpage CodingConv
-  - @subpage Client
-  - @subpage Developer
+  - @subpage QuickStart
+  - @subpage Developers
 */
 
 
@@ -112,7 +112,7 @@
 
 ////////////////////////////////////////////////////////////
 
-/*!@page Client Clients' Manual
+/*!@page QuickStart Quick Start
   This page introduces the user to the topic.
   Now you can proceed to the \ref advanced "advanced section".
   
@@ -122,7 +122,7 @@
 
 ////////////////////////////////////////////////////////////
 
-/*!@page Developer Developers' Documentation
+/*!@page Developers Developers
   This page is for advanced users.
   Make sure you have first read \ref intro "the introduction".
  */

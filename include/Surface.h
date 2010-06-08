@@ -25,7 +25,7 @@ class Surface
     Surface(const Vec& x_in);
     
     void setPosition(const Vec& x_in);
-   
+    Vec& getPositionModifiable();
     const Vec& getPosition() const;
     const Vec& getNormal() const;
     const Sca& getAreaElement() const;
@@ -37,11 +37,10 @@ class Surface
 
     void grad(const Sca &f_in, Vec &grad_f_out) const;
     void div(const Vec &f_in, Sca &div_f_out) const;
-
+        
     void area(Sca &area) const;
     void volume(Sca &vol) const;
-    void populate(const Sca &centers);
-    void getCenters(Sca &centers) const;
+    void getCenters(Vec &centers) const;
 
   private:
     Vec x_;
@@ -54,7 +53,7 @@ class Surface
     mutable Vec cu_;
     mutable Vec cv_;
  
-    SHTrans<value_type, CPU> sht_;
+    SHTrans<Sca> sht_;
     GaussLegendreIntegrator<Sca> integrator_;
 
     mutable bool position_has_changed_outside_;
@@ -65,9 +64,10 @@ class Surface
     Surface(Surface<Sca, Vec> const& s_in);
     Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
 
-    ///@todo remove the work vectors
+    ///@todo remove the work vectors. 
+    //There is no guarantee that any of these holds its value between calls.
     mutable VectorContainer shc, work_arr;    
-    mutable ScalarContainer E, F, G, L, M, N;
+    mutable ScalarContainer E, F, G, L, M, N; 
     mutable VectorContainer Xu, Xv;
 };
 

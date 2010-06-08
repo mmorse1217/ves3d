@@ -131,6 +131,18 @@ Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::begin() const
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::getSubN(size_t n)
+{
+    return(data_ + n * the_dim_ * stride_);
+}
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::getSubN(size_t n) const
+{
+    return(data_ + n * the_dim_ * stride_);
+}
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::end()
 {
     return(data_ + this->size());
@@ -139,7 +151,7 @@ Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::end()
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() const
 {
-    return(data_ + the_dim_ * stride_ * num_sub_arr_);
+    return(data_ + this->size());
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
@@ -166,3 +178,23 @@ std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
     }
     return(output);
 }
+
+
+// template< typename ScalarContainer, typename VectorContainer >
+// void Surface<ScalarContainer, VectorContainer>::Populate(const T *centers)
+// {
+//     int length = this->x_.getFunLength();
+//     for(int ii=1;ii<params_.n_surfs_;ii++)
+//     {
+//         int idx = 3 * ii * length;
+//         x_.getDevice().Memcpy(x_.begin() + idx, x_.begin(), 3 * length, MemcpyDeviceToDevice);
+//         x_.getDevice().axpb((T) 1.0, x_.begin() + idx                  , centers[3*ii  ], length, 1, x_.begin() + idx                  );
+//         x_.getDevice().axpb((T) 1.0, x_.begin() + idx + length         , centers[3*ii+1], length, 1, x_.begin() + idx + length         );
+//         x_.getDevice().axpb((T) 1.0, x_.begin() + idx + length + length, centers[3*ii+2], length, 1, x_.begin() + idx + length + length);
+//     }
+
+//     //treating the first surface
+//     x_.getDevice().axpb((T) 1.0, x_.begin()                  , centers[0], length, 1, x_.begin()                  );
+//     x_.getDevice().axpb((T) 1.0, x_.begin() + length         , centers[1], length, 1, x_.begin() + length         );
+//     x_.getDevice().axpb((T) 1.0, x_.begin() + length + length, centers[2], length, 1, x_.begin() + length + length);
+// }

@@ -149,10 +149,10 @@ class Device
     T* xvpw(const T* x_in, const T*  v_in, const T*  w_in, 
         size_t stride, size_t n_vecs, T*  xvpw_out) const;
     
-    ///Smooth integral (reduction) for scalar fields.
+    ///Smooth integral (reduction) for multidimensional fields.
     template<typename T>
-    T* Reduce(const T *x_in, const T *w_in, const T *quad_w_in, 
-        size_t stride, size_t ns, T *size_t_x_dw) const;
+    T* Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in, 
+        const size_t stride, const size_t ns, T *x_dw) const;
     
     ///General matrix-matrix multiplication. consult BLAS
     ///documentation for the detail of the syntax.

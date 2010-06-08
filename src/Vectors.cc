@@ -57,4 +57,16 @@ enum CoordinateOrder Vectors<T, DT, DEVICE>::getPointOrder() const
     return(point_order_);
 }
 
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+Vectors<T, DT, DEVICE>::iterator Vectors<T, DT, DEVICE>::getSubN(size_t n)
+{
+    assert(n<num_vecs_);
+    return(this->begin() + n * the_dim_ * this->getStride());
+}
 
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+Vectors<T, DT, DEVICE>::const_iterator Vectors<T, DT, DEVICE>::getSubN(size_t n) const
+{
+    assert(n<num_vecs_);
+    return(this->begin() + n * the_dim_ * this->getStride());
+}

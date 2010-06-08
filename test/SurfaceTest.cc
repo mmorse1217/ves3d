@@ -15,7 +15,8 @@ int main(int argc, char ** argv)
         typedef typename containers::Scalars<float,CPU,the_cpu_dev> Sca;
         typedef typename containers::Vectors<float,CPU,the_cpu_dev> Vec;
 
-        int p(12), nVec(1);
+        int const p(12);
+        int const nVec(2);
         
         //IO
         DataIO<T,CPU> myIO(the_cpu_dev);
@@ -25,7 +26,8 @@ int main(int argc, char ** argv)
                        
         char fname[400];
         //sprintf(fname,"%s/precomputed/sphere_cart12_single.txt",getenv("VES3D_DIR"));
-        sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
+        sprintf(fname,"%s/precomputed/two_ellipse_12",getenv("VES3D_DIR"));
+        //sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
         myIO.ReadData(fname,x0.size(),x0.begin());
 
         //Creating objects
@@ -45,14 +47,17 @@ int main(int argc, char ** argv)
         
         //Area and volume
         Sca Area(nVec, p, make_pair(1,1));
-        Sca Vol(nVec, p, make_pair(1,1));
-        
         S.area(Area);
-        S.volume(Vol);
-
         cout<<" Area :\n"<<Area<<endl;
+        
+        Sca Vol(nVec, p, make_pair(1,1));
+        S.volume(Vol);
         cout<<" Volume :\n"<<Vol<<endl;
-
+        
+        Vec Cntrs(nVec, 0, make_pair(1,1));
+        S.getCenters(Cntrs);
+        cout<<" Centers :\n"<<Cntrs<<endl;
+        
         T err = 0, err2;
         // Checking the grad and div operator
         Vec grad(nVec,p), lap(nVec,p);
