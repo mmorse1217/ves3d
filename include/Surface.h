@@ -65,6 +65,7 @@ class Surface
     Surface(Surface<Sca, Vec> const& s_in);
     Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
 
+    ///@todo these can be removed, but updateAll should be rewritten
     mutable Sca E, F, G;
   
     mutable queue<Sca*> scalar_work_q_;
@@ -76,8 +77,6 @@ class Surface
     Vec* produceVec(const Vec &ref) const;
     void recycleVec(Vec* vcp) const;
     mutable int checked_out_work_vec_;
-
-    mutable Vec shc, work_arr, Xu, Xv;
 };
 
 #include "Surface.cc"

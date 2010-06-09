@@ -16,7 +16,7 @@ int main(int argc, char ** argv)
         typedef typename containers::Vectors<float,CPU,the_cpu_dev> Vec;
 
         int const p(12);
-        int const nVec(2);
+        int const nVec(1);
         
         //IO
         DataIO<T,CPU> myIO(the_cpu_dev);
@@ -26,8 +26,8 @@ int main(int argc, char ** argv)
                        
         char fname[400];
         //sprintf(fname,"%s/precomputed/sphere_cart12_single.txt",getenv("VES3D_DIR"));
-        sprintf(fname,"%s/precomputed/two_ellipse_12",getenv("VES3D_DIR"));
-        //sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
+        //sprintf(fname,"%s/precomputed/two_ellipse_12",getenv("VES3D_DIR"));
+        sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
         myIO.ReadData(fname,x0.size(),x0.begin());
 
         //Creating objects
