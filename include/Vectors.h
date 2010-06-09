@@ -24,22 +24,23 @@ namespace containers
         explicit Vectors(size_t num_vecs = 0, int sh_order = 0,
             pair<int, int> grid_dim = EMPTY_GRID);
         
-        virtual void resize(size_t new_num_vecs, int new_sh_order = 0,
+        void resize(size_t new_num_vecs, int new_sh_order = -1,
             pair<int, int> new_grid_dim = EMPTY_GRID);
         
         ///This is intentionally non-virtual
         inline size_t getNumSubs() const; 
         inline int getTheDim() const;
 
-        inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);        
+        inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);
+        
         inline void setPointOrder(enum CoordinateOrder new_order);    
         inline enum CoordinateOrder getPointOrder() const;
 
-        inline iterator getSubN(size_t n);
-        inline const_iterator getSubN(size_t n) const;
-
+         inline iterator getSubN(size_t n);
+         inline const_iterator getSubN(size_t n) const;
+              
       protected:
-        size_t num_vecs_;
+        size_t num_sub_vecs_;
         enum CoordinateOrder point_order_;
         
         static const int the_dim_ = 3;

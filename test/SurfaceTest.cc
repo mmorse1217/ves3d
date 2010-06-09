@@ -48,15 +48,15 @@ int main(int argc, char ** argv)
         //Area and volume
         Sca Area(nVec, p, make_pair(1,1));
         S.area(Area);
-        cout<<" Area :\n"<<Area<<endl;
+        //cout<<" Area :\n"<<Area<<endl;
         
         Sca Vol(nVec, p, make_pair(1,1));
         S.volume(Vol);
-        cout<<" Volume :\n"<<Vol<<endl;
+        //cout<<" Volume :\n"<<Vol<<endl;
         
         Vec Cntrs(nVec, 0, make_pair(1,1));
         S.getCenters(Cntrs);
-        cout<<" Centers :\n"<<Cntrs<<endl;
+        //cout<<" Centers :\n"<<Cntrs<<endl;
         
         T err = 0, err2;
         // Checking the grad and div operator

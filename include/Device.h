@@ -49,7 +49,7 @@ template<enum DeviceType DTlhs, enum DeviceType DTrhs>
 inline bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs);
 
 ///
-inline pair<int, int> GridDimOf(int sh_order);
+inline pair<int, int> gridDimOf(int sh_order);
 
 /**
  * This class provides memory operations and device specific optimized

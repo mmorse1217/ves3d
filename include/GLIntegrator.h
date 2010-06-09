@@ -2,6 +2,8 @@
 #define _GLINTEGRATOR_H_
 
 #include "HelperFuns.h"
+#include "VesBlas.h"
+#include <typeinfo>
 
 template<typename Container>
 class GaussLegendreIntegrator
@@ -18,7 +20,8 @@ class GaussLegendreIntegrator
         Container &dw) const;
 
   private:
-    inline Container* getQuadWeight(int key) const;
+    Container* getQuadWeights(int key) const;
+    Container* buildQuadWeights(int shOrder) const;
     
     DataIO<typename Container::value_type, CPU> IO;
     

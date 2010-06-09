@@ -23,7 +23,8 @@ class Surface
 
     ///@todo add a default constructor
     Surface(const Vec& x_in);
-    
+    ~Surface();
+
     void setPosition(const Vec& x_in);
     Vec& getPositionModifiable();
     const Vec& getPosition() const;
@@ -64,11 +65,19 @@ class Surface
     Surface(Surface<Sca, Vec> const& s_in);
     Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
 
-    ///@todo remove the work vectors. 
-    //There is no guarantee that any of these holds its value between calls.
-    mutable VectorContainer shc, work_arr;    
-    mutable ScalarContainer E, F, G, L, M, N; 
-    mutable VectorContainer Xu, Xv;
+    mutable Sca E, F, G;
+  
+    mutable queue<Sca*> scalar_work_q_;
+    Sca* produceSca(const Vec &ref) const;
+    void recycleSca(Sca* scp) const;
+    mutable int checked_out_work_sca_;
+
+    mutable queue<Vec*> vector_work_q_;
+    Vec* produceVec(const Vec &ref) const;
+    void recycleVec(Vec* vcp) const;
+    mutable int checked_out_work_vec_;
+
+    mutable Vec shc, work_arr, Xu, Xv;
 };
 
 #include "Surface.cc"

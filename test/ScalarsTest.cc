@@ -1,7 +1,7 @@
 #include "ScalarContainerTest.h"
 #include "Scalars.h"
 
-extern const Device<CPU> cpu_dev;
+extern const Device<CPU> cpu_dev(0);
 
 int main(int argc, char* argv[])
 {

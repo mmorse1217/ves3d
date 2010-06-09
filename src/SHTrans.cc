@@ -75,12 +75,20 @@ void SHTrans<Container>::forward(const Container &in, Container &work, Container
 
     float *trans_in = work.begin();
     float *trans_out = work.begin() + 2 * p * (p + 1) * n_funs;
+
     int num_dft_inputs = n_funs * (p + 1);
     device_->gemm("N", "N", &dft_size, &num_dft_inputs, &dft_size, 
         &alpha_, mats_.dft_, &dft_size,in.begin(), &dft_size, &beta_, 
-        trans_in, &dft_size);
-    device_->Transpose(trans_in, num_dft_inputs, dft_size, trans_out);
+        shc.begin(), &dft_size);
+    device_->Transpose(shc.begin(), num_dft_inputs, dft_size, trans_out);
     DLT(mats_.dlt_, trans_out, shc.begin(), p + 1, 2 * n_funs, p + 1, 1, 0, 0);
+
+//     device_->gemm("N", "N", &dft_size, &num_dft_inputs, &dft_size, 
+//         &alpha_, mats_.dft_, &dft_size,in.begin(), &dft_size, &beta_, 
+//         trans_in, &dft_size);
+//     device_->Transpose(trans_in, num_dft_inputs, dft_size, trans_out);
+//     DLT(mats_.dlt_, trans_out, shc.begin(), p + 1, 2 * n_funs, p + 1, 1, 0, 0);
+
 }
 
 

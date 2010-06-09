@@ -6,7 +6,7 @@
  * @brief  The implementation of the Device class.
  */
 
-inline pair<int, int> GridDimOf(int sh_order)
+inline pair<int, int> gridDimOf(int sh_order)
 {
     return(make_pair(sh_order + 1, 2 * sh_order));
 }

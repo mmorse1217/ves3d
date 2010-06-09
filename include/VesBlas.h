@@ -1,27 +1,39 @@
 #ifndef _VESBLAS_H
 #define _VESBLAS_H
-
-
-#if defined (__cplusplus)
-extern "C"{
-#endif
-
+   
 #ifndef HAS_MKL_LIB
-
-  //#include <cblas.h>
-#define sgemm sgemm_
+    
+//#include <cblas.h>
+#ifdef (__cplusplus)
 extern "C"{
- void sgemm_(const char* TRANSA, const char* TRANSB,
-						 const int* M, const int* N, const int* K,
-						 const float* ALPHA,
-						 const float* A, const int* LDA, const float* B, const int* LDB, 
-             const float* BETA, float* C, const int* LDC); 
-}
-#else 
-#include <mkl.h>
-#endif //HAS_MKL_LIB
+#endif
 
-#if defined (__cplusplus)
+#define sgemm sgemm_
+    extern "C"{
+        void sgemm_(const char* TRANSA, const char* TRANSB,
+            const int* M, const int* N, const int* K,
+            const float* ALPHA,
+            const float* A, const int* LDA, const float* B, const int* LDB, 
+            const float* BETA, float* C, const int* LDC); 
+    }
+    
+#ifdef (__cplusplus)
 }
 #endif
-#endif
+
+#else 
+
+#include <mkl.h>
+void steqr(char *compz, int &n, float *d, float *e, float *z, int &ldz, float *work, int &info)
+{
+    ssteqr(compz, &n, d, e, z, &ldz, work, &info);
+}
+
+void steqr(char *compz, int &n, double *d, double *e, double *z, int &ldz, double *work, int &info)
+{
+    dsteqr(compz, &n, d, e, z, &ldz, work, &info);
+}
+
+#endif //HAS_MKL_LIB
+#endif //_VESBLAS_H_
+
