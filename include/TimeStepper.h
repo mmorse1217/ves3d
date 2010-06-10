@@ -14,7 +14,7 @@ class TimeStepper
     void operator()(Container &state, value_type &t, value_type &dt,
         Forcing &F, Updater &U, Monitor &M)
     {
-        while ( M(state, t, dt))
+        while ( M(state, t, dt) )
         {
             U(state, t, dt, F, state);
             t += dt;

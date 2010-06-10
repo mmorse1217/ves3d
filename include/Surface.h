@@ -33,15 +33,15 @@ class Surface
     const Sca& getMeanCurv() const;
     const Sca& getGaussianCurv() const;
 
-    void updateFirstForms() const;
-    void updateAll() const;
-
     void grad(const Sca &f_in, Vec &grad_f_out) const;
     void div(const Vec &f_in, Sca &div_f_out) const;
         
     void area(Sca &area) const;
     void volume(Sca &vol) const;
     void getCenters(Vec &centers) const;
+
+    void getSmoothedShapePosition(Vec &smthd_pos);
+    void mapToTangentSpace(Vec &vec_fld);
 
   private:
     Vec x_;
@@ -61,7 +61,10 @@ class Surface
     mutable bool first_forms_are_stale_;
     mutable bool second_forms_are_stale_;
     
+    void updateFirstForms() const;
+    void updateAll() const;
     void checkContainers() const;
+
     Surface(Surface<Sca, Vec> const& s_in);
     Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
 
@@ -77,6 +80,8 @@ class Surface
     Vec* produceVec(const Vec &ref) const;
     void recycleVec(Vec* vcp) const;
     mutable int checked_out_work_vec_;
+
+    void purgeTheWorkSpace() const;
 };
 
 #include "Surface.cc"

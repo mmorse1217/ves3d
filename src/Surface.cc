@@ -19,20 +19,10 @@ Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in) :
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::~Surface()
 {
-    assert(checked_out_work_sca_);
-    assert(checked_out_work_vec_);
+    assert(!checked_out_work_sca_);
+    assert(!checked_out_work_vec_);
 
-    while ( !scalar_work_q_.empty() )
-    {
-        delete scalar_work_q_.front();
-        scalar_work_q_.pop();
-    }
-
-    while ( !vector_work_q_.empty() )
-    {
-        delete vector_work_q_.front();
-        vector_work_q_.pop();
-    }
+    purgeTheWorkSpace();
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
@@ -98,6 +88,34 @@ const ScalarContainer& Surface<ScalarContainer,
     if(second_forms_are_stale_)
         updateAll();
     return(k_);
+}
+
+template <typename ScalarContainer, typename VectorContainer>  
+void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
+    Vec &smthd_pos)
+{
+    Vec* wrk(produceVec(x_));
+    Vec* shc(produceVec(x_));
+
+    sht_.Filter(x_, *wrk, *shc, smthd_pos);
+
+    recycleVec(wrk);
+    recycleVec(shc);
+}
+
+template <typename ScalarContainer, typename VectorContainer>  
+void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
+    Vec &vec_fld)
+{
+    if(first_forms_are_stale_)
+        updateFirstForms();
+    
+    Sca* scp(produceSca(x_));
+    GeometricDot(vec_fld, normal_, *scp);
+    axpy(static_cast<value_type>(-1.0), *scp, *scp);
+    xvpw(*scp, normal_, vec_fld, vec_fld);
+    
+    recycleSca(scp);
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
@@ -376,3 +394,20 @@ void Surface<ScalarContainer, VectorContainer>::recycleVec(
     vector_work_q_.push(vcp);
     --checked_out_work_vec_;
 }
+
+template <typename ScalarContainer, typename VectorContainer>  
+void Surface<ScalarContainer, VectorContainer>::purgeTheWorkSpace() const
+{
+    while ( !scalar_work_q_.empty() )
+    {
+        delete scalar_work_q_.front();
+        scalar_work_q_.pop();
+    }
+    
+    while ( !vector_work_q_.empty() )
+    {
+        delete vector_work_q_.front();
+        vector_work_q_.pop();
+    }
+}
+

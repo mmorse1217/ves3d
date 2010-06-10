@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     
     Sur S(x0);  
 
-    float dt = .01;
-    float T = 2 * dt;    
+    float dt = .05;
+    float T = 100 * dt;    
     EvolveSurface<Sur> Es;
     Es(S, T, dt);
 

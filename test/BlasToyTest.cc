@@ -1,23 +1,22 @@
-//#include "DeviceCPU.h"
-#include "DeviceGPU.h"
+#include "Device.h"
 
-int main(int argc, char *arvg[])
+extern const Device<CPU> device(0);
+
+int main(int argc, char **argv)
 {
-  int n = 4096*2;
-  int k = 4096*2;
-  
+  int k = 4096;
+  int n = 4096;
+
   size_t sa = n*n;
   size_t sb = n*k;
   size_t sc = n*k;
 
-  DeviceGPU<float> device;
-
   float *A_h = (float*) malloc(sa * sizeof(float));
   float *B_h = (float*) malloc(sb * sizeof(float));
 
-  float *A = device.Malloc(sa);
-  float *B = device.Malloc(sb);
-  float *C = device.Malloc(sc);
+  float *A = (float*) device.Malloc(sa * sizeof(float));
+  float *B = (float*) device.Malloc(sb * sizeof(float));
+  float *C = (float*) device.Malloc(sc * sizeof(float));
 
   float alpha = 1.0;
   float beta = 0.0;
@@ -34,15 +33,12 @@ int main(int argc, char *arvg[])
   device.Memcpy(B,B_h,sa,MemcpyHostToDevice);
 
   int i_max = 1;
-  double ss = get_seconds();
   for(int ii=0;ii<i_max;++ii)
   {
       device.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
-      cudaThreadSynchronize();
   }
-  ss = get_seconds()-ss;
-  cout<<"Time : "<<ss<<endl;
-  cout<<"GFLOP : "<< ((double) 2 * n * n * k * i_max)/ss/1e9 <<endl;
+  
+  PROFILEREPORT(SortFlopRate);
 
   device.Memcpy(A_h,C,sa,MemcpyDeviceToHost);
 
@@ -52,4 +48,6 @@ int main(int argc, char *arvg[])
 
   free(A_h);
   free(B_h);
+
+
 }

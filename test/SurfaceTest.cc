@@ -61,13 +61,13 @@ int main(int argc, char ** argv)
         T err = 0, err2;
         // Checking the grad and div operator
         Vec grad(nVec,p), lap(nVec,p);
-
+        
         S.grad(X,grad);
         S.div(grad,X);
-    
+        
         S.grad(Y,grad);
         S.div(grad,Y);
-    
+            
         S.grad(Z,grad);
         S.div(grad,Z);
     
@@ -104,6 +104,7 @@ int main(int argc, char ** argv)
 
         cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
     }
-    PROFILEREPORT(SortTime);
+
+    //PROFILEREPORT(SortTime);
     return 0;
 }

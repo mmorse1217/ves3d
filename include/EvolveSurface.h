@@ -67,16 +67,22 @@ class ForwardEuler
 {
   private:
     typedef typename SurfContainer::value_type value_type;
-    
+    typename SurfContainer::Vec velocity;
    public:
      void operator()(SurfContainer &S_in, value_type &t, value_type &dt, 
          Forcing &F, SurfContainer &S_out)
     {
-        typename SurfContainer::Vec velocity(S_in.getPosition().getNumSubs(), 
-            S_in.getPosition().getShOrder());
+        velocity.replicate(S_in.getPosition());
         F(t, velocity);
         axpy(dt, velocity, S_in.getPosition(), S_out.getPositionModifiable());
-        ///@todo add reparam
+        
+        for(int ii=0; ii<10; ++ii)
+        {
+            S_out.getSmoothedShapePosition(velocity);
+            axpy(static_cast<value_type>(-1), S_out.getPosition(), velocity, velocity);
+            S_out.mapToTangentSpace(velocity);
+            axpy(dt, velocity, S_out.getPosition(), S_out.getPositionModifiable());
+        }
     }
 };
 
