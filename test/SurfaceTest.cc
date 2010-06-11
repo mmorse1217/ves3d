@@ -8,12 +8,14 @@ using namespace std;
 
 extern const Device<CPU> the_cpu_dev(0);
 
+typedef double real;
+
 int main(int argc, char ** argv)
 {
     {
-        typedef containers::Scalars<float,CPU,the_cpu_dev>::value_type T;
-        typedef typename containers::Scalars<float,CPU,the_cpu_dev> Sca;
-        typedef typename containers::Vectors<float,CPU,the_cpu_dev> Vec;
+        typedef containers::Scalars<real,CPU,the_cpu_dev>::value_type T;
+        typedef typename containers::Scalars<real,CPU,the_cpu_dev> Sca;
+        typedef typename containers::Vectors<real,CPU,the_cpu_dev> Vec;
 
         int const p(12);
         int const nVec(1);

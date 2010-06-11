@@ -57,7 +57,7 @@ void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
     S_->div(vel_in, rhs);
     
     int max_iter = 1000;
-    value_type tol = 1e-5;
+    value_type tol = 1e-6;
     
     typename Sca::iterator it = tension.begin();
     for ( ;it !=tension.end(); ++it)
@@ -69,7 +69,7 @@ void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
         cerr<<"The tension solver did not converge!"<<endl;
         abort();
     }
-    cout<<max_iter<<"\t"<<tol<<endl;
+    //cout<<max_iter<<"\t"<<tol<<endl;
 }
 
 template<typename SurfContainer>

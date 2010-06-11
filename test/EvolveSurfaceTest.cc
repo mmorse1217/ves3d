@@ -8,10 +8,12 @@
 
 extern const Device<CPU> the_cpu_dev(0);
 
+typedef float real;
+
 int main(int argc, char **argv)
 {
-    typedef containers::Scalars<float, CPU, the_cpu_dev> Sc;
-    typedef containers::Vectors<float, CPU, the_cpu_dev> Vc;
+    typedef containers::Scalars<real, CPU, the_cpu_dev> Sc;
+    typedef containers::Vectors<real, CPU, the_cpu_dev> Vc;
     typedef Surface<Sc,Vc> Sur;
 
     int p(12), nSur(2);
@@ -42,10 +44,11 @@ int main(int argc, char **argv)
     
     Sur S(x0);  
 
-    float dt = .05;
-    float T = 100 * dt;    
+    real dt = .001;
+    real T = 60 * dt;    
     EvolveSurface<Sur> Es;
     Es(S, T, dt);
+
 
     myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), S.getPosition().begin());
 }

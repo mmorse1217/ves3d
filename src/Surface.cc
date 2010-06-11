@@ -11,7 +11,8 @@ Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in) :
     position_has_changed_outside_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true),
-    checked_out_work_sca_(0)
+    checked_out_work_sca_(0),
+    checked_out_work_vec_(0)
 {
     setPosition(x_in);
 }
@@ -384,6 +385,7 @@ VectorContainer* Surface<ScalarContainer, VectorContainer>::produceVec(
     
     vcp->replicate(ref);
     ++checked_out_work_vec_;
+    
     return(vcp);
 }
 
@@ -410,4 +412,3 @@ void Surface<ScalarContainer, VectorContainer>::purgeTheWorkSpace() const
         vector_work_q_.pop();
     }
 }
-

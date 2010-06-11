@@ -57,7 +57,14 @@ class Monitor
     bool operator()(const SurfContainer &state, 
         value_type &t, value_type &dt)
     {
-        std::cout<<t<<std::endl;
+        typename SurfContainer::Sca A, L;
+        A.replicate(state.getPosition());
+        L.replicate(state.getPosition());
+        state.area(A);
+        state.volume(L);
+
+        std::cout<<t<<" "<<A[0]<<"\t"<<L[0]<<std::endl;
+        //std::cout<<t<<std::endl;
         return(t<time_hor_);
     }       
 };

@@ -1,5 +1,5 @@
 #!/bin/bash
-export VES3D_DIR=`pwd`
+#export VES3D_DIR=`pwd`
 
 make all
 cd src;
