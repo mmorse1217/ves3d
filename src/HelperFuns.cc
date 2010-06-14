@@ -203,11 +203,11 @@ inline void CircShift(const typename ScalarContainer::value_type *x_in,
     for (int ii = 0; ii < n_vecs; ii++) {
         base_out = ii * vec_length;
         base_in = base_out + vec_length - shift;
-        x_out.getDevice().Memcpy((float*) x_out.begin() + base_out, 
+        x_out.getDevice().Memcpy((typename ScalarContainer::value_type*) x_out.begin() + base_out, 
             x_in + base_in, sizeof(typename ScalarContainer::value_type) * shift, MemcpyDeviceToDevice);
         base_in = base_out;
         base_out += shift;
-        x_out.getDevice().Memcpy((float*) x_out.begin() + base_out, x_in + base_in, 
+        x_out.getDevice().Memcpy((typename ScalarContainer::value_type*) x_out.begin() + base_out, x_in + base_in, 
             sizeof(typename ScalarContainer::value_type) * (vec_length - shift), MemcpyDeviceToDevice);
     }
 }

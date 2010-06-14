@@ -18,7 +18,7 @@ class InterfacialVelocity
     
   public:
     InterfacialVelocity(SurfContainer *S_in);
-    void  operator()(const value_type &t, Vec &velocity) const;
+    void operator()(const value_type &t, Vec &velocity) const;
     void operator()(const Sca &tension, Sca &div_stokes_fs) const;
 
     class TensionPrecond
@@ -57,14 +57,13 @@ class Monitor
     bool operator()(const SurfContainer &state, 
         value_type &t, value_type &dt)
     {
-        typename SurfContainer::Sca A, L;
+        typename SurfContainer::Sca A, V;
         A.replicate(state.getPosition());
-        L.replicate(state.getPosition());
+        V.replicate(state.getPosition());
         state.area(A);
-        state.volume(L);
+        state.volume(V);
 
-        std::cout<<t<<" "<<A[0]<<"\t"<<L[0]<<std::endl;
-        //std::cout<<t<<std::endl;
+        std::cout<<t<<" "<<A[0]<<"\t"<<V[0]<<std::endl;
         return(t<time_hor_);
     }       
 };
@@ -82,13 +81,15 @@ class ForwardEuler
         velocity.replicate(S_in.getPosition());
         F(t, velocity);
         axpy(dt, velocity, S_in.getPosition(), S_out.getPositionModifiable());
-        
+
+        ///@todo check for the norm of error as stopping criteria
+        ///@todo upsampling?
         for(int ii=0; ii<10; ++ii)
         {
             S_out.getSmoothedShapePosition(velocity);
             axpy(static_cast<value_type>(-1), S_out.getPosition(), velocity, velocity);
             S_out.mapToTangentSpace(velocity);
-            axpy(dt, velocity, S_out.getPosition(), S_out.getPositionModifiable());
+            axpy(dt * 100, velocity, S_out.getPosition(), S_out.getPositionModifiable());
         }
     }
 };
@@ -103,7 +104,7 @@ class EvolveSurface
     
     void operator()(Container &S, value_type &time_horizon, value_type &dt)
     {
-        value_type t = 0.0;
+        value_type t(0);
         InterfacialVelocity<Container> F(&S);
         Monitor<Container> M(time_horizon);
         ForwardEuler<Container, InterfacialVelocity<Container> > U;

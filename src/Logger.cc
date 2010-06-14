@@ -5,8 +5,8 @@ map<string, LogEvent> Logger::PrflMap;
 string Logger::log_file;
 
 //The variables for the timing macro.
-struct timeval  tt;
-struct timezone ttz;
+// struct timeval  tt;
+// struct timezone ttz;
 
 template<typename T>
 void PrintLogEvent(const pair<T, LogEvent> &ev)

@@ -1,8 +1,8 @@
 template<typename Container>
-const float SHTrans<Container>::alpha_;
+const typename Container::value_type SHTrans<Container>::alpha_;
 
 template<typename Container>
-const float SHTrans<Container>::beta_;
+const typename Container::value_type SHTrans<Container>::beta_;
 
 template<typename Container>
 SHTrans<Container>::SHTrans(int p_in) :
@@ -10,10 +10,10 @@ SHTrans<Container>::SHTrans(int p_in) :
     mats_(device_, p_in),
     p(p_in),
     dft_size(2*p),
-    filter_coeff_((float*) device_->Malloc(p * (p + 2) * sizeof(float)))
+    filter_coeff_((value_type*) device_->Malloc(p * (p + 2) * sizeof(value_type)))
 {
     int ll = p * (p + 2);
-    float *buffer = (float*) malloc(p * (p + 2) * sizeof(float));
+    value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
     
     int idx = 0, len;
     for(int ii=0; ii< 2 * p; ++ii)
@@ -22,7 +22,7 @@ SHTrans<Container>::SHTrans(int p_in) :
         for(int jj=0; jj < len; ++jj)
              buffer[idx++] = (len-jj)<=(p-2*p/3) ? 0 : 1;
     }
-    device_->Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(float), 
+    device_->Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type), 
         MemcpyHostToDevice);
     free(buffer);
 }
@@ -34,7 +34,9 @@ SHTrans<Container>::~SHTrans()
 }
 
 template<typename Container>
-void SHTrans<Container>::DLT(float *trans, const float *inputs, float *outputs, 
+void SHTrans<Container>::DLT(typename Container::value_type *trans, 
+    const typename Container::value_type *inputs, 
+    typename Container::value_type *outputs, 
     int m, int n , int k, int mf, int nf, int kf) const 
 {
     for (int freq = 0; freq <= p; freq++) {
@@ -54,8 +56,11 @@ void SHTrans<Container>::DLT(float *trans, const float *inputs, float *outputs,
 }
 
 template<typename Container>
-void SHTrans<Container>::back(const float *inputs, float *work_arr, int n_funs,
-                    float *outputs, float *trans, float *dft) const 
+void SHTrans<Container>::back(const typename Container::value_type *inputs, 
+    typename Container::value_type *work_arr, int n_funs,
+    typename Container::value_type *outputs, 
+    typename Container::value_type *trans, 
+    typename Container::value_type *dft) const 
 {    
     int num_dft_inputs = n_funs * (p + 1);
     DLT(trans, inputs, outputs, p + 1, 2 * n_funs, p + 1, 0, 0, 1);
@@ -141,8 +146,11 @@ void SHTrans<Container>::Filter(const Container &in, Container &work,
 }
 
 template<typename Container>
-void SHTrans<Container>::ScaleFreq(const float *shc_in, int n_funs, 
-    const float* scaling_coeff, float *shc_out) const
+void SHTrans<Container>::ScaleFreq(
+    const typename Container::value_type *shc_in, 
+    int n_funs, 
+    const typename Container::value_type* scaling_coeff, 
+    typename Container::value_type *shc_out) const
 {
     int leg_order = p+1;
     

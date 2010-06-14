@@ -30,6 +30,7 @@ int main(int argc, char ** argv)
         //sprintf(fname,"%s/precomputed/sphere_cart12_single.txt",getenv("VES3D_DIR"));
         //sprintf(fname,"%s/precomputed/two_ellipse_12",getenv("VES3D_DIR"));
         sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
+        //sprintf(fname,"%s/precomputed/biconcave_ra65_%u",getenv("VES3D_DIR"),p);
         myIO.ReadData(fname,x0.size(),x0.begin());
 
         //Creating objects
@@ -50,11 +51,11 @@ int main(int argc, char ** argv)
         //Area and volume
         Sca Area(nVec, p, make_pair(1,1));
         S.area(Area);
-        //cout<<" Area :\n"<<Area<<endl;
+        cout<<" Area : "<<Area[0]<<endl;
         
         Sca Vol(nVec, p, make_pair(1,1));
         S.volume(Vol);
-        //cout<<" Volume :\n"<<Vol<<endl;
+        cout<<" Volume : "<<Vol[0]<<endl;
         
         Vec Cntrs(nVec, 0, make_pair(1,1));
         S.getCenters(Cntrs);
@@ -91,7 +92,7 @@ int main(int argc, char ** argv)
             err2 = fabs(hh.begin()[ii]);
             err = (err>err2) ? err : err2;
         }
-        cout<<"\n The error in the surface grad (For the dumbbell .13703 expected)= "<<err<<endl;
+        cout<<"\n The error in the surface grad (For the dumbbell .13120 expected - 2/3 filtering)= "<<err<<endl;
  
         Sca div_n(nVec,p);
         S.div(S.getNormal(), div_n);
@@ -104,7 +105,7 @@ int main(int argc, char ** argv)
             err = (err>err2) ? err : err2;
         }
 
-        cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected)= "<<err<<endl;
+        cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected - 2/3 filtering)= "<<err<<endl;
     }
 
     //PROFILEREPORT(SortTime);

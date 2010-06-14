@@ -25,23 +25,25 @@ class SHTrans
     void Filter(const Container &in, Container &work, Container &shc, Container &out) const;
     
   private:
-    const Device<CPU> *device_;
-    SHTMats<float,CPU> mats_;
+    typedef typename Container::value_type value_type;
 
-    static const float alpha_ = (float) 1.0;
-    static const float beta_  = (float) 0.0;
+    const Device<CPU> *device_;
+    SHTMats<value_type,CPU> mats_;
+
+    static const value_type alpha_ = (value_type) 1.0;
+    static const value_type beta_  = (value_type) 0.0;
 
     int p;
     int dft_size;
         
-    void DLT(float *trans, const float *inputs, float *outputs, int m, int n , 
+    void DLT(value_type *trans, const value_type *inputs, value_type *outputs, int m, int n , 
         int k, int mf, int nf, int kf) const;
-    void back(const float *inputs, float *work_arr, int n_funs, float *outputs, 
-        float *trans, float *dft) const;
+    void back(const value_type *inputs, value_type *work_arr, int n_funs, value_type *outputs, 
+        value_type *trans, value_type *dft) const;
 
-    void ScaleFreq(const float *shc_in, int n_funs, const float* scaling_coeff, float *shc_out) const;
+    void ScaleFreq(const value_type *shc_in, int n_funs, const value_type* scaling_coeff, value_type *shc_out) const;
 
-    float* filter_coeff_;
+    value_type* filter_coeff_;
 
 };
 

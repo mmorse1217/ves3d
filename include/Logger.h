@@ -3,11 +3,12 @@
 
 #include <iostream>
 #include <fstream>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <map>
 #include <stack>
 #include <algorithm>
 #include <string>
+#include <omp.h>
 
 using namespace std;
 
@@ -95,8 +96,10 @@ class Logger
 #endif //NDEBUG
 
 //Timing macro
-#define GETSECONDS()(                                       \
-        gettimeofday(&tt, &ttz),                            \
-        (double)tt.tv_sec + (double)tt.tv_usec / 1000000.0)
+#define GETSECONDS()(omp_get_wtime())
+
+// #define GETSECONDS()(                                       \
+//         gettimeofday(&tt, &ttz),                            \
+//         (double)tt.tv_sec + (double)tt.tv_usec / 1000000.0)
 
 #endif //_LOGGER_H_

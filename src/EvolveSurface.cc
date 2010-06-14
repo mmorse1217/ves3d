@@ -15,7 +15,7 @@ InterfacialVelocity<SurfContainer>::InterfacialVelocity(SurfContainer *S_in) :
     all_rot_mats_.resize(p + 1, 1, make_pair(np,np));
 
 
-    DataIO<float,CPU> IO(S_->getPosition().getDevice(),"",0);
+    DataIO<value_type,CPU> IO(S_->getPosition().getDevice(),"",0);
     char fname[300];
     sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p);
     IO.ReadData(fname, all_rot_mats_.size(), all_rot_mats_.begin());
@@ -25,7 +25,7 @@ InterfacialVelocity<SurfContainer>::InterfacialVelocity(SurfContainer *S_in) :
   
     for(int ii=1;ii<S_->getPosition().getNumSubs();++ii)
         w_sph_.getDevice().Memcpy(w_sph_.begin() + ii*np, 
-            w_sph_.begin(), np * sizeof(typename SurfContainer::value_type), 
+            w_sph_.begin(), np * sizeof(value_type), 
             MemcpyDeviceToDevice);
 
     sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",p);
@@ -40,24 +40,25 @@ void InterfacialVelocity<SurfContainer>::operator()(const value_type &t,
     BgFlow(S_->getPosition(), velocity);
     Intfcl_force_.BendingForce(*S_, u1_);
     Stokes(u1_, u2_);
-    axpy(1.0, velocity, u2_, velocity);
+    axpy(static_cast<typename SurfContainer::value_type>(1), velocity, u2_, velocity);
   
     //Get tension
     GetTension(velocity, tension_);
     Intfcl_force_.TensileForce(*S_, tension_, u1_);
     Stokes(u1_, u2_);
-    axpy(1.0, velocity, u2_, velocity);
+    axpy(static_cast<typename SurfContainer::value_type>(1), velocity, u2_, velocity);
 }
 
 template<typename SurfContainer>
 void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
     Sca &tension) const
 {
-    Sca rhs(tension.getNumSubs(), tension.getShOrder());
+    Sca rhs;
+    rhs.replicate(S_->getPosition());
     S_->div(vel_in, rhs);
     
-    int max_iter = 1000;
-    value_type tol = 1e-6;
+    int max_iter(20);
+    value_type tol(1e-6);
     
     typename Sca::iterator it = tension.begin();
     for ( ;it !=tension.end(); ++it)
@@ -69,7 +70,7 @@ void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
         cerr<<"The tension solver did not converge!"<<endl;
         abort();
     }
-    //cout<<max_iter<<"\t"<<tol<<endl;
+    cout<<max_iter<<"\t"<<tol<<endl;
 }
 
 template<typename SurfContainer>
@@ -86,10 +87,10 @@ void InterfacialVelocity<SurfContainer>::BgFlow(const Vec &pos,
         idx = 3 * ii * stride;
         pos.getDevice().Memcpy(vel_inf.begin() + idx, 
             pos.begin() + idx + stride + stride
-            ,stride * sizeof(typename SurfContainer::value_type), 
+            ,stride * sizeof(value_type), 
             MemcpyDeviceToDevice);
     }
-    axpy(0.1, vel_inf, vel_inf); 
+    axpy(static_cast<value_type>(0.1), vel_inf, vel_inf); 
 }
 
 template<typename SurfContainer>
@@ -156,9 +157,11 @@ void InterfacialVelocity<SurfContainer>::operator()(const Sca &tension,
     S_->div(u, div_stokes_fs);
 }
 
-// template<typename SurfContainer>
-// void InterfacialVelocity<SurfContainer>::TensionPrecond::operator()(const 
-//     Sca &in, Sca &out) const
+template<typename SurfContainer>
+void InterfacialVelocity<SurfContainer>::TensionPrecond::operator()(const 
+    Sca &in, Sca &out) const
+{
+    axpy(static_cast<typename SurfContainer::value_type>(1), in, out);
 // {
 // //     if(isempty(L))
 // //         eig = @(n) (2*n.^2+2*n-1).*n.*(n+1)./(4*n.^2-1)./(2*n+3);
@@ -178,38 +181,4 @@ void InterfacialVelocity<SurfContainer>::operator()(const Sca &tension,
 // // end
 
 // // vecOut = L.*vecIn;
-// }
-
-
-// template <typename ScalarContainer, typename VectorContainer > 
-// void Surface<ScalarContainer, VectorContainer>::Reparam()
-// {
-//     int iter = 0;
-//     T vel = 2*params_.rep_max_vel_;
-
-//     //up-sample
-//     x_.getDevice().InterpSh(params_.p_, 3*params_.n_surfs_, x_.begin(), work_arr.begin(), shc.begin(), params_.rep_up_freq_, V10.begin());
-
-//     while(iter++ < params_.rep_iter_max_ && vel > params_.rep_max_vel_ * params_.rep_max_vel_)
-//     {
-//         UpdateNormal();///@todo shc.begin() may have changed
-//         x_.getDevice().Filter(params_.rep_up_freq_, 3*params_.n_surfs_, V10.begin(), alpha_q, work_arr.begin(), shc.begin(), V11.begin());
-
-//         axpy((T) -1.0, V10, V11, V11);
-//         GeometricDot(V13, V11, S10);
-//         axpb((T) -1.0,S10, (T) 0.0, S10);
-//         xvpw(S10, V13, V11, V11);//The correction velocity
-//         axpy(params_.rep_ts_, V11, V10, V10);
-
-//         GeometricDot(V11,V11,S10);
-//         ///@todo The error should be relative
-//         vel = S10.Max();
-// #ifndef NDEBUG
-//         cout<<" Reparam iteration "<<iter<<", max vel: "<<vel<<endl;
-// #endif
-//     }
-    
-//     ///inteprsh is buggy
-//     x_.getDevice().InterpSh(params_.rep_up_freq_, 3*params_.n_surfs_, V10.begin(), work_arr.begin(), shc.begin(), params_.p_, V11.begin());
-//     x_.getDevice().Memcpy(x_.begin(), V11.begin(), x_.getDataLength(), MemcpyDeviceToDevice);
-// }
+}

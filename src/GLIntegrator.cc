@@ -28,6 +28,7 @@ Container* GaussLegendreIntegrator<Container>::getQuadWeights(
     return(it->second);
 }
 
+#include<typeinfo>
 template<typename Container>
 Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
     int shOrder) const
@@ -36,6 +37,7 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
     int d2 = gridDimOf(shOrder).second;
     
     typedef typename Container::value_type vt; 
+    
     vt* d = new vt[order];
     vt* e = new vt[order-1];
     vt* work = new vt[order * ((d2 > 2) ? d2 : 2)];
@@ -43,20 +45,20 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
     vt tmp;
     
     //Calculating the quadrature points
-    for (int ii=0; ii<order-1; ++ii)
+    for (int ii(0); ii<order-1; ++ii)
     {
         tmp = 2 * (ii + 1);
         tmp *= tmp;
         tmp = static_cast<vt>(-1)/tmp;
         tmp += 1;
         tmp = sqrt(tmp);
-        e[ii] = static_cast<vt>(.5)/tmp;
-        d[ii] = 0;
+        *(e + ii) = static_cast<vt>(.5)/tmp;
+        *(d + ii) = 0;
     }
-    d[order] = 0;
-
-    int info;
-    steqr("I", order, d, e, eig, order, work, info);
+    *(d + order - 1) = 0;
+    
+     int info;
+     steqr("I", order, d, e, eig, order, work, info);
     
     //d holds the quadrature points
     
@@ -67,13 +69,13 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
         for(int jj=0;jj<d2; ++jj)
             work[ii * d2 + jj] = (2 * eig[ii * order] * eig[ii * order]) *
                 (2 * M_PI/d2 ) / sqrt(1 - d[ii] * d[ii]);
-
+    
     Container* qw = new Container(1, shOrder);
     qw->getDevice().Memcpy(qw->begin(), work, 
-         order * d2 * sizeof(vt), MemcpyHostToDevice);
-        
-    delete[] e;
+        order * d2 * sizeof(vt), MemcpyHostToDevice);
+ 
     delete[] d;
+    delete[] e;
     delete[] work;
     delete[] eig;
     

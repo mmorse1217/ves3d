@@ -560,15 +560,15 @@ void Device<DT>::DirectStokes(const double *src, const double *den, const double
     size_t stride, size_t n_surfs, const double *trg, size_t trg_idx_head, 
     size_t trg_idx_tail, double *pot) const
 {                  
-    PROFILESTART();            
-//     if(qw != NULL)
-//         DirectStokesKernel(stride, n_surfs, trg_idx_head, 
-//             trg_idx_tail, qw, trg, src, den, pot);
-//     else
-//         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, 
-//             trg_idx_tail, trg, src, den, pot);
+    PROFILESTART();         
+    if(qw != NULL)
+        DirectStokesKernel(stride, n_surfs, trg_idx_head, 
+            trg_idx_tail, qw, trg, src, den, pot);
+    else
+        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, 
+            trg_idx_tail, trg, src, den, pot);
     
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPUd",0);
     return;
 } 
 
@@ -578,15 +578,19 @@ void Device<DT>::DirectStokes(const float *src, const float *den, const float *q
     size_t trg_idx_tail, float *pot) const
 {
     PROFILESTART();
+
+#ifdef __SSE2__ 
     if(qw != NULL)
         DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail, 
             qw, trg, src, den, pot);
     else
-        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, 
+        DirectStokesSSE_Noqw(stride, n_surfs, trg_idx_head, 
             trg_idx_tail, trg, src, den, pot);
-
-    PROFILEEND("CPU",0);
-    return;
+    PROFILEEND("SSECPUf",0);
+#else
+    cerr<<"The SSE instructions in the code are not compatible with this architecture."<<endl;
+    PROFILEEND("CPUf",0);
+#endif   
 }
 
 template<enum DeviceType DT>

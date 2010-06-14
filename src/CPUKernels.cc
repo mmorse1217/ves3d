@@ -116,10 +116,124 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,int trg_i
     }
 }
 
+void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,int trg_idx_tail, 
+    const double *qw, const double *trg, const double *src, const double *den, double *pot)
+{
+    double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+    
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
+    for (int vt=0; vt<n_surfs; vt++)
+    {
+        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
+        {
+            px = 0;
+            py = 0;
+            pz = 0;
+            
+            tx=trg[3*vt*stride +                   trg_idx];
+            ty=trg[3*vt*stride + stride +          trg_idx];
+            tz=trg[3*vt*stride + stride + stride + trg_idx];
+            
+            for (int s=0; s<stride; s++)
+            {
+                dx=src[3*stride*vt +                   s]-tx;
+                dy=src[3*stride*vt + stride +          s]-ty;
+                dz=src[3*stride*vt + stride + stride + s]-tz;
+
+                invR = dx*dx;
+                invR+= dy*dy;
+                invR+= dz*dz;
+                
+                if (invR!=0)
+                    invR = 1.0/sqrt(invR);
+            
+                cpx = den[3*stride*vt +                   s] * qw[s]; 
+                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
+                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
+                
+                cc  = dx*cpx;
+                cc += dy*cpy;
+                cc += dz*cpz;
+                cc *= invR;
+                cc *= invR;
+
+                cpx += cc*dx;
+                cpy += cc*dy;
+                cpz += cc*dz;
+                
+                px += cpx*invR;
+                py += cpy*invR;
+                pz += cpz*invR;
+            }
+            pot[3*vt*stride +                  trg_idx] = px * I_PI;
+            pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
+            pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
+        }
+    }
+}
+
+void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,int trg_idx_tail, 
+    const double *trg, const double *src, const double *den, double *pot)
+{
+
+    double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
+    for (int vt=0; vt<n_surfs; vt++)
+    {
+        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
+        {
+            px = 0;
+            py = 0;
+            pz = 0;
+            
+            tx=trg[3*vt*stride +                   trg_idx];
+            ty=trg[3*vt*stride + stride +          trg_idx];
+            tz=trg[3*vt*stride + stride + stride + trg_idx];
+            
+            for (int s=0; s<stride; s++)
+            {
+                dx=src[3*stride*vt +                   s]-tx;
+                dy=src[3*stride*vt + stride +          s]-ty;
+                dz=src[3*stride*vt + stride + stride + s]-tz;
+
+                invR = dx*dx;
+                invR+= dy*dy;
+                invR+= dz*dz;
+                
+                if (invR!=0)
+                    invR = 1.0/sqrt(invR);
+            
+                cpx = den[3*stride*vt +                   s]; 
+                cpy = den[3*stride*vt + stride +          s]; 
+                cpz = den[3*stride*vt + stride + stride + s]; 
+                
+                cc  = dx*cpx;
+                cc += dy*cpy;
+                cc += dz*cpz;
+                cc *= invR;
+                cc *= invR;
+
+                cpx += cc*dx;
+                cpy += cc*dy;
+                cpz += cc*dz;
+                
+                px += cpx*invR;
+                py += cpy*invR;
+                pz += cpz*invR;
+            }
+            pot[3*vt*stride +                  trg_idx] = px * I_PI;
+            pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
+            pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
     const float *qw, const float *trg, const float *src, const float *den, float *pot)
 {
+    
     //#ifdef __SSE2__ 
     ///@todo check for availability of SSE
 
