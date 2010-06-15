@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     //Making the surface, and time stepper
     Sur S(x0);
     real dt = 1;
-    real T = 10 * dt;    
+    real T = 100 * dt;    
     EvolveSurface<Sur> Es;
     Es(S, T, dt);
 
