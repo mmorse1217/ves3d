@@ -7,8 +7,12 @@
  */
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in) :
+    //upsample_freq_(2 * x_in.getShOrder()),
+    rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder()), ///@todo make sht_ autonomous
-    position_has_changed_outside_(true),
+    //sht_upsample_(upsample_freq_),
+    sht_rep_filter_(x_in.getShOrder(), rep_filter_freq_),
+    containers_are_stale_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true),
     checked_out_work_sca_(0),
@@ -29,7 +33,7 @@ Surface<ScalarContainer, VectorContainer>::~Surface()
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec& x_in)
 {
-    position_has_changed_outside_ = true;
+    containers_are_stale_ = true;
     first_forms_are_stale_ = true;
     second_forms_are_stale_ = true;
 
@@ -41,7 +45,7 @@ template <typename ScalarContainer, typename VectorContainer>
 VectorContainer& Surface<ScalarContainer, 
                          VectorContainer>::getPositionModifiable()
 {
-    position_has_changed_outside_ = true;
+    containers_are_stale_ = true;
     first_forms_are_stale_ = true;
     second_forms_are_stale_ = true;
 
@@ -98,7 +102,7 @@ void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
     Vec* wrk(produceVec(x_));
     Vec* shc(produceVec(x_));
 
-    sht_.Filter(x_, *wrk, *shc, smthd_pos);
+    sht_rep_filter_.Filter(x_, *wrk, *shc, smthd_pos);
 
     recycleVec(wrk);
     recycleVec(shc);
@@ -122,7 +126,7 @@ void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::updateFirstForms() const
 {
-    if(position_has_changed_outside_)
+    if(containers_are_stale_)
         checkContainers();
         
     Vec* wrk(produceVec(x_));
@@ -339,7 +343,7 @@ void Surface<ScalarContainer, VectorContainer>::checkContainers() const
     F.replicate(x_);    
     G.replicate(x_);    
     
-    position_has_changed_outside_ = false;
+    containers_are_stale_ = false;
 }
 
 template <typename ScalarContainer, typename VectorContainer>  

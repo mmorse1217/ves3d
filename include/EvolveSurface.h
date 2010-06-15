@@ -87,9 +87,11 @@ class ForwardEuler
         for(int ii=0; ii<10; ++ii)
         {
             S_out.getSmoothedShapePosition(velocity);
-            axpy(static_cast<value_type>(-1), S_out.getPosition(), velocity, velocity);
+            axpy(static_cast<value_type>(-1), S_out.getPosition(), 
+                velocity, velocity);
             S_out.mapToTangentSpace(velocity);
-            axpy(dt * 100, velocity, S_out.getPosition(), S_out.getPositionModifiable());
+            axpy(dt, velocity, S_out.getPosition(), 
+                S_out.getPositionModifiable());
         }
     }
 };

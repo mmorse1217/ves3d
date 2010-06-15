@@ -5,7 +5,7 @@ template<typename Container>
 const typename Container::value_type SHTrans<Container>::beta_;
 
 template<typename Container>
-SHTrans<Container>::SHTrans(int p_in) :
+SHTrans<Container>::SHTrans(int p_in, int filter_freq) :
     device_(&Container::getDevice()),
     mats_(device_, p_in),
     p(p_in),
@@ -16,11 +16,13 @@ SHTrans<Container>::SHTrans(int p_in) :
     value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
     
     int idx = 0, len;
+    filter_freq = (filter_freq == -1) ? 2*p/3 : filter_freq;
+
     for(int ii=0; ii< 2 * p; ++ii)
     {
         len = p + 1 - (ii+1)/2;
         for(int jj=0; jj < len; ++jj)
-             buffer[idx++] = (len-jj)<=(p-2*p/3) ? 0 : 1;
+            buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;
     }
     device_->Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type), 
         MemcpyHostToDevice);

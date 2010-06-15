@@ -8,7 +8,7 @@ template<typename Container>
 class SHTrans 
 {
   public:
-    SHTrans(int sh_order_in);
+    SHTrans(int sh_order_in, int filter_freq = -1);
     ~SHTrans();
 
     void FirstDerivatives(const Container &in, Container &work, Container &shc, Container &du, Container &dv) const;
@@ -44,7 +44,6 @@ class SHTrans
     void ScaleFreq(const value_type *shc_in, int n_funs, const value_type* scaling_coeff, value_type *shc_out) const;
 
     value_type* filter_coeff_;
-
 };
 
 #include "SHTrans.cc"

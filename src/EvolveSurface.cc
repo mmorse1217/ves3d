@@ -39,8 +39,9 @@ void InterfacialVelocity<SurfContainer>::operator()(const value_type &t,
     ///@todo Add Interaction
     BgFlow(S_->getPosition(), velocity);
     Intfcl_force_.BendingForce(*S_, u1_);
-    Stokes(u1_, u2_);
-    axpy(static_cast<typename SurfContainer::value_type>(1), velocity, u2_, velocity);
+    Stokes(u1_, u2_);   
+    typename SurfContainer::value_type bending_modulus = .01;
+    axpy(bending_modulus, u2_, velocity, velocity);
   
     //Get tension
     GetTension(velocity, tension_);
@@ -56,9 +57,11 @@ void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
     Sca rhs;
     rhs.replicate(S_->getPosition());
     S_->div(vel_in, rhs);
+  
+    axpy(static_cast<typename SurfContainer::value_type>(-1), rhs, rhs);
     
-    int max_iter(20);
-    value_type tol(1e-6);
+    int max_iter(50);
+    value_type tol(1e-12);
     
     typename Sca::iterator it = tension.begin();
     for ( ;it !=tension.end(); ++it)

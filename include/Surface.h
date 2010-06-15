@@ -54,10 +54,17 @@ class Surface
     mutable Vec cu_;
     mutable Vec cv_;
  
+    //int upsample_freq_;
+    int rep_filter_freq_;
+
     SHTrans<Sca> sht_;
+    //SHTrans<Sca> sht_upsample_;
+    SHTrans<Sca> sht_rep_filter_;
+    
+
     GaussLegendreIntegrator<Sca> integrator_;
 
-    mutable bool position_has_changed_outside_;
+    mutable bool containers_are_stale_;
     mutable bool first_forms_are_stale_;
     mutable bool second_forms_are_stale_;
     
