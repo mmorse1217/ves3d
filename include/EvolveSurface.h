@@ -7,6 +7,7 @@
 #include <iostream>
 #include "DataIO.h"
 #include "BiCGStab.h"
+#include "Parameters.h"
 
 template<typename SurfContainer>
 class InterfacialVelocity
@@ -17,7 +18,9 @@ class InterfacialVelocity
     typedef typename SurfContainer::Vec Vec;
     
   public:
-    InterfacialVelocity(SurfContainer *S_in);
+    InterfacialVelocity(SurfContainer *S_in, 
+        value_type* data_ = NULL);
+    
     void operator()(const value_type &t, Vec &velocity) const;
     void operator()(const Sca &tension, Sca &div_stokes_fs) const;
 
@@ -50,9 +53,17 @@ class Monitor
   private:
     typedef typename SurfContainer::value_type value_type;
     value_type time_hor_;
-    
+    bool save_flag_;
+    int save_stride_;
+    DataIO<value_type, CPU> IO;
+
   public:
-    Monitor(value_type th) : time_hor_(th) {};
+    Monitor() : 
+        time_hor_(Parameters<value_type>::getInstance().time_horizon),
+        save_flag_(Parameters<value_type>::getInstance().save_data),
+        save_stride_(Parameters<value_type>::getInstance().save_stride),
+        IO(SurfContainer::Vec::getDevice())
+    {};
     
     bool operator()(const SurfContainer &state, 
         value_type &t, value_type &dt)
@@ -84,13 +95,16 @@ class ForwardEuler
 
         ///@todo check for the norm of error as stopping criteria
         ///@todo upsampling?
-        for(int ii=0; ii<10; ++ii)
+        for(int ii=0; 
+            ii < Parameters<value_type>::getInstance().rep_maxit;
+            ++ii)
         {
             S_out.getSmoothedShapePosition(velocity);
             axpy(static_cast<value_type>(-1), S_out.getPosition(), 
                 velocity, velocity);
             S_out.mapToTangentSpace(velocity);
-            axpy(dt, velocity, S_out.getPosition(), 
+            axpy(Parameters<value_type>::getInstance().rep_ts, 
+                velocity, S_out.getPosition(), 
                 S_out.getPositionModifiable());
         }
     }
@@ -104,11 +118,13 @@ class EvolveSurface
     
   public:
     
-    void operator()(Container &S, value_type &time_horizon, value_type &dt)
+    void operator()(Container &S)
     {
         value_type t(0);
+        value_type dt(Parameters<value_type>::getInstance().ts);
+
         InterfacialVelocity<Container> F(&S);
-        Monitor<Container> M(time_horizon);
+        Monitor<Container> M;
         ForwardEuler<Container, InterfacialVelocity<Container> > U;
         
         TimeStepper<Container, 

@@ -1,5 +1,6 @@
 template<typename SurfContainer>
-InterfacialVelocity<SurfContainer>::InterfacialVelocity(SurfContainer *S_in) :
+InterfacialVelocity<SurfContainer>::InterfacialVelocity(SurfContainer *S_in,
+                                                        value_type* data) :
     S_(S_in)
 {
     w_sph_.replicate(S_->getPosition());
@@ -40,14 +41,16 @@ void InterfacialVelocity<SurfContainer>::operator()(const value_type &t,
     BgFlow(S_->getPosition(), velocity);
     Intfcl_force_.BendingForce(*S_, u1_);
     Stokes(u1_, u2_);   
-    typename SurfContainer::value_type bending_modulus = .01;
-    axpy(bending_modulus, u2_, velocity, velocity);
+    
+    axpy(Parameters<value_type>::getInstance().bending_modulus
+        , u2_, velocity, velocity);
   
     //Get tension
     GetTension(velocity, tension_);
     Intfcl_force_.TensileForce(*S_, tension_, u1_);
     Stokes(u1_, u2_);
-    axpy(static_cast<typename SurfContainer::value_type>(1), velocity, u2_, velocity);
+    axpy(static_cast<typename SurfContainer::value_type>(1), 
+        velocity, u2_, velocity);
 }
 
 template<typename SurfContainer>
@@ -60,9 +63,11 @@ void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
   
     axpy(static_cast<typename SurfContainer::value_type>(-1), rhs, rhs);
     
-    int max_iter(50);
-    value_type tol(1e-12);
-    
+    int max_iter(Parameters<typename SurfContainer::value_type>::
+        getInstance().inner_solver_maxit);
+    value_type tol(Parameters<typename SurfContainer::value_type>::
+        getInstance().inner_solver_tol);
+
     typename Sca::iterator it = tension.begin();
     for ( ;it !=tension.end(); ++it)
         *it = 0;
@@ -87,13 +92,13 @@ void InterfacialVelocity<SurfContainer>::BgFlow(const Vec &pos,
     axpy(0.0, pos, vel_inf);
     for(int ii=0;ii<n_surfs;ii++)
     {
-        idx = 3 * ii * stride;
+        idx = pos.getTheDim() * ii * stride;
         pos.getDevice().Memcpy(vel_inf.begin() + idx, 
             pos.begin() + idx + stride + stride
             ,stride * sizeof(value_type), 
             MemcpyDeviceToDevice);
     }
-    axpy(static_cast<value_type>(0.1), vel_inf, vel_inf); 
+    axpy(Parameters<value_type>::getInstance().bg_flow_param, vel_inf, vel_inf); 
 }
 
 template<typename SurfContainer>
@@ -112,7 +117,7 @@ void InterfacialVelocity<SurfContainer>::Stokes(const Vec &force,
     Sca t2(nv, p);
 
     xyInv(S_->getAreaElement(), w_sph_, t1);
-    int nvX3= 3 * nv;
+    int nvX3= force.getTheDim() * nv;
 
     Vec v1;
     Vec v2;
@@ -164,7 +169,7 @@ template<typename SurfContainer>
 void InterfacialVelocity<SurfContainer>::TensionPrecond::operator()(const 
     Sca &in, Sca &out) const
 {
-    axpy(static_cast<typename SurfContainer::value_type>(1), in, out);
+    axpy(static_cast<value_type>(1), in, out);
 // {
 // //     if(isempty(L))
 // //         eig = @(n) (2*n.^2+2*n-1).*n.*(n+1)./(4*n.^2-1)./(2*n+3);
