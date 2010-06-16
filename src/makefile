@@ -4,7 +4,6 @@ LIB_SRC= CPUKernels.cc Logger.cc
 ARFILES=libves3.a
 
 ifeq ($(USE_GPU),yes)
-	LIB_SRC+= CudaSht.cc
 	LIB_SRC_GPU= CudaKernels.cu transpose_kernel.cu
 	LIB_OBJ_GPU=$(LIB_SRC_GPU:.cu=.o)	
 	ARFILES+= libves3dgpu.a 
