@@ -338,6 +338,26 @@ T*  Device<DT>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  
     PROFILEEND("CPU",0);
     return axpy_out;
 }
+
+template<enum DeviceType DT>
+template<typename T>
+T*  Device<DT>::apx(T* a_in, const T* x_in, size_t stride, 
+    size_t n_subs, T* apx_out) const
+{
+    PROFILESTART();
+    assert(a_in != NULL);
+    assert(x_in != NULL);
+    
+#pragma omp parallel for
+    for (size_t ii = 0; ii < n_subs; ++ii)
+        for(size_t jj=0; jj < stride; ++jj)
+            apx_out[ii * stride + jj] = a_in[ii] + x_in[ii * stride + jj];
+           
+
+    PROFILEEND("CPU",0);
+    return apx_out;
+}
+
 template<enum DeviceType DT>
 template<typename T>
 T*  Device<DT>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  avpw_out) const

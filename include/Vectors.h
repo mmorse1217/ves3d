@@ -36,15 +36,15 @@ namespace containers
         inline void setPointOrder(enum CoordinateOrder new_order);    
         inline enum CoordinateOrder getPointOrder() const;
 
-         inline iterator getSubN(size_t n);
-         inline const_iterator getSubN(size_t n) const;
+        inline iterator getSubN(size_t n);
+        inline const_iterator getSubN(size_t n) const;
               
       protected:
         size_t num_sub_vecs_;
         enum CoordinateOrder point_order_;
         
         static const int the_dim_ = 3;
-};
+    };
 
 #include "Vectors.cc"
 }

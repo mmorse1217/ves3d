@@ -139,6 +139,10 @@ class Device
     T* axpy(T a_in, const T* x_in, const T* y_in, size_t length, 
         T* axpy_out) const;
     
+    template<typename T>
+    T* apx(T* a_in, const T* x_in, size_t stride, 
+        size_t n_subs, T* axpy_out) const;
+    
     ///Element-wise scaling and addition.
     template<typename T>
     T* avpw(const T* a_in, const T* v_in, const T* w_in, 
@@ -148,7 +152,7 @@ class Device
     template<typename T>
     T* xvpw(const T* x_in, const T*  v_in, const T*  w_in, 
         size_t stride, size_t n_vecs, T*  xvpw_out) const;
-    
+
     ///Smooth integral (reduction) for multidimensional fields.
     template<typename T>
     T* Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in, 

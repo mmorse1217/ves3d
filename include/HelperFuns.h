@@ -82,6 +82,9 @@ namespace containers
     inline void CircShift(const typename ScalarContainer::value_type *x_in,
         int shift, ScalarContainer &x_out);
     
+    template<typename VectorContainer>
+    inline void Populate(VectorContainer &x,VectorContainer &centers);
+
     ///@todo this need to be implemented for the GPU
     template<typename ScalarContainer>
     typename ScalarContainer::value_type AlgebraicDot( 
