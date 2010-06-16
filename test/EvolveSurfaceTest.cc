@@ -53,4 +53,6 @@ int main(int argc, char **argv)
 
     myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), 
         S.getPosition().begin());
+
+    PROFILEREPORT(SortTime);
 }
