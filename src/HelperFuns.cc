@@ -177,16 +177,16 @@ inline void ShufflePoints(const VectorContainer &u_in,
     assert(AreCompatible(u_in,u_out));
     size_t stride = u_in.getStride();
 
-    int dim = u_in.the_dim_;
+    int dim = u_in.getTheDim();
 
-    size_t dim1 = (u_in.getOrder() == AxisMajor) ? dim : stride;
-    size_t dim2 = (u_in.getOrder() == AxisMajor) ? stride : dim;
+    size_t dim1 = (u_in.getPointOrder() == AxisMajor) ? dim : stride;
+    size_t dim2 = (u_in.getPointOrder() == AxisMajor) ? stride : dim;
 
     for(size_t ss=0; ss<u_in.getNumSubs(); ++ss)
-        u_in.getDevice().transpose(u_in.begin() + dim * stride *ss
+        u_in.getDevice().Transpose(u_in.begin() + dim * stride *ss
             , dim1, dim2, u_out.begin() + dim * stride * ss);
     
-    u_out.SetOrder((u_in.getOrder() == AxisMajor) ? PointMajor : AxisMajor);
+    u_out.setPointOrder((u_in.getPointOrder() == AxisMajor) ? PointMajor : AxisMajor);
 }
 
 ///@todo This need a new data structure for the matrix, etc

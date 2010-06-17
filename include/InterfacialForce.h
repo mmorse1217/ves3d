@@ -1,6 +1,8 @@
 #ifndef _INTERFACIALFORCE_H_
 #define _INTERFACIALFORCE_H_
 
+#include "Parameters.h"
+
 template<typename SurfContainer>
 class InterfacialForce
 {

@@ -26,7 +26,7 @@ bool DataIO<T,DT>::ReadData(const char* file_name_in,
     {
         cerr<<"\n Could not read the data from the file." <<endl
             <<" File name : "<<file_name_in<<".\n"<<endl;
-        abort();
+        exit(1);
     }
 
     size_t idx=0;
@@ -54,7 +54,7 @@ bool DataIO<T,DT>::WriteData(const char* file_name_in,
         cerr<<" Could not write the data to the file." <<endl
             <<" File name : "<< file_name_in <<endl;
         data_file.close();
-        abort();
+        exit(1);
     }
 
     size_t idx=0;

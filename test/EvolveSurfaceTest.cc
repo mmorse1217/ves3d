@@ -6,9 +6,8 @@
 #include "Parameters.h"
 
 extern const Device<CPU> the_cpu_dev(0);
-extern const Device<GPU> the_gpu_dev(0);
 
-typedef double real;
+typedef float real;
 
 int main(int argc, char **argv)
 {
@@ -19,8 +18,8 @@ int main(int argc, char **argv)
     
     // Setting the parameters
     Par::getInstanceModifiable().n_surfs = 2;   
-    Par::getInstanceModifiable().n_steps = 40;
-    Par::getInstanceModifiable().time_horizon = 20;
+    Par::getInstanceModifiable().n_steps = 100;
+    Par::getInstanceModifiable().time_horizon = 50;
     Par::getInstanceModifiable().ts = .5;    
     
     cout<<Par::getInstance()<<endl;

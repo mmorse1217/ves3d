@@ -19,6 +19,9 @@ void InterfacialForce<SurfContainer>::BendingForce(const SurfContainer &S,
     xy(t2, S.getMeanCurv(), t2);
     axpy(static_cast<typename SurfContainer::value_type>(2), t2, t1, t1);
     xv(t1, S.getNormal(), Fb);
+
+    axpy(Parameters<typename SurfContainer::value_type>::
+        getInstance().bending_modulus, Fb, Fb);
 }
 
 template<typename SurfContainer>

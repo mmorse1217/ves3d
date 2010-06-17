@@ -57,7 +57,7 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,int trg_idx_ta
             pot[3*vt*stride + stride +         trg_idx] = py * I_PI;
             pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
         }
-    }
+
 }
 
 void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,int trg_idx_tail, 
@@ -238,7 +238,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
     ///@todo check for availability of SSE
 
     if (stride%4) // necessary for proper alignment of sources
-        abort();
+        exit(1);
 
 
 #pragma omp parallel for
@@ -254,7 +254,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(float);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            abort();
+            exit(1);
         tempvaly=tempvalx+SIMD_LEN;
         tempvalz=tempvaly+SIMD_LEN;
 
@@ -405,7 +405,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
             }
 
             if (s!=size_t(stride))
-                abort();
+                exit(1);
 
             pot[3*vt*stride +            trg_idx] = p[0] * I_PI;
             pot[3*vt*stride +   stride + trg_idx] = p[1] * I_PI;
@@ -424,7 +424,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head, int trg_idx
     ///@todo check for availability of SSE
 
     if (stride%4) // necessary for proper alignment of sources
-        abort();
+        exit(1);
 
 
 #pragma omp parallel for
@@ -440,7 +440,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head, int trg_idx
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(float);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            abort();
+            exit(1);
         tempvaly=tempvalx+SIMD_LEN;
         tempvalz=tempvaly+SIMD_LEN;
 
@@ -590,7 +590,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head, int trg_idx
             }
 
             if (s!=size_t(stride))
-                abort();
+                exit(1);
 
             pot[3*vt*stride +            trg_idx] = p[0] * I_PI;
             pot[3*vt*stride +   stride + trg_idx] = p[1] * I_PI;

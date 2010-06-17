@@ -132,7 +132,7 @@ T* Device<DT>::DotProduct(const T* u_in, const T* v_in, size_t stride,
 {
     PROFILESTART();
     int base, resbase;
-    T dot;
+    register T dot;
 #pragma omp parallel for private(base, resbase, dot)
     for (int vv = 0; vv < n_vecs; vv++) {
         resbase = vv * stride;
@@ -223,7 +223,7 @@ template<typename T>
 T* Device<DT>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
 {
     PROFILESTART();
-    T xTy;
+    register T xTy;
 
 #pragma omp parallel for private(xTy)
     for (size_t idx = 0; idx < length; idx++)
@@ -242,7 +242,7 @@ template<typename T>
 T* Device<DT>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out) const
 {
     PROFILESTART();
-    T xDy;
+    register T xDy;
 
     if(x_in == NULL)
     {
@@ -281,7 +281,7 @@ T*  Device<DT>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_su
     assert(u_in!=NULL);
     
     size_t y_base, base, y_idx;
-    T uy;
+    register T uy;
     
 #pragma omp parallel for private(y_base, base, y_idx, uy)
     for (size_t vec = 0; vec < num_surfs; vec++)
@@ -311,7 +311,7 @@ T*  Device<DT>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  
     PROFILESTART();
     assert(x_in != NULL);
     
-    T val;
+    register T val;
     
     if(y_in !=NULL)
     {
@@ -363,7 +363,7 @@ template<typename T>
 T*  Device<DT>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  avpw_out) const
 {
     PROFILESTART();
-    T val;
+    register T val;
     size_t base, vec, s, length = DIM*stride, idx;
 
     if(w_in !=NULL)
@@ -430,7 +430,7 @@ T*  Device<DT>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t strid
 {
     PROFILESTART();
     size_t base, x_base, vec, s, length = DIM*stride, idx, x_idx;
-    T val;
+    register T val;
 
     if(w_in !=NULL)
     {
@@ -506,7 +506,8 @@ T*  Device<DT>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *q
     const size_t stride, const size_t ns, T *x_dw) const
 {
     PROFILESTART();
-    T val, sum;
+    register T val;
+    T sum;
     
     if(x_in != NULL)
     {

@@ -19,10 +19,10 @@ class GaussLegendreIntegrator
     inline void operator()(const Container &w_in, 
         Container &dw) const;
 
-  private:
     Container* getQuadWeights(int key) const;
     Container* buildQuadWeights(int shOrder) const;
-    
+
+  private:
     DataIO<typename Container::value_type, CPU> IO;
     
     static map<int, Container*> qw_map;

@@ -839,7 +839,7 @@ bool DeviceTest<DT,T>::TestReduce()
     device->Memcpy(w,w_host,length * sizeof(T),MemcpyHostToDevice);
     device->Memcpy(q,q_host,stride * sizeof(T),MemcpyHostToDevice);
          
-    device->Reduce(x, w, q, stride, ns, I);
+    device->Reduce(x, 1, w, q, stride, ns, I);
     device->Memcpy(I_host,I,ns * sizeof(T),MemcpyDeviceToHost);
 
     T err = 0;
@@ -852,7 +852,7 @@ bool DeviceTest<DT,T>::TestReduce()
     res = res && (err<eps) ? true : false;
 
 
-    device->Reduce((T*) NULL, w, q, stride, ns, I);
+    device->Reduce((T*) NULL, 1, w, q, stride, ns, I);
     device->Memcpy(I_host,I,ns * sizeof(T),MemcpyDeviceToHost);
 
     II = stride/8.0;
@@ -863,7 +863,7 @@ bool DeviceTest<DT,T>::TestReduce()
     }
     res = res && (err<eps) ? true : false;
 
-    device->Reduce(w, x, q, stride, ns, I);
+    device->Reduce(w, 1, x, q, stride, ns, I);
     device->Memcpy(I_host,I,ns * sizeof(T),MemcpyDeviceToHost);
 
     II = (stride-1)*stride/16.0;

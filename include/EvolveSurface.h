@@ -8,10 +8,13 @@
 #include "DataIO.h"
 #include "BiCGStab.h"
 #include "Parameters.h"
+#include "VesInteraction.h"
+#include "GLIntegrator.h"
 
-template<typename SurfContainer>
+template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
 {
+    ///@todo Check the size of the containers for consistency
   private:
     typedef typename SurfContainer::value_type value_type;
     typedef typename SurfContainer::Sca Sca;
@@ -37,11 +40,15 @@ class InterfacialVelocity
     Sca all_rot_mats_;
     Sca rot_mat_;
     Sca sing_quad_weights_;
-
-    mutable Vec u1_, u2_;
+    Sca quad_weights_;
+    
+    mutable Vec u1_, u2_, u3_;
     mutable Sca tension_;
 
     InterfacialForce<SurfContainer> Intfcl_force_;
+
+    Interaction interaction_;
+
     void GetTension(const Vec &vel_in, Sca &tension) const;
     void BgFlow(const Vec &pos, Vec &vel_Inf) const;
     void Stokes(const Vec &force, Vec &vel) const;
@@ -103,9 +110,14 @@ class ForwardEuler
             axpy(static_cast<value_type>(-1), S_out.getPosition(), 
                 velocity, velocity);
             S_out.mapToTangentSpace(velocity);
+            //S_out.grad(tension_
+                
             axpy(Parameters<value_type>::getInstance().rep_ts, 
                 velocity, S_out.getPosition(), 
                 S_out.getPositionModifiable());
+            
+                //sig = sig - ts*dot3(GradS(sig),Vel);
+
         }
     }
 };
@@ -115,7 +127,8 @@ class EvolveSurface
 {
   private:
     typedef typename Container::value_type value_type;
-    
+    typedef VesInteraction<typename Container::Vec> Inter;
+  
   public:
     
     void operator()(Container &S)
@@ -123,13 +136,14 @@ class EvolveSurface
         value_type t(0);
         value_type dt(Parameters<value_type>::getInstance().ts);
 
-        InterfacialVelocity<Container> F(&S);
+        InterfacialVelocity<Container, Inter> F(&S);
+       
         Monitor<Container> M;
-        ForwardEuler<Container, InterfacialVelocity<Container> > U;
+        ForwardEuler<Container, InterfacialVelocity<Container, Inter > > U;
         
         TimeStepper<Container, 
-            InterfacialVelocity<Container>, 
-            ForwardEuler<Container, InterfacialVelocity<Container> >,
+            InterfacialVelocity<Container, Inter>, 
+            ForwardEuler<Container, InterfacialVelocity<Container, Inter> >,
             Monitor<Container> > Ts;
     
         Ts(S, t, dt, F, U, M);

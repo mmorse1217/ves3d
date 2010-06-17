@@ -1,26 +1,27 @@
-template<typename SurfContainer>
-InterfacialVelocity<SurfContainer>::InterfacialVelocity(SurfContainer *S_in,
+template<typename SurfContainer, typename Interaction>
+InterfacialVelocity<SurfContainer, Interaction>::InterfacialVelocity(SurfContainer *S_in,
                                                         value_type* data) :
     S_(S_in)
 {
     w_sph_.replicate(S_->getPosition());
     u1_.replicate(S_->getPosition());
     u2_.replicate(S_->getPosition());
+    u3_.replicate(S_->getPosition());
     tension_.replicate(S_->getPosition());
 
     int p = S_->getPosition().getShOrder();
     int np = S_->getPosition().getStride();
 
-    sing_quad_weights_.resize(1,p);
+    DataIO<value_type,CPU> IO(S_->getPosition().getDevice(),"",0);
+
+    //Rot mats
     rot_mat_.resize(p + 1, 1, make_pair(2 * p,np));//to match the rot_chunck
     all_rot_mats_.resize(p + 1, 1, make_pair(np,np));
-
-
-    DataIO<value_type,CPU> IO(S_->getPosition().getDevice(),"",0);
     char fname[300];
     sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p);
     IO.ReadData(fname, all_rot_mats_.size(), all_rot_mats_.begin());
     
+    //W_spherical
     sprintf(fname,"precomputed/w_sph_%u_single.txt",p);
     IO.ReadData(fname, np, w_sph_.begin());
   
@@ -29,32 +30,70 @@ InterfacialVelocity<SurfContainer>::InterfacialVelocity(SurfContainer *S_in,
             w_sph_.begin(), np * sizeof(value_type), 
             MemcpyDeviceToDevice);
 
+    //Singular quadrature weights
+    sing_quad_weights_.resize(1,p);
     sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",p);
     IO.ReadData(fname, np, sing_quad_weights_.begin());
+
+    //quadrature weights
+    quad_weights_.resize(1,p);
+    sprintf(fname,"precomputed/quad_weights_%u_single.txt",p);
+    IO.ReadData(fname, np, quad_weights_.begin());
 }
 
-template<typename SurfContainer>
-void InterfacialVelocity<SurfContainer>::operator()(const value_type &t, 
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::operator()(const value_type &t, 
     Vec &velocity) const
 {
-    ///@todo Add Interaction
-    BgFlow(S_->getPosition(), velocity);
+    //Interaction
+    Intfcl_force_.BendingForce(*S_, u1_);
+    Intfcl_force_.TensileForce(*S_, tension_, u3_);
+    axpy(static_cast<value_type>(1), u1_, u3_, u3_);
+    xv(S_->getAreaElement(), u3_, u3_);
+    
+    //Self-interaction, to be subtracted
+    velocity.getDevice().DirectStokes(S_->getPosition().begin(), u3_.begin(), 
+        quad_weights_.begin(), velocity.getStride(), velocity.getNumSubs(), 
+        S_->getPosition().begin(), 0, velocity.getStride(), velocity.begin());
+
+    //Incorporating the quadrature weights into the density
+    for(int ii=0; ii<u3_.getNumSubs(); ++ii)
+        for(int jj=0; jj<u3_.getTheDim(); ++jj)
+            u3_.getDevice().xy(quad_weights_.begin(), u3_.getSubN(ii) + 
+                jj * u3_.getStride(), u3_.getStride(), u3_.begin());                    
+
+    //Shuffling points
+    ShufflePoints(S_->getPosition(), u1_);
+    ShufflePoints(u3_, u2_);
+ 
+    //Far interactions
+    interaction_(u1_, u2_, u3_);
+    
+    //Shuffling to the original order
+    ShufflePoints(u3_, u2_);
+
+    //Subtracting the self-interaction
+    axpy(static_cast<value_type>(-1), velocity, u2_, velocity);
+    //cout<<velocity<<endl;
+
+    //Background
+    BgFlow(S_->getPosition(), u2_);
+    axpy(static_cast<value_type>(1), u2_, velocity, velocity);
+    
+    //Bending
     Intfcl_force_.BendingForce(*S_, u1_);
     Stokes(u1_, u2_);   
-    
-    axpy(Parameters<value_type>::getInstance().bending_modulus
-        , u2_, velocity, velocity);
+    axpy(static_cast<value_type>(1), u2_, velocity, velocity);
   
     //Get tension
     GetTension(velocity, tension_);
     Intfcl_force_.TensileForce(*S_, tension_, u1_);
     Stokes(u1_, u2_);
-    axpy(static_cast<typename SurfContainer::value_type>(1), 
-        velocity, u2_, velocity);
+    axpy(static_cast<value_type>(1), u2_, velocity, velocity);
 }
 
-template<typename SurfContainer>
-void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::GetTension(const Vec &vel_in,
     Sca &tension) const
 {
     Sca rhs;
@@ -72,17 +111,17 @@ void InterfacialVelocity<SurfContainer>::GetTension(const Vec &vel_in,
     for ( ;it !=tension.end(); ++it)
         *it = 0;
 
-    BiCGStab<Sca, InterfacialVelocity<SurfContainer> > solver;
+    BiCGStab<Sca, InterfacialVelocity<SurfContainer, Interaction> > solver;
     if(solver(*this, tension, rhs, max_iter, tol) !=BiCGSSuccess)
     {
         cerr<<"The tension solver did not converge!"<<endl;
-        abort();
+        exit(1);
     }
     cout<<max_iter<<"\t"<<tol<<endl;
 }
 
-template<typename SurfContainer>
-void InterfacialVelocity<SurfContainer>::BgFlow(const Vec &pos,
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::BgFlow(const Vec &pos,
     Vec &vel_inf) const
 {
     int n_surfs = pos.getNumSubs();
@@ -101,8 +140,8 @@ void InterfacialVelocity<SurfContainer>::BgFlow(const Vec &pos,
     axpy(Parameters<value_type>::getInstance().bg_flow_param, vel_inf, vel_inf); 
 }
 
-template<typename SurfContainer>
-void InterfacialVelocity<SurfContainer>::Stokes(const Vec &force,
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::Stokes(const Vec &force,
     Vec &velocity) const
 {
     int p  = S_->getPosition().getShOrder();
@@ -153,8 +192,8 @@ void InterfacialVelocity<SurfContainer>::Stokes(const Vec &force,
     }
 }
 
-template<typename SurfContainer>
-void InterfacialVelocity<SurfContainer>::operator()(const Sca &tension, 
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::operator()(const Sca &tension, 
     Sca &div_stokes_fs) const
 {
     Vec Fs(tension.getNumSubs(), tension.getShOrder());
@@ -165,8 +204,8 @@ void InterfacialVelocity<SurfContainer>::operator()(const Sca &tension,
     S_->div(u, div_stokes_fs);
 }
 
-template<typename SurfContainer>
-void InterfacialVelocity<SurfContainer>::TensionPrecond::operator()(const 
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::TensionPrecond::operator()(const 
     Sca &in, Sca &out) const
 {
     axpy(static_cast<value_type>(1), in, out);
