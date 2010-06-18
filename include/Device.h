@@ -184,7 +184,7 @@ class Device
 
     ///The max of an array.
     template<typename T>
-    T Max(T *x_in, size_t length) const;
+    T MaxAbs(T *x_in, size_t length) const;
 
     ///Transpose of a matrix
     template<typename T>

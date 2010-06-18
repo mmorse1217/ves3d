@@ -116,8 +116,11 @@ class ForwardEuler
                 velocity, S_out.getPosition(), 
                 S_out.getPositionModifiable());
             
-                //sig = sig - ts*dot3(GradS(sig),Vel);
 
+                //sig = sig - ts*dot3(GradS(sig),Vel);
+            if(velocity.getDevice().MaxAbs(velocity.begin(), velocity.size()) 
+                < Parameters<value_type>::getInstance().rep_tol)
+                break;
         }
     }
 };

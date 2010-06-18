@@ -45,37 +45,40 @@ template<typename SurfContainer, typename Interaction>
 void InterfacialVelocity<SurfContainer, Interaction>::operator()(const value_type &t, 
     Vec &velocity) const
 {
-    //Interaction
+    //Interfacial forces
     Intfcl_force_.BendingForce(*S_, u1_);
     Intfcl_force_.TensileForce(*S_, tension_, u3_);
     axpy(static_cast<value_type>(1), u1_, u3_, u3_);
     xv(S_->getAreaElement(), u3_, u3_);
     
-    //Self-interaction, to be subtracted
-    velocity.getDevice().DirectStokes(S_->getPosition().begin(), u3_.begin(), 
-        quad_weights_.begin(), velocity.getStride(), velocity.getNumSubs(), 
-        S_->getPosition().begin(), 0, velocity.getStride(), velocity.begin());
-
     //Incorporating the quadrature weights into the density
     for(int ii=0; ii<u3_.getNumSubs(); ++ii)
         for(int jj=0; jj<u3_.getTheDim(); ++jj)
-            u3_.getDevice().xy(quad_weights_.begin(), u3_.getSubN(ii) + 
-                jj * u3_.getStride(), u3_.getStride(), u3_.begin());                    
+            u3_.getDevice().xy(quad_weights_.begin(), 
+                u3_.getSubN(ii) + jj * u3_.getStride(), u3_.getStride(), 
+                u3_.getSubN(ii) + jj * u3_.getStride());                    
 
-    //Shuffling points
+    //Self-interaction, to be subtracted
+    velocity.getDevice().DirectStokes(S_->getPosition().begin(), u3_.begin(), 
+        NULL, velocity.getStride(), velocity.getNumSubs(), 
+        S_->getPosition().begin(), 0, velocity.getStride(), velocity.begin());
+
+    //Shuffling points and densities
     ShufflePoints(S_->getPosition(), u1_);
     ShufflePoints(u3_, u2_);
- 
+    u3_.setPointOrder(PointMajor);
+
     //Far interactions
     interaction_(u1_, u2_, u3_);
     
     //Shuffling to the original order
     ShufflePoints(u3_, u2_);
+    u1_.setPointOrder(AxisMajor);
+    u3_.setPointOrder(AxisMajor);
 
     //Subtracting the self-interaction
     axpy(static_cast<value_type>(-1), velocity, u2_, velocity);
-    //cout<<velocity<<endl;
-
+    
     //Background
     BgFlow(S_->getPosition(), u2_);
     axpy(static_cast<value_type>(1), u2_, velocity, velocity);
@@ -107,17 +110,22 @@ void InterfacialVelocity<SurfContainer, Interaction>::GetTension(const Vec &vel_
     value_type tol(Parameters<typename SurfContainer::value_type>::
         getInstance().inner_solver_tol);
 
-    typename Sca::iterator it = tension.begin();
-    for ( ;it !=tension.end(); ++it)
-        *it = 0;
-
     BiCGStab<Sca, InterfacialVelocity<SurfContainer, Interaction> > solver;
-    if(solver(*this, tension, rhs, max_iter, tol) !=BiCGSSuccess)
+    
+    ///@todo add the restart option to the Parameters
+    ///@todo add verbose option 
+  
+    for(int ii=0; ii<2; ++ii)
     {
-        cerr<<"The tension solver did not converge!"<<endl;
-        exit(1);
+        int mIter(max_iter);
+        value_type tt(tol);
+        
+        if(solver(*this, tension, rhs, mIter, tt) !=BiCGSSuccess && ii==1)
+        {
+            cerr<<"The tension solver did not converge!"<<endl;
+            exit(1);
+        }
     }
-    cout<<max_iter<<"\t"<<tol<<endl;
 }
 
 template<typename SurfContainer, typename Interaction>

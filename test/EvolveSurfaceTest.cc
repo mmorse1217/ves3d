@@ -18,12 +18,14 @@ int main(int argc, char **argv)
     
     // Setting the parameters
     Par::getInstanceModifiable().n_surfs = 2;   
-    Par::getInstanceModifiable().n_steps = 100;
-    Par::getInstanceModifiable().time_horizon = 50;
+    //Par::getInstanceModifiable().n_steps = 20;
     Par::getInstanceModifiable().ts = .5;    
+    Par::getInstanceModifiable().time_horizon = 50;
+    Par::getInstanceModifiable().inner_solver_maxit = 15;    
+    //Par::getInstanceModifiable().bg_flow_param = 0;    
     
     cout<<Par::getInstance()<<endl;
-    
+
     //IO
     DataIO<Sca::value_type, CPU> myIO(the_cpu_dev);
     
@@ -37,8 +39,8 @@ int main(int argc, char **argv)
     
     //Making centers and populating the prototype
     Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
-    real cntrs_host[] = {0, 0,  1,
-                         0, 2, -1};
+    real cntrs_host[] = {-5, 0,  1,
+                         5, 0, -1};
     
     cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
         cntrs.size() * sizeof(real), MemcpyHostToDevice);
