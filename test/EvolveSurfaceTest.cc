@@ -20,10 +20,10 @@ int main(int argc, char **argv)
     
     // Setting the parameters
     Par::getInstanceModifiable().n_surfs = 2;   
-    Par::getInstanceModifiable().ts = .5;    
-    Par::getInstanceModifiable().time_horizon = 2;
+    Par::getInstanceModifiable().ts = .1;    
+    Par::getInstanceModifiable().time_horizon = .8;
     Par::getInstanceModifiable().inner_solver_maxit = 15;    
-    Par::getInstanceModifiable().bg_flow_param = 0.1;    
+    //Par::getInstanceModifiable().bg_flow_param = 0.1;    
     cout<<Par::getInstance()<<endl;
 
     //IO
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     Populate(x0, cntrs);
 
     // The interaction class
-    Interaction interaction(&StokesAlltoAll);
+    Interaction interaction(NULL);//&StokesAlltoAll);
 
     //Reading operators from file
     bool readFromFile = true;

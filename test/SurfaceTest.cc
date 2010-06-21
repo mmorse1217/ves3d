@@ -3,6 +3,7 @@
 #include "Scalars.h"
 #include "Vectors.h"
 #include "Surface.h"
+#include "Parameters.h"
 
 using namespace std;
 
@@ -33,8 +34,12 @@ int main(int argc, char ** argv)
         //sprintf(fname,"%s/precomputed/biconcave_ra65_%u",getenv("VES3D_DIR"),p);
         myIO.ReadData(fname,x0.size(),x0.begin());
 
+        //Reading operators from file
+        bool readFromFile = true;
+        OperatorsMats<real> mats(myIO, readFromFile);
+        
         //Creating objects
-        Surface<Sca, Vec> S(x0);
+        Surface<Sca, Vec> S(x0, mats);
         Sca X(nVec,p);
         Sca Y(nVec,p);
         Sca Z(nVec,p);

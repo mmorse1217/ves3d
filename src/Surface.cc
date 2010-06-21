@@ -11,7 +11,6 @@ Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in,
     //upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder(), mats), ///@todo make sht_ autonomous
-    //sht_upsample_(upsample_freq_),
     sht_rep_filter_(x_in.getShOrder(), mats, rep_filter_freq_),
     containers_are_stale_(true),
     first_forms_are_stale_(true),

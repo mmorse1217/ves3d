@@ -2,6 +2,7 @@
 #define _OPERATORSMATS_H_
 
 #include "DataIO.h"
+#include "Parameters.h"
 
 template <typename T>
 struct OperatorsMats

@@ -5,7 +5,6 @@
 #include "HelperFuns.h"
 #include "InterfacialForce.h"
 #include <iostream>
-//#include "DataIO.h"
 #include "BiCGStab.h"
 #include "Parameters.h"
 #include "VesInteraction.h"

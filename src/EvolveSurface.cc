@@ -97,7 +97,7 @@ void InterfacialVelocity<SurfContainer, Interaction>::operator()(const value_typ
 
     //Far interactions
     interaction_(u1_, u2_, u3_);
-    
+        
     //Shuffling to the original order
     ShufflePoints(u3_, u2_);
     u1_.setPointOrder(AxisMajor);
