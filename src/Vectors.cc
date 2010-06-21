@@ -29,9 +29,9 @@ size_t Vectors<T, DT, DEVICE>::getNumSubs() const
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-int Vectors<T, DT, DEVICE>::getTheDim() const
+int Vectors<T, DT, DEVICE>::getTheDim()
 {
-    return(this->the_dim_);
+    return(the_dim_);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 

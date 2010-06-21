@@ -10,6 +10,7 @@
 #include "Parameters.h"
 #include "VesInteraction.h"
 #include "GLIntegrator.h"
+#include "SHTrans.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -33,6 +34,8 @@ class InterfacialVelocity
         void operator()(const Sca &in, Sca &out) const;
     } precond_;
 
+    void Reparam();
+
   private:
     SurfContainer *S_;
     
@@ -43,7 +46,7 @@ class InterfacialVelocity
     Sca quad_weights_;
     
     mutable Vec u1_, u2_, u3_;
-    mutable Sca tension_;
+    mutable Sca tension_, wrk_;
 
     InterfacialForce<SurfContainer> Intfcl_force_;
 
@@ -92,6 +95,8 @@ class ForwardEuler
   private:
     typedef typename SurfContainer::value_type value_type;
     typename SurfContainer::Vec velocity;
+    //SHTrans<typename SurfContainer::Sca> sht_upsample_;
+
    public:
      void operator()(SurfContainer &S_in, value_type &t, value_type &dt, 
          Forcing &F, SurfContainer &S_out)
@@ -100,28 +105,7 @@ class ForwardEuler
         F(t, velocity);
         axpy(dt, velocity, S_in.getPosition(), S_out.getPositionModifiable());
 
-        ///@todo check for the norm of error as stopping criteria
-        ///@todo upsampling?
-        for(int ii=0; 
-            ii < Parameters<value_type>::getInstance().rep_maxit;
-            ++ii)
-        {
-            S_out.getSmoothedShapePosition(velocity);
-            axpy(static_cast<value_type>(-1), S_out.getPosition(), 
-                velocity, velocity);
-            S_out.mapToTangentSpace(velocity);
-            //S_out.grad(tension_
-                
-            axpy(Parameters<value_type>::getInstance().rep_ts, 
-                velocity, S_out.getPosition(), 
-                S_out.getPositionModifiable());
-            
-
-                //sig = sig - ts*dot3(GradS(sig),Vel);
-            if(velocity.getDevice().MaxAbs(velocity.begin(), velocity.size()) 
-                < Parameters<value_type>::getInstance().rep_tol)
-                break;
-        }
+        F.Reparam();
     }
 };
 

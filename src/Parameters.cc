@@ -18,7 +18,7 @@ Parameters<T>::Parameters() :
     rep_up_freq(24),
     rep_filter_freq(4),
     rep_ts(1),
-    rep_tol(1e-4),
+    rep_tol((typeid(T) == typeid(float)) ? 1e-3 : 5e-5),
     bg_flow_param(1e-1),
     save_data(false),
     save_stride(-1)

@@ -12,6 +12,7 @@
 #include "HelperFuns.h"
 #include "SHTrans.h"
 #include "GLIntegrator.h"
+#include <queue>
 
 template <typename ScalarContainer, typename VectorContainer> 
 class Surface
@@ -26,13 +27,15 @@ class Surface
     ~Surface();
 
     void setPosition(const Vec& x_in);
+    
     Vec& getPositionModifiable();
     const Vec& getPosition() const;
+    
     const Vec& getNormal() const;
     const Sca& getAreaElement() const;
     const Sca& getMeanCurv() const;
     const Sca& getGaussianCurv() const;
-
+    
     void grad(const Sca &f_in, Vec &grad_f_out) const;
     void div(const Vec &f_in, Sca &div_f_out) const;
         
@@ -46,11 +49,9 @@ class Surface
   private:
     Vec x_;
     mutable Vec normal_;
-
     mutable Sca w_;
     mutable Sca h_;
     mutable Sca k_;
-
     mutable Vec cu_;
     mutable Vec cv_;
  
@@ -58,10 +59,8 @@ class Surface
     int rep_filter_freq_;
 
     SHTrans<Sca> sht_;
-    //SHTrans<Sca> sht_upsample_;
     SHTrans<Sca> sht_rep_filter_;
     
-
     GaussLegendreIntegrator<Sca> integrator_;
 
     mutable bool containers_are_stale_;

@@ -31,14 +31,14 @@ namespace containers
         virtual ~Scalars();
         
         static const Device<DT>& getDevice();
-        
+        static inline int getTheDim();
+
         inline int getShOrder() const;
         inline pair<int, int> getGridDim() const;
         inline size_t getStride() const;
         inline size_t size() const;
         inline size_t getNumSubs() const;
-        inline int getTheDim() const;
-
+        
         void resize(size_t new_num_subs, int new_sh_order = -1,
             pair<int, int> new_grid_dim = EMPTY_GRID);
         inline void replicate(Scalars<T, DT, DEVICE> const& sc_in);

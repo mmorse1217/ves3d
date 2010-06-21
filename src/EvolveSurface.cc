@@ -8,6 +8,7 @@ InterfacialVelocity<SurfContainer, Interaction>::InterfacialVelocity(SurfContain
     u2_.replicate(S_->getPosition());
     u3_.replicate(S_->getPosition());
     tension_.replicate(S_->getPosition());
+    wrk_.replicate(S_->getPosition());
 
     int p = S_->getPosition().getShOrder();
     int np = S_->getPosition().getStride();
@@ -236,4 +237,33 @@ void InterfacialVelocity<SurfContainer, Interaction>::TensionPrecond::operator()
 // // end
 
 // // vecOut = L.*vecIn;
+}
+
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::Reparam()
+{
+    value_type ts(Parameters<value_type>::getInstance().rep_ts);
+    
+    ///@todo up-sampling?
+    int ii(-1);
+    while ( ++ii < Parameters<value_type>::getInstance().rep_maxit )
+    {
+        S_->getSmoothedShapePosition(u1_);
+        axpy(static_cast<value_type>(-1), S_->getPosition(), 
+            u1_, u1_);
+        
+        S_->mapToTangentSpace(u1_);
+        
+        //Advecting tension
+        S_->grad(tension_, u2_);
+        GeometricDot(u2_, u1_, wrk_);
+        axpy(-ts, wrk_, tension_, tension_);
+        
+        axpy(ts, u1_, S_->getPosition(), S_->getPositionModifiable());
+
+        value_type vel = u1_.getDevice().MaxAbs(u1_.begin(), u1_.size());
+        if(vel < Parameters<value_type>::getInstance().rep_tol )
+            break;
+    }
+    cout<<"Reparametrization :"<<ii<<endl;
 }

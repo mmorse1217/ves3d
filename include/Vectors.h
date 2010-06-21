@@ -29,7 +29,7 @@ namespace containers
         
         ///This is intentionally non-virtual
         inline size_t getNumSubs() const; 
-        inline int getTheDim() const;
+        static inline int getTheDim();
 
         inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);
         

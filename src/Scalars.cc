@@ -95,7 +95,7 @@ size_t Scalars<T, DT, DEVICE>::getNumSubs() const
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-int Scalars<T, DT, DEVICE>::getTheDim() const
+int Scalars<T, DT, DEVICE>::getTheDim()
 {
     return(the_dim_);
 }
