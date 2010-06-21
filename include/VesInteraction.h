@@ -1,39 +1,38 @@
 #ifndef _VESINTERACTION_H_
 #define _VESINTERACTION_H_
 
-//#include "HelperFuns.h"
+#include<typeinfo>
 
-template<typename VecContainer>
+template<typename T>
 class VesInteraction
 {
   public:
-    typedef typename VecContainer::value_type value_type;
-    typedef double fmm_value_type;
-    
-    VesInteraction(int num_threads);
+    typedef void(*InteractionFun)(const T*, const T*, size_t, T*);    
+
+    VesInteraction(InteractionFun interaction_handle = NULL, int num_threads = 1);
     ~VesInteraction();
 
+    template<typename VecContainer>
     void operator()(const VecContainer &position, VecContainer &density,
-        VecContainer &potential);
+        VecContainer &potential) const;
 
   private:
     int num_threads_;
     size_t* each_thread_np_;
     size_t* each_thread_idx_;
     
-    size_t np_;
-    size_t containers_capacity_;
+    mutable size_t np_;
+    mutable size_t containers_capacity_;
 
-    fmm_value_type* all_pos_;
-    fmm_value_type* all_den_;
-    fmm_value_type* all_pot_;
+    mutable T* all_pos_;
+    mutable T* all_den_;
+    mutable T* all_pot_;
     
-    size_t getCpyDestIdx(size_t this_thread_np);
-    void checkContainersSize();
-
-    void fmmInteraction() const;
-    void directInteraction() const;
-
+    size_t getCpyDestIdx(size_t this_thread_np) const;
+    void checkContainersSize() const;
+    void updatePotential() const;
+    InteractionFun interaction_handle_;
+    
     VesInteraction(VesInteraction const &rhs);
     VesInteraction& operator=(const VesInteraction &rhs);
 };

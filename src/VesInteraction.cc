@@ -1,5 +1,6 @@
-template<typename VecContainer>
-VesInteraction<VecContainer>::VesInteraction(int num_threads) :
+template<typename T>
+VesInteraction<T>::VesInteraction(InteractionFun interaction_handle,
+    int num_threads) :
     num_threads_(num_threads),
     each_thread_np_(new size_t[num_threads_]),
     each_thread_idx_(new size_t[num_threads_ + 1]),
@@ -7,13 +8,14 @@ VesInteraction<VecContainer>::VesInteraction(int num_threads) :
     containers_capacity_(0),
     all_pos_(NULL),
     all_den_(NULL),
-    all_pot_(NULL)
+    all_pot_(NULL),
+    interaction_handle_(interaction_handle)
 {
     each_thread_idx_[0] = 0;
 }
 
-template<typename VecContainer>
-VesInteraction<VecContainer>::~VesInteraction()
+template<typename T>
+VesInteraction<T>::~VesInteraction()
 {
     delete[] each_thread_np_;
     delete[] each_thread_idx_;
@@ -22,16 +24,20 @@ VesInteraction<VecContainer>::~VesInteraction()
     delete[] all_den_;
     delete[] all_pot_;
 }    
-
+template<typename T>
 template<typename VecContainer>
-void VesInteraction<VecContainer>::operator()(const VecContainer &position, 
-    VecContainer &density, VecContainer &potential)
+void VesInteraction<T>::operator()(const VecContainer &position, 
+    VecContainer &density, VecContainer &potential) const
 {
+    typedef typename VecContainer::value_type value_type;
+    
+    //Getting the sizes
     size_t np(position.getNumSubs() * position.getStride());
     size_t n_cpy(position.size());
-    size_t idx(getCpyDestIdx(np));
+    size_t idx(this->getCpyDestIdx(np));
     
-    if(typeid(value_type) == typeid(fmm_value_type))
+    //Copying to the host and maybe casting to fmm_value_type
+    if(typeid(value_type) == typeid(T))
     {
         position.getDevice().Memcpy(all_pos_ + idx, position.begin(),
             n_cpy * sizeof(value_type), MemcpyDeviceToHost);
@@ -47,21 +53,21 @@ void VesInteraction<VecContainer>::operator()(const VecContainer &position,
             n_cpy * sizeof(value_type), MemcpyDeviceToHost);
         
         for(size_t ii=0; ii<n_cpy; ++ii)
-            *(all_pos_ + idx + ii) = static_cast<fmm_value_type>(buffer[ii]);
+            *(all_pos_ + idx + ii) = static_cast<T>(buffer[ii]);
         
         position.getDevice().Memcpy(buffer, density.begin(),
             n_cpy * sizeof(value_type), MemcpyDeviceToHost);
         
         for(size_t ii=0; ii<n_cpy; ++ii)
-            *(all_den_ + idx + ii) = static_cast<fmm_value_type>(buffer[ii]);
+            *(all_den_ + idx + ii) = static_cast<T>(buffer[ii]);
 
         delete[] buffer;
     }
     
-    if ( omp_get_thread_num() == 0 )
-        fmmInteraction();
-    
-    if(typeid(value_type) == typeid(fmm_value_type))
+    updatePotential();
+
+    //Copying back the potential to the device(s)
+    if(typeid(value_type) == typeid(T))
     {
         potential.getDevice().Memcpy(potential.begin(), all_pot_ + idx,
             n_cpy * sizeof(value_type), MemcpyHostToDevice);
@@ -71,7 +77,7 @@ void VesInteraction<VecContainer>::operator()(const VecContainer &position,
         value_type* buffer(new value_type[n_cpy]);
         
         for(size_t ii=0; ii<n_cpy; ++ii)
-            buffer[ii] = static_cast<fmm_value_type>(*(all_pot_ + idx + ii));
+            buffer[ii] = static_cast<T>(*(all_pot_ + idx + ii));
    
         potential.getDevice().Memcpy(potential.begin(), buffer,
             n_cpy * sizeof(value_type), MemcpyHostToDevice);
@@ -80,22 +86,24 @@ void VesInteraction<VecContainer>::operator()(const VecContainer &position,
     }
 }
 
-template<typename VecContainer>
-size_t VesInteraction<VecContainer>::getCpyDestIdx(size_t this_thread_np)
+template<typename T>
+size_t VesInteraction<T>::getCpyDestIdx(size_t this_thread_np) const
 {   
     int threadNum = omp_get_thread_num();
     each_thread_np_[threadNum] = this_thread_np;
-
+    
 #pragma omp barrier
     {
         if ( threadNum == 0 )
         {
             np_ = 0;
+            int the_dim = 3;
+            
             for(int ii=1; ii<=num_threads_; ++ii)
             {
                 np_ += each_thread_np_[ii-1];
                 each_thread_idx_[ii] = each_thread_idx_[ii-1] + 
-                    VecContainer::getTheDim() * each_thread_np_[ii-1]; 
+                    the_dim * each_thread_np_[ii-1]; 
             }
         }
     }
@@ -108,8 +116,8 @@ size_t VesInteraction<VecContainer>::getCpyDestIdx(size_t this_thread_np)
     return(each_thread_idx_[threadNum]);
 }
 
-template<typename VecContainer>
-void VesInteraction<VecContainer>::checkContainersSize()
+template<typename T>
+void VesInteraction<T>::checkContainersSize() const
 {
 #pragma omp master
     {
@@ -119,13 +127,13 @@ void VesInteraction<VecContainer>::checkContainersSize()
         {
 
             delete[] all_pos_;
-            all_pos_ = new fmm_value_type[new_capacity];
+            all_pos_ = new T[new_capacity];
 
             delete[] all_den_;
-            all_den_ = new fmm_value_type[new_capacity];
+            all_den_ = new T[new_capacity];
             
             delete[] all_pot_;
-            all_pot_ = new fmm_value_type[new_capacity];
+            all_pot_ = new T[new_capacity];
             
             containers_capacity_ = new_capacity;
         }
@@ -133,24 +141,35 @@ void VesInteraction<VecContainer>::checkContainersSize()
 #pragma omp barrier
 }
 
-
-template<typename VecContainer>
-void VesInteraction<VecContainer>::fmmInteraction() const
+template<typename T>
+void VesInteraction<T>::updatePotential() const
 {
-    cout<<"FMM"<<endl;
+#pragma omp master
+    {
+        int the_dim = 3;
+
+        if (interaction_handle_ != NULL)
+            interaction_handle_(all_pos_, all_den_, np_, all_pot_);
+        else
+            memset(all_pot_, 0, np_ * the_dim * sizeof(T));
+    }
+    
+#pragma omp barrier
 }
-//        VecContainer wrk1, wrk2, wrk3;
-//         wrk1.replicate(position);
-//         wrk2.replicate(position);
-//         wrk3.replicate(position);
-        
-//         size_t np(position.getNumSubs() * position.getStride());
-        
-//         position.getDevice().Transpose(position.begin(), np, 3, wrk1.begin());
-//         position.getDevice().Transpose( density.begin(), np, 3, wrk2.begin());
-        
-//         position.getDevice().DirectStokes(wrk1.begin(), wrk2.begin(), NULL, 
-//             np, 1, wrk1.begin(), 0, np, wrk3.begin());  
-        
-//         position.getDevice().Transpose(wrk3.begin(), 3, np, potential.begin());
- 
+
+// template<typename Device>
+// void template<typename T> VesInteraction<T>::directInteraction(const Device &device)
+// {
+//     cout<<"Direct"<<endl;
+    //             int the_dim = VecContainer::getTheDim();
+
+            //             position.getDevice().Transpose(all_pos_, np_, the_dim, all_pot_);
+            //             position.getDevice().Transpose(all_den_, np_, the_dim, all_pos_);
+            
+            //             position.getDevice().DirectStokes(all_pot_, all_pos_, NULL, 
+            //                 np_, 1, all_pot_, 0, np_, all_den_);  
+            
+            //             position.getDevice().Transpose(all_den_, the_dim, np_, all_pot_);
+        //}
+//         directInteraction(position.getDevice());
+    

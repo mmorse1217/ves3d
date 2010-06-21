@@ -13,6 +13,7 @@
 #include "SHTrans.h"
 #include "GLIntegrator.h"
 #include <queue>
+#include "OperatorsMats.h"
 
 template <typename ScalarContainer, typename VectorContainer> 
 class Surface
@@ -23,7 +24,7 @@ class Surface
     typedef ScalarContainer Sca;
 
     ///@todo add a default constructor
-    Surface(const Vec& x_in);
+    Surface(const Vec& x_in, OperatorsMats<value_type> &mats);
     ~Surface();
 
     void setPosition(const Vec& x_in);

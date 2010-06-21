@@ -3,12 +3,16 @@
 
 #include "Device.h"
 #include "SHTMats.h"
+#include "OperatorsMats.h"
 
 template<typename Container>
 class SHTrans 
 {
+  private:
+    typedef typename Container::value_type value_type;
+
   public:
-    SHTrans(int sh_order_in, int filter_freq = -1);
+    SHTrans(int sh_order_in, OperatorsMats<value_type> &mats, int filter_freq = -1);
     ~SHTrans();
 
     void FirstDerivatives(const Container &in, Container &work, Container &shc, Container &du, Container &dv) const;
@@ -25,11 +29,9 @@ class SHTrans
     void Filter(const Container &in, Container &work, Container &shc, Container &out) const;
     
   private:
-    typedef typename Container::value_type value_type;
-
     const Device<CPU> *device_;
     SHTMats<value_type,CPU> mats_;
-
+    
     static const value_type alpha_ = (value_type) 1.0;
     static const value_type beta_  = (value_type) 0.0;
 

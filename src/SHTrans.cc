@@ -5,9 +5,9 @@ template<typename Container>
 const typename Container::value_type SHTrans<Container>::beta_;
 
 template<typename Container>
-SHTrans<Container>::SHTrans(int p_in, int filter_freq) :
+SHTrans<Container>::SHTrans(int p_in, OperatorsMats<value_type> &mats, int filter_freq) :
     device_(&Container::getDevice()),
-    mats_(device_, p_in),
+    mats_(&Container::getDevice(), p_in, mats),
     p(p_in),
     dft_size(2*p),
     filter_coeff_((value_type*) device_->Malloc(p * (p + 2) * sizeof(value_type)))

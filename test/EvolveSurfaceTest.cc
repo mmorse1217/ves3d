@@ -1,66 +1,66 @@
-#include "EvolveSurface.h"
 #include "Vectors.h"
+#include "Parameters.h"
 #include "Surface.h"
 #include "VesInteraction.h"
+#include "EvolveSurface.h"
+#include "OperatorsMats.h"
 
-extern const Device<CPU> the_cpu_dev(0);
+extern const Device<CPU> the_device(0);
 
 typedef float real;
+typedef float fmm_value_type;
 
 int main(int argc, char **argv)
 {
-    typedef containers::Scalars<real, CPU, the_cpu_dev> Sca;
-    typedef containers::Vectors<real, CPU, the_cpu_dev> Vec;
+    typedef containers::Scalars<real, CPU, the_device> Sca;
+    typedef containers::Vectors<real, CPU, the_device> Vec;
     typedef Surface<Sca,Vec> Sur;
     typedef Parameters<real> Par;
-
-    int nThreads(4);
-    VesInteraction<Vec> interaction(nThreads);
-
-#pragma omp parallel num_threads(nThreads)
-     {
-         Vec thVec(omp_get_thread_num() + 1, 4);
-         interaction(thVec, thVec, thVec);
-     }
-
-//     // Setting the parameters
-//     Par::getInstanceModifiable().n_surfs = 2;   
-//     //Par::getInstanceModifiable().n_steps = 20;
-//     Par::getInstanceModifiable().ts = .5;    
-//     Par::getInstanceModifiable().time_horizon = 30;
-//     Par::getInstanceModifiable().inner_solver_maxit = 15;    
-//     //Par::getInstanceModifiable().bg_flow_param = 0;    
+    typedef VesInteraction<fmm_value_type> Interaction;
     
-//     cout<<Par::getInstance()<<endl;
+    // Setting the parameters
+    Par::getInstanceModifiable().n_surfs = 2;   
+    Par::getInstanceModifiable().ts = .5;    
+    Par::getInstanceModifiable().time_horizon = 2;
+    Par::getInstanceModifiable().inner_solver_maxit = 15;    
+    Par::getInstanceModifiable().bg_flow_param = 0.1;    
+    cout<<Par::getInstance()<<endl;
 
-//     //IO
-//     DataIO<Sca::value_type, CPU> myIO(the_cpu_dev);
+    //IO
+    DataIO<real, CPU> myIO(the_device);
     
-//     //Initializing vesicle positions from text file
-//     Vec x0(Par::getInstance().n_surfs,
-//         Par::getInstance().sh_order);
+    //Initializing vesicle positions from text file
+    Vec x0(Par::getInstance().n_surfs,
+        Par::getInstance().sh_order);
     
-//     //reading the prototype form file
-//     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-//         x0.getSubN(1)-x0.begin(), x0.begin());
+    //reading the prototype form file
+    myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
+        x0.getSubN(1)-x0.begin(), x0.begin());
     
-//     //Making centers and populating the prototype
-//     Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
-//     real cntrs_host[] = {-5, 0,  1,
-//                          5, 0, -1};
+    //Making centers and populating the prototype
+    Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
+    real cntrs_host[] = {-5, 0,  1,
+                         5, 0, -1};
+   
+    cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
+        cntrs.size() * sizeof(real), MemcpyHostToDevice);
     
-//     cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
-//         cntrs.size() * sizeof(real), MemcpyHostToDevice);
-    
-//     Populate(x0, cntrs);
+    Populate(x0, cntrs);
 
-//     //Making the surface, and time stepper
-//     Sur S(x0);
-//     EvolveSurface<Sur> Es;
-//     Es(S);
+    // The interaction class
+    Interaction interaction(&StokesAlltoAll);
 
-//     myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), 
-//         S.getPosition().begin());
+    //Reading operators from file
+    bool readFromFile = true;
+    OperatorsMats<real> mats(myIO, readFromFile);
 
-//     PROFILEREPORT(SortTime);
+    //Making the surface, and time stepper
+    Sur S(x0, mats);
+    EvolveSurface<Sur, Interaction> Es(mats);
+    Es(S, interaction);
+
+    myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), 
+        S.getPosition().begin());
+
+    PROFILEREPORT(SortTime);
 }

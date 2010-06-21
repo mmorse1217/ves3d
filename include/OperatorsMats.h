@@ -28,7 +28,7 @@ struct OperatorsMats
     T *d2_leg_trans_p_up_;
 
     long int GetDataLength();
-    OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in, bool readFromFile);
+    OperatorsMats(DataIO<T,CPU> &fileIO_in, bool readFromFile);
     ~OperatorsMats();
 
   private:
@@ -49,10 +49,10 @@ long int OperatorsMats<T>::GetDataLength()
 }
 
 template <typename T>
-OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in, bool readFromFile) :
+OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, bool readFromFile) :
     fileIO_(fileIO_in),
-    p_(p_in), 
-    p_up_(p_up_in)
+    p_(Parameters<T>::getInstance().sh_order), 
+    p_up_(Parameters<T>::getInstance().rep_up_freq)
 {
     int np = 2 * p_ * ( p_ + 1);
     int rot_mat_size =  np * np * (p_ + 1);
@@ -100,21 +100,21 @@ OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, int p_in, int p_up_in,
         sprintf(fname,"precomputed/w_sph_%u_single.txt",p_);
         fileIO_.ReadData(fname, np, w_sph_);
 
-//         //sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
-//         sprintf(fname,"precomputed/legTrans%u_single.txt",p_);
-//         fileIO_.ReadData(fname, leg_size, leg_trans_p_);
+        //sprintf(fname,"%s/precomputed/legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
+        sprintf(fname,"precomputed/legTrans%u_single.txt",p_);
+        fileIO_.ReadData(fname, leg_size, leg_trans_p_);
         
-//         //sprintf(fname,"%s/precomputed/legTransInv%u_single.txt",getenv("VES3D_DIR"),p_);
-//         sprintf(fname,"precomputed/legTransInv%u_single.txt",p_);
-//         fileIO_.ReadData(fname, leg_size, leg_trans_inv_p_);
+        //sprintf(fname,"%s/precomputed/legTransInv%u_single.txt",getenv("VES3D_DIR"),p_);
+        sprintf(fname,"precomputed/legTransInv%u_single.txt",p_);
+        fileIO_.ReadData(fname, leg_size, leg_trans_inv_p_);
 
-//         //sprintf(fname,"%s/precomputed/d1legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
-//         sprintf(fname,"precomputed/d1legTrans%u_single.txt",p_);
-//         fileIO_.ReadData(fname, leg_size, d1_leg_trans_p_);
+        //sprintf(fname,"%s/precomputed/d1legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
+        sprintf(fname,"precomputed/d1legTrans%u_single.txt",p_);
+        fileIO_.ReadData(fname, leg_size, d1_leg_trans_p_);
 
-//         //sprintf(fname,"%s/precomputed/d2legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
-//         sprintf(fname,"precomputed/d2legTrans%u_single.txt",p_);
-//         fileIO_.ReadData(fname, leg_size, d2_leg_trans_p_);
+        //sprintf(fname,"%s/precomputed/d2legTrans%u_single.txt",getenv("VES3D_DIR"),p_);
+        sprintf(fname,"precomputed/d2legTrans%u_single.txt",p_);
+        fileIO_.ReadData(fname, leg_size, d2_leg_trans_p_);
 
         //p_up_
         //sprintf(fname,"%s/precomputed/quad_weights_%u_single.txt",getenv("VES3D_DIR"),p_up_);

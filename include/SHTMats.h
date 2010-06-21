@@ -2,6 +2,7 @@
 #define _SHMATS_H_
 
 #include "Device.h"
+#include "OperatorsMats.h"
 
 template<typename T, enum DeviceType DT>
 class SHTMats{
@@ -22,8 +23,8 @@ class SHTMats{
     int dft_size;
 
   public:
-    SHTMats(const Device<DT> *dev, int sh_order,  
-        pair<int,int> grid_dim = EMPTY_GRID);
+    SHTMats(const Device<DT> *dev, int sh_order,
+        OperatorsMats<T> &mats, pair<int,int> grid_dim = EMPTY_GRID);
     ~SHTMats();
     
     inline int GetShOrder() const;

@@ -5,25 +5,25 @@
 #include "HelperFuns.h"
 #include "InterfacialForce.h"
 #include <iostream>
-#include "DataIO.h"
+//#include "DataIO.h"
 #include "BiCGStab.h"
 #include "Parameters.h"
 #include "VesInteraction.h"
 #include "GLIntegrator.h"
 #include "SHTrans.h"
+#include "OperatorsMats.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
 {
-    ///@todo Check the size of the containers for consistency
   private:
     typedef typename SurfContainer::value_type value_type;
     typedef typename SurfContainer::Sca Sca;
     typedef typename SurfContainer::Vec Vec;
     
   public:
-    InterfacialVelocity(SurfContainer *S_in, 
-        value_type* data_ = NULL);
+    InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
+        OperatorsMats<value_type> &mats);
     
     void operator()(const value_type &t, Vec &velocity) const;
     void operator()(const Sca &tension, Sca &div_stokes_fs) const;
@@ -34,10 +34,10 @@ class InterfacialVelocity
         void operator()(const Sca &in, Sca &out) const;
     } precond_;
 
-    void Reparam();
+    void reparam();
 
   private:
-    SurfContainer *S_;
+    SurfContainer &S_;
     
     Sca w_sph_;
     Sca all_rot_mats_;
@@ -50,7 +50,7 @@ class InterfacialVelocity
 
     InterfacialForce<SurfContainer> Intfcl_force_;
 
-    Interaction interaction_;
+    Interaction &interaction_;
 
     void GetTension(const Vec &vel_in, Sca &tension) const;
     void BgFlow(const Vec &pos, Vec &vel_Inf) const;
@@ -66,7 +66,7 @@ class Monitor
     bool save_flag_;
     int save_stride_;
     DataIO<value_type, CPU> IO;
-
+    
   public:
     Monitor() : 
         time_hor_(Parameters<value_type>::getInstance().time_horizon),
@@ -83,7 +83,7 @@ class Monitor
         V.replicate(state.getPosition());
         state.area(A);
         state.volume(V);
-
+        
         std::cout<<t<<" "<<A[0]<<"\t"<<V[0]<<std::endl;
         return(t<time_hor_);
     }       
@@ -95,8 +95,7 @@ class ForwardEuler
   private:
     typedef typename SurfContainer::value_type value_type;
     typename SurfContainer::Vec velocity;
-    //SHTrans<typename SurfContainer::Sca> sht_upsample_;
-
+    
    public:
      void operator()(SurfContainer &S_in, value_type &t, value_type &dt, 
          Forcing &F, SurfContainer &S_out)
@@ -105,32 +104,34 @@ class ForwardEuler
         F(t, velocity);
         axpy(dt, velocity, S_in.getPosition(), S_out.getPositionModifiable());
 
-        F.Reparam();
+        F.reparam();
     }
 };
 
-template<typename Container>
+template<typename Container, typename Interaction>
 class EvolveSurface
 {
   private:
-    typedef typename Container::value_type value_type;
-    typedef VesInteraction<typename Container::Vec> Inter;
-  
-  public:
+    typedef typename Container::value_type value_type;   
+    OperatorsMats<value_type> &mats_;
     
-    void operator()(Container &S)
+  public:
+    EvolveSurface(OperatorsMats<value_type> &mats) :
+        mats_(mats){}
+
+    void operator()(Container &S, Interaction &Inter)
     {
         value_type t(0);
         value_type dt(Parameters<value_type>::getInstance().ts);
-
-        InterfacialVelocity<Container, Inter> F(&S);
-       
+        
+        InterfacialVelocity<Container, Interaction> F(S, Inter, mats_);
+        
         Monitor<Container> M;
-        ForwardEuler<Container, InterfacialVelocity<Container, Inter > > U;
+        ForwardEuler<Container, InterfacialVelocity<Container, Interaction> > U;
         
         TimeStepper<Container, 
-            InterfacialVelocity<Container, Inter>, 
-            ForwardEuler<Container, InterfacialVelocity<Container, Inter> >,
+            InterfacialVelocity<Container, Interaction>, 
+            ForwardEuler<Container, InterfacialVelocity<Container, Interaction> >,
             Monitor<Container> > Ts;
     
         Ts(S, t, dt, F, U, M);

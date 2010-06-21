@@ -1,6 +1,6 @@
 template<typename T, enum DeviceType DT>
-SHTMats<T, DT>::SHTMats(const Device<DT> *dev, int sh_order, 
-    pair<int,int> grid_dim) :
+SHTMats<T, DT>::SHTMats(const Device<DT> *dev, int sh_order,
+    OperatorsMats<T> &mats, pair<int,int> grid_dim) :
     sh_order_(sh_order),
     grid_dim_((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order_) : grid_dim),
     device_(dev),
@@ -29,6 +29,7 @@ SHTMats<T, DT>::SHTMats(const Device<DT> *dev, int sh_order,
     DataIO<T,DT> IO(*device_,"",0);
     char fname[500];
 
+    
     sprintf(fname,"precomputed/legTrans%u_single.txt",sh_order_);
     IO.ReadData(fname, dlt_size, dlt_);
     
