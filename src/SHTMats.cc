@@ -25,17 +25,10 @@ SHTMats<T, DT>::SHTMats(const Device<DT> *dev, int sh_order,
     gen_dft_d1backward();
     gen_dft_d2backward();
 
-    dev->Memcpy(dlt_, mats.leg_trans_p_, dlt_size * sizeof(T), 
-        MemcpyDeviceToDevice);
-
-    dev->Memcpy(dlt_inv_, mats.leg_trans_inv_p_, dlt_size * sizeof(T), 
-        MemcpyDeviceToDevice);
-    
-    dev->Memcpy(dlt_inv_d1_, mats.d1_leg_trans_p_, dlt_size * sizeof(T), 
-        MemcpyDeviceToDevice);
-
-    dev->Memcpy(dlt_inv_d2_, mats.d2_leg_trans_p_, dlt_size * sizeof(T), 
-        MemcpyDeviceToDevice);
+    dev->Memcpy(dlt_       , mats.leg_trans_p_    , dlt_size * sizeof(T), MemcpyDeviceToDevice);
+    dev->Memcpy(dlt_inv_   , mats.leg_trans_inv_p_, dlt_size * sizeof(T), MemcpyDeviceToDevice);  
+    dev->Memcpy(dlt_inv_d1_, mats.d1_leg_trans_p_ , dlt_size * sizeof(T), MemcpyDeviceToDevice);
+    dev->Memcpy(dlt_inv_d2_, mats.d2_leg_trans_p_ , dlt_size * sizeof(T), MemcpyDeviceToDevice);
 
 //     ///@todo this should be computed rather than read from file
 //     DataIO<T,DT> IO(*device_,"",0);

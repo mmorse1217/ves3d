@@ -19,11 +19,11 @@ int main(int argc, char **argv)
     typedef VesInteraction<fmm_value_type> Interaction;
     
     // Setting the parameters
-    Par::getInstanceModifiable().n_surfs = 2;   
+    Par::getInstanceModifiable().n_surfs = 1;   
     Par::getInstanceModifiable().ts = .1;    
-    Par::getInstanceModifiable().time_horizon = .8;
+    Par::getInstanceModifiable().time_horizon = 1;
     Par::getInstanceModifiable().inner_solver_maxit = 15;    
-    //Par::getInstanceModifiable().bg_flow_param = 0.1;    
+    Par::getInstanceModifiable().bg_flow_param = 0.1;    
     cout<<Par::getInstance()<<endl;
 
     //IO
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     EvolveSurface<Sur, Interaction> Es(mats);
     Es(S, interaction);
 
-    myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), 
+    myIO.WriteData("EvolveSurf.out", S.getPosition().size(), 
         S.getPosition().begin());
 
     PROFILEREPORT(SortTime);

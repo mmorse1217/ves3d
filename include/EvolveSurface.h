@@ -102,7 +102,7 @@ class ForwardEuler
         velocity.replicate(S_in.getPosition());
         F(t, velocity);
         axpy(dt, velocity, S_in.getPosition(), S_out.getPositionModifiable());
-
+        
         F.reparam();
     }
 };

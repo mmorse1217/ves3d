@@ -23,12 +23,12 @@ InterfacialVelocity<SurfContainer, Interaction>::InterfacialVelocity(SurfContain
     //W_spherical
     w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
         np * sizeof(value_type), MemcpyDeviceToDevice);
-  
+    
     for(int ii=1;ii<S_.getPosition().getNumSubs();++ii)
         w_sph_.getDevice().Memcpy(w_sph_.begin() + ii*np, 
             w_sph_.begin(), np * sizeof(value_type), 
             MemcpyDeviceToDevice);
-
+    
     //Singular quadrature weights
     sing_quad_weights_.resize(1,p);
     sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(), 
@@ -56,12 +56,12 @@ InterfacialVelocity<SurfContainer, Interaction>::InterfacialVelocity(SurfContain
 //         w_sph_.getDevice().Memcpy(w_sph_.begin() + ii*np, 
 //             w_sph_.begin(), np * sizeof(value_type), 
 //             MemcpyDeviceToDevice);
-
+    
 //     //Singular quadrature weights
 //     sing_quad_weights_.resize(1,p);
 //     sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",p);
 //     IO.ReadData(fname, np, sing_quad_weights_.begin());
-
+    
 //     //quadrature weights
 //     quad_weights_.resize(1,p);
 //     sprintf(fname,"precomputed/quad_weights_%u_single.txt",p);
@@ -97,7 +97,7 @@ void InterfacialVelocity<SurfContainer, Interaction>::operator()(const value_typ
 
     //Far interactions
     interaction_(u1_, u2_, u3_);
-        
+    
     //Shuffling to the original order
     ShufflePoints(u3_, u2_);
     u1_.setPointOrder(AxisMajor);
@@ -137,17 +137,17 @@ void InterfacialVelocity<SurfContainer, Interaction>::GetTension(const Vec &vel_
     value_type tol(Parameters<typename SurfContainer::value_type>::
         getInstance().inner_solver_tol);
 
-    BiCGStab<Sca, InterfacialVelocity<SurfContainer, Interaction> > solver;
-    
     ///@todo add the restart option to the Parameters
     ///@todo add verbose option 
-  
+        
+    BiCGStab<Sca, InterfacialVelocity<SurfContainer, Interaction> > solver;
+    ///@todo add the restart option to the Parameters
     for(int ii=0; ii<2; ++ii)
     {
         int mIter(max_iter);
         value_type tt(tol);
         
-        if(solver(*this, tension, rhs, mIter, tt) !=BiCGSSuccess && ii==1)
+        if ( solver(*this, tension, rhs, mIter, tt) != BiCGSSuccess && ii==1 )
         {
             cerr<<"The tension solver did not converge!"<<endl;
             exit(1);

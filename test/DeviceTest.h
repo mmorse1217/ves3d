@@ -934,30 +934,23 @@ bool DeviceTest<DT,T>::TestMax()
     {
         int length = 10012;
         T* x = (T*) device->Malloc(length * sizeof(T));
-        T* y = (T*) device->Malloc(length * sizeof(T));
-
         T* x_host = (T*) malloc(length * sizeof(T));
-        T* y_host = (T*) malloc(length * sizeof(T));
             
-        T max = 0;
+        T max = abs(x_host[0]);
         for(int idx=0;idx<length;idx++)
         {
-            x_host[idx] = (T) drand48();
-            y_host[idx] = 0.5*x_host[idx] - 1.0;
-            max = (max > x_host[idx]) ? max : x_host[idx];
+            x_host[idx] = (T) drand48() * 10 - 5;
+            max = (max > abs(x_host[idx])) ? max : x_host[idx];
         }
             
         device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(y, y_host, length * sizeof(T), MemcpyHostToDevice);
-        T mx = device->Max(x,length);
-        T my = device->Max(y,length);
-            
+        T mx = device->MaxAbs(x,length);
+                    
+        cout<<mx<<" "<<max<<endl;
         device->Free(x);
-        device->Free(y);
         free(x_host);
-        free(y_host);
                         
-        T err = fabs(mx-max) + fabs(.5*max - 1.0-my);
+        T err = fabs(mx-max);
         res = res && (err<eps) ? true : false;
             
         string res_print = (res) ? "Passed" : "Failed";

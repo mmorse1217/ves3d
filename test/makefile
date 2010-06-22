@@ -1,63 +1,18 @@
-all:
-
 include ${VES3D_DIR}/makefile.in.files/makefile.in
 
-DeviceTest: 
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
+all: executable
 
-LoggerTest:
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
+executable: BiCGStabTest.exe BlasToyTest.exe DeviceTest.exe \
+	EvolveSurfaceTest.exe LoggerTest.exe ScalarsTest.exe\
+	SHTransTest.exe StokesTest.exe SurfaceTest.exe      \
+	TimeStepperTest.exe VectorsTest.exe 
 
-BlasToyTest:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-ScalarsTest: 
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-VectorsTest: 
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-SHTransTest:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-BiCGStabTest:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 	
-
-TimeStepperTest:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 	
-
-EvolveSurfaceTest:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 	
+%.exe: %.cc
+	$(CXX) $(CPPFLAGS) $*.cc -o $*.exe $(LDFLAGS)
 
 .PHONY: clean
 
 clean: 	
-	@-rm -f *.o *.exe
+	@-rm -f *.o *.exe *.out
 
-###########################################################
-ArrayTest: 
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
 
-SurfaceTest: 
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-SurfaceTestGPU: 
-	$(CXX)  $(CPPFLAGS) $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-ExplicitStepper:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-ExplicitStepperPara:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-ExplicitStepperGPU:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-ExplicitStepperAll:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-fileOfVes:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
-
-StokesTest:
-	$(CXX) $(CPPFLAGS)  $@.cc $^ -o $@.exe  $(LDFLAGS) 
