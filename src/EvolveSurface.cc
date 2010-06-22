@@ -39,33 +39,6 @@ InterfacialVelocity<SurfContainer, Interaction>::InterfacialVelocity(SurfContain
     quad_weights_.resize(1,p);
     quad_weights_.getDevice().Memcpy(quad_weights_.begin(), mats.quad_weights_,
         quad_weights_.size() * sizeof(value_type), MemcpyDeviceToDevice);
-
-//     DataIO<value_type,CPU> IO(S_.getPosition().getDevice(),"",0);
-//     //Rot mats
-//     rot_mat_.resize(p + 1, 1, make_pair(2 * p,np));//to match the rot_chunck
-//     all_rot_mats_.resize(p + 1, 1, make_pair(np,np));
-//     char fname[300];
-//     sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p);
-//     IO.ReadData(fname, all_rot_mats_.size(), all_rot_mats_.begin());
-    
-//     //W_spherical
-//     sprintf(fname,"precomputed/w_sph_%u_single.txt",p);
-//     IO.ReadData(fname, np, w_sph_.begin());
-  
-//     for(int ii=1;ii<S_.getPosition().getNumSubs();++ii)
-//         w_sph_.getDevice().Memcpy(w_sph_.begin() + ii*np, 
-//             w_sph_.begin(), np * sizeof(value_type), 
-//             MemcpyDeviceToDevice);
-    
-//     //Singular quadrature weights
-//     sing_quad_weights_.resize(1,p);
-//     sprintf(fname,"precomputed/sing_quad_weights_%u_single.txt",p);
-//     IO.ReadData(fname, np, sing_quad_weights_.begin());
-    
-//     //quadrature weights
-//     quad_weights_.resize(1,p);
-//     sprintf(fname,"precomputed/quad_weights_%u_single.txt",p);
-//     IO.ReadData(fname, np, quad_weights_.begin());
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -96,7 +69,8 @@ void InterfacialVelocity<SurfContainer, Interaction>::operator()(const value_typ
     u3_.setPointOrder(PointMajor);
 
     //Far interactions
-    interaction_(u1_, u2_, u3_);
+    typename Interaction::InteractionReturn status;
+    status = interaction_(u1_, u2_, u3_);
     
     //Shuffling to the original order
     ShufflePoints(u3_, u2_);
@@ -104,7 +78,10 @@ void InterfacialVelocity<SurfContainer, Interaction>::operator()(const value_typ
     u3_.setPointOrder(AxisMajor);
 
     //Subtracting the self-interaction
-    axpy(static_cast<value_type>(-1), velocity, u2_, velocity);
+    if(status)
+        axpy(static_cast<value_type>(0), velocity, velocity);
+    else
+        axpy(static_cast<value_type>(-1), velocity, u2_, velocity);
     
     //Background
     BgFlow(S_.getPosition(), u2_);

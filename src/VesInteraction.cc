@@ -26,10 +26,18 @@ VesInteraction<T>::~VesInteraction()
 }    
 template<typename T>
 template<typename VecContainer>
-void VesInteraction<T>::operator()(const VecContainer &position, 
-    VecContainer &density, VecContainer &potential) const
+VesInteraction<T>::InteractionReturn VesInteraction<T>::operator()(
+    const VecContainer &position, VecContainer &density, 
+    VecContainer &potential) const
 {
     typedef typename VecContainer::value_type value_type;
+    
+    if ( interaction_handle_ == NULL )
+    {
+        memset(potential.begin(), 0, potential.size() * 
+            sizeof(typename VecContainer::value_type));
+        return NoInteraction;
+    }
     
     //Getting the sizes
     size_t np(position.getNumSubs() * position.getStride());
@@ -84,6 +92,7 @@ void VesInteraction<T>::operator()(const VecContainer &position,
         
         delete[] buffer;
     }
+    return InteractionSuccess;
 }
 
 template<typename T>
@@ -144,14 +153,11 @@ void VesInteraction<T>::checkContainersSize() const
 template<typename T>
 void VesInteraction<T>::updatePotential() const
 {
+    assert(interaction_handle_ != NULL);
 #pragma omp master
     {
         int the_dim = 3;
-
-        if (interaction_handle_ != NULL)
-            interaction_handle_(all_pos_, all_den_, np_, all_pot_);
-        else
-            memset(all_pot_, 0, np_ * the_dim * sizeof(T));
+        interaction_handle_(all_pos_, all_den_, np_, all_pot_);
     }
     
 #pragma omp barrier

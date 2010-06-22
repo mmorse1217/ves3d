@@ -19,9 +19,9 @@ int main(int argc, char **argv)
     typedef VesInteraction<fmm_value_type> Interaction;
     
     // Setting the parameters
-    Par::getInstanceModifiable().n_surfs = 1;   
-    Par::getInstanceModifiable().ts = .1;    
-    Par::getInstanceModifiable().time_horizon = 1;
+    Par::getInstanceModifiable().n_surfs = 2;   
+    Par::getInstanceModifiable().ts = .5;    
+    Par::getInstanceModifiable().time_horizon = 50;
     Par::getInstanceModifiable().inner_solver_maxit = 15;    
     Par::getInstanceModifiable().bg_flow_param = 0.1;    
     cout<<Par::getInstance()<<endl;
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     Populate(x0, cntrs);
 
     // The interaction class
-    Interaction interaction(NULL);//&StokesAlltoAll);
+    Interaction interaction(&StokesAlltoAll);
 
     //Reading operators from file
     bool readFromFile = true;

@@ -7,13 +7,16 @@ template<typename T>
 class VesInteraction
 {
   public:
+    enum InteractionReturn {InteractionSuccess = 0,
+                            NoInteraction      = 1};
+
     typedef void(*InteractionFun)(const T*, const T*, size_t, T*);    
 
     VesInteraction(InteractionFun interaction_handle = NULL, int num_threads = 1);
     ~VesInteraction();
 
     template<typename VecContainer>
-    void operator()(const VecContainer &position, VecContainer &density,
+    InteractionReturn operator()(const VecContainer &position, VecContainer &density,
         VecContainer &potential) const;
 
   private:

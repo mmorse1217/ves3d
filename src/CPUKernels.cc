@@ -605,94 +605,86 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head, int trg_idx
 ///All to all ////////////////////////////////////////////////////////////
 void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot)
 {
-#pragma omp parallel 
+    float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+    const float *trg(src), *srcPtr(src), *denPtr(den);
+
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)   
+    for (size_t trg_idx=0; trg_idx<np; ++trg_idx)
     {
-        float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-        const float *trg(src), *srcPtr(src), *denPtr(den);
+        px = 0; py = 0; pz = 0;
+        tx=trg[3*trg_idx]; ty=trg[3*trg_idx+1]; tz=trg[3*trg_idx+2];
         
-#pragma omp for
-        for (size_t trg_idx=0; trg_idx<np; ++trg_idx)
+        src = srcPtr; den = denPtr;
+        for (int src_idx=0; src_idx<np; ++src_idx)
         {
-            px = 0; py = 0; pz = 0;
-            tx=*trg++; ty=*trg++; tz=*trg++;
+            dx=*src++ - tx;
+            dy=*src++ - ty;
+            dz=*src++ - tz;
+                
+            invR = dx*dx + dy*dy + dz*dz;
             
-            src = srcPtr; den = denPtr;
+            if (invR!=0)
+                invR = 1.0/sqrt(invR);
             
-            for (int src_idx=0; src_idx<np; ++src_idx)
-            {
-                dx=*src++ - tx;
-                dy=*src++ - ty;
-                dz=*src++ - tz;
-                
-                invR = dx*dx + dy*dy + dz*dz;
-                
-                if (invR!=0)
-                    invR = 1.0/sqrt(invR);
-                
-                cpx = *den++; cpy = *den++; cpz = *den++; 
-                
-                cc  = dx*cpx + dy*cpy + dz*cpz;
-                cc *= invR; cc *= invR;
-                
-                cpx += cc*dx;
-                cpy += cc*dy;
-                cpz += cc*dz;
-                
-                px += cpx*invR;
-                py += cpy*invR;
-                pz += cpz*invR;
-                
-            }
-            *pot++ = px * I_PI;
-            *pot++ = py * I_PI;
-            *pot++ = pz * I_PI;
+            cpx = *den++; cpy = *den++; cpz = *den++; 
+            
+            cc  = dx*cpx + dy*cpy + dz*cpz;
+            cc *= invR; cc *= invR;
+            
+            cpx += cc*dx;
+            cpy += cc*dy;
+            cpz += cc*dz;
+            
+            px += cpx*invR;
+            py += cpy*invR;
+            pz += cpz*invR;
+            
         }
+        pot[3*trg_idx  ] = px * I_PI;
+        pot[3*trg_idx+1] = py * I_PI;
+        pot[3*trg_idx+2] = pz * I_PI;
     }
 }
 
 void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot)
 {
-#pragma omp parallel
+    double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
+    const double *trg(src), *srcPtr(src), *denPtr(den);
+
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)   
+    for (size_t trg_idx=0; trg_idx<np; ++trg_idx)
     {
-        double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-        const double* trg(src), *srcPtr(src), *denPtr(den);
+        px = 0; py = 0; pz = 0;
+        tx=trg[3*trg_idx]; ty=trg[3*trg_idx+1]; tz=trg[3*trg_idx+2];
         
-#pragma omp for 
-        for (size_t trg_idx=0; trg_idx<np; ++trg_idx)
+        src = srcPtr; den = denPtr;
+        for (int src_idx=0; src_idx<np; ++src_idx)
         {
-            px = 0; py = 0; pz = 0;
-            tx=*trg++; ty=*trg++; tz=*trg++;
+            dx=*src++ - tx;
+            dy=*src++ - ty;
+            dz=*src++ - tz;
+                
+            invR = dx*dx + dy*dy + dz*dz;
             
-            src = srcPtr; den = denPtr;
+            if (invR!=0)
+                invR = 1.0/sqrt(invR);
             
-            for (int src_idx=0; src_idx<np; ++src_idx)
-            {
-                dx=*src++ - tx;
-                dy=*src++ - ty;
-                dz=*src++ - tz;
-                
-                invR = dx*dx + dy*dy + dz*dz;
-                
-                if (invR!=0)
-                    invR = 1.0/sqrt(invR);
-                
-                cpx = *den++; cpy = *den++; cpz = *den++; 
-                
-                cc  = dx*cpx + dy*cpy + dz*cpz;
-                cc *= invR; cc *= invR;
-                
-                cpx += cc*dx;
-                cpy += cc*dy;
-                cpz += cc*dz;
-                
-                px += cpx*invR;
-                py += cpy*invR;
-                pz += cpz*invR;
-                
-            }
-            *pot++ = px * I_PI;
-            *pot++ = py * I_PI;
-            *pot++ = pz * I_PI;
+            cpx = *den++; cpy = *den++; cpz = *den++; 
+            
+            cc  = dx*cpx + dy*cpy + dz*cpz;
+            cc *= invR; cc *= invR;
+            
+            cpx += cc*dx;
+            cpy += cc*dy;
+            cpz += cc*dz;
+            
+            px += cpx*invR;
+            py += cpy*invR;
+            pz += cpz*invR;
+            
         }
+        pot[3*trg_idx  ] = px * I_PI;
+        pot[3*trg_idx+1] = py * I_PI;
+        pot[3*trg_idx+2] = pz * I_PI;
     }
 }
