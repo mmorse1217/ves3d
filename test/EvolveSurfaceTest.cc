@@ -2,8 +2,8 @@
 #include "Parameters.h"
 #include "Surface.h"
 #include "VesInteraction.h"
-#include "EvolveSurface.h"
 #include "OperatorsMats.h"
+#include "EvolveSurface.h"
 
 extern const Device<CPU> the_device(0);
 
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     Par::getInstanceModifiable().n_surfs = 2;   
     Par::getInstanceModifiable().ts = .5;    
     Par::getInstanceModifiable().time_horizon = 50;
-    Par::getInstanceModifiable().inner_solver_maxit = 15;    
+    Par::getInstanceModifiable().rep_maxit = 20;
     Par::getInstanceModifiable().bg_flow_param = 0.1;    
     cout<<Par::getInstance()<<endl;
 

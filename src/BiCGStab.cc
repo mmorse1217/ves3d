@@ -152,7 +152,6 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         return BiCGSSuccess;
     }
     for (int i = 1; i <= max_iter; i++) {
-
         rho_1 = AlgebraicDot(rtilde, r);
         if (rho_1 == 0)
         {

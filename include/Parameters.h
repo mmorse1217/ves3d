@@ -1,7 +1,8 @@
 #ifndef _PARAMETERS_H_
 #define _PARAMETERS_H_
 
-#include<typeinfo>
+#include <typeinfo>
+#include <iostream>
 
 template <typename T>
 struct Parameters 

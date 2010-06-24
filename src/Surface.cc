@@ -97,10 +97,10 @@ const ScalarContainer& Surface<ScalarContainer,
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
-    Vec &smthd_pos)
+    Vec &smthd_pos) const
 {
-    Vec* wrk(produceVec(x_));
-    Vec* shc(produceVec(x_));
+    Vec* wrk(generateVec(x_));
+    Vec* shc(generateVec(x_));
 
     sht_rep_filter_.Filter(x_, *wrk, *shc, smthd_pos);
 
@@ -110,12 +110,12 @@ void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
-    Vec &vec_fld)
+    Vec &vec_fld) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
     
-    Sca* scp(produceSca(x_));
+    Sca* scp(generateSca(x_));
     GeometricDot(vec_fld, normal_, *scp);
     axpy(static_cast<value_type>(-1.0), *scp, *scp);
     xvpw(*scp, normal_, vec_fld, vec_fld);
@@ -129,10 +129,10 @@ void Surface<ScalarContainer, VectorContainer>::updateFirstForms() const
     if(containers_are_stale_)
         checkContainers();
         
-    Vec* wrk(produceVec(x_));
-    Vec* shc(produceVec(x_));
-    Vec* dif(produceVec(x_));
-    Sca* scp(produceSca(x_));
+    Vec* wrk(generateVec(x_));
+    Vec* shc(generateVec(x_));
+    Vec* dif(generateVec(x_));
+    Sca* scp(generateSca(x_));
     
     // Spherical harmonic coefficient
     sht_.FirstDerivatives(x_, *wrk, *shc, *dif, normal_);
@@ -179,9 +179,9 @@ void Surface<ScalarContainer, VectorContainer>::updateAll() const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Vec* wrk(produceVec(x_));
-    Vec* shc(produceVec(x_));
-    Vec* dif(produceVec(x_));
+    Vec* wrk(generateVec(x_));
+    Vec* shc(generateVec(x_));
+    Vec* dif(generateVec(x_));
 
     sht_.forward(x_, *wrk, *shc);
     
@@ -194,11 +194,11 @@ void Surface<ScalarContainer, VectorContainer>::updateAll() const
     xy(F, h_, h_);
     axpy(static_cast<value_type>(-1), h_, h_);
 
-    Sca* L(produceSca(x_));
+    Sca* L(generateSca(x_));
     sht_.backward_d2u(*shc, *wrk, *dif);
     GeometricDot(*dif, normal_, *L);
     
-    Sca* N(produceSca(x_));
+    Sca* N(generateSca(x_));
     xy(G, *L, *N);
     axpy(static_cast<value_type>(.5), *N, h_, h_); 
 
@@ -235,10 +235,10 @@ void Surface<ScalarContainer, VectorContainer>::grad(const ScalarContainer
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca* scw1(produceSca(x_));
-    Sca* scw2(produceSca(x_));
-    Vec* shc(produceVec(x_));
-    Vec* wrk(produceVec(x_));
+    Sca* scw1(generateSca(x_));
+    Sca* scw2(generateSca(x_));
+    Vec* shc(generateVec(x_));
+    Vec* wrk(generateVec(x_));
 
     sht_.FirstDerivatives(f_in, *wrk, *shc, *scw1, *scw2);
 
@@ -260,10 +260,10 @@ void Surface<ScalarContainer, VectorContainer>::div(const VectorContainer
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Vec* dif(produceVec(x_));
-    Vec* shc(produceVec(x_));
-    Vec* wrk(produceVec(x_));
-    Sca* scw(produceSca(x_));
+    Vec* dif(generateVec(x_));
+    Vec* shc(generateVec(x_));
+    Vec* wrk(generateVec(x_));
+    Sca* scw(generateSca(x_));
     
     sht_.forward(f_in, *wrk, *shc);
     sht_.backward_du(*shc, *wrk, *dif);
@@ -298,7 +298,7 @@ void Surface<ScalarContainer, VectorContainer>::volume(ScalarContainer
     if(first_forms_are_stale_)
         updateFirstForms();
     
-    Sca* scw(produceSca(x_));
+    Sca* scw(generateSca(x_));
     GeometricDot(x_,normal_,*scw);
     axpy(static_cast<value_type>(1)/3, *scw, *scw);
 
@@ -312,18 +312,18 @@ void Surface<ScalarContainer, VectorContainer>::getCenters(Vec &centers) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca* scw(produceSca(x_));
+    Sca* scw(generateSca(x_));
     GeometricDot(x_, x_, *scw);
     axpy(static_cast<value_type>(.5), *scw, *scw);
     
-    Vec* vcw(produceVec(x_));
+    Vec* vcw(generateVec(x_));
     xv(*scw, normal_, *vcw);
     recycleSca(scw);
 
     integrator_(*vcw, w_, centers);
     recycleVec(vcw);
 
-    scw = produceSca(centers);
+    scw = generateSca(centers);
     volume(*scw);
     uyInv(centers, *scw, centers);
     recycleSca(scw);
@@ -347,7 +347,7 @@ void Surface<ScalarContainer, VectorContainer>::checkContainers() const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-ScalarContainer* Surface<ScalarContainer, VectorContainer>::produceSca(
+ScalarContainer* Surface<ScalarContainer, VectorContainer>::generateSca(
     const VectorContainer &ref) const
 {
     Sca* scp;
@@ -374,7 +374,7 @@ void Surface<ScalarContainer, VectorContainer>::recycleSca(
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-VectorContainer* Surface<ScalarContainer, VectorContainer>::produceVec(
+VectorContainer* Surface<ScalarContainer, VectorContainer>::generateVec(
     const VectorContainer &ref) const
 {
     Vec* vcp;
@@ -415,4 +415,45 @@ void Surface<ScalarContainer, VectorContainer>::purgeTheWorkSpace() const
         delete vector_work_q_.front();
         vector_work_q_.pop();
     }
+}
+
+template <typename ScalarContainer, typename VectorContainer>  
+void Surface<ScalarContainer, VectorContainer>::linearizedMeanCurv(
+    const Vec &x_new, Sca &h_lin) const
+{
+    if(first_forms_are_stale_)
+        updateFirstForms();
+    
+    Vec* wrk(generateVec(x_));
+    Vec* shc(generateVec(x_));
+    Vec* dif(generateVec(x_));
+    Sca* scw(generateSca(x_));
+
+    sht_.forward(x_, *wrk, *shc);   
+
+    //duu
+    sht_.backward_d2u(*shc, *wrk, *dif);
+    GeometricDot(*dif, normal_, h_lin);
+    xy(G, h_lin, h_lin);
+
+    //duv
+    sht_.backward_duv(*shc, *wrk, *dif);
+    GeometricDot(*dif, normal_, *scw);
+    xy(F, *scw, *scw);
+    axpy(static_cast<value_type>(-2), *scw, h_lin, h_lin);
+
+    //dvv
+    sht_.backward_d2v(*shc, *wrk, *dif);
+    GeometricDot(*dif, normal_, *scw);
+    xy(E, *scw, *scw);
+    axpy(static_cast<value_type>(1), *scw, h_lin, h_lin);
+
+    axpy(static_cast<value_type>(.5), h_lin, h_lin);
+
+    sht_.Filter(h_lin, *wrk, *shc, h_lin);
+
+    recycleVec(wrk);
+    recycleVec(shc);
+    recycleVec(dif);
+    recycleSca(scw);
 }

@@ -44,9 +44,10 @@ class Surface
     void volume(Sca &vol) const;
     void getCenters(Vec &centers) const;
 
-    void getSmoothedShapePosition(Vec &smthd_pos);
-    void mapToTangentSpace(Vec &vec_fld);
-
+    void getSmoothedShapePosition(Vec &smthd_pos) const;
+    void mapToTangentSpace(Vec &vec_fld) const;
+    void linearizedMeanCurv(const Vec &x_new, Sca &h_lin) const;
+    
   private:
     Vec x_;
     mutable Vec normal_;
@@ -79,12 +80,12 @@ class Surface
     mutable Sca E, F, G;
   
     mutable queue<Sca*> scalar_work_q_;
-    Sca* produceSca(const Vec &ref) const;
+    Sca* generateSca(const Vec &ref) const;
     void recycleSca(Sca* scp) const;
     mutable int checked_out_work_sca_;
 
     mutable queue<Vec*> vector_work_q_;
-    Vec* produceVec(const Vec &ref) const;
+    Vec* generateVec(const Vec &ref) const;
     void recycleVec(Vec* vcp) const;
     mutable int checked_out_work_vec_;
 

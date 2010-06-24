@@ -11,9 +11,11 @@ class InterfacialForce
     typedef typename SurfContainer::Vec Vec;
 
   public:
-    void BendingForce(const SurfContainer &S, Vec &Fb) const;
-
-    void TensileForce(const SurfContainer &S, const Sca &tension, Vec &Fs) const;
+    void bendingForce(const SurfContainer &S, Vec &Fb) const;
+    void linearBendingForce(const SurfContainer &S, 
+        const Vec &x_new, Vec &Fb) const;
+    void tensileForce(const SurfContainer &S, const Sca &tension, 
+        Vec &Fs) const;
 };
 
 #include "InterfacialForce.cc"

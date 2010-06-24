@@ -19,21 +19,24 @@ int main(int argc, char ** argv)
         typedef typename containers::Vectors<real,CPU,the_cpu_dev> Vec;
 
         int const p(12);
-        int const nVec(1);
+        int const nVec(2);
         
         //IO
         DataIO<T,CPU> myIO(the_cpu_dev);
         
         // initializing vesicle positions from text file
         Vec x0(nVec, p);
-                       
+        int fLen = x0.getStride();
+        
         char fname[400];
-        //sprintf(fname,"%s/precomputed/sphere_cart12_single.txt",getenv("VES3D_DIR"));
-        //sprintf(fname,"%s/precomputed/two_ellipse_12",getenv("VES3D_DIR"));
-        sprintf(fname,"%s/precomputed/dumbbell_cart12_single.txt",getenv("VES3D_DIR"));
-        //sprintf(fname,"%s/precomputed/biconcave_ra65_%u",getenv("VES3D_DIR"),p);
-        myIO.ReadData(fname,x0.size(),x0.begin());
-
+        sprintf(fname, "%s/precomputed/dumbbell_cart12_single.txt",
+            getenv("VES3D_DIR"));
+        myIO.ReadData(fname, fLen * x0.getTheDim(), x0.begin());
+        
+        for(int ii=1;ii<nVec; ++ii)
+            x0.getDevice().Memcpy(x0.getSubN(ii), x0.begin(), x0.getTheDim() * 
+                fLen * sizeof(T), MemcpyDeviceToDevice);
+        
         //Reading operators from file
         bool readFromFile = true;
         OperatorsMats<real> mats(myIO, readFromFile);
@@ -44,14 +47,17 @@ int main(int argc, char ** argv)
         Sca Y(nVec,p);
         Sca Z(nVec,p);
 
-        size_t fLen = x0.getStride();
         for(int ii=0;ii<nVec;ii++)
-            for(int idx=0;idx<fLen;idx++)
-            {
-                *(X.begin() +  ii*fLen + idx) = *(x0.begin() + idx);
-                *(Y.begin() +  ii*fLen + idx) = *(x0.begin() + idx + fLen);
-                *(Z.begin() +  ii*fLen + idx) = *(x0.begin() + idx + fLen + fLen);
-            }
+        {
+            x0.getDevice().Memcpy(X.getSubN(ii), x0.getSubN(ii), 
+                fLen * sizeof(T), MemcpyDeviceToDevice);
+            
+            x0.getDevice().Memcpy(Y.getSubN(ii), x0.getSubN(ii) + fLen, 
+                fLen * sizeof(T), MemcpyDeviceToDevice);
+            
+            x0.getDevice().Memcpy(Z.getSubN(ii), x0.getSubN(ii) + 2*fLen, 
+                fLen * sizeof(T), MemcpyDeviceToDevice);
+        }
         
         //Area and volume
         Sca Area(nVec, p, make_pair(1,1));
@@ -66,7 +72,6 @@ int main(int argc, char ** argv)
         S.getCenters(Cntrs);
         //cout<<" Centers :\n"<<Cntrs<<endl;
         
-        T err = 0, err2;
         // Checking the grad and div operator
         Vec grad(nVec,p), lap(nVec,p);
         
@@ -80,37 +85,35 @@ int main(int argc, char ** argv)
         S.div(grad,Z);
     
         for(int ii=0;ii<nVec;ii++)
-            for(int idx=0;idx<fLen;idx++)
-            {
-                *(lap.begin() +  3*ii*fLen + idx              ) = *(X.begin() + ii*fLen + idx);
-                *(lap.begin() +  3*ii*fLen + idx + fLen       ) = *(Y.begin() + ii*fLen + idx);
-                *(lap.begin() +  3*ii*fLen + idx + fLen + fLen) = *(Z.begin() + ii*fLen + idx);
-            }
+        {
+            lap.getDevice().Memcpy(lap.getSubN(ii), X.getSubN(ii), fLen * 
+                sizeof(T), MemcpyDeviceToDevice);
+            
+            lap.getDevice().Memcpy(lap.getSubN(ii) + fLen, Y.getSubN(ii), fLen * 
+                sizeof(T), MemcpyDeviceToDevice);
+            
+            lap.getDevice().Memcpy(lap.getSubN(ii) + 2*fLen, Z.getSubN(ii), fLen * 
+                sizeof(T), MemcpyDeviceToDevice);
+        }
 
         Sca hh(nVec,p);
         GeometricDot(lap,S.getNormal(),hh);
         axpy((T) -.5, hh, S.getMeanCurv(),hh);
         
-        err = 0;
-        for(int ii=0;ii<hh.size(); ii++)
-        {
-            err2 = fabs(hh.begin()[ii]);
-            err = (err>err2) ? err : err2;
-        }
-        cout<<"\n The error in the surface grad (For the dumbbell .13120 expected - 2/3 filtering)= "<<err<<endl;
+        cout<<"\n The error in the surface grad (For the dumbbell"
+            <<" .13120 expected - 2/3 filtering)= "
+            <<hh.getDevice().MaxAbs(hh.begin(), hh.size())<<endl;
  
         Sca div_n(nVec,p);
         S.div(S.getNormal(), div_n);
         axpy((T) .5, div_n, S.getMeanCurv(),div_n);
         
-        err = 0;
-        for(int ii=0;ii<div_n.size(); ii++)
-        {
-            err2 = fabs(*(div_n.begin() + ii));
-            err = (err>err2) ? err : err2;
-        }
+        cout<<"\n The error in the surface divergence (For the "
+            <<"dumbbell .02964 expected - 2/3 filtering)= "
+            <<div_n.getDevice().MaxAbs(div_n.begin(), div_n.size())<<endl;
 
-        cout<<"\n The error in the surface divergence (For the dumbbell .02964 expected - 2/3 filtering)= "<<err<<endl;
+        S.linearizedMeanCurvature(S.getPosition(), hh);
+        axpy((T) -1, hh, S.getMeanCurv(), hh);
     }
 
     //PROFILEREPORT(SortTime);
