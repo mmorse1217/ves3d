@@ -12,7 +12,7 @@ inline pair<int, int> gridDimOf(int sh_order)
 }
 
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT)
-{
+{    
     switch (DT)
     {
         case CPU:

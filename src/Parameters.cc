@@ -1,7 +1,4 @@
 template<typename T>
-Parameters<T> Parameters<T>::sInstance;
-
-template<typename T>
 Parameters<T>::Parameters() :
     n_surfs(1),   
     sh_order(12),
@@ -29,21 +26,8 @@ Parameters<T>::~Parameters()
 {}
 
 template<typename T>
-const Parameters<T>& Parameters<T>::getInstance()
-{
-    return sInstance;
-}
-
-template<typename T>
-Parameters<T>& Parameters<T>::getInstanceModifiable()
-{
-    return sInstance;
-}
-
-template<typename T>
 ostream& operator<<(ostream& output, const Parameters<T>& par)
 {
-    
     output<<"\n ===================================="<<endl;
     output<<"  Simulator parameters"<<endl;
     output<<" ===================================="<<endl;
@@ -74,6 +58,6 @@ ostream& operator<<(ostream& output, const Parameters<T>& par)
     output<<"  Background flow:"<<endl;
     output<<"    Background flow parameter: "<<par.bg_flow_param<<endl;
     output<<" ===================================="<<endl<<endl;
-    
+
     return output;
 }

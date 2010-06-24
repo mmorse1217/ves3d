@@ -19,19 +19,19 @@ int main(int argc, char **argv)
     typedef VesInteraction<fmm_value_type> Interaction;
     
     // Setting the parameters
-    Par::getInstanceModifiable().n_surfs = 2;   
-    Par::getInstanceModifiable().ts = .5;    
-    Par::getInstanceModifiable().time_horizon = 50;
-    Par::getInstanceModifiable().rep_maxit = 20;
-    Par::getInstanceModifiable().bg_flow_param = 0.1;    
-    cout<<Par::getInstance()<<endl;
+    Par sim_par;
+    sim_par.n_surfs = 2;   
+    sim_par.ts = .5;    
+    sim_par.time_horizon = 1;
+    sim_par.rep_maxit = 20;
+    sim_par.bg_flow_param = 0.1;    
+    COUT(sim_par);
 
     //IO
     DataIO<real, CPU> myIO(the_device);
     
     //Initializing vesicle positions from text file
-    Vec x0(Par::getInstance().n_surfs,
-        Par::getInstance().sh_order);
+    Vec x0(sim_par.n_surfs, sim_par.sh_order);
     
     //reading the prototype form file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
@@ -50,17 +50,17 @@ int main(int argc, char **argv)
     // The interaction class
     Interaction interaction(&StokesAlltoAll);
 
-    //Reading operators from file
-    bool readFromFile = true;
-    OperatorsMats<real> mats(myIO, readFromFile);
+//     //Reading operators from file
+//     bool readFromFile = true;
+//     OperatorsMats<real> mats(myIO, readFromFile);
 
-    //Making the surface, and time stepper
-    Sur S(x0, mats);
-    EvolveSurface<Sur, Interaction> Es(mats);
-    Es(S, interaction);
+//     //Making the surface, and time stepper
+//     Sur S(x0, mats);
+//     EvolveSurface<Sur, Interaction> Es(mats);
+//     Es(S, interaction);
 
-    myIO.WriteData("EvolveSurf.out", S.getPosition().size(), 
-        S.getPosition().begin());
+//     myIO.WriteData("EvolveSurf.out", S.getPosition().size(), 
+//         S.getPosition().begin());
 
     PROFILEREPORT(SortTime);
 }

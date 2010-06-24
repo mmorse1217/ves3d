@@ -17,8 +17,10 @@ void PrintLogEvent(const pair<T, LogEvent> &ev)
     printstr= "     " + printstr +
         "%-10u \t %-4.3e \t  %-4.3e  \t %-4.3e\n";
 
+#ifdef VERBOSE
     printf(printstr.c_str(), ev.second.num_calls, ev.second.time, 
         ev.second.flop/1e9, ev.second.flop_rate);
+#endif
 }
 
 double Logger::Now()
@@ -81,51 +83,51 @@ void Logger::Report(enum ReportFormat rf)
     switch ( rf )
     {
         case SortFunName:
-            cout<<"\n =========================================================================================="<<endl
+            COUT("\n =========================================================================================="<<endl
                 <<"   >Function name               Calls            Total time         GFlop         GFlop/sec"
-                <<"\n ------------------------------------------------------------------------------------------"<<endl;
+                <<"\n ------------------------------------------------------------------------------------------"<<endl);
             for_each(PrflMap.begin(), PrflMap.end(), &PrintLogEvent<string>);
             break;
 
         case SortNumCalls:
-            cout<<"\n ==========================================================================================="<<endl
+            COUT("\n ==========================================================================================="<<endl
                 <<"    Function name              >Calls            Total time         GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<endl;
+                <<"\n -------------------------------------------------------------------------------------------"<<endl);
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(make_pair(it->second.num_calls, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
         case SortTime:
-            cout<<"\n ==========================================================================================="<<endl
+            COUT("\n ==========================================================================================="<<endl
                 <<"    Function name               Calls           >Total time         GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<endl;
+                <<"\n -------------------------------------------------------------------------------------------"<<endl);
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(make_pair(it->second.time, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
             
         case SortFlop:
-            cout<<"\n ==========================================================================================="<<endl
+            COUT("\n ==========================================================================================="<<endl
                 <<"    Function name               Calls            Total time        >GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<endl;
+                <<"\n -------------------------------------------------------------------------------------------"<<endl);
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(make_pair(it->second.flop, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
         case SortFlopRate:
-            cout<<"\n ==========================================================================================="<<endl
+            COUT("\n ==========================================================================================="<<endl
                 <<"    Function name               Calls            Total time         GFlop       >GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<endl;
+                <<"\n -------------------------------------------------------------------------------------------"<<endl);
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(make_pair(it->second.flop_rate, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
             
     }
-    cout<<" ==========================================================================================="<<endl;
-
+    COUT(" ==========================================================================================="<<endl);
+    
     if(TicStack.size())
         cerr<< "Warning: There may be unbalanced Tic() and Toc() calls."<<endl;
 }

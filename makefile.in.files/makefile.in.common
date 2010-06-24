@@ -1,3 +1,4 @@
+VPATH=${VES3D_DIR}/lib/
 VES3D_TEMPLATES=-I${VES3D_DIR}/src
 VES3D_INCLUDE=-I${VES3D_DIR}/include ${VES3D_TEMPLATES}
 PREFLAGS= -openmp -fPIC 
@@ -10,4 +11,8 @@ else
 endif
 
 VES3D_LIBS= -L${VES3D_DIR}/lib -lves3d ${VES3D_GPU_LIBS}
+
+.PHONY: clean 
+clean: 	
+	@-rm -rf *.o *.exe *.out
 

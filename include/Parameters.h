@@ -8,6 +8,9 @@ template <typename T>
 struct Parameters 
 {
   public:
+    Parameters();
+    ~Parameters();
+
     //Surface
     int n_surfs;   
     int sh_order;
@@ -38,16 +41,6 @@ struct Parameters
     //Monitoring
     bool save_data;
     int save_stride;
-    
-    //Accessor method   
-    static const Parameters& getInstance();
-    static Parameters& getInstanceModifiable();
-
-  protected:
-    Parameters();
-    ~Parameters();
-    
-    static Parameters<T> sInstance;
 };
 
 template<typename T>

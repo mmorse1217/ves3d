@@ -1,18 +1,28 @@
+include makefile.in.files/makefile.in
+
 DOX = doxygen
 TAGS = etags
 
-all: docs tags
+all: docs tags lib test
 
-.PHONY: docs clean tags
+.PHONY: docs clean tags lib test
 
-docs: 
+docs: $(MakeFiles)
 	$(DOX) ./docs/Doxyfile
-tags:
+
+tags: $(MakeFiles)
 	$(TAGS) src/* include/*
 
-clean: 
-	-rm -rf *.o ./src/*.o  ./docs/latex ./docs/html  lib/*.a
+lib:
+	$(MAKE) -C lib/ all
 
-include makefile.in.files/makefile.in
-include makefile.in.files/makefile.in.common
+test:
+	$(MAKE) -C test/ all
+
+clean: 
+	-@rm -rf *.o ./src/*.o  ./docs/latex ./docs/html  \
+	lib/*.a test/*.exe test/*.out TAGS
+
+
+
 

@@ -70,7 +70,7 @@ template<typename T, enum DeviceType DT>
 bool DataIO<T,DT>::Append(const T* x_in, size_t length) const
 {
 #ifndef NDEBUG
-    cout<<"DataIO::Append()"<<endl;
+    COUT("DataIO::Append(): Size = "<<length<<", Available = "<<out_size_);
 #endif
 
     if(length > out_size_)
@@ -100,7 +100,7 @@ template<typename T, enum DeviceType DT>
 bool DataIO<T,DT>::FlushBuffer() const
 {
 #ifndef NDEBUG
-    cout<<"DataIO::FlushBuffer()"<<endl;
+    COUT("DataIO::FlushBuffer()");
 #endif
 
     bool res(true);

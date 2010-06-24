@@ -102,4 +102,12 @@ class Logger
 //         gettimeofday(&tt, &ttz),                            \
 //         (double)tt.tv_sec + (double)tt.tv_usec / 1000000.0)
 
+//Printing macro
+#ifdef VERBOSE
+#define COUT(str) (std::cout<<str)
+#else
+#define COUT(str)
+#endif //VERBOSE
+
+
 #endif //_LOGGER_H_

@@ -7,7 +7,7 @@ To build:
    cp makefile.in.files/makefile.in.machine makefile.in.files/makefile.in
  
  . if necessary modify makefile for CXX flags and BLAS paths
- . run the scprit ./build.sh
+ . call make at the VES3D_DIR
 
 
 if you want the GPU code compiled set "export USE_GPU=yes"
