@@ -11,6 +11,8 @@ To build:
  . make a softlink to the directory precomputed/ in the test/ directory.
  . run executables in test/
 
+ . Code-specific compiler options are: VERBOSE, and PROFILING
+
 if you want the GPU code compiled set "export USE_GPU=yes"
 
 
