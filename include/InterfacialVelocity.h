@@ -3,14 +3,16 @@
 
 #include "InterfacialForce.h"
 #include "BiCGStab.h"
+#include "Logger.h"
 
 template<typename VecContainer>
-void ShearFlow(const VecContainer &pos, VecContainer &vel_inf);
+void ShearFlow(const VecContainer &pos, const typename 
+    VecContainer::value_type shear_rate, VecContainer &vel_inf);
 
 template<typename SurfContainer, 
          typename Interaction,
          typename BackgroundFlow = void(&)(const typename SurfContainer::Vec&, 
-                                           typename SurfContainer::Vec&) >
+             typename SurfContainer::value_type, typename SurfContainer::Vec&) >
 class InterfacialVelocity
 {
   private:
@@ -20,7 +22,8 @@ class InterfacialVelocity
     
   public:
     InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
-        OperatorsMats<value_type> &mats, BackgroundFlow &bgFlow = ShearFlow<Vec>);
+        OperatorsMats<value_type> &mats, const Parameters<value_type> &params, 
+        BackgroundFlow &bgFlow = ShearFlow<Vec>);
    
     void updatePositionExplicit(const value_type &dt);
     void updatePositionImplicit(const value_type &dt);
@@ -33,6 +36,7 @@ class InterfacialVelocity
     SurfContainer &S_;
     Interaction &interaction_;
     BackgroundFlow &bg_flow_;
+    const Parameters<value_type> &params_;
     
     InterfacialForce<SurfContainer> Intfcl_force_;
     BiCGStab<Sca, InterfacialVelocity> linear_solver_;

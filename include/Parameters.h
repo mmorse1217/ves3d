@@ -40,7 +40,12 @@ struct Parameters
 
     //Monitoring
     bool save_data;
-    int save_stride;
+    T save_stride;
+    string save_file_name;
+
+  private:
+    Parameters(Parameters<T> &rhs);
+    Parameters<T>& operator=(Parameters<T> &rhs);
 };
 
 template<typename T>

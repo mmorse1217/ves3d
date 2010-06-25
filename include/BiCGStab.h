@@ -8,6 +8,7 @@
 #define _BICGSTAB_H_
 
 #include<iostream>
+#include "Logger.h"
 
 template<typename Container>
 class Identity

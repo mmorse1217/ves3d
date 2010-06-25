@@ -14,5 +14,5 @@ VES3D_LIBS= -L${VES3D_DIR}/lib -lves3d ${VES3D_GPU_LIBS}
 
 .PHONY: clean 
 clean: 	
-	@-rm -rf *.o *.exe *.out
+	@-rm -rf *.o *.exe *.out *.d
 

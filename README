@@ -8,7 +8,8 @@ To build:
  
  . if necessary modify makefile for CXX flags and BLAS paths
  . call make at the VES3D_DIR
-
+ . make a softlink to the directory precomputed/ in the test/ directory.
+ . run executables in test/
 
 if you want the GPU code compiled set "export USE_GPU=yes"
 

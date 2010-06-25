@@ -140,7 +140,7 @@ inline void avpw(const ScalarContainer &a_in,
     assert(AreCompatible(v_in,w_in));
     assert(AreCompatible(w_in,avpw_out));
 
-    std::cerr<<"THIS NEEDS TO BE IMPLEMENTED"<<std::endl;
+    CERR("THIS NEEDS TO BE IMPLEMENTED",endl, exit(1));
     //u_in.getDevice().avpw(a_in.begin(), v_in.begin(), 
     //    w_in.begin(), v_in.getStride(), u_in.getNumSubs(), avpw_out.begin());
 }
@@ -242,3 +242,8 @@ typename ScalarContainer::value_type AlgebraicDot(const ScalarContainer &x,
     return dot;
 }
 
+template<typename Container>
+typename Container::value_type MaxAbs(Container &x)
+{
+    return(x.getDevice().MaxAbs(x.begin(), x.size()));
+}

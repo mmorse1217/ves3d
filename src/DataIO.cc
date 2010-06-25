@@ -23,12 +23,9 @@ bool DataIO<T,DT>::ReadData(const char* file_name_in,
     
     T* in_buffer = (T*) malloc(data_size_in * sizeof(T));
     if(!data_file.good())
-    {
-        cerr<<"\n Could not read the data from the file." <<endl
-            <<" File name : "<<file_name_in<<".\n"<<endl;
-        exit(1);
-    }
-
+        CERR("\n Could not read the data from the file."
+            <<"\n\n File name : "<<file_name_in<<".\n",endl, exit(1));
+    
     size_t idx=0;
     while (idx<data_size_in)
         data_file>>in_buffer[idx++];
@@ -51,10 +48,9 @@ bool DataIO<T,DT>::WriteData(const char* file_name_in,
 
     if(!data_file)
     {
-        cerr<<" Could not write the data to the file." <<endl
-            <<" File name : "<< file_name_in <<endl;
         data_file.close();
-        exit(1);
+        CERR(" Could not write the data to the file." 
+            <<"\n\n File name : "<< file_name_in, endl, exit(1));
     }
 
     size_t idx=0;
@@ -70,7 +66,11 @@ template<typename T, enum DeviceType DT>
 bool DataIO<T,DT>::Append(const T* x_in, size_t length) const
 {
 #ifndef NDEBUG
-    COUT("DataIO::Append(): Size = "<<length<<", Available = "<<out_size_);
+    COUT("\n DataIO::Append():"
+        <<"\n           size      = "<<length
+        <<"\n           total     = "<<out_size_
+        <<"\n           used      = "<<out_used_
+        <<"\n           available = "<<out_size_-out_used_<<endl);
 #endif
 
     if(length > out_size_)
@@ -100,7 +100,7 @@ template<typename T, enum DeviceType DT>
 bool DataIO<T,DT>::FlushBuffer() const
 {
 #ifndef NDEBUG
-    COUT("DataIO::FlushBuffer()");
+    COUT("\n DataIO::FlushBuffer()"<<endl);
 #endif
 
     bool res(true);

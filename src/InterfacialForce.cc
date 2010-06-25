@@ -1,4 +1,13 @@
 template<typename SurfContainer>
+InterfacialForce<SurfContainer>::InterfacialForce(const Parameters<value_type> &params) :
+    bending_modulus_(params.bending_modulus)
+{}
+
+template<typename SurfContainer>
+InterfacialForce<SurfContainer>::~InterfacialForce()
+{}
+
+template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::bendingForce(const SurfContainer &S, 
     Vec &Fb) const
 { 
@@ -20,8 +29,7 @@ void InterfacialForce<SurfContainer>::bendingForce(const SurfContainer &S,
     axpy(static_cast<typename SurfContainer::value_type>(2), t2, t1, t1);
     xv(t1, S.getNormal(), Fb);
 
-    axpy(Parameters<typename SurfContainer::value_type>::
-        getInstance().bending_modulus, Fb, Fb);
+    axpy(bending_modulus_, Fb, Fb);
 }
 
 template<typename SurfContainer>
@@ -50,8 +58,7 @@ void InterfacialForce<SurfContainer>::linearBendingForce(const SurfContainer &S,
 
     xv(h_lin, S.getNormal(), Fb);
     
-    axpy(Parameters<typename SurfContainer::value_type>::
-        getInstance().bending_modulus, Fb, Fb);
+    axpy(bending_modulus_, Fb, Fb);
 }
 
 template<typename SurfContainer>

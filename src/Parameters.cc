@@ -55,6 +55,10 @@ ostream& operator<<(ostream& output, const Parameters<T>& par)
     output<<"    Rep step size            : "<<par.rep_ts<<endl;
     output<<"    Rep tol                  : "<<par.rep_tol<<endl;
     output<<" ------------------------------------"<<endl;
+    output<<"  Saving:"<<endl;
+    output<<"    Save data                : "<<boolalpha<<par.save_data<<endl;
+    output<<"    Save stride              : "<<par.save_stride<<endl;
+    output<<" ------------------------------------"<<endl;
     output<<"  Background flow:"<<endl;
     output<<"    Background flow parameter: "<<par.bg_flow_param<<endl;
     output<<" ===================================="<<endl<<endl;

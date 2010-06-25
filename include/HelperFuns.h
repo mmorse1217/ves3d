@@ -85,6 +85,9 @@ namespace containers
     template<typename VectorContainer>
     inline void Populate(VectorContainer &x,VectorContainer &centers);
 
+    template<typename Container>
+    inline typename Container::value_type MaxAbs(Container &x);
+
     ///@todo this need to be implemented for the GPU
     template<typename ScalarContainer>
     typename ScalarContainer::value_type AlgebraicDot( 

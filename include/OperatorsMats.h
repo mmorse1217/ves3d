@@ -29,7 +29,7 @@ struct OperatorsMats
     T *d2_leg_trans_p_up_;
 
     long int GetDataLength();
-    OperatorsMats(DataIO<T,CPU> &fileIO_in, bool readFromFile);
+    OperatorsMats(DataIO<T,CPU> &fileIO_in, bool readFromFile, const Parameters<T> &params);
     ~OperatorsMats();
 
   private:
@@ -50,10 +50,10 @@ long int OperatorsMats<T>::GetDataLength()
 }
 
 template <typename T>
-OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, bool readFromFile) :
+OperatorsMats<T>::OperatorsMats(DataIO<T,CPU> &fileIO_in, bool readFromFile, const Parameters<T> &params) :
     fileIO_(fileIO_in),
-    p_(Parameters<T>::getInstance().sh_order), 
-    p_up_(Parameters<T>::getInstance().rep_up_freq)
+    p_(params.sh_order), 
+    p_up_(params.rep_up_freq)
 {
     int np = 2 * p_ * ( p_ + 1);
     int rot_mat_size =  np * np * (p_ + 1);

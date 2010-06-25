@@ -38,10 +38,7 @@ double Logger::Tic()
 double Logger::Toc()
 {
     if(Logger::TicStack.empty())
-    {
-        cerr<<"There is no matching Logger::Tic() call."<<endl;
-        abort();
-    }
+        CERR(" There is no matching Logger::Tic() call.",endl,sleep(0));
 
     double toc = Logger::Now();
     toc -= Logger::TicStack.top();
@@ -129,7 +126,7 @@ void Logger::Report(enum ReportFormat rf)
     COUT(" ==========================================================================================="<<endl);
     
     if(TicStack.size())
-        cerr<< "Warning: There may be unbalanced Tic() and Toc() calls."<<endl;
+        CERR("\n There may be unbalanced Tic() and Toc() calls.",endl,sleep(0));
 }
 
 void Logger::SetLogFile(string file_name)
@@ -143,10 +140,9 @@ void Logger::Log(const char *event)
 
     if(!fl)
     {
-        cerr<<" Could not open the log file." <<endl
-            <<" File name : " << log_file <<"."<<endl;
-             
-        cerr<<"\n Log event: "<<event<<endl;
+        CERR(" Could not open the log file." <<endl
+            <<" File name : " << log_file <<"."<<endl
+            <<"\n Log event: "<<event,endl,exit(1));
     }
     else
     {

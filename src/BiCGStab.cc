@@ -68,6 +68,9 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     }
     for (int i = 1; i <= max_iter; i++) {
 
+        COUT("\n BiCGStab: iteration = "<<i
+            <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+
         rho_1 = AlgebraicDot(rtilde, r);
         if (rho_1 == 0)
         {
@@ -152,6 +155,10 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         return BiCGSSuccess;
     }
     for (int i = 1; i <= max_iter; i++) {
+
+        COUT("\n BiCGStab: iteration = "<<i
+            <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+        
         rho_1 = AlgebraicDot(rtilde, r);
         if (rho_1 == 0)
         {

@@ -607,9 +607,9 @@ void Device<DT>::DirectStokes(const float *src, const float *den, const float *q
     else
         DirectStokesSSE_Noqw(stride, n_surfs, trg_idx_head, 
             trg_idx_tail, trg, src, den, pot);
-    PROFILEEND("SSECPUf",0);
+    PROFILEEND("CPUfSSE",0);
 #else
-    cerr<<"The SSE instructions in the code are not compatible with this architecture."<<endl;
+    CERR("The SSE instructions in the code are not compatible with this architecture.",endl);
     PROFILEEND("CPUf",0);
 #endif   
 }

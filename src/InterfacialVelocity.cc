@@ -1,5 +1,6 @@
 template<typename VecContainer>
-void ShearFlow(const VecContainer &pos, VecContainer &vel_inf)
+void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
+    shear_rate, VecContainer &vel_inf)
 {
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();
@@ -14,8 +15,7 @@ void ShearFlow(const VecContainer &pos, VecContainer &vel_inf)
             ,stride * sizeof(typename VecContainer::value_type), 
             MemcpyDeviceToDevice);
     }
-    axpy(Parameters<typename VecContainer::value_type>::
-        getInstance().bg_flow_param, vel_inf, vel_inf); 
+    axpy(shear_rate, vel_inf, vel_inf); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,10 +23,13 @@ void ShearFlow(const VecContainer &pos, VecContainer &vel_inf)
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
-    OperatorsMats<value_type> &mats, BackgroundFlow &bgFlow) :
+    OperatorsMats<value_type> &mats, const Parameters<value_type> &params,
+    BackgroundFlow &bgFlow) :
     S_(S_in),
     interaction_(Inter),
-    bg_flow_(bgFlow)
+    bg_flow_(bgFlow),
+    Intfcl_force_(params),
+    params_(params)
 {
     w_sph_.replicate(S_.getPosition());
     velocity.replicate(S_.getPosition());
@@ -107,10 +110,8 @@ updatePositionImplicit(const value_type &dt)
     //Update position
     axpy(dt, u1_, S_.getPosition(), u1_);
         
-    int max_iter(Parameters<typename SurfContainer::value_type>::
-        getInstance().outer_solver_maxit);
-    value_type tol(Parameters<typename SurfContainer::value_type>::
-        getInstance().outer_solver_tol);
+    int max_iter(params_.outer_solver_maxit);
+    value_type tol(params_.outer_solver_tol);
 
     u2_.getDevice().Memcpy(u2_.begin(), S_.getPosition().begin(), S_.getPosition().size()
         * sizeof(value_type), MemcpyDeviceToDevice);
@@ -121,9 +122,9 @@ updatePositionImplicit(const value_type &dt)
         value_type tt(tol);
         
         if ( linear_solver_vec_(*this, u2_, u1_, mIter, tt) != BiCGSSuccess && ii==1 )
-        {
-            cerr<<"The position solver did not converge!"<<endl;
-            exit(1);
+        { 
+            cout<<mIter<<" "<<tt<<" "<<MaxAbs(u2_)<<endl;
+            CERR("\n The position solver did not converge!\n",endl<<endl, exit(1));
         }
     }
     
@@ -173,7 +174,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::updateInte
         axpy(static_cast<value_type>(-1), velocity, u2_, velocity);
     
     //Background flow
-    bg_flow_(S_.getPosition(), u2_);
+    bg_flow_(S_.getPosition(), params_.bg_flow_param, u2_);
     axpy(static_cast<value_type>(1), u2_, velocity, velocity);
 }
 
@@ -187,10 +188,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
   
     axpy(static_cast<typename SurfContainer::value_type>(-1), rhs, rhs);
     
-    int max_iter(Parameters<typename SurfContainer::value_type>::
-        getInstance().inner_solver_maxit);
-    value_type tol(Parameters<typename SurfContainer::value_type>::
-        getInstance().inner_solver_tol);
+    int max_iter(params_.inner_solver_maxit);
+    value_type tol(params_.inner_solver_tol);
 
     ///@todo add the restart option to the Parameters
     ///@todo add verbose option 
@@ -201,10 +200,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
         value_type tt(tol);
         
         if ( linear_solver_(*this, tension, rhs, mIter, tt) != BiCGSSuccess && ii==1 )
-        {
-            cerr<<"The tension solver did not converge!"<<endl;
-            exit(1);
-        }
+            CERR("\n The tension solver did not converge!\n",endl<<endl,exit(1));
+        
     }
 }
 
@@ -287,11 +284,12 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::operator()
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
 {
-    value_type ts(Parameters<value_type>::getInstance().rep_ts);
-    
+    value_type ts(params_.rep_ts);
+    value_type vel;
+
     ///@todo up-sampling?
     int ii(-1);
-    while ( ++ii < Parameters<value_type>::getInstance().rep_maxit )
+    while ( ++ii < params_.rep_maxit )
     {
         S_.getSmoothedShapePosition(u1_);
         axpy(static_cast<value_type>(-1), S_.getPosition(), 
@@ -306,9 +304,10 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
         
         axpy(ts, u1_, S_.getPosition(), S_.getPositionModifiable());
         
-        value_type vel = u1_.getDevice().MaxAbs(u1_.begin(), u1_.size());
-        if(vel < Parameters<value_type>::getInstance().rep_tol )
+        vel = u1_.getDevice().MaxAbs(u1_.begin(), u1_.size());
+        if(vel < params_.rep_tol )
             break;
     }
-    cout<<"Reparametrization :"<<ii<<endl;
+    COUT("\n Reparametrization :\n           iteration = "<<ii
+        <<"\n           |vel|     = "<<vel<<endl);
 }

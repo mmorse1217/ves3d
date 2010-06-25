@@ -1,10 +1,17 @@
 #include ${VES3D_DIR}/makefile.in.files/makefile.in
-include ${VES3D_DIR}/lib/makefile
+-include ${VES3D_DIR}/lib/makefile
 
-all:BiCGStabTest.exe BlasToyTest.exe DeviceTest.exe EvolveSurfaceTest.exe \
+EXEC=BiCGStabTest.exe BlasToyTest.exe DeviceTest.exe EvolveSurfaceTest.exe \
     LoggerTest.exe ScalarsTest.exe #SHTransTest.exe StokesTest.exe         \
     SurfaceTest.exe TimeStepperTest.exe VectorsTest.exe
 
-%.exe: %.cc libves3d.a $(MakeFiles)
+-include $(EXEC:.exe=.d)
+
+all: $(EXEC)
+
+%.exe: %.o libves3d.a %.d $(MakeFiles)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
+
+%.d: 
+	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@ $(LDFLAGS)
 

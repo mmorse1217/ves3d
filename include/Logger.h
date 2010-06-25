@@ -2,6 +2,8 @@
 #define _LOGGER_H_
 
 #include <iostream>
+#include <ios>
+#include <iomanip>
 #include <fstream>
 //#include <sys/time.h>
 #include <map>
@@ -95,19 +97,26 @@ class Logger
 #define LOG(msg) 
 #endif //NDEBUG
 
-//Timing macro
-#define GETSECONDS()(omp_get_wtime())
-
-// #define GETSECONDS()(                                       \
-//         gettimeofday(&tt, &ttz),                            \
-//         (double)tt.tv_sec + (double)tt.tv_usec / 1000000.0)
-
 //Printing macro
+//precision for printing
+#define CERR(str,endline,action) (                                      \
+        std::cerr<<endl<<str                                            \
+        <<"\n         File     : "<< __FILE__                           \
+        <<"\n         Line     : "<<__LINE__                            \
+        <<"\n         Function : "<<__FUNCTION__<<endline,              \
+        action                                                          \
+                                                                        )
 #ifdef VERBOSE
 #define COUT(str) (std::cout<<str)
 #else
 #define COUT(str)
 #endif //VERBOSE
 
+//Timing macro
+#define GETSECONDS()(omp_get_wtime())
+
+// #define GETSECONDS()(                                       \
+//         gettimeofday(&tt, &ttz),                            \
+//         (double)tt.tv_sec + (double)tt.tv_usec / 1000000.0)
 
 #endif //_LOGGER_H_
