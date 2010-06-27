@@ -5,9 +5,9 @@ template<typename Container>
 const typename Container::value_type SHTrans<Container>::beta_;
 
 template<typename Container>
-SHTrans<Container>::SHTrans(int p_in, OperatorsMats<value_type> &mats, int filter_freq) :
+SHTrans<Container>::SHTrans(int p_in, SHTMats<value_type> &mats, int filter_freq) :
     device_(&Container::getDevice()),
-    mats_(&Container::getDevice(), p_in, mats),
+    mats_(mats),
     p(p_in),
     dft_size(2*p),
     filter_coeff_((value_type*) device_->Malloc(p * (p + 2) * sizeof(value_type)))
@@ -23,7 +23,9 @@ SHTrans<Container>::SHTrans(int p_in, OperatorsMats<value_type> &mats, int filte
         len = p + 1 - (ii+1)/2;
         for(int jj=0; jj < len; ++jj)
             buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;
+        
     }
+
     device_->Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type), 
         MemcpyHostToDevice);
     free(buffer);
@@ -138,7 +140,7 @@ void SHTrans<Container>::backward_duv(const Container &shc,
 }
 
 template<typename Container>
-void SHTrans<Container>::Filter(const Container &in, Container &work, 
+void SHTrans<Container>::lowPassFilter(const Container &in, Container &work, 
     Container &shc, Container &out) const
 {
     int n_funs = in.getNumSubs();

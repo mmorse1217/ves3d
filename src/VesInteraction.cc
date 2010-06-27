@@ -38,7 +38,9 @@ VesInteraction<T>::InteractionReturn VesInteraction<T>::operator()(
             sizeof(typename VecContainer::value_type));
         return NoInteraction;
     }
-    
+
+    //up-sampling
+
     //Getting the sizes
     size_t np(position.getNumSubs() * position.getStride());
     size_t n_cpy(position.size());

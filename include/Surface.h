@@ -24,7 +24,7 @@ class Surface
     typedef ScalarContainer Sca;
 
     ///@todo add a default constructor
-    Surface(const Vec& x_in, OperatorsMats<value_type> &mats);
+    Surface(const Vec& x_in, OperatorsMats<value_type, DataIO<value_type, CPU> > &mats);
     ~Surface();
 
     void setPosition(const Vec& x_in);

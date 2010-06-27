@@ -23,7 +23,7 @@ void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
-    OperatorsMats<value_type> &mats, const Parameters<value_type> &params,
+    OperatorsMats<value_type, DataIO<value_type, CPU> > &mats, const Parameters<value_type> &params,
     BackgroundFlow &bgFlow) :
     S_(S_in),
     interaction_(Inter),
@@ -308,6 +308,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
         if(vel < params_.rep_tol )
             break;
     }
-    COUT("\n Reparametrization :\n           iteration = "<<ii
+
+    COUT("\n Reparametrization :"
+        <<"\n           iteration = "<<ii
         <<"\n           |vel|     = "<<vel<<endl);
 }

@@ -5,6 +5,7 @@
 *.txt
 *.tar
 *.bk
+*.d
 results/
 precomputed
 makefile.in.files/makefile.in

@@ -7,11 +7,11 @@
  */
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in,
-    OperatorsMats<value_type> &mats) :
+    OperatorsMats<value_type, DataIO<value_type, CPU> > &mats) :
     //upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
-    sht_(x_in.getShOrder(), mats), ///@todo make sht_ autonomous
-    sht_rep_filter_(x_in.getShOrder(), mats, rep_filter_freq_),
+    sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
+    sht_rep_filter_(x_in.getShOrder(), mats.mats_p_, rep_filter_freq_),
     containers_are_stale_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true),
@@ -102,7 +102,7 @@ void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
     Vec* wrk(generateVec(x_));
     Vec* shc(generateVec(x_));
 
-    sht_rep_filter_.Filter(x_, *wrk, *shc, smthd_pos);
+    sht_rep_filter_.lowPassFilter(x_, *wrk, *shc, smthd_pos);
 
     recycleVec(wrk);
     recycleVec(shc);
@@ -218,8 +218,8 @@ void Surface<ScalarContainer, VectorContainer>::updateAll() const
     recycleSca(L);
     recycleSca(N);
 
-    sht_.Filter(k_, *wrk, *shc, k_);
-    sht_.Filter(h_, *wrk, *shc, h_);
+    sht_.lowPassFilter(k_, *wrk, *shc, k_);
+    sht_.lowPassFilter(h_, *wrk, *shc, h_);
 
     recycleVec(wrk);
     recycleVec(shc);
@@ -248,7 +248,7 @@ void Surface<ScalarContainer, VectorContainer>::grad(const ScalarContainer
     xvpw(*scw2, cv_, grad_f_out, grad_f_out);
     recycleSca(scw2);
 
-    sht_.Filter(grad_f_out, *wrk, *shc, grad_f_out);
+    sht_.lowPassFilter(grad_f_out, *wrk, *shc, grad_f_out);
     recycleVec(shc);
     recycleVec(wrk);
 }
@@ -276,7 +276,7 @@ void Surface<ScalarContainer, VectorContainer>::div(const VectorContainer
     axpy(static_cast<value_type>(1),div_f_out, *scw, div_f_out);
     recycleSca(scw);
 
-    sht_.Filter(div_f_out, *wrk, *shc, div_f_out);
+    sht_.lowPassFilter(div_f_out, *wrk, *shc, div_f_out);
     recycleVec(shc);
     recycleVec(wrk);  
 }
@@ -450,7 +450,7 @@ void Surface<ScalarContainer, VectorContainer>::linearizedMeanCurv(
 
     axpy(static_cast<value_type>(.5), h_lin, h_lin);
 
-    sht_.Filter(h_lin, *wrk, *shc, h_lin);
+    sht_.lowPassFilter(h_lin, *wrk, *shc, h_lin);
 
     recycleVec(wrk);
     recycleVec(shc);

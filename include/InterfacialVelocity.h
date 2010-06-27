@@ -22,7 +22,7 @@ class InterfacialVelocity
     
   public:
     InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
-        OperatorsMats<value_type> &mats, const Parameters<value_type> &params, 
+        OperatorsMats<value_type, DataIO<value_type, CPU> > &mats, const Parameters<value_type> &params, 
         BackgroundFlow &bgFlow = ShearFlow<Vec>);
    
     void updatePositionExplicit(const value_type &dt);

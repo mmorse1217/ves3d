@@ -1,36 +1,34 @@
 #ifndef _SHMATS_H_
 #define _SHMATS_H_
 
-#include "Device.h"
-#include "OperatorsMats.h"
-
-template<typename T, enum DeviceType DT>
+template<typename T>
 class SHTMats{
   protected:
     int sh_order_;
     pair<int, int> grid_dim_;
-    const Device<DT> *device_;
     T *data_;
-    
-    inline size_t GetDFTLength() const;
-    inline size_t GetDLTLength() const;
-
+    int dft_size;
+        
     void gen_dft_forward();
     void gen_dft_backward();
     void gen_dft_d1backward();
     void gen_dft_d2backward();
 
-    int dft_size;
-
   public:
-    SHTMats(const Device<DT> *dev, int sh_order,
-        OperatorsMats<T> &mats, pair<int,int> grid_dim = EMPTY_GRID);
+    SHTMats(int sh_order, T *data, bool genrateMats = false, 
+        pair<int, int> gird_dim = EMPTY_GRID);
     ~SHTMats();
+
+    inline int getShOrder() const;
+    inline pair<int, int> getGridDim() const;
     
-    inline int GetShOrder() const;
-    inline pair<int, int> GetGridDim() const;
-    inline const Device<DT>* GetDevicePtr() const;
-    inline size_t GetDataLength() const;
+    static inline size_t getDataLength(int sh_order, 
+        pair<int, int> grid_dim = EMPTY_GRID);
+    inline size_t getDataLength() const;
+    inline size_t getDFTLength() const;
+    inline size_t getDLTLength() const;
+    inline T* getData();
+
 
     T *dft_;
     T *dft_inv_;

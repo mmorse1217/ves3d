@@ -26,11 +26,12 @@ class EvolveSurface
 {
   private:
     typedef typename Container::value_type value_type;   
-    OperatorsMats<value_type> &mats_;
+    OperatorsMats<value_type, DataIO<value_type, CPU> > &mats_;
     const Parameters<value_type> &params_;
 
   public:
-    EvolveSurface(OperatorsMats<value_type> &mats, const Parameters<value_type> &params);
+    EvolveSurface(OperatorsMats<value_type, DataIO<value_type, CPU> >
+        &mats, const Parameters<value_type> &params);
     void operator()(Container &S, Interaction &Inter);
 };
 

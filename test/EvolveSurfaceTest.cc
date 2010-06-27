@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     Par sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = .5;    
-    sim_par.time_horizon = 1;
+    sim_par.time_horizon = 10;
     sim_par.rep_maxit = 20;
     sim_par.bg_flow_param = 0.1;    
     sim_par.save_data = true;    
@@ -43,22 +43,25 @@ int main(int argc, char **argv)
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
         x0.getTheDim()*x0.getStride(), x0.begin());
     
-//     //Making centers and populating the prototype
-//     Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
-//     real cntrs_host[] = {-5, 0,  1,
-//                          5, 0, -1};
-   
-//     cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
-//         cntrs.size() * sizeof(real), MemcpyHostToDevice);
-    
-//     Populate(x0, cntrs);
+    //Making centers and populating the prototype
+    if ( sim_par.n_surfs > 1 )
+    {
+        Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
+        real cntrs_host[] = {-5, 0,  1,
+                             5, 0, -1};
+        
+        cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
+            cntrs.size() * sizeof(real), MemcpyHostToDevice);
+        
+        Populate(x0, cntrs);
+    }
 
     // The interaction class
     Interaction interaction(NULL);//&StokesAlltoAll);
 
     //Reading operators from file
     bool readFromFile = true;
-    OperatorsMats<real> mats(myIO, readFromFile, sim_par);
+    OperatorsMats<real, DataIO<real, CPU> > mats(myIO, readFromFile, sim_par);
 
     //Making the surface, and time stepper
     Sur S(x0, mats);

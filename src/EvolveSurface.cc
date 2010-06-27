@@ -39,8 +39,9 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
 }
 
 template<typename Container, typename Interaction>
-EvolveSurface<Container, Interaction>::EvolveSurface(OperatorsMats<value_type> 
-    &mats, const Parameters<value_type> &params) : mats_(mats), params_(params){}
+EvolveSurface<Container, Interaction>::EvolveSurface(OperatorsMats<value_type, 
+    DataIO<value_type, CPU> > &mats, const Parameters<value_type> &params) : 
+    mats_(mats), params_(params){}
 
 template<typename Container, typename Interaction>
 void EvolveSurface<Container, Interaction>::operator()(Container &S, 
@@ -59,7 +60,6 @@ void EvolveSurface<Container, Interaction>::operator()(Container &S,
         //F.updatePositionImplicit(dt);       
         F.updatePositionExplicit(dt);
         F.reparam();
-        
         t += dt;
     }
 }

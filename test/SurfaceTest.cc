@@ -21,6 +21,9 @@ int main(int argc, char ** argv)
         int const p(12);
         int const nVec(2);
         
+        ///@todo Parameters have nothing to do with the surface
+        Parameters<real> sim_par;
+
         //IO
         DataIO<T,CPU> myIO(the_cpu_dev);
         
@@ -39,7 +42,7 @@ int main(int argc, char ** argv)
         
         //Reading operators from file
         bool readFromFile = true;
-        OperatorsMats<real> mats(myIO, readFromFile);
+        OperatorsMats<real, DataIO<real, CPU> > mats(myIO, readFromFile, sim_par);
         
         //Creating objects
         Surface<Sca, Vec> S(x0, mats);
@@ -61,12 +64,10 @@ int main(int argc, char ** argv)
         
         //Area and volume
         Sca Area(nVec, p, make_pair(1,1));
-        S.area(Area);
-        cout<<" Area : "<<Area[0]<<endl;
-        
+        S.area(Area);      
         Sca Vol(nVec, p, make_pair(1,1));
         S.volume(Vol);
-        cout<<" Volume : "<<Vol[0]<<endl;
+        cout<<" Area = "<<Area[0]<<", Volume = "<<Vol[0]<<endl;
         
         Vec Cntrs(nVec, 0, make_pair(1,1));
         S.getCenters(Cntrs);
@@ -100,19 +101,19 @@ int main(int argc, char ** argv)
         GeometricDot(lap,S.getNormal(),hh);
         axpy((T) -.5, hh, S.getMeanCurv(),hh);
         
-        cout<<"\n The error in the surface grad (For the dumbbell"
-            <<" .13120 expected - 2/3 filtering)= "
-            <<hh.getDevice().MaxAbs(hh.begin(), hh.size())<<endl;
+        cout<<" The error in the surface grad (For the "
+            <<"\n dumbbell .13120 expected - 2/3 filtering) = "
+            <<fixed<<setprecision(5)<<hh.getDevice().MaxAbs(hh.begin(), hh.size())<<endl;
  
         Sca div_n(nVec,p);
         S.div(S.getNormal(), div_n);
         axpy((T) .5, div_n, S.getMeanCurv(),div_n);
         
-        cout<<"\n The error in the surface divergence (For the "
-            <<"dumbbell .02964 expected - 2/3 filtering)= "
-            <<div_n.getDevice().MaxAbs(div_n.begin(), div_n.size())<<endl;
+        cout<<" The error in the surface divergence (For the "
+            <<"\n dumbbell .02964 expected - 2/3 filtering) = "
+            <<fixed<<setprecision(5)<<div_n.getDevice().MaxAbs(div_n.begin(), div_n.size())<<endl;
 
-        S.linearizedMeanCurvature(S.getPosition(), hh);
+        S.linearizedMeanCurv(S.getPosition(), hh);
         axpy((T) -1, hh, S.getMeanCurv(), hh);
     }
 

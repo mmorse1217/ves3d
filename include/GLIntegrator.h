@@ -4,6 +4,7 @@
 #include "HelperFuns.h"
 #include "VesBlas.h"
 #include <typeinfo>
+#include "DataIO.h"
 
 template<typename Container>
 class GaussLegendreIntegrator
