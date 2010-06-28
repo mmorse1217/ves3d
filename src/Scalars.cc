@@ -13,7 +13,7 @@ Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
     stride_(grid_dim_.first * grid_dim_.second),
     num_subs_(num_subs),
     capacity_(stride_ * num_subs_),
-    data_((T*) DEVICE.Malloc(the_dim_ * capacity_ * sizeof(T)))
+    data_((capacity_ > 0) ? (T*) DEVICE.Malloc(the_dim_ * capacity_ * sizeof(T)) : NULL)
 {}
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
@@ -37,20 +37,24 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs, int new_sh_order,
 
     if ( new_capacity > capacity_ )
     {
+        cout<<new_capacity<<" "<<capacity_<<endl;
+
         T *data_old(data_);
         data_ = (T*) DEVICE.Malloc(the_dim_ * new_capacity * sizeof(T));
         
-        if(data_old != 0) 
+        if(data_old != NULL) 
+        {
             DEVICE.Memcpy(data_, data_old, 
                 the_dim_ * stride_ * num_subs_ * sizeof(T), 
                 MemcpyDeviceToDevice);
-        DEVICE.Free(data_old);
+            DEVICE.Free(data_old);
+        }
         capacity_ = new_capacity;
     } 
-    else if (new_capacity == 0 )
+    else if (new_capacity == 0 && data_ != NULL)
     {
         DEVICE.Free(data_);
-        data_ = 0;
+        data_ = NULL;
         capacity_ = 0;
     }
 

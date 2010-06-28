@@ -6,9 +6,7 @@
 #include "Parameters.h"
 
 using namespace std;
-
 extern const Device<CPU> the_cpu_dev(0);
-
 typedef double real;
 
 int main(int argc, char ** argv)
@@ -103,20 +101,26 @@ int main(int argc, char ** argv)
         
         cout<<" The error in the surface grad (For the "
             <<"\n dumbbell .13120 expected - 2/3 filtering) = "
-            <<fixed<<setprecision(5)<<hh.getDevice().MaxAbs(hh.begin(), hh.size())<<endl;
- 
+            <<fixed<<setprecision(5)<<MaxAbs(hh)<<endl;
+        
         Sca div_n(nVec,p);
         S.div(S.getNormal(), div_n);
         axpy((T) .5, div_n, S.getMeanCurv(),div_n);
         
         cout<<" The error in the surface divergence (For the "
             <<"\n dumbbell .02964 expected - 2/3 filtering) = "
-            <<fixed<<setprecision(5)<<div_n.getDevice().MaxAbs(div_n.begin(), div_n.size())<<endl;
+            <<fixed<<setprecision(5)<<MaxAbs(div_n)<<endl;
 
         S.linearizedMeanCurv(S.getPosition(), hh);
         axpy((T) -1, hh, S.getMeanCurv(), hh);
+        cout<<" Linear curvature operator: "<<MaxAbs(hh)<<endl;
+        
+        grad.getDevice().Memcpy(grad.begin(), S.getNormal().begin(), 
+            S.getNormal().size() * sizeof(real), MemcpyDeviceToDevice);
+        S.mapToTangentSpace(grad);
+        cout<<" Map to tangent space: "<<MaxAbs(grad)<<endl;
     }
 
-    //PROFILEREPORT(SortTime);
+    PROFILEREPORT(SortTime);
     return 0;
 }

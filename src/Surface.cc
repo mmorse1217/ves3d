@@ -8,10 +8,10 @@
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in,
     OperatorsMats<value_type, DataIO<value_type, CPU> > &mats) :
-    //upsample_freq_(2 * x_in.getShOrder()),
+    upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
-    sht_rep_filter_(x_in.getShOrder(), mats.mats_p_, rep_filter_freq_),
+    sht_rep_filter_(upsample_freq_, mats.mats_p_up_, rep_filter_freq_),
     containers_are_stale_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true),
@@ -112,15 +112,49 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
     Vec &vec_fld) const
 {
+    cout<<"map"<<endl;
+    exit(1);
+
     if(first_forms_are_stale_)
         updateFirstForms();
+
+    Sca* scp(generateSca(vec_fld));
+    Vec* wrk(generateVec(vec_fld));
+    Vec* shc(generateVec(vec_fld));
+    Vec* fld(generateVec(vec_fld));
+
+    //up-sampling
+    int usf(sht_rep_filter_.getShOrder());
+
+    scp->resize(scp->getNumSubs(), usf);
+    wrk->resize(wrk->getNumSubs(), usf);
+    shc->resize(shc->getNumSubs(), usf);
+    fld->resize(fld->getNumSubs(), usf);
+    normal_.resize(normal_.getNumSubs(), usf);
+
+    Resample(vec_fld, sht_, sht_rep_filter_, *shc, *wrk, *fld);
+    Resample(normal_, sht_, sht_rep_filter_, *shc, *wrk, normal_);
     
-    Sca* scp(generateSca(x_));
-    GeometricDot(vec_fld, normal_, *scp);
+    //re-normalizing
+    GeometricDot(normal_, normal_, *scp);
+    Sqrt(*scp, *scp);
+    uyInv(normal_, *scp, normal_);
+    GeometricDot(normal_, normal_, *scp);
+    
+    //mapping to tangent
+    GeometricDot(*fld, normal_, *scp);
     axpy(static_cast<value_type>(-1.0), *scp, *scp);
-    xvpw(*scp, normal_, vec_fld, vec_fld);
+    xvpw(*scp, normal_, *fld, *fld);
     
+    //down-sampling
+    Resample(*fld   , sht_rep_filter_, sht_, *shc, *wrk, vec_fld);
+    Resample(normal_, sht_rep_filter_, sht_, *shc, *wrk, normal_);
+    normal_.resize(normal_.getNumSubs(), sht_.getShOrder());
+
     recycleSca(scp);
+    recycleVec(wrk);
+    recycleVec(shc);
+    recycleVec(fld);
 }
 
 template <typename ScalarContainer, typename VectorContainer>  

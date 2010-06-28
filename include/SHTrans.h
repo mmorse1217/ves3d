@@ -14,6 +14,8 @@ class SHTrans
     SHTrans(int sh_order_in, SHTMats<value_type> &mats, int filter_freq = -1);
     ~SHTrans();
 
+    int getShOrder() const {return(p);}
+
     void FirstDerivatives(const Container &in, Container &work, Container &shc, Container &du, Container &dv) const;
 
     void forward(const Container &in, Container &work, Container &shc) const;

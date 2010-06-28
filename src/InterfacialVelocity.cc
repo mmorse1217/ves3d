@@ -287,7 +287,6 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
     value_type ts(params_.rep_ts);
     value_type vel;
 
-    ///@todo up-sampling?
     int ii(-1);
     while ( ++ii < params_.rep_maxit )
     {
@@ -305,11 +304,13 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
         axpy(ts, u1_, S_.getPosition(), S_.getPositionModifiable());
         
         vel = u1_.getDevice().MaxAbs(u1_.begin(), u1_.size());
+             
+        COUT("\n Reparametrization :"
+            <<"\n           iteration = "<<ii
+            <<"\n           |vel|     = "<<vel<<endl);
+        
         if(vel < params_.rep_tol )
             break;
-    }
 
-    COUT("\n Reparametrization :"
-        <<"\n           iteration = "<<ii
-        <<"\n           |vel|     = "<<vel<<endl);
+    }
 }

@@ -57,7 +57,7 @@ class Surface
     mutable Vec cu_;
     mutable Vec cv_;
  
-    //int upsample_freq_;
+    int upsample_freq_;
     int rep_filter_freq_;
 
     SHTrans<Sca> sht_;

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include "Device.h"
+#include "SHTrans.h"
 
 namespace containers 
 {
@@ -93,6 +94,10 @@ namespace containers
     typename ScalarContainer::value_type AlgebraicDot( 
         const ScalarContainer &x, const ScalarContainer &y);
 
+    template<typename Container, typename SHT>
+    inline void Resample(const Container &xp, const SHT &shtp, const SHT &shtq, 
+        Container &shcpq, Container &wrkpq, Container &xq);
+    
 #include "HelperFuns.cc"
 }
 

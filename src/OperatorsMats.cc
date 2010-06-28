@@ -50,16 +50,16 @@ OperatorsMats<T, IO>::OperatorsMats(IO &fileIO_in, bool readFromFile,
         fileIO_.ReadData(fname, mats_p_.getDLTLength(), mats_p_.dlt_inv_d2_);
         
         //p_up
-        sprintf(fname,"precomputed/legTrans%u_single.txt",p_);
+        sprintf(fname,"precomputed/legTrans%u_single.txt",p_up_);
         fileIO_.ReadData(fname, mats_p_up_.getDLTLength(), mats_p_up_.dlt_);
 
-        sprintf(fname,"precomputed/legTransInv%u_single.txt",p_);
+        sprintf(fname,"precomputed/legTransInv%u_single.txt",p_up_);
         fileIO_.ReadData(fname, mats_p_up_.getDLTLength(), mats_p_up_.dlt_inv_);
 
-        sprintf(fname,"precomputed/d1legTrans%u_single.txt",p_);
+        sprintf(fname,"precomputed/d1legTrans%u_single.txt",p_up_);
         fileIO_.ReadData(fname, mats_p_up_.getDLTLength(), mats_p_up_.dlt_inv_d1_);
         
-        sprintf(fname,"precomputed/d2legTrans%u_single.txt",p_);
+        sprintf(fname,"precomputed/d2legTrans%u_single.txt",p_up_);
         fileIO_.ReadData(fname, mats_p_up_.getDLTLength(), mats_p_up_.dlt_inv_d2_);
     }
 }

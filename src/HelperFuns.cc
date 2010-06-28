@@ -247,3 +247,52 @@ typename Container::value_type MaxAbs(Container &x)
 {
     return(x.getDevice().MaxAbs(x.begin(), x.size()));
 }
+
+template<typename Container, typename SHT>
+void Resample(const Container &xp, const SHT &shtp, const SHT &shtq, 
+    Container &shcpq, Container &wrkpq, Container &xq)
+{    
+    typedef typename Container::value_type value_type;
+    
+    int p = shtp.getShOrder();
+    int q = shtq.getShOrder();
+    
+    if(p == q)
+    {
+        Container::getDevice().Memcpy(xq.begin(), xp.begin(), 
+            xp.size() * sizeof(value_type), MemcpyDeviceToDevice);
+        return;
+    }
+
+    value_type *shc_p, *shc_q;
+   
+    shtp.forward(xp, shcpq, wrkpq);
+    shc_p = wrkpq.begin();
+    shc_q = shcpq.begin();
+
+    if(p < q)     
+        Container::getDevice().Memset(shcpq.begin(), 0, 
+            shcpq.size() * sizeof(value_type));
+    
+    int len_p, len_q, cpy_len;
+    int mf = ( p > q ) ? q : p;
+    int n_funs = xp.getNumSubs() * xp.getTheDim();
+
+    for(int ii=0; ii< 2 * mf; ++ii)
+    {
+        len_p   = p  + 1 - (ii+1)/2;
+        len_q   = q  + 1 - (ii+1)/2;
+        cpy_len = mf + 1 - (ii+1)/2;
+        
+        for(int jj = 0; jj<n_funs; ++jj)
+        {
+            Container::getDevice().Memcpy(shc_q, shc_p, 
+                cpy_len * sizeof(value_type), MemcpyDeviceToDevice);
+            
+            shc_p += len_p;
+            shc_q += len_q;
+        }
+    }
+
+    shtq.backward(shcpq, wrkpq, xq);
+}

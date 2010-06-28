@@ -630,7 +630,7 @@ T Device<DT>::MaxAbs(T *x_in, size_t length) const
         T max_loc = abs(*x_in);
 #pragma omp for
         for(size_t idx = 0;idx<length;idx++)
-            max_loc = (max_loc > abs(x_in[idx])) ? max_loc : x_in[idx];
+            max_loc = (max_loc > abs(x_in[idx])) ? max_loc : abs(x_in[idx]);
         max_arr[omp_get_thread_num()] =  max_loc;
         
         if(omp_get_thread_num() == 0)

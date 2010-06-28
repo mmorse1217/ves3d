@@ -22,8 +22,7 @@ SHTrans<Container>::SHTrans(int p_in, SHTMats<value_type> &mats, int filter_freq
     {
         len = p + 1 - (ii+1)/2;
         for(int jj=0; jj < len; ++jj)
-            buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;
-        
+            buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;       
     }
 
     device_->Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type), 
