@@ -1,7 +1,5 @@
 #include "Device.h"
 
-extern const Device<CPU> device(0);
-
 int main(int argc, char **argv)
 {
   int k = 4096;
@@ -14,10 +12,6 @@ int main(int argc, char **argv)
   float *A_h = (float*) malloc(sa * sizeof(float));
   float *B_h = (float*) malloc(sb * sizeof(float));
 
-  float *A = (float*) device.Malloc(sa * sizeof(float));
-  float *B = (float*) device.Malloc(sb * sizeof(float));
-  float *C = (float*) device.Malloc(sc * sizeof(float));
-
   float alpha = 1.0;
   float beta = 0.0;
 
@@ -29,25 +23,42 @@ int main(int argc, char **argv)
     for(int jj=0;jj<k;++jj)
       B_h[ii*k+jj] = drand48();
 
-  device.Memcpy(A,A_h,sa,MemcpyHostToDevice);
-  device.Memcpy(B,B_h,sa,MemcpyHostToDevice);
-
-  int i_max = 1;
-  for(int ii=0;ii<i_max;++ii)
-  {
-      device.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
+  {// cpu
+      Device<CPU> cpu(0);
+      
+      float *A = (float*) cpu.Malloc(sa * sizeof(float));
+      float *B = (float*) cpu.Malloc(sb * sizeof(float));
+      float *C = (float*) cpu.Malloc(sc * sizeof(float));
+      
+      cpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
+      cpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
+      cpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
+      
+      cpu.Free(A);
+      cpu.Free(B);
+      cpu.Free(C);
   }
-  
-  PROFILEREPORT(SortFlopRate);
 
-  device.Memcpy(A_h,C,sa,MemcpyDeviceToHost);
+#ifdef GPU_ACTIVE
+  {
+      Device<GPU> gpu(0);
 
-  device.Free(A);
-  device.Free(B);
-  device.Free(C);
+      float *A = (float*) gpu.Malloc(sa * sizeof(float));
+      float *B = (float*) gpu.Malloc(sb * sizeof(float));
+      float *C = (float*) gpu.Malloc(sc * sizeof(float));
+      
+      gpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
+      gpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
+      gpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
+      
+      gpu.Free(A);
+      gpu.Free(B);
+      gpu.Free(C);
+  }
+#endif //GPU_ACTIVE
 
   free(A_h);
   free(B_h);
 
-
+  PROFILEREPORT(SortTime);
 }

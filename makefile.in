@@ -1,0 +1,66 @@
+# User variables
+USE_GPU       = yes
+VES3D_TESTING = yes
+HAS_MKL       = yes
+
+# Compilers
+CXX     = icpc
+CC      = icpc
+AR      = ar
+RANLIB  = ranlib
+DOX     = doxygen
+TAGS    = etags
+
+# Make variables
+VPATH = $(VES3D_DIR)/lib/
+
+# includes
+VES3D_TEMPLATES = -I$(VES3D_DIR)/src
+VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
+BLAS_INCLUDE    = -I/opt/intel/mkl/10.2.4.032/include
+ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
+
+# Libraries
+VES3D_LIBS = -L$(VES3D_DIR)/lib -lves3d 
+BLAS_LIBS  = -L/opt/intel/Compiler/11.1/046/mkl/lib/em64t 		\
+	-Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread		\
+	-lmkl_core -Wl,--end-group
+
+# Flags
+ARFLAGS = -r
+CXXFLAGS= -DHAS_MKL_LIB -openmp -fPIC -early-template-check -sox	\
+	-fno-exceptions -diag-enable
+
+ifeq ($(VES3D_TESTING),yes)
+  CXXFLAGS+= -g -O0 -DVERBOSE -DPROFILING #-DNDEBUG #-msse3
+else
+  CXXFLAGS+= -O3 -finline -unroll-agressive -ipo 			\
+    #-DPROFILING #-opt-report #-msse3 #-malign-double
+endif
+
+LDFLAGS  = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
+CXXFLAGS+= $(ALL_INCLUDE)
+
+# Makefiles 
+MAKEDEP  = $(VES3D_DIR)/makefile.in
+
+# GPU
+ifeq ($(USE_GPU),yes)
+  VES3D_GPU_LIBS=-lves3dgpu
+  CUDA_DIR      = /usr/local/cuda
+  NVCC          = $(CUDA_DIR)/bin/nvcc
+  CUDA_LIBS     = -L$(CUDA_DIR)/lib64 -lcublas -lcudart	#-Wl,-rpath $(CUDA_DIR)/lib64
+  CUDA_INCLUDE  = -I$(CUDA_DIR)/include
+  CUDAFLAGS     = $(ALL_INCLUDE) 
+
+  CXXFLAGS     += -DGPU_ACTIVE
+  VES3D_LIBS   += $(VES3D_GPU_LIBS)
+  ALL_INCLUDE  += $(CUDA_INCLUDE)
+  LDFLAGS      += $(CUDA_LIBS) 	
+
+%.o: %.cu $(MAKEDEP)
+	$(NVCC) $(ALL_INCLUDE) -c -o $@ $<
+endif
+
+# Adjustments
+CPPFLAGS = $(CXXFLAGS)

@@ -41,7 +41,7 @@
 #define _TRANSPOSE_KERNEL_H_
 
 
-void cu_trans(float *out, float *in, int width, int height);
+void cu_trans(float *out, const float *in, int width, int height);
 
 
 #endif // _TRANSPOSE_KERNEL_H_

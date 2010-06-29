@@ -117,18 +117,6 @@ void Scalars<T, DT, DEVICE>::replicate(Vectors<T, DT, DEVICE> const& vec_in)
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-T& Scalars<T, DT, DEVICE>::operator[](size_t idx)
-{
-    return(data_[idx]);
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-const T& Scalars<T, DT, DEVICE>::operator[](size_t idx) const
-{
-    return(data_[idx]);
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::begin()
 {
     return(data_);
@@ -168,25 +156,49 @@ Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() const
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
 std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
 {
-    output<<"=====================================================\n"
-          <<"SH order            : "<<sc.getShOrder()<<"\n"
-          <<"Grid size           : ( "
+    output<<" =====================================================\n"
+          <<"  SH order            : "<<sc.getShOrder()<<"\n"
+          <<"  Grid size           : ( "
           <<sc.getGridDim().first<<" , "<<sc.getGridDim().second<<" )"<<"\n"
-          <<"stride              : "<<sc.getStride()<<"\n"
-          <<"Number of functions : "<<sc.getNumSubs()<<"\n"
-          <<"=====================================================\n";
-    
-    for(typename Scalars<T,DT,DEVICE>::const_iterator it = sc.begin(); 
-        it !=sc.end(); ++it)
-    {
-        output<<*it<<" ";
-
-        if((it-sc.begin() + 1)%sc.getGridDim().second == 0)
-            output<<endl;
-        
-        if((it-sc.begin() + 1)%sc.getStride() == 0)
-            output<<endl;
-    }
+          <<"  stride              : "<<sc.getStride()<<"\n"
+          <<"  Number of functions : "<<sc.getNumSubs()<<"\n"
+          <<" =====================================================\n";
 
     return(output);
 }
+
+template <typename Container>
+ShowEntries<Container>::ShowEntries(Container &c) : c_(c) {}
+
+template <typename Container>
+std::ostream& ShowEntries<Container>::operator()(std::ostream &output) const
+{
+    output<<c_;
+
+    typedef typename Container::value_type T;
+    T *buffer(new T[this->c_.size()]);
+    this->c_.getDevice().Memcpy(buffer, this->c_.begin(), 
+        this->c_.size() * sizeof(T), MemcpyDeviceToHost);
+    
+    for(size_t ii=0; ii<this->c_.size(); ++ii)
+    {
+        output<<buffer[ii]<<" ";
+        
+        if((ii + 1)%this->c_.getGridDim().second == 0)
+            output<<endl;
+        
+        if((ii + 1)%this->c_.getStride() == 0)
+            output<<endl;
+    }
+
+    delete[] buffer;
+    
+    return(output);
+}
+
+template<typename Container>
+std::ostream& operator<<(std::ostream& output, const ShowEntries<Container> &se)
+{
+    return(se(output));
+};
+    

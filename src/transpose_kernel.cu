@@ -48,7 +48,7 @@
 // than the naive kernel below.  Note that the shared memory array is sized to 
 // (BLOCK_DIM+1)*BLOCK_DIM.  This pads each row of the 2D block in shared memory 
 // so that bank conflicts do not occur when threads address the array column-wise.
-__global__ void transpose(float *odata, float *idata, int width, int height)
+__global__ void transpose(float *odata, const float *idata, int width, int height)
 {
 	__shared__ float block[BLOCK_DIM][BLOCK_DIM+1];
 	
@@ -76,7 +76,7 @@ __global__ void transpose(float *odata, float *idata, int width, int height)
 
 // This naive transpose kernel suffers from completely non-coalesced writes.
 // It can be up to 10x slower than the kernel above for large matrices.
-__global__ void transpose_naive(float *odata, float* idata, int width, int height)
+__global__ void transpose_naive(float *odata, const float* idata, int width, int height)
 {
    unsigned int xIndex = blockDim.x * blockIdx.x + threadIdx.x;
    unsigned int yIndex = blockDim.y * blockIdx.y + threadIdx.y;
@@ -89,7 +89,7 @@ __global__ void transpose_naive(float *odata, float* idata, int width, int heigh
    }
 }
 
-void cu_trans(float *out, float *in, int width, int height) {
+void cu_trans(float *out, const float *in, int width, int height) {
   
   dim3 grid(width / BLOCK_DIM + 1, height / BLOCK_DIM + 1, 1);
   dim3 threads(BLOCK_DIM, BLOCK_DIM, 1);

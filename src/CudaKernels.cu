@@ -388,11 +388,10 @@ void sqrtKernel(const float *x_in, int length, float *x_out) {
   }
 }
 
-void SqrtGpu(const float* x_in, int stride, int num_surfs, float *x_out) {
-  int length = stride * num_surfs;
-  int grid = length / BLOCK_HEIGHT + 1;
-  sqrtKernel<<<grid, BLOCK_HEIGHT>>> (x_in, length, x_out);
-  cudaThreadSynchronize();
+void SqrtGpu(const float* x_in, int length, float *x_out) {
+    int grid = length / BLOCK_HEIGHT + 1;
+    sqrtKernel<<<grid, BLOCK_HEIGHT>>> (x_in, length, x_out);
+    cudaThreadSynchronize();
 }
 
 __global__
@@ -403,8 +402,8 @@ void invKernel(const float *x_in, int length, float *x_out) {
   }
 }
 
-void InvGpu(const float* x_in, int stride, int num_surfs, float *x_out) {
-  int length = stride * num_surfs;
+void InvGpu(const float* x_in, int length, float *x_out) {
+  
   int grid = length / BLOCK_HEIGHT + 1;
   invKernel<<<grid, BLOCK_HEIGHT>>> (x_in, length, x_out);
   cudaThreadSynchronize();
@@ -418,11 +417,10 @@ void xyKernel(const float *x_in, const float *y_in, int length, float *xy_out) {
   }
 }
 
-void xyGpu(const float* x_in, const float *y_in, int stride, int num_surfs, float *xy_out) {
-  int length = stride * num_surfs;
-  int grid = length / BLOCK_HEIGHT + 1;
-  xyKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, xy_out);
-  cudaThreadSynchronize();
+void xyGpu(const float* x_in, const float *y_in, int length, float *xy_out) {
+    int grid = length / BLOCK_HEIGHT + 1;
+    xyKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, xy_out);
+    cudaThreadSynchronize();
 }
 
 __global__
@@ -433,11 +431,10 @@ void xyInvKernel(const float *x_in, const float *y_in, int length, float *xDy_ou
   }
 }
 
-void xyInvGpu(const float* x_in, const float *y_in, int stride, int num_surfs, float *xDy_out) {
-  int length = stride * num_surfs;
-  int grid = length / BLOCK_HEIGHT + 1;
-  xyInvKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, xDy_out);
-  cudaThreadSynchronize();
+void xyInvGpu(const float* x_in, const float *y_in, int length, float *xDy_out) {
+    int grid = length / BLOCK_HEIGHT + 1;
+    xyInvKernel<<<grid, BLOCK_HEIGHT>>> (x_in, y_in, length, xDy_out);
+    cudaThreadSynchronize();
 }
 
 __global__
@@ -540,8 +537,8 @@ void axpyKernel(float a, const float *x, const float *y, int length, float *axpy
   }
 }
 
-void axpyGpu(float a, const float* x_in, const float *y_in, int stride, int num_surfs, float *axpy_out) {
-  int length = stride * num_surfs;
+void axpyGpu(float a, const float* x_in, const float *y_in, int length, float *axpy_out) {
+
   int grid = length / BLOCK_HEIGHT + 1;
   axpyKernel<<<grid, BLOCK_HEIGHT>>> (a, x_in, y_in, length, axpy_out);
 }
@@ -555,8 +552,7 @@ void axpbKernel(float a, const float *x, const float b, int length, float *axpy)
   }
 }
 
-void axpbGpu(float a, const float* x_in, float b, int stride, int num_surfs, float *axpb_out) {
-  int length = stride * num_surfs;
+void axpbGpu(float a, const float* x_in, float b, int length, float *axpb_out) {
   int grid = length / BLOCK_HEIGHT + 1;
   axpbKernel<<<grid, BLOCK_HEIGHT>>> (a, x_in, b, length, axpb_out);
   cudaThreadSynchronize();
@@ -886,7 +882,6 @@ void avpwKernel(const float *a_in, const float *v_in, const float *w_in,
   }
 }
 
-
 void avpwGpu(const float *a_in, const float *v_in, const float *w_in,
               int stride, int num_surfs, float *avpw_out) {
   dim3 grid;
@@ -895,7 +890,6 @@ void avpwGpu(const float *a_in, const float *v_in, const float *w_in,
   cudaThreadSynchronize();
 }
 
-
 __global__
 void reduceMaxKernel(float *in, int n) {
   __shared__ float sdata[BLOCK_HEIGHT];
@@ -903,14 +897,14 @@ void reduceMaxKernel(float *in, int n) {
   if (idx < n)
     sdata[threadIdx.x] = in[idx];
   else
-    sdata[threadIdx.x] = -1e9;
+    sdata[threadIdx.x] = 0;
 
   int redOff = 1;
   int redStride = 2;
   while(redOff != BLOCK_HEIGHT) {
     if (threadIdx.x % redStride == 0) {
       syncthreads();
-      sdata[threadIdx.x] = fmaxf(sdata[threadIdx.x], sdata[threadIdx.x + redOff]);
+      sdata[threadIdx.x] = fmaxf(abs(sdata[threadIdx.x]), abs(sdata[threadIdx.x + redOff]));
     }
     redOff = redStride;
     redStride *= 2;
@@ -931,3 +925,5 @@ float maxGpu(float *in, int n) {
   cudaThreadSynchronize();
   return max;
 }
+
+#include "transpose_kernel.cu"

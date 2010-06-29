@@ -8,8 +8,11 @@
 
 #include "Logger.h"
 #include <iostream>
+#include "Scalars.h"
+#include "cstring"
 
 using namespace std;
+using namespace containers;
 
 template<typename Container>
 class ScalarsTest
@@ -21,55 +24,47 @@ class ScalarsTest
 template<typename Container>
 bool ScalarsTest<Container>::PerformAll()
 {
-    int p = 12;
-    int num_funs(1000);
+    int p(13), nsubs(3);
 
-//     Container sc;
-//     sc.resize(num_funs, p);
+    Container sc;
+    COUT(sc);
+    COUT(" Resizing to "<<p<<" and "<<nsubs<<endl);
+    sc.resize(nsubs, p);
+    COUT(sc);
+
+    Container sc_cpy;
+    COUT(sc_cpy);
+    COUT(" Replicating :"<<endl);
+    sc_cpy.replicate(sc);
+    COUT(sc_cpy);
+   
+    typedef typename Container::value_type T;
+    size_t sz = sc.size();
+    T* buffer = new T[sc.size()];
     
-//     typename Container::iterator it;
-//     for(it = sc.begin(); it != sc.end(); ++it)
-//         *it = 10;
+    for(size_t ii=0; ii<sz; ++ii)
+        buffer[ii] = ii;
 
-//     cout<<sc<<endl;
-//     sc.resize(0); cout<<sc<<endl;
-//     sc.resize(3); cout<<sc<<endl;
+    sc.getDevice().Memcpy(sc.begin(), buffer, sz * sizeof(T),
+        MemcpyHostToDevice);
 
-//     Container sc2;
-//     sc2.replicate(sc);
-//     cout<<sc2<<endl;
-
-//     cout<<sc2.getTheDim()<<" "<<sc2.getNumSubs()<<endl;
+    memset(buffer, 0, sz * sizeof(T));
     
-    int N = 100000;
-    Logger::Tic();  
-    for(int ii=0; ii<N; ++ii)
-    {
-        Container sc(num_funs, p);
-        sc[0] = sc[2];
-}
-    cout<<"Creation-destruction time : "<<Logger::Toc()<<endl;
+    sc.getDevice().Memcpy(buffer, sc.begin(), sz * sizeof(T),
+        MemcpyDeviceToHost);
 
-    Container sc(num_funs, p);
-    Logger::Tic();  
-    for(int ii=0; ii<N; ++ii)
-    {
-        sc.resize(0);
-        sc.resize(num_funs);
-        sc[0] = sc[2];
-    }
-    cout<<"Freeing-allocation time : "<<Logger::Toc()<<endl;
+    T err = 0;
+    for(size_t ii=0; ii<sz; ++ii)
+        err = (err > abs(buffer[ii]-ii)) ? err : abs(buffer[ii]-ii);
+    bool res(err==0);
 
-    Logger::Tic();  
-    for(int ii=0; ii<N; ++ii)
-    {
-        Container* sc = new Container(num_funs, p);
-        delete sc;
-    }
-    cout<<"Creation-destruction (new) time : "<<Logger::Toc()<<endl;
+    delete[] buffer;
+    
+    COUT(" Copying form to and from the container: "<<((res) ? "Pass" : "Fail")<<endl);
 
-
-    return true;
+    if(res)
+        COUT(" The container "<<typeid(Container).name()<<" works fine."<<endl);
+    return res;
 }
     
 

@@ -68,19 +68,19 @@ std::ostream& operator<<(std::ostream& output, const enum DeviceError &err)
     return output;
 }    
 
-template<enum DeviceType DT>
-Device<DT>::Device(int device_id, enum DeviceError *err)
+template<>
+Device<CPU>::Device(int device_id, enum DeviceError *err)
 {
     if(err!=0) *err = Success;
 
 }
 
-template<enum DeviceType DT>
-Device<DT>::~Device()
+template<>
+Device<CPU>::~Device()
 {}
 
-template<enum DeviceType DT>
-void* Device<DT>::Malloc(size_t length) const
+template<>
+void* Device<CPU>::Malloc(size_t length) const
 {
     PROFILESTART();
     void* ptr = ::malloc(length);
@@ -88,8 +88,8 @@ void* Device<DT>::Malloc(size_t length) const
     return(ptr);
 }
 
-template<enum DeviceType DT>
-void Device<DT>::Free(void* ptr) const
+template<>
+void Device<CPU>::Free(void* ptr) const
 {
     PROFILESTART();
     ::free(ptr);
@@ -97,8 +97,8 @@ void Device<DT>::Free(void* ptr) const
     PROFILEEND("CPU",0);
 }
 
-template<enum DeviceType DT>
-void* Device<DT>::Calloc(size_t num, size_t size) const
+template<>
+void* Device<CPU>::Calloc(size_t num, size_t size) const
 {
     PROFILESTART();
     void * ptr = ::calloc(num, size);
@@ -106,8 +106,8 @@ void* Device<DT>::Calloc(size_t num, size_t size) const
     return(ptr);
 }
 
-template<enum DeviceType DT>
-void* Device<DT>::Memcpy(void* destination, const void* source, 
+template<>
+void* Device<CPU>::Memcpy(void* destination, const void* source, 
     size_t num, enum MemcpyKind kind) const
 {
     PROFILESTART();
@@ -116,8 +116,8 @@ void* Device<DT>::Memcpy(void* destination, const void* source,
     return(destination);
 }
 
-template<enum DeviceType DT>
-void* Device<DT>::Memset(void *ptr, int value, size_t num) const
+template<>
+void* Device<CPU>::Memset(void *ptr, int value, size_t num) const
 {
     PROFILESTART();
     ::memset(ptr, value, num);
@@ -125,9 +125,9 @@ void* Device<DT>::Memset(void *ptr, int value, size_t num) const
     return(ptr);
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>  
-T* Device<DT>::DotProduct(const T* u_in, const T* v_in, size_t stride, 
+T* Device<CPU>::DotProduct(const T* u_in, const T* v_in, size_t stride, 
     size_t n_vecs, T* x_out) const
 {
     PROFILESTART();
@@ -150,9 +150,9 @@ T* Device<DT>::DotProduct(const T* u_in, const T* v_in, size_t stride,
     return x_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>  
-T* Device<DT>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t num_surfs, T* w_out) const
+T* Device<CPU>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t num_surfs, T* w_out) const
 {
     PROFILESTART();
     assert(DIM==3);
@@ -187,9 +187,9 @@ T* Device<DT>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t 
     return w_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T* Device<DT>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
+T* Device<CPU>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
 {
     PROFILESTART();
 #pragma omp parallel for 
@@ -202,9 +202,9 @@ T* Device<DT>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
     return sqrt_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T* Device<DT>::ax(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_out) const
+T* Device<CPU>::ax(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_out) const
 {
     PROFILESTART();
         
@@ -218,9 +218,9 @@ T* Device<DT>::ax(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_ou
     return ax_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T* Device<DT>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
+T* Device<CPU>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
 {
     PROFILESTART();
     register T xTy;
@@ -237,9 +237,9 @@ T* Device<DT>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
     return xy_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T* Device<DT>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out) const
+T* Device<CPU>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out) const
 {
     PROFILESTART();
     register T xDy;
@@ -273,9 +273,9 @@ T* Device<DT>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out) 
     return xyInv_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T*  Device<DT>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_surfs, T* uyInv_out) const
+T*  Device<CPU>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_surfs, T* uyInv_out) const
 {
     PROFILESTART();
     assert(u_in!=NULL);
@@ -304,9 +304,9 @@ T*  Device<DT>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_su
     return uyInv_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T*  Device<DT>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  axpy_out) const
+T*  Device<CPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  axpy_out) const
 {
     PROFILESTART();
     assert(x_in != NULL);
@@ -339,9 +339,9 @@ T*  Device<DT>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  
     return axpy_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T*  Device<DT>::apx(T* a_in, const T* x_in, size_t stride, 
+T*  Device<CPU>::apx(T* a_in, const T* x_in, size_t stride, 
     size_t n_subs, T* apx_out) const
 {
     PROFILESTART();
@@ -358,9 +358,9 @@ T*  Device<DT>::apx(T* a_in, const T* x_in, size_t stride,
     return apx_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T*  Device<DT>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  avpw_out) const
+T*  Device<CPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  avpw_out) const
 {
     PROFILESTART();
     register T val;
@@ -424,9 +424,9 @@ T*  Device<DT>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t strid
     return avpw_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T*  Device<DT>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  xvpw_out) const
+T*  Device<CPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  xvpw_out) const
 {
     PROFILESTART();
     size_t base, x_base, vec, s, length = DIM*stride, idx, x_idx;
@@ -500,9 +500,9 @@ T*  Device<DT>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t strid
     return xvpw_out;
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T*  Device<DT>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in, 
+T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in, 
     const size_t stride, const size_t ns, T *x_dw) const
 {
     PROFILESTART();
@@ -552,8 +552,8 @@ T*  Device<DT>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *q
     return x_dw;
 }
 
-template<enum DeviceType DT>
-float* Device<DT>::gemm(const char *transA, const char *transB, 
+template<>
+float* Device<CPU>::gemm(const char *transA, const char *transB, 
     const int *m, const int *n, const int *k, const float *alpha, 
     const float *A, const int *lda, const float *B, const int *ldb, 
     const float *beta, float *C, const int *ldc) const
@@ -564,8 +564,8 @@ float* Device<DT>::gemm(const char *transA, const char *transB,
     return C;
 }
 
-template<enum DeviceType DT>
-double* Device<DT>::gemm(const char *transA, const char *transB, 
+template<>
+double* Device<CPU>::gemm(const char *transA, const char *transB, 
     const int *m, const int *n, const int *k, const double *alpha, 
     const double *A, const int *lda, const double *B, const int *ldb, 
     const double *beta, double *C, const int *ldc) const
@@ -576,8 +576,8 @@ double* Device<DT>::gemm(const char *transA, const char *transB,
     return C;
 }
 
-template<enum DeviceType DT>
-void Device<DT>::DirectStokes(const double *src, const double *den, const double *qw, 
+template<>
+void Device<CPU>::DirectStokes(const double *src, const double *den, const double *qw, 
     size_t stride, size_t n_surfs, const double *trg, size_t trg_idx_head, 
     size_t trg_idx_tail, double *pot) const
 {                  
@@ -593,8 +593,8 @@ void Device<DT>::DirectStokes(const double *src, const double *den, const double
     return;
 } 
 
-template<enum DeviceType DT>
-void Device<DT>::DirectStokes(const float *src, const float *den, const float *qw, 
+template<>
+void Device<CPU>::DirectStokes(const float *src, const float *den, const float *qw, 
     size_t stride, size_t n_surfs, const float *trg, size_t trg_idx_head, 
     size_t trg_idx_tail, float *pot) const
 {
@@ -614,9 +614,9 @@ void Device<DT>::DirectStokes(const float *src, const float *den, const float *q
 #endif   
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T Device<DT>::MaxAbs(T *x_in, size_t length) const
+T Device<CPU>::MaxAbs(T *x_in, size_t length) const
 { 
     PROFILESTART();
     T *max_arr;
@@ -647,9 +647,9 @@ T Device<DT>::MaxAbs(T *x_in, size_t length) const
     return(max);
 }
 
-template<enum DeviceType DT>
+template<>
 template<typename T>
-T* Device<DT>::Transpose(const T *in, size_t height, size_t width, T *out) const
+T* Device<CPU>::Transpose(const T *in, size_t height, size_t width, T *out) const
 { 
     assert(out != in);
     PROFILESTART();

@@ -11,7 +11,6 @@
 #define _SCALARS_H_
 
 #include "Device.h"
-#include <queue>
 
 namespace containers
 {
@@ -44,9 +43,6 @@ namespace containers
         inline void replicate(Scalars<T, DT, DEVICE> const& sc_in);
         inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);
                 
-        inline value_type& operator[](size_t idx);
-        inline const value_type& operator[](size_t idx) const;
-    
         inline iterator begin();
         inline const_iterator begin() const;
 
@@ -55,9 +51,6 @@ namespace containers
 
         inline iterator end();
         inline const_iterator end() const;
-
-        //void* operator new(size_t size) throw(bad_alloc);
-        //void operator delete(void* ptr) throw();
 
       protected:
         int sh_order_;
@@ -68,18 +61,28 @@ namespace containers
         T *data_;
 
         static const int the_dim_ = 1;
-        //static queue<void* > scalars_queue_;
 
         Scalars(Scalars<T, DT, DEVICE> const& sc_in);
         Scalars<T, DT, DEVICE>& operator=(const Scalars<T, DT, DEVICE>& rhs);
-};
+    };
     
     template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
     std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE>&sc);
     
-    //template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
-    //queue<void* > Scalars<T, DT, DEVICE>::scalars_queue_;
-
+    template<typename Container>
+    class ShowEntries
+    {       
+      public:
+        ShowEntries(Container &c);
+        std::ostream& operator()(std::ostream &out) const;        
+      
+      private:
+        Container &c_;
+    };
+    
+    template<typename Container>
+    std::ostream& operator<<(std::ostream& output, const ShowEntries<Container> &se);
+ 
 #include "Scalars.cc"
 }
 

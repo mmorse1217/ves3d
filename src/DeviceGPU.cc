@@ -1,7 +1,7 @@
 template<>
 Device<GPU>::Device(int device_id, enum DeviceError *err)
 {
-    if(err != 0)
+    if(err != NULL)
         *err = static_cast<DeviceError>(cudaSetDevice(device_id));
     else
         cudaSetDevice(device_id);
@@ -70,7 +70,8 @@ T* Device<GPU>::DotProduct(const T* u_in, const T* v_in, size_t stride,
 
 template<>
 template<typename T>  
-T* Device<GPU>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t num_surfs, T* w_out) const
+T* Device<GPU>::CrossProduct(const T* u_in, const T* v_in, 
+    size_t stride, size_t num_surfs, T* w_out) const
 {
     PROFILESTART();
     assert(DIM==3);
@@ -89,6 +90,16 @@ T* Device<GPU>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
     return sqrt_out;
 }
 
+
+template<>
+template<typename T>
+T* Device<GPU>::ax(const T* a, const T* x, size_t length, 
+    size_t n_vecs, T* ax_out)  const
+{
+    CERR("TO BE IMPLEMENTED", endl, exit(1));
+    return(a);
+}
+
 template<>
 template<typename T>
 T* Device<GPU>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
@@ -101,7 +112,8 @@ T* Device<GPU>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
 
 template<>
 template<typename T>
-T* Device<GPU>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out) const
+T* Device<GPU>::xyInv(const T* x_in, const T* y_in, 
+    size_t length, T* xyInv_out) const
 {
     PROFILESTART();
     if(x_in==NULL)
@@ -115,10 +127,11 @@ T* Device<GPU>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out)
 
 template<>
 template<typename T>
-T*  Device<GPU>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_surfs, T* uyInv_out) const
+T*  Device<GPU>::uyInv(const T* u_in, const T* y_in, 
+    size_t stride, size_t num_surfs, T* uyInv_out) const
 {
     PROFILESTART();
-    assert(u!=NULL);
+    assert(u_in!=NULL);
     uyInvGpu(u_in, y_in, stride, num_surfs, uyInv_out);
     PROFILEEND("GPU",0);
     return uyInv_out;
@@ -126,7 +139,8 @@ T*  Device<GPU>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_s
 
 template<>
 template<typename T>
-T*  Device<GPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  axpy_out) const
+T*  Device<GPU>::axpy(T a_in, const T*  x_in, const T*  y_in, 
+    size_t length, T*  axpy_out) const
 {
     PROFILESTART();
     assert(x_in != NULL);
@@ -138,26 +152,35 @@ T*  Device<GPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T* 
     PROFILEEND("GPU",0);
     return axpy_out;
 }
+
 template<>
 template<typename T>
-T*  Device<GPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  avpw_out) const
+T* Device<GPU>::apx(T* a_in, const T* x_in, size_t stride, 
+        size_t n_subs, T* axpy_out) const
+{
+    CERR("TO NE IMPLEMENTED", endl, exit(1));
+    return(a_in);
+}
+
+template<>
+template<typename T>
+T*  Device<GPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in, 
+    size_t stride, size_t num_surfs, T*  avpw_out) const
 {
     PROFILESTART();
     if(w_in !=NULL)
         avpwGpu(a_in, v_in, w_in, stride, num_surfs, avpw_out);
     else
-    {
-        std::cerr<<"This kernel is not implemented for GPU"<<std::endl;
-        abort();
-    }
-
+        CERR("This kernel is not implemented for GPU", endl, exit(1));
+    
     PROFILEEND("GPU",0);
     return avpw_out;
 }
 
 template<>
 template<typename T>
-T*  Device<GPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  xvpw_out) const
+T*  Device<GPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, 
+    size_t stride, size_t num_surfs, T*  xvpw_out) const
 {
     PROFILESTART();
     if(w_in !=NULL)
@@ -171,9 +194,11 @@ T*  Device<GPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stri
 
 template<>
 template<typename T>
-T*  Device<GPU>::Reduce(const T *x_in, const T *w_in, const T *quad_w_in, size_t stride, size_t num_surfs, T  *int_x_dw) const
+T*  Device<GPU>::Reduce(const T *x_in, const int x_dim, const T *w_in, 
+    const T *quad_w_in, size_t stride, size_t num_surfs, T  *int_x_dw) const
 {
     PROFILESTART();
+    assert(x_dim == 1); //other cases need to be implemented for gpu
     ReduceGpu(x_in, w_in, quad_w_in, stride, num_surfs, int_x_dw);
     PROFILEEND("GPU",0);
     return int_x_dw;
@@ -186,7 +211,8 @@ float* Device<GPU>::gemm(const char *transA, const char *transB,
     const float *beta, float *C, const int *ldc) const
 {
     PROFILESTART();
-    cublasSgemm(*transA, *transB, *m, *n, *k, *alpha, A, *lda, B, *ldb, *beta, C, *ldc); 
+    cublasSgemm(*transA, *transB, *m, *n, *k, *alpha, A, *lda, B, 
+        *ldb, *beta, C, *ldc); 
     cudaThreadSynchronize();
     PROFILEEND("GPUs",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
     return C;
@@ -198,53 +224,49 @@ double* Device<GPU>::gemm(const char *transA, const char *transB,
     const double *A, const int *lda, const double *B, const int *ldb, 
     const double *beta, double *C, const int *ldc) const
 {
-    std::cerr<<"The general matrix multiply is not implemented for the data type of double"<<std::endl;
-    abort();
+    CERR("The general matrix multiply is not implemented for the data type of double",endl, exit(1));
+    return(C);
 }
 
 template<>
-void Device<GPU>::DirectStokes(const float *src, const float *den, const float *qw, 
-    size_t stride, size_t n_surfs, const float *trg, size_t trg_idx_head, 
-    size_t trg_idx_tail, float *pot)
+void Device<GPU>::DirectStokes(const float *src, const float *den,
+    const float *qw, size_t stride, size_t n_surfs, const float *trg,
+    size_t trg_idx_head, size_t trg_idx_tail, float *pot) const
 {
     PROFILESTART();
-    cuda_stokes(stride, n_surfs, trg_idx_head, trg_idx_tail, trg, src, den, pot, qw);
+    cuda_stokes(stride, n_surfs, trg_idx_head, trg_idx_tail, 
+        trg, src, den, pot, qw);
     PROFILEEND("GPU",0);
     return;
 }
 
 template<>
-void Device<GPU>::DirectStokes(const double *src, const double *den, const double *qw, 
-    size_t stride, size_t n_surfs, const double *trg, size_t trg_idx_head, 
-    size_t trg_idx_tail, double *pot) const
+void Device<GPU>::DirectStokes(const double *src, const double *den, 
+    const double *qw, size_t stride, size_t n_surfs, const double *trg, 
+    size_t trg_idx_head, size_t trg_idx_tail, double *pot) const
 {
-    std::cerr<<"The Stokes' kernel is not implemented for the double data type"<<std::endl;
-    abort();
-}
-template<>
-template<typename T>
-T* Device<GPU>::ShufflePoints(T *x_in, CoordinateOrder order_in, 
-    size_t stride, size_t n_surfs, T *x_out) const
-{
-    PROFILESTART();
-    assert(x_in != x_out);
-    if(order_in == AxisMajor)
-        cuda_shuffle(x_in, stride, n_surfs, DIM, x_out);
-    else
-        cuda_shuffle(x_in, DIM, n_surfs, stride, x_out);
-
-    PROFILEEND("GPU",0);
-    return x_out;
+    CERR("The Stokes' kernel is not implemented for the double data type",endl, exit(1));
 }
 
 template<>
 template<typename T>
-T Device<GPU>::Max(T *x_in, size_t length) const
+T Device<GPU>::MaxAbs(T *x_in, size_t length) const
 { 
     PROFILESTART();
     T m = maxGpu(x_in, length);
     PROFILEEND("GPU",0);
     return m;
+}
+
+template<>
+template<typename T>
+T* Device<GPU>::Transpose(const T *in, size_t height, 
+    size_t width, T *out) const
+{
+    PROFILESTART();
+    cu_trans(out, in, width, height);
+    PROFILEEND("GPU",0);
+    return(out);
 }
 
 template<>

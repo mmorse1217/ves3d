@@ -892,36 +892,67 @@ bool DeviceTest<DT,T>::TestReduce()
 template<enum DeviceType DT, typename T>
 bool DeviceTest<DT,T>::TestTranspose()
 {
-    int n = 31, m = 11;
-    int length = n*m;
-
-    T* x = (T*) device->Malloc(length * sizeof(T));
-    T* y = (T*) device->Malloc(length * sizeof(T));
+    bool res(true);
+    {
+        int n = 31, m = 11;
+        int length = n*m;
         
-    T* x_host = (T*) malloc(length * sizeof(T) );
-
-    for(int ii=0;ii<length;++ii)
-        x_host[ii] = ii;
-
-    device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
-    device->Transpose(x, n, m, y);
-    device->Transpose(y, m, n, x);
-    device->Memcpy(x_host, x, length * sizeof(T), MemcpyDeviceToHost);
-
-    T err=0, diff;
-    for(int jj=0;jj<length;jj++)
-    {     
-        diff = fabs(x_host[jj] - jj);
-        err = (diff>err) ? diff : err ;
+        T* x = (T*) device->Malloc(length * sizeof(T));
+        T* y = (T*) device->Malloc(length * sizeof(T));
+        
+        T* x_host = (T*) malloc(length * sizeof(T) );
+        
+        for(int ii=0;ii<length;++ii)
+            x_host[ii] = ii;
+        
+        device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
+        device->Transpose(x, n, m, y);
+        device->Transpose(y, m, n, x);
+        device->Memcpy(x_host, x, length * sizeof(T), MemcpyDeviceToHost);
+        
+        T err=0, diff;
+        for(int jj=0;jj<length;jj++)
+        {     
+            diff = fabs(x_host[jj] - jj);
+            err = (diff>err) ? diff : err ;
+        }
+        
+        res = res && (err<eps) ? true : false;
+        string res_print = (res) ? "Passed" : "Failed";
+        cout<<"* Device::Transpose : " + res_print + " *"<<endl;
+        
+        device->Free(x);
+        device->Free(y);
+        free(x_host);
     }
-        
-    bool res = (err<eps) ? true : false;
-    string res_print = (res) ? "Passed" : "Failed";
-    cout<<"* Device::Transpose : " + res_print + " *"<<endl;
 
-    device->Free(x);
-    device->Free(y);
-    free(x_host);
+    {
+        int n = 2, m = 3;
+        int length = n*m;
+        
+        T* x = (T*) device->Malloc(length * sizeof(T));
+        T* y = (T*) device->Malloc(length * sizeof(T));
+        
+        T x_host[] = {0,2,4,1,3,5};
+        
+        device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
+        device->Transpose(x, n, m, y);
+        device->Memcpy(x_host, y, length * sizeof(T), MemcpyDeviceToHost);
+        
+        T err=0, diff;
+        for(int jj=0;jj<length;jj++)
+        {     
+            diff = fabs(x_host[jj] - jj);
+            err = (diff>err) ? diff : err ;
+        }
+
+        res = res && (err<eps) ? true : false;
+        string res_print = (res) ? "Passed" : "Failed";
+        cout<<"* Device::Transpose : " + res_print + " *"<<endl;
+        
+        device->Free(x);
+        device->Free(y);
+    }
 
     return res;
 }
@@ -940,13 +971,12 @@ bool DeviceTest<DT,T>::TestMax()
         for(int idx=0;idx<length;idx++)
         {
             x_host[idx] = (T) drand48() * 10 - 5;
-            max = (max > abs(x_host[idx])) ? max : x_host[idx];
+            max = (max > abs(x_host[idx])) ? max : abs(x_host[idx]);
         }
             
         device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
         T mx = device->MaxAbs(x,length);
-                    
-        cout<<mx<<" "<<max<<endl;
+
         device->Free(x);
         free(x_host);
                         

@@ -2,9 +2,8 @@
 #define _VESBLAS_H
    
 #ifndef HAS_MKL_LIB
-    
 //#include <cblas.h>
-#ifdef (__cplusplus)
+#ifdef __cplusplus
 extern "C"{
 #endif
 
@@ -17,13 +16,14 @@ extern "C"{
             const float* BETA, float* C, const int* LDC); 
     }
     
-#ifdef (__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 
 #else 
 
 #include <mkl.h>
+
 void steqr(char *compz, int &n, float *d, float *e, float *z, int &ldz, float *work, int &info)
 {
     ssteqr(compz, &n, d, e, z, &ldz, work, &info);
@@ -35,5 +35,10 @@ void steqr(char *compz, int &n, double *d, double *e, double *z, int &ldz, doubl
 }
 
 #endif //HAS_MKL_LIB
+
+#ifdef GPU_ACTIVE
+#include "cublas.h"
+#endif //GPU_ACTIVE
+
 #endif //_VESBLAS_H_
 

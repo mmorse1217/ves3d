@@ -1,28 +1,23 @@
-include makefile.in.files/makefile.in
-
-DOX = doxygen
-TAGS = etags
+include ${VES3D_DIR}/makefile.in
 
 all: docs tags lib test
 
-.PHONY: docs clean tags lib test
+.PHONY: docs tags lib test clean
 
-docs: $(MakeFiles)
-	$(DOX) ./docs/Doxyfile
+docs: $(MAKEDEP)
+	-$(DOX) ./docs/Doxyfile
 
-tags: $(MakeFiles)
-	$(TAGS) src/* include/*
+tags: $(MAKEDEP)
+	-$(TAGS) src/* include/*
 
 lib:
-	$(MAKE) -C lib/ all
+	$(MAKE) -C  ${VES3D_DIR}/lib/ all
 
 test:
-	$(MAKE) -C test/ all
+	$(MAKE) -C  ${VES3D_DIR}/test/ all
 
 clean: 
-	-@rm -rf *.o ./src/*.o  ./docs/latex ./docs/html  \
+	-$(RM) -rf *.o ./src/*.o  ./docs/latex ./docs/html  \
 	lib/*.a test/*.exe test/*.out TAGS
-
-
 
 
