@@ -37,8 +37,6 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs, int new_sh_order,
 
     if ( new_capacity > capacity_ )
     {
-        cout<<new_capacity<<" "<<capacity_<<endl;
-
         T *data_old(data_);
         data_ = (T*) DEVICE.Malloc(the_dim_ * new_capacity * sizeof(T));
         

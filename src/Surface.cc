@@ -11,7 +11,8 @@ Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in,
     upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
-    sht_rep_filter_(upsample_freq_, mats.mats_p_up_, rep_filter_freq_),
+    sht_rep_filter_(x_in.getShOrder(), mats.mats_p_, rep_filter_freq_),
+    sht_rep_upsample_(upsample_freq_, mats.mats_p_up_),
     containers_are_stale_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true),
@@ -101,9 +102,9 @@ void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
 {
     Vec* wrk(generateVec(x_));
     Vec* shc(generateVec(x_));
-
+    
     sht_rep_filter_.lowPassFilter(x_, *wrk, *shc, smthd_pos);
-
+    
     recycleVec(wrk);
     recycleVec(shc);
 }
@@ -112,9 +113,6 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
     Vec &vec_fld) const
 {
-    cout<<"map"<<endl;
-    exit(1);
-
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -124,7 +122,7 @@ void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
     Vec* fld(generateVec(vec_fld));
 
     //up-sampling
-    int usf(sht_rep_filter_.getShOrder());
+    int usf(sht_rep_upsample_.getShOrder());
 
     scp->resize(scp->getNumSubs(), usf);
     wrk->resize(wrk->getNumSubs(), usf);
@@ -132,8 +130,8 @@ void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
     fld->resize(fld->getNumSubs(), usf);
     normal_.resize(normal_.getNumSubs(), usf);
 
-    Resample(vec_fld, sht_, sht_rep_filter_, *shc, *wrk, *fld);
-    Resample(normal_, sht_, sht_rep_filter_, *shc, *wrk, normal_);
+    Resample(vec_fld, sht_, sht_rep_upsample_, *shc, *wrk, *fld);
+     Resample(normal_, sht_, sht_rep_upsample_, *shc, *wrk, normal_);
     
     //re-normalizing
     GeometricDot(normal_, normal_, *scp);
@@ -147,8 +145,8 @@ void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
     xvpw(*scp, normal_, *fld, *fld);
     
     //down-sampling
-    Resample(*fld   , sht_rep_filter_, sht_, *shc, *wrk, vec_fld);
-    Resample(normal_, sht_rep_filter_, sht_, *shc, *wrk, normal_);
+    Resample(*fld   , sht_rep_upsample_, sht_, *shc, *wrk, vec_fld);
+    Resample(normal_, sht_rep_upsample_, sht_, *shc, *wrk, normal_);
     normal_.resize(normal_.getNumSubs(), sht_.getShOrder());
 
     recycleSca(scp);

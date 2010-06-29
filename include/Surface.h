@@ -24,7 +24,8 @@ class Surface
     typedef ScalarContainer Sca;
 
     ///@todo add a default constructor
-    Surface(const Vec& x_in, OperatorsMats<value_type, DataIO<value_type, CPU> > &mats);
+    Surface(const Vec& x_in, OperatorsMats<value_type, 
+        DataIO<value_type, CPU> > &mats);
     ~Surface();
 
     void setPosition(const Vec& x_in);
@@ -62,6 +63,7 @@ class Surface
 
     SHTrans<Sca> sht_;
     SHTrans<Sca> sht_rep_filter_;
+    SHTrans<Sca> sht_rep_upsample_;
     
     GaussLegendreIntegrator<Sca> integrator_;
 
