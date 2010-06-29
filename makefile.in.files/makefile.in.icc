@@ -26,9 +26,9 @@ ALL_INCLUDE=$(VES3D_INCLUDE) $(CUDA_INCLUDE) $(BLAS_INCLUDE)
 PREFLAGS+= -DHAS_MKL_LIB -early-template-check -sox -fno-exceptions -diag-enable 
 
 ifeq ($(VES3D_TESTING),yes)
-	PREFLAGS+= -g -O0 -DVERBOSE -DPROFILING -DNDEBUG #-msse3
+	PREFLAGS+= -g -O0 -DVERBOSE -DPROFILING #-DNDEBUG #-msse3
 else
-	PREFLAGS+= -O3 -finline -unroll-agressive -ipo -msse3 -malign-double #-DPROFILING -opt-report 
+	PREFLAGS+= -O3 -finline -unroll-agressive -ipo #-DPROFILING #-opt-report #-msse3 #-malign-double
 endif
 
 CPPFLAGS = $(ALL_INCLUDE) $(PREFLAGS)
@@ -42,4 +42,3 @@ ifeq ($(USE_GPU),yes)
 %.o: %.cu $(MakeFiles)
 	$(NVCC) $(ALL_INCLUDE) -c $*.cu
 endif
-
