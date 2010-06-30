@@ -890,28 +890,29 @@ void avpwGpu(const float *a_in, const float *v_in, const float *w_in,
   cudaThreadSynchronize();
 }
 
+///@bug the kernel modifies the input
 __global__
 void reduceMaxKernel(float *in, int n) {
-  __shared__ float sdata[BLOCK_HEIGHT];
-  int idx = blockIdx.x * BLOCK_HEIGHT + threadIdx.x;
-  if (idx < n)
-    sdata[threadIdx.x] = in[idx];
-  else
-    sdata[threadIdx.x] = 0;
-
-  int redOff = 1;
-  int redStride = 2;
-  while(redOff != BLOCK_HEIGHT) {
-    if (threadIdx.x % redStride == 0) {
-      syncthreads();
-      sdata[threadIdx.x] = fmaxf(abs(sdata[threadIdx.x]), abs(sdata[threadIdx.x + redOff]));
+    __shared__ float sdata[BLOCK_HEIGHT];
+    int idx = blockIdx.x * BLOCK_HEIGHT + threadIdx.x;
+    if (idx < n)
+        sdata[threadIdx.x] = in[idx];
+    else
+        sdata[threadIdx.x] = 0;
+    
+    int redOff = 1;
+    int redStride = 2;
+    while(redOff != BLOCK_HEIGHT) {
+        if (threadIdx.x % redStride == 0) {
+            syncthreads();
+            sdata[threadIdx.x] = fmaxf(abs(sdata[threadIdx.x]), abs(sdata[threadIdx.x + redOff]));
+        }
+        redOff = redStride;
+        redStride *= 2;
     }
-    redOff = redStride;
-    redStride *= 2;
-  }
-  if(threadIdx.x == 0) {
-    in[blockIdx.x] = sdata[0];
-  }
+    if(threadIdx.x == 0) {
+        in[blockIdx.x] = sdata[0];
+    }
 }
 
 float maxGpu(float *in, int n) {
@@ -924,6 +925,58 @@ float maxGpu(float *in, int n) {
   cudaMemcpy(&max, in, sizeof(float), cudaMemcpyDeviceToHost);
   cudaThreadSynchronize();
   return max;
+}
+
+//Form cudasdk example
+#define IMUL(a, b) __mul24(a, b)
+#define ACCUM_N 1024
+__global__ 
+void scalarProdGPU(
+    float *d_C,
+    const float *d_A,
+    const float *d_B,
+    int vectorN,
+    int elementN
+    ){
+    //Accumulators cache
+    __shared__ float accumResult[ACCUM_N];
+    
+    for(int vec = blockIdx.x; vec < vectorN; vec += gridDim.x){
+        int vectorBase = IMUL(elementN, vec);
+        int vectorEnd  = vectorBase + elementN;
+        
+        for(int iAccum = threadIdx.x; iAccum < ACCUM_N; iAccum += blockDim.x){
+            float sum = 0;
+
+            for(int pos = vectorBase + iAccum; pos < vectorEnd; pos += ACCUM_N)
+                sum += d_A[pos] * d_B[pos];
+
+            accumResult[iAccum] = sum;
+        }
+
+        for(int stride = ACCUM_N / 2; stride > 0; stride >>= 1){
+            __syncthreads();
+            for(int iAccum = threadIdx.x; iAccum < stride; iAccum += blockDim.x)
+                accumResult[iAccum] += accumResult[stride + iAccum];
+        }
+        
+        if(threadIdx.x == 0) d_C[vec] = accumResult[0];
+    }
+}
+
+
+float AlgebraicDotGpu(const float *x, const float *y, size_t length)
+{
+    float prod;
+    float *prodGPU;
+    cudaMalloc((void **) &prodGPU, sizeof(float));
+
+    int grid = length / BLOCK_HEIGHT + 1;
+    scalarProdGPU<<<grid, BLOCK_HEIGHT>>>(prodGPU, x, y, 1, length);
+    cudaMemcpy(&prod, prodGPU, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(prodGPU);
+
+    return(prod);
 }
 
 #include "transpose_kernel.cu"

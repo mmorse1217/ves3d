@@ -1,10 +1,9 @@
-EXEC =  LoggerTest.exe  \
-	DeviceTest.exe  \
-	BlasToyTest.exe \
-	ScalarsTest.exe #BiCGStabTest.exe #EvolveSurfaceTest.exe SurfaceTest.exe SHTransTest.exe #StokesTest.exe TimeStepperTest.exe VectorsTest.exe        
-
-include $(VES3D_DIR)/makefile.in
--include $(EXEC:.exe=.d)
+EXEC =  LoggerTest.exe     \
+	DeviceTest.exe     \
+	BlasToyTest.exe    \
+	ScalarsTest.exe    \
+	BiCGStabTest.exe   \
+	SurfaceTest.exe #EvolveSurfaceTest.exe SHTransTest.exe #StokesTest.exe TimeStepperTest.exe VectorsTest.exe        
 
 ARFILES = libves3d.a
 
@@ -26,4 +25,8 @@ clean:
 	-$(RM) -rf *.o *.exe *.out *.d
 
 check:  $(EXEC)
-#call the executables
+	@for exec in *.exe; do ./$$exec; done
+
+
+include $(VES3D_DIR)/makefile.in
+-include $(EXEC:.exe=.d)

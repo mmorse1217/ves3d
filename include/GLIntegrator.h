@@ -24,8 +24,6 @@ class GaussLegendreIntegrator
     Container* buildQuadWeights(int shOrder) const;
 
   private:
-    DataIO<typename Container::value_type, CPU> IO;
-    
     static map<int, Container*> qw_map;
 };
 

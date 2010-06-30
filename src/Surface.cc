@@ -6,8 +6,8 @@
  * @brief  The implementation of the surface class.
  */
 template <typename ScalarContainer, typename VectorContainer>  
-Surface<ScalarContainer, VectorContainer>::Surface(const Vec& x_in,
-    OperatorsMats<value_type, DataIO<value_type, CPU> > &mats) :
+Surface<ScalarContainer, VectorContainer>::Surface(
+    const Vec& x_in, OperatorsMats<value_type, device_type> &mats) :
     upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
@@ -43,8 +43,7 @@ void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec& x_in)
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-VectorContainer& Surface<ScalarContainer, 
-                         VectorContainer>::getPositionModifiable()
+VectorContainer& Surface<ScalarContainer, VectorContainer>::getPositionModifiable()
 {
     containers_are_stale_ = true;
     first_forms_are_stale_ = true;
@@ -54,15 +53,13 @@ VectorContainer& Surface<ScalarContainer,
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-const VectorContainer& Surface<ScalarContainer, 
-                               VectorContainer>::getPosition() const
+const VectorContainer& Surface<ScalarContainer, VectorContainer>::getPosition() const
 {
     return(x_);
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-const VectorContainer& Surface<ScalarContainer, 
-                               VectorContainer>::getNormal() const
+const VectorContainer& Surface<ScalarContainer, VectorContainer>::getNormal() const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -70,8 +67,7 @@ const VectorContainer& Surface<ScalarContainer,
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-const ScalarContainer& Surface<ScalarContainer, 
-                               VectorContainer>::getAreaElement() const
+const ScalarContainer& Surface<ScalarContainer,VectorContainer>::getAreaElement() const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -79,8 +75,7 @@ const ScalarContainer& Surface<ScalarContainer,
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-const ScalarContainer& Surface<ScalarContainer, 
-                               VectorContainer>::getMeanCurv() const
+const ScalarContainer& Surface<ScalarContainer, VectorContainer>::getMeanCurv() const
 {
     if(second_forms_are_stale_)
         updateAll();
@@ -88,8 +83,7 @@ const ScalarContainer& Surface<ScalarContainer,
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-const ScalarContainer& Surface<ScalarContainer, 
-                               VectorContainer>::getGaussianCurv() const
+const ScalarContainer& Surface<ScalarContainer,VectorContainer>::getGaussianCurv() const
 {
     if(second_forms_are_stale_)
         updateAll();
@@ -97,8 +91,8 @@ const ScalarContainer& Surface<ScalarContainer,
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
-    Vec &smthd_pos) const
+void Surface<ScalarContainer, VectorContainer>::
+getSmoothedShapePosition(Vec &smthd_pos) const
 {
     Vec* wrk(generateVec(x_));
     Vec* shc(generateVec(x_));
@@ -110,8 +104,8 @@ void Surface<ScalarContainer, VectorContainer>::getSmoothedShapePosition(
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
-    Vec &vec_fld) const
+void Surface<ScalarContainer, VectorContainer>::
+mapToTangentSpace(Vec &vec_fld) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -156,7 +150,8 @@ void Surface<ScalarContainer, VectorContainer>::mapToTangentSpace(
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::updateFirstForms() const
+void Surface<ScalarContainer, VectorContainer>::
+updateFirstForms() const
 {
     if(containers_are_stale_)
         checkContainers();
@@ -206,7 +201,8 @@ void Surface<ScalarContainer, VectorContainer>::updateFirstForms() const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::updateAll() const
+void Surface<ScalarContainer, VectorContainer>::
+updateAll() const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -261,8 +257,8 @@ void Surface<ScalarContainer, VectorContainer>::updateAll() const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::grad(const ScalarContainer 
-    &f_in, VectorContainer &grad_f_out) const
+void Surface<ScalarContainer, VectorContainer>::
+grad(const ScalarContainer &f_in, VectorContainer &grad_f_out) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -286,8 +282,8 @@ void Surface<ScalarContainer, VectorContainer>::grad(const ScalarContainer
 }
 
 template <typename ScalarContainer, typename VectorContainer> 
-void Surface<ScalarContainer, VectorContainer>::div(const VectorContainer 
-    &f_in, ScalarContainer &div_f_out) const
+void Surface<ScalarContainer, VectorContainer>::
+div(const VectorContainer &f_in, ScalarContainer &div_f_out) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -313,9 +309,9 @@ void Surface<ScalarContainer, VectorContainer>::div(const VectorContainer
     recycleVec(wrk);  
 }
 
-template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::area(ScalarContainer 
-    &area_out) const
+template< typename ScalarContainer, typename VectorContainer>
+void Surface<ScalarContainer, VectorContainer>::
+area(ScalarContainer &area_out) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -324,8 +320,8 @@ void Surface<ScalarContainer, VectorContainer>::area(ScalarContainer
 }
 
 template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::volume(ScalarContainer 
-    &vol_out) const
+void Surface<ScalarContainer, VectorContainer>::
+volume(ScalarContainer &vol_out) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -338,8 +334,9 @@ void Surface<ScalarContainer, VectorContainer>::volume(ScalarContainer
     recycleSca(scw);
 }
 
-template< typename ScalarContainer, typename VectorContainer >
-void Surface<ScalarContainer, VectorContainer>::getCenters(Vec &centers) const
+template< typename ScalarContainer, typename VectorContainer>
+void Surface<ScalarContainer, VectorContainer>::
+getCenters(Vec &centers) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -362,7 +359,8 @@ void Surface<ScalarContainer, VectorContainer>::getCenters(Vec &centers) const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::checkContainers() const
+void Surface<ScalarContainer, VectorContainer>::
+checkContainers() const
 {
     normal_.replicate(x_);
     w_.replicate(x_);    
@@ -379,8 +377,8 @@ void Surface<ScalarContainer, VectorContainer>::checkContainers() const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-ScalarContainer* Surface<ScalarContainer, VectorContainer>::generateSca(
-    const VectorContainer &ref) const
+ScalarContainer* Surface<ScalarContainer, VectorContainer>::
+generateSca(const VectorContainer &ref) const
 {
     Sca* scp;
     
@@ -398,16 +396,16 @@ ScalarContainer* Surface<ScalarContainer, VectorContainer>::generateSca(
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::recycleSca(
-    ScalarContainer* scp) const
+void Surface<ScalarContainer, VectorContainer>::
+recycleSca(ScalarContainer* scp) const
 {
     scalar_work_q_.push(scp);
     --checked_out_work_sca_;
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-VectorContainer* Surface<ScalarContainer, VectorContainer>::generateVec(
-    const VectorContainer &ref) const
+VectorContainer* Surface<ScalarContainer, VectorContainer>::
+generateVec(const VectorContainer &ref) const
 {
     Vec* vcp;
     
@@ -434,7 +432,8 @@ void Surface<ScalarContainer, VectorContainer>::recycleVec(
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::purgeTheWorkSpace() const
+void Surface<ScalarContainer, VectorContainer>::
+purgeTheWorkSpace() const
 {
     while ( !scalar_work_q_.empty() )
     {
@@ -450,8 +449,8 @@ void Surface<ScalarContainer, VectorContainer>::purgeTheWorkSpace() const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::linearizedMeanCurv(
-    const Vec &x_new, Sca &h_lin) const
+void Surface<ScalarContainer, VectorContainer>::
+linearizedMeanCurv(const Vec &x_new, Sca &h_lin) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();

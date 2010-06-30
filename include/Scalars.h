@@ -21,6 +21,7 @@ namespace containers
     class Scalars
     {
       public:
+        typedef Device<DT> device_type;
         typedef T* iterator;
         typedef const T* const_iterator;
         typedef T value_type;
@@ -29,7 +30,7 @@ namespace containers
             pair<int, int> grid_dim = EMPTY_GRID);
         virtual ~Scalars();
         
-        static const Device<DT>& getDevice();
+        static const device_type& getDevice();
         static inline int getTheDim();
 
         inline int getShOrder() const;

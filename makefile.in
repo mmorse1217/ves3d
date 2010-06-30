@@ -1,4 +1,5 @@
 # User variables
+VES3D_DIR    ?= `pwd`
 USE_GPU       = yes
 VES3D_TESTING = yes
 HAS_MKL       = yes

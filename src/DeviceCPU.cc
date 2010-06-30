@@ -663,6 +663,21 @@ T* Device<CPU>::Transpose(const T *in, size_t height, size_t width, T *out) cons
     return(out);
 }
 
+template<>
+template<typename T>
+T Device<CPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
+{
+    T dot(0.0);
+    PROFILESTART();
+    
+#pragma omp parallel for reduction(+:dot)
+    for(size_t idx=0;idx<length; ++idx)   
+        dot = dot + (x[idx] * y[idx]);
+    
+    PROFILEEND("CPU",0);
+    return(dot);
+}
+
 template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         
 inline bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs)
 {

@@ -2,6 +2,11 @@
 
 int main(int argc, char** argv)
 {
+    COUT("\n ==============================\n"
+        <<"  Device Test:"
+        <<"\n ==============================\n");
+    sleep(1);
+
     PROFILESTART();
     bool res;
     string sep(60,'-');

@@ -1,21 +1,22 @@
 #ifndef _SHMATS_H_
 #define _SHMATS_H_
 
-template<typename T>
+template<typename T, typename Device>
 class SHTMats{
   protected:
     int sh_order_;
     pair<int, int> grid_dim_;
     T *data_;
     int dft_size;
-        
+    const Device &device_;
+
     void gen_dft_forward();
     void gen_dft_backward();
     void gen_dft_d1backward();
     void gen_dft_d2backward();
 
   public:
-    SHTMats(int sh_order, T *data, bool genrateMats = false, 
+    SHTMats(const Device &dev, int sh_order, T *data, bool genrateMats = false, 
         pair<int, int> gird_dim = EMPTY_GRID);
     ~SHTMats();
 
@@ -28,7 +29,7 @@ class SHTMats{
     inline size_t getDFTLength() const;
     inline size_t getDLTLength() const;
     inline T* getData();
-
+    inline const Device& getDevice() const;
 
     T *dft_;
     T *dft_inv_;

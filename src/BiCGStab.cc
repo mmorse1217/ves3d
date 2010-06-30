@@ -55,6 +55,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     phat.replicate(x);
 
     typename Container::value_type normb = Norm(b);
+
     A(x, r);
     axpy((typename Container::value_type) -1.0, r, b, r);
     axpy((typename Container::value_type)  0.0, r, r, rtilde);
@@ -148,7 +149,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     axpy((typename Container::value_type)  0.0, r, r, rtilde);
 
     normb = (normb == 0.0) ? 1.0 : normb;
-  
+   
     if ((resid = Norm(r) / normb) <= tol) {
         tol = resid;
         max_iter = 0;

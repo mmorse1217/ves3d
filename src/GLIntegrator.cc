@@ -2,8 +2,7 @@ template<typename Container>
 map<int, Container*> GaussLegendreIntegrator<Container>::qw_map;
 
 template<typename Container>
-GaussLegendreIntegrator<Container>::GaussLegendreIntegrator() :
-    IO(Container::getDevice())
+GaussLegendreIntegrator<Container>::GaussLegendreIntegrator()
 {}
 
 template<typename Container>
@@ -28,7 +27,6 @@ Container* GaussLegendreIntegrator<Container>::getQuadWeights(
     return(it->second);
 }
 
-#include<typeinfo>
 template<typename Container>
 Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
     int shOrder) const

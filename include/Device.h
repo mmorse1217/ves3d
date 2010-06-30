@@ -15,6 +15,7 @@
 #include "VesBlas.h"
 #include "Logger.h"
 #include "CPUKernels.h"
+#include "enums.h"
 
 #ifdef GPU_ACTIVE
 #include "cuda_runtime.h"
@@ -24,22 +25,6 @@
 ///
 #define EMPTY_GRID make_pair(-1,-1)
 #define DIM 3
-
-///The enum types for the types of device, the insertion operator <<
-///is overloaded for this type.
-enum DeviceType {CPU, GPU};
-
-///The enum types for the memory copying action, the insertion
-///operator << is overloaded for this type.
-enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, 
-                 MemcpyDeviceToHost, MemcpyDeviceToDevice};
-
-///The enum types for the device related errors, the insertion
-///operator << is overloaded for this type.
-enum DeviceError {Success, InvalidDevice, SetOnActiveDevice};
-
-///The enum type for the reordering of the points
-enum CoordinateOrder {PointMajor, AxisMajor};
 
 // Forward declaration
 template<enum DeviceType DT> class Device;
@@ -64,12 +49,10 @@ inline pair<int, int> gridDimOf(int sh_order);
  * naming the methods' parameters. All arrays are assumed to be
  * residing on the device.
  *
- * The behavior of <tt>Device<GPU></tt> depends on the environmental
- * variable <tt>GPU_ACTIVE</tt>. If <tt>GPU_ACTIVE</tt> is defined,
- * the class calls the GPU specialized methods, otherwise the generic
- * methods (CPU) are called.
- *
- * @todo The tester is obsolete
+ * The behavior of <tt>Device<GPU></tt> depends on the variable
+ * <tt>GPU_ACTIVE</tt>. If <tt>GPU_ACTIVE</tt> is defined, the class
+ * calls the GPU specialized methods, otherwise the generic methods
+ * (CPU) are called.
  */
 template<enum DeviceType DT = CPU>
 class Device
@@ -189,6 +172,9 @@ class Device
     ///Transpose of a matrix
     template<typename T>
     T* Transpose(const T *in, size_t height, size_t width, T *out) const;
+
+    template<typename T>
+    T AlgebraicDot(const T* x, const T* y, size_t length) const;
 
     //The comparison operator 
     template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         

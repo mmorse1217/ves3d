@@ -2,12 +2,12 @@ include ${VES3D_DIR}/makefile.in
 
 all: docs tags lib test
 
-.PHONY: docs tags lib test clean
+.PHONY: docs TAGS lib test clean
 
 docs: $(MAKEDEP)
 	-$(DOX) ./docs/Doxyfile
 
-tags: $(MAKEDEP)
+TAGS: $(MAKEDEP)
 	-$(TAGS) src/* include/*
 
 lib:

@@ -198,7 +198,7 @@ T*  Device<GPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
     const T *quad_w_in, size_t stride, size_t num_surfs, T  *int_x_dw) const
 {
     PROFILESTART();
-    assert(x_dim == 1); //other cases need to be implemented for gpu
+    assert(x_dim < 2); //other cases need to be implemented for gpu
     ReduceGpu(x_in, w_in, quad_w_in, stride, num_surfs, int_x_dw);
     PROFILEEND("GPU",0);
     return int_x_dw;
@@ -269,6 +269,15 @@ T* Device<GPU>::Transpose(const T *in, size_t height,
     return(out);
 }
 
+template<>
+template<typename T>
+T Device<GPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
+{
+    PROFILESTART();
+    T dot = AlgebraicDotGpu(x, y, length);
+    PROFILEEND("GPU",0);
+    return(dot);
+}
 template<>
 Device<GPU>::~Device()
 {

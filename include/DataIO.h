@@ -9,21 +9,21 @@
 #ifndef _DATAIO_H_
 #define _DATAIO_H_
 
-#include "Device.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <cassert>
-
+#include "Logger.h"
+#include "enums.h"
 /**
  * A simple data I/O class tailored for this project. It reads data
  * from and writes data to file. 
  */
 using namespace std;
 
-template<typename T,enum DeviceType DT>
+template<typename T, typename Device>
 class DataIO
 {
   private:
@@ -33,11 +33,9 @@ class DataIO
     mutable T* out_buffer_; 
     int resize_factor_;
 
+    const Device &device_;
   public:
-    ///@todo device should be private, be OperatorMats needs it!!
-    const Device<DT> &device_;
-  public:
-    DataIO(const Device<DT> &device_in, string file_name_in = "", 
+    DataIO(const Device &device_in, string file_name_in = "", 
         size_t buffer_size_in = 0);
     ~DataIO();
     

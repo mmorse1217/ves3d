@@ -1,5 +1,5 @@
-template<typename T, enum DeviceType DT>
-DataIO<T,DT>::DataIO(const Device<DT> &device_in, 
+template<typename T, typename Device>
+DataIO<T,Device>::DataIO(const Device &device_in, 
     string file_name_in, size_t buffer_size_in) :
     out_size_(buffer_size_in),
     out_used_(0),
@@ -8,15 +8,15 @@ DataIO<T,DT>::DataIO(const Device<DT> &device_in,
     out_buffer_((T*) malloc(out_size_ * sizeof(T)))
 {}
 
-template<typename T, enum DeviceType DT>
-DataIO<T,DT>::~DataIO()
+template<typename T, typename Device>
+DataIO<T,Device>::~DataIO()
 {
     FlushBuffer();
     free(out_buffer_);
 }    
 
-template<typename T, enum DeviceType DT>
-bool DataIO<T,DT>::ReadData(const char* file_name_in, 
+template<typename T, typename Device>
+bool DataIO<T,Device>::ReadData(const char* file_name_in, 
     size_t data_size_in, T* data_array_out) const
 {
     ifstream data_file(file_name_in, ios::in);
@@ -38,8 +38,8 @@ bool DataIO<T,DT>::ReadData(const char* file_name_in,
     return(true);
 }
 
-template<typename T, enum DeviceType DT>
-bool DataIO<T,DT>::WriteData(const char* file_name_in, 
+template<typename T, typename Device>
+bool DataIO<T,Device>::WriteData(const char* file_name_in, 
     size_t data_size_in, const T* data_array_in, 
     ios_base::openmode mode_in) const
 {
@@ -62,8 +62,8 @@ bool DataIO<T,DT>::WriteData(const char* file_name_in,
 }
 
 
-template<typename T, enum DeviceType DT>
-bool DataIO<T,DT>::Append(const T* x_in, size_t length) const
+template<typename T, typename Device>
+bool DataIO<T,Device>::Append(const T* x_in, size_t length) const
 {
 #ifndef NDEBUG
     COUT("\n DataIO::Append():"
@@ -86,8 +86,8 @@ bool DataIO<T,DT>::Append(const T* x_in, size_t length) const
     return(true);
 }
 
-template<typename T, enum DeviceType DT>
-bool DataIO<T,DT>::ResizeOutBuffer(size_t buffer_size_in) const
+template<typename T, typename Device>
+bool DataIO<T,Device>::ResizeOutBuffer(size_t buffer_size_in) const
 {
     FlushBuffer();
     free(out_buffer_);
@@ -96,8 +96,8 @@ bool DataIO<T,DT>::ResizeOutBuffer(size_t buffer_size_in) const
     return(true);
 }
 
-template<typename T, enum DeviceType DT>
-bool DataIO<T,DT>::FlushBuffer() const
+template<typename T, typename Device>
+bool DataIO<T,Device>::FlushBuffer() const
 {
 #ifndef NDEBUG
     COUT("\n DataIO::FlushBuffer()"<<endl);

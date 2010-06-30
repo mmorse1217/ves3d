@@ -5,30 +5,36 @@
 #include "Parameters.h"
 #include "SHTMats.h"
 
-template <typename T, typename IO>
+template <typename T, typename Device>
 struct OperatorsMats
 {
+  private:
+    const Device &device_;
+    
   public:
-    IO &fileIO_;
+    
+    DataIO<T, Device> &fileIO_;
     int p_;
     int p_up_;   
 
     T *data_;
 
-    SHTMats<T> mats_p_;
-    SHTMats<T> mats_p_up_;
+    SHTMats<T,Device> mats_p_;
+    SHTMats<T,Device> mats_p_up_;
     T *quad_weights_;
     T *sing_quad_weights_;
     T *w_sph_;
     T *all_rot_mats_;  
 
-    OperatorsMats(IO &fileIO_in, bool readFromFile, const Parameters<T> &params);
+    OperatorsMats(const Device &dev, DataIO<T, Device> &fileIO_in, 
+        bool readFromFile, const Parameters<T> &params);
     ~OperatorsMats();
-    size_t getDataLength();
-    
+    size_t getDataLength() const;
+    const Device& getDevice() const;
+
   private:
-    OperatorsMats(const OperatorsMats<T, IO>& mat_in);
-    OperatorsMats<T, IO>& operator=(const OperatorsMats<T, IO>& vec_in);
+    OperatorsMats(const OperatorsMats& mat_in);
+    OperatorsMats& operator=(const OperatorsMats& vec_in);
 };
 
 #include "OperatorsMats.cc"

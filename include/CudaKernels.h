@@ -17,5 +17,6 @@ void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q);
 void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, float *shc_out);
 void avpwGpu(const float *a_in, const float *v_in, const float *w_in, int stride, int num_surfs, float *avpw_out);
 float maxGpu(float *in, int n);
+float AlgebraicDotGpu(const float *x, const float *y, size_t length);
 
 #include "transpose_kernel.h"

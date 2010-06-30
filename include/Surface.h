@@ -20,12 +20,12 @@ class Surface
 {
   public:
     typedef typename ScalarContainer::value_type value_type;
+    typedef typename ScalarContainer::device_type device_type;
     typedef VectorContainer Vec;
     typedef ScalarContainer Sca;
 
     ///@todo add a default constructor
-    Surface(const Vec& x_in, OperatorsMats<value_type, 
-        DataIO<value_type, CPU> > &mats);
+    Surface(const Vec& x_in, OperatorsMats<value_type, device_type> &mats);
     ~Surface();
 
     void setPosition(const Vec& x_in);
@@ -60,10 +60,11 @@ class Surface
  
     int upsample_freq_;
     int rep_filter_freq_;
-
-    SHTrans<Sca> sht_;
-    SHTrans<Sca> sht_rep_filter_;
-    SHTrans<Sca> sht_rep_upsample_;
+    
+    typedef SHTMats<value_type,device_type> Mats;
+    SHTrans<Sca,Mats> sht_;
+    SHTrans<Sca,Mats> sht_rep_filter_;
+    SHTrans<Sca,Mats> sht_rep_upsample_;
     
     GaussLegendreIntegrator<Sca> integrator_;
 
@@ -75,8 +76,8 @@ class Surface
     void updateAll() const;
     void checkContainers() const;
 
-    Surface(Surface<Sca, Vec> const& s_in);
-    Surface<Sca, Vec>& operator=(const Surface<Sca, Vec>& rhs);
+    Surface(Surface const& s_in);
+    Surface& operator=(const Surface& rhs);
 
     ///@todo these can be removed, but updateAll should be rewritten
     mutable Sca E, F, G;

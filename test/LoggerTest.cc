@@ -3,6 +3,8 @@
 
 using namespace std;
 
+#ifndef Doxygen_skip
+
 void Wait(int sec)
 {
     PROFILESTART();
@@ -29,8 +31,15 @@ int Dummy(int ii)
     return(ii);
 }
 
+#endif //Doxygen_skip
+
 int main(int argc, char** argv)
 {
+    COUT("\n ==============================\n"
+        <<"  Logger Test:"
+        <<"\n ==============================\n");
+    sleep(1);
+
     PROFILESTART();
     string log_file("LoggerTest.out");
     Logger::SetLogFile(log_file);

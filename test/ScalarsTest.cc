@@ -6,6 +6,11 @@ extern const Device<GPU> gpu_dev(0);
 
 int main(int argc, char* argv[])
 {
+    COUT("\n ==============================\n"
+        <<"  Scalars Test:"
+        <<"\n ==============================\n");
+    sleep(1);
+
     ScalarsTest< containers::Scalars<float,CPU, cpu_dev> > sctest_cpu;
     sctest_cpu.PerformAll();
 

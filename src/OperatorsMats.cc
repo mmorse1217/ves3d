@@ -1,18 +1,19 @@
-template <typename T, typename IO>
-OperatorsMats<T, IO>::OperatorsMats(IO &fileIO_in, bool readFromFile, 
-    const Parameters<T> &params) :
+template <typename T, typename Device>
+OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO<T, Device> 
+    &fileIO_in, bool readFromFile, const Parameters<T> &params) :
+    device_(dev),
     fileIO_(fileIO_in),
     p_(params.sh_order), 
     p_up_(params.rep_up_freq),
-    data_((T*) fileIO_.device_.Malloc(getDataLength() * sizeof(T))),
-    mats_p_(p_, data_, readFromFile),
-    mats_p_up_(p_up_, data_ + SHTMats<T>::getDataLength(p_), readFromFile)
+    data_((T*) device_.Malloc(getDataLength() * sizeof(T))),
+    mats_p_(dev, p_, data_, readFromFile),
+    mats_p_up_(dev, p_up_, data_ + SHTMats<T, Device>::getDataLength(p_), readFromFile)
 {
     int np = 2 * p_ * ( p_ + 1);   
     
     quad_weights_       = data_ + 
-        SHTMats<T>::getDataLength(p_) + 
-        SHTMats<T>::getDataLength(p_up_);
+        SHTMats<T,Device>::getDataLength(p_) + 
+        SHTMats<T,Device>::getDataLength(p_up_);
     
     sing_quad_weights_  = quad_weights_       + np;
     w_sph_              = sing_quad_weights_  + np;
@@ -64,18 +65,24 @@ OperatorsMats<T, IO>::OperatorsMats(IO &fileIO_in, bool readFromFile,
     }
 }
 
-template <typename T, typename IO>
-OperatorsMats<T, IO>::~OperatorsMats()
+template <typename T, typename Device>
+OperatorsMats<T, Device>::~OperatorsMats()
 {
-    fileIO_.device_.Free(data_);
+    device_.Free(data_);
 }
 
-template <typename T, typename IO>
-size_t OperatorsMats<T, IO>::getDataLength()
+template <typename T, typename Device>
+size_t OperatorsMats<T, Device>::getDataLength() const
 {
     int np = 2 * p_ * ( p_ + 1);
     int rot_mat_size =  np * np * (p_ + 1);
     
-    return(3*np + rot_mat_size +  SHTMats<T>::getDataLength(p_) + 
-        SHTMats<T>::getDataLength(p_up_));
+    return(3*np + rot_mat_size +  SHTMats<T,Device>::getDataLength(p_) + 
+        SHTMats<T,Device>::getDataLength(p_up_));
+}
+
+template <typename T, typename Device>
+const Device& OperatorsMats<T, Device>::getDevice() const
+{
+    return(device_);
 }

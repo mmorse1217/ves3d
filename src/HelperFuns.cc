@@ -236,10 +236,7 @@ template<typename ScalarContainer>
 typename ScalarContainer::value_type AlgebraicDot(const ScalarContainer &x, 
     const ScalarContainer &y)
 {
-    typename ScalarContainer::value_type dot(0);
-    for(size_t idx=0;idx<x.size(); ++idx)
-        dot+= x[idx] * y[idx];
-    return dot;
+    return(x.getDevice().AlgebraicDot(x.begin(), y.begin(), x.size()));
 }
 
 template<typename Container>
