@@ -964,7 +964,6 @@ void scalarProdGPU(
     }
 }
 
-
 float AlgebraicDotGpu(const float *x, const float *y, size_t length)
 {
     float prod;
@@ -977,6 +976,27 @@ float AlgebraicDotGpu(const float *x, const float *y, size_t length)
     cudaFree(prodGPU);
 
     return(prod);
+}
+
+__global__
+void axKernel(const float *a, const float *x, int stride, float *ax)
+{
+    int xOff = blockIdx.x * stride + threadIdx.x;
+    int aOff = threadIdx.x;
+
+    while(xOff < (blockIdx.x + 1)* stride)
+    {
+        ax[xOff] = a[aOff] * x[xOff];
+        xOff += BLOCK_HEIGHT;
+        aOff += BLOCK_HEIGHT;
+    }
+}
+
+void axGpu(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_out) 
+{
+  int grid = n_vecs;
+  axKernel<<<grid, BLOCK_HEIGHT>>> (a, x, stride, ax_out);
+  cudaThreadSynchronize();
 }
 
 #include "transpose_kernel.cu"

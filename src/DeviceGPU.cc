@@ -95,9 +95,11 @@ template<>
 template<typename T>
 T* Device<GPU>::ax(const T* a, const T* x, size_t length, 
     size_t n_vecs, T* ax_out)  const
-{
-    CERR("TO BE IMPLEMENTED", endl, exit(1));
-    return(a);
+{   
+    PROFILESTART();
+    axGpu(a, x, length, n_vecs, ax_out);
+    PROFILEEND("GPU",0);
+    return(ax_out);
 }
 
 template<>
