@@ -68,6 +68,11 @@ void Logger::Record(string fun_name, string prefix, double time, double flop)
     }
 }
 
+void Logger::PurgeProfileHistory()
+{
+    Logger::PrflMap.clear();
+}
+    
 void Logger::Report(enum ReportFormat rf) 
 {
 

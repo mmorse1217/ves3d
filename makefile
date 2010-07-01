@@ -1,6 +1,6 @@
 include ${VES3D_DIR}/makefile.in
 
-all: docs tags lib test
+all: docs TAGS lib test
 
 .PHONY: docs TAGS lib test clean
 

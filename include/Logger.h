@@ -62,6 +62,9 @@ class Logger
     ///log_file.
     static void Log(const char *event);
 
+    ///Clears the slate of profiler
+    static void PurgeProfileHistory();
+
   private:
     ///The constructor, since the class is a singleton class, the
     ///constructor is set private to avoid instantiation of the
@@ -83,10 +86,12 @@ class Logger
 #define PROFILESTART() (Logger::Tic())
 #define PROFILEEND(str,flps) (                                  \
         Logger::Record(__FUNCTION__, str, Logger::Toc(), flps))
+#define PROFILECLEAR() (Logger::PurgeProfileHistory())
 #define PROFILEREPORT(format) (Logger::Report(format))
 #else
 #define PROFILESTART()
 #define PROFILEEND(str,flps)
+#define PROFILECLEAR()
 #define PROFILEREPORT(format)
 #endif //PROFILING
 

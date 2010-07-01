@@ -992,7 +992,7 @@ void axKernel(const float *a, const float *x, int stride, float *ax)
     }
 }
 
-void axGpu(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_out) 
+void axGpu(const float* a, const float* x, size_t stride, size_t n_vecs, float* ax_out) 
 {
   int grid = n_vecs;
   axKernel<<<grid, BLOCK_HEIGHT>>> (a, x, stride, ax_out);
