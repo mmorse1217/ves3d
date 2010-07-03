@@ -20,7 +20,8 @@ class Identity
 enum BiCGSReturn {BiCGSSuccess       = 100,
                   MaxIterReached     = 101,
                   BreakDownRhoZero   = 102,
-                  BreakDownOmegaZero = 103};
+                  BreakDownOmegaZero = 103,
+                  RelResIsNan        = 104};
 /** 
  * BiCGSTAB solves the non-symmetric linear system Ax = b using the
  * Preconditioned BiConjugate Gradient Stabilized method; the template

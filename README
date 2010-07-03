@@ -3,17 +3,17 @@
 
 To build:
 ---------
- . select the appropriate makefile.in
-   cp makefile.in.files/makefile.in.machine makefile.in.files/makefile.in
+ . set the appropritate platform in makefile.in.files/makefile.in and
+make sure that the corresponding makefile.in.$(PLATFORM) exist.
  
  . if necessary modify makefile for CXX flags and BLAS paths
  . call make at the VES3D_DIR
  . make a softlink to the directory precomputed/ in the test/ directory.
- . run executables in test/
+ . call "make check" in the test/
 
  . Code-specific compiler options are: VERBOSE, and PROFILING
 
-if you want the GPU code compiled set "export USE_GPU=yes"
+if you want the GPU code compiled set "USE_GPU=yes" in makefile.in
 
 
 

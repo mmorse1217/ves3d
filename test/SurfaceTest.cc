@@ -1,4 +1,4 @@
-#include <iostream>
+#include <iostream>             // 
 #include "DataIO.h"
 #include "Scalars.h"
 #include "Vectors.h"
@@ -68,11 +68,11 @@ void testSurface(const Device<DT> &dev)
     //the gpu integrator should be fixed
     //         Sca Vol(nVec, p, make_pair(1,1));
     //         S.volume(Vol);
-    cout<<" Area = "<<MaxAbs(Area)<<endl;//", Volume = "<<MaxAbs(Vol)<<endl;
+    COUT(" Area = "<<MaxAbs(Area)<<endl);//", Volume = "<<MaxAbs(Vol)<<endl;
         
     //Vec Cntrs(nVec, 0, make_pair(1,1));
     //S.getCenters(Cntrs);
-    //cout<<" Centers :\n"<<Cntrs<<endl;
+    //COUT(" Centers :\n"<<Cntrs<<endl);
         
     // Checking the grad and div operator
     Vec grad(nVec,p), lap(nVec,p);
@@ -102,33 +102,33 @@ void testSurface(const Device<DT> &dev)
     GeometricDot(lap,S.getNormal(),hh);
     axpy((real) -.5, hh, S.getMeanCurv(),hh);
         
-    cout<<" The error in the surface grad (For the "
+    COUT(" The error in the surface grad (For the "
         <<"\n dumbbell .13120 expected - 2/3 filtering) = "
-        <<fixed<<setprecision(5)<<MaxAbs(hh)<<endl;
+        <<fixed<<setprecision(5)<<MaxAbs(hh)<<endl);
         
     Sca div_n(nVec,p);
     S.div(S.getNormal(), div_n);
     axpy((real) .5, div_n, S.getMeanCurv(),div_n);
         
-    cout<<" The error in the surface divergence (For the "
+    COUT(" The error in the surface divergence (For the "
         <<"\n dumbbell .02964 expected - 2/3 filtering) = "
-        <<fixed<<setprecision(5)<<MaxAbs(div_n)<<endl;
+        <<fixed<<setprecision(5)<<MaxAbs(div_n)<<endl);
 
     S.linearizedMeanCurv(S.getPosition(), hh);
     axpy((real) -1, hh, S.getMeanCurv(), hh);
-    cout<<" Linear curvature operator: "<<MaxAbs(hh)<<endl;
+    COUT(" Linear curvature operator: "<<MaxAbs(hh)<<endl);
         
     grad.getDevice().Memcpy(grad.begin(), S.getNormal().begin(), 
         S.getNormal().size() * sizeof(real), MemcpyDeviceToDevice);
     S.mapToTangentSpace(grad);
-    cout<<" Map to tangent space: "<<MaxAbs(grad)<<endl;
+    COUT(" Map to tangent space: "<<MaxAbs(grad)<<endl);
     sleep(.5);
 }
 
 int main(int argc, char ** argv)
 {    
     COUT("\n\n ================\n  Surface test: \n ================"<<endl);
-    sleep(.5);
+    COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
 
     typedef Scalars<real, CPU, the_cpu_device> ScaCPU;
     typedef Vectors<real, CPU, the_cpu_device> VecCPU;
@@ -136,9 +136,10 @@ int main(int argc, char ** argv)
     testSurface<ScaCPU, VecCPU, CPU>(the_cpu_device);
 
     PROFILEREPORT(SortTime);    
-    //PROFLIECLEAR();
 
 #ifdef GPU_ACTIVE
+    PROFILECLEAR();
+    COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
     typedef Scalars<real, GPU, the_gpu_device> ScaGPU;
     typedef Vectors<real, GPU, the_gpu_device> VecGPU;
      

@@ -2,7 +2,7 @@
 VES3D_DIR    ?= `pwd`
 USE_GPU      ?= no
 VES3D_TESTING = yes
-PLATFORM      = romario.icpc
+PLATFORM      = ion.icpc
 
 # Compiler
 AR      = ar
@@ -11,13 +11,11 @@ DOX     = doxygen
 TAGS    = etags
 
 # Platform dependent makefile 
-MAKEIN  = $(VES3D_DIR)/makefile.in.files/makefile.$(PLATFORM)
-
-include $(MAKEIN)
+include $(VES3D_DIR)/makefile.in.files/makefile.$(PLATFORM)
 
 # GPU
 ifeq ($(USE_GPU),yes)
-  VES3D_GPU_LIBS=-lves3dgpu
+  VES3D_GPU_LIBS= -lves3dgpu
   CUDA_DIR      = /usr/local/cuda
   NVCC          = $(CUDA_DIR)/bin/nvcc
   CUDA_LIBS     = -L$(CUDA_DIR)/lib64 -lcublas -lcudart	#-Wl,-rpath $(CUDA_DIR)/lib64
@@ -29,7 +27,7 @@ ifeq ($(USE_GPU),yes)
   ALL_INCLUDE  += $(CUDA_INCLUDE)
   LDFLAGS      += $(CUDA_LIBS) 	
 
-%.o: %.cu $(MAKEDEP)
+%.o: %.cu $(MAKEIN)
 	$(NVCC) $(ALL_INCLUDE) -c -o $@ $<
 endif
 

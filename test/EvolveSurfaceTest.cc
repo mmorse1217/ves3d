@@ -12,8 +12,8 @@ typedef float fmm_value_type;
 
 int main(int argc, char **argv)
 {
-    typedef containers::Scalars<real, CPU, the_device> Sca;
-    typedef containers::Vectors<real, CPU, the_device> Vec;
+    typedef Scalars<real, CPU, the_device> Sca;
+    typedef Vectors<real, CPU, the_device> Vec;
     typedef Surface<Sca,Vec> Sur;
     typedef Parameters<real> Par;
     typedef VesInteraction<fmm_value_type> Interaction;
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     Par sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = .5;    
-    sim_par.time_horizon = 50;
+    sim_par.time_horizon = 2;
     sim_par.rep_maxit = 20;
     sim_par.bg_flow_param = 0.1;    
     sim_par.save_data = true;    
@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     remove(sim_par.save_file_name.c_str());
 
     //IO
-    DataIO<real, CPU> myIO(the_device);
+    DataIO<real, Device<CPU> > myIO(the_device);
 
     //Initializing vesicle positions from text file
     Vec x0(sim_par.n_surfs, sim_par.sh_order);
@@ -61,7 +61,8 @@ int main(int argc, char **argv)
 
     //Reading operators from file
     bool readFromFile = true;
-    OperatorsMats<real, DataIO<real, CPU> > mats(myIO, readFromFile, sim_par);
+    OperatorsMats<real, Device<CPU> > mats(the_device, myIO, 
+        readFromFile, sim_par);
 
     //Making the surface, and time stepper
     Sur S(x0, mats);

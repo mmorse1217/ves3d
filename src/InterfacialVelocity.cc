@@ -23,7 +23,7 @@ void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
-    OperatorsMats<value_type, DataIO<value_type, CPU> > &mats, const Parameters<value_type> &params,
+    OperatorsMats<value_type, Device<CPU> > &mats, const Parameters<value_type> &params,
     BackgroundFlow &bgFlow) :
     S_(S_in),
     interaction_(Inter),

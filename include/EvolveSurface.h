@@ -9,10 +9,11 @@ class Monitor
 {
   private:
     typedef typename SurfContainer::value_type value_type;
+    typedef typename SurfContainer::Sca::device_type device_type;
     value_type time_hor_;
     bool save_flag_;
     value_type save_stride_;
-    DataIO<value_type, CPU> IO;
+    DataIO<value_type, device_type> IO;
     value_type A0, V0;
     
   public:
@@ -26,11 +27,13 @@ class EvolveSurface
 {
   private:
     typedef typename Container::value_type value_type;   
-    OperatorsMats<value_type, DataIO<value_type, CPU> > &mats_;
+    typedef typename Container::device_type device_type;   
+
+    OperatorsMats<value_type, device_type> &mats_;
     const Parameters<value_type> &params_;
 
   public:
-    EvolveSurface(OperatorsMats<value_type, DataIO<value_type, CPU> >
+    EvolveSurface(OperatorsMats<value_type, device_type >
         &mats, const Parameters<value_type> &params);
     void operator()(Container &S, Interaction &Inter);
 };

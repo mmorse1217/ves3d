@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     
 #ifdef GPU_ACTIVE
     {
-        typedef containers::Scalars<real,GPU, the_gpu_dev> ScaGPU;
+        typedef Scalars<real,GPU, the_gpu_dev> ScaGPU;
         MatVec<ScaGPU> AxGPU(nfuns, p);
         
         ScaGPU x(nfuns, p), b(nfuns,p);

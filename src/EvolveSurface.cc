@@ -40,7 +40,7 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
 
 template<typename Container, typename Interaction>
 EvolveSurface<Container, Interaction>::EvolveSurface(OperatorsMats<value_type, 
-    DataIO<value_type, CPU> > &mats, const Parameters<value_type> &params) : 
+    device_type> &mats, const Parameters<value_type> &params) : 
     mats_(mats), params_(params){}
 
 template<typename Container, typename Interaction>

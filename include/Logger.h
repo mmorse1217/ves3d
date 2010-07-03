@@ -90,8 +90,8 @@ class Logger
 #define PROFILEREPORT(format) (Logger::Report(format))
 #else
 #define PROFILESTART()
-#define PROFILEEND(str,flps)
 #define PROFILECLEAR()
+#define PROFILEEND(str,flps)
 #define PROFILEREPORT(format)
 #endif //PROFILING
 
@@ -103,7 +103,6 @@ class Logger
 #endif //NDEBUG
 
 //Printing macro
-//precision for printing
 #define CERR(str,endline,action) (                                      \
         std::cerr<<endl<<str                                            \
         <<"\n         File     : "<< __FILE__                           \
