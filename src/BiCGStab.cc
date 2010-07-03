@@ -30,6 +30,10 @@ std::ostream& operator<<(std::ostream& output, const enum BiCGSReturn &ret)
         case BreakDownOmegaZero:
             output<<"BreakDownOmegaZero";
             break;
+        
+        case RelresIsNan:
+            output<<"RelresIsNan";
+            break;
     }
     
     return output;
@@ -69,10 +73,10 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     }
     for (int i = 1; i <= max_iter; i++) {
 
-        if ( relres != relres )
+        if ( resid != resid )
             return RelresIsNan;
 
-        COUT("\n BiCGStab: iteration = "<<i
+        COUTDEBUG("\n BiCGStab: iteration = "<<i
             <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
 
         rho_1 = AlgebraicDot(rtilde, r);
@@ -160,7 +164,10 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     }
     for (int i = 1; i <= max_iter; i++) {
 
-        COUT("\n BiCGStab: iteration = "<<i
+        if ( resid != resid )
+            return RelresIsNan;
+
+        COUTDEBUG("\n BiCGStab: iteration = "<<i
             <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
         
         rho_1 = AlgebraicDot(rtilde, r);

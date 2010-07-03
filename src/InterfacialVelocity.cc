@@ -190,18 +190,18 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
     
     int max_iter(params_.inner_solver_maxit);
     value_type tol(params_.inner_solver_tol);
-
+    enum BiCGSReturn solver_ret;
     ///@todo add the restart option to the Parameters
-    ///@todo add verbose option 
-        
+            
     for(int ii=0; ii<2; ++ii)
     {
         int mIter(max_iter);
         value_type tt(tol);
         
-        if ( linear_solver_(*this, tension, rhs, mIter, tt) != BiCGSSuccess && ii==1 )
-            CERR("\n The tension solver did not converge!\n",endl<<endl,exit(1));
-        
+        solver_ret = linear_solver_(*this, tension, rhs, mIter, tt);
+        if ( (solver_ret  != BiCGSSuccess && ii==1) || solver_ret == RelresIsNan )
+            CERR("\n The tension solver did not converge with the error \""
+                <<solver_ret<<"\"",endl<<endl,exit(1));
     }
 }
 
@@ -305,7 +305,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
         
         vel = u1_.getDevice().MaxAbs(u1_.begin(), u1_.size());
              
-        COUT("\n Reparametrization :"
+        COUTDEBUG("\n Reparametrization :"
             <<"\n           iteration = "<<ii
             <<"\n           |vel|     = "<<vel<<endl);
         

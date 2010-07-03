@@ -65,13 +65,11 @@ bool DataIO<T,Device>::WriteData(const char* file_name_in,
 template<typename T, typename Device>
 bool DataIO<T,Device>::Append(const T* x_in, size_t length) const
 {
-#ifndef NDEBUG
-    COUT("\n DataIO::Append():"
+    COUTDEBUG("\n DataIO::Append():"
         <<"\n           size      = "<<length
         <<"\n           total     = "<<out_size_
         <<"\n           used      = "<<out_used_
         <<"\n           available = "<<out_size_-out_used_<<endl);
-#endif
 
     if(length > out_size_)
         ResizeOutBuffer(length);
@@ -99,9 +97,7 @@ bool DataIO<T,Device>::ResizeOutBuffer(size_t buffer_size_in) const
 template<typename T, typename Device>
 bool DataIO<T,Device>::FlushBuffer() const
 {
-#ifndef NDEBUG
-    COUT("\n DataIO::FlushBuffer()"<<endl);
-#endif
+    COUTDEBUG("\n DataIO::FlushBuffer()"<<endl);
 
     bool res(true);
     if(out_buffer_ !=0 && out_used_ > 0)

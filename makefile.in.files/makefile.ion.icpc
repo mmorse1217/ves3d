@@ -20,7 +20,7 @@ CXXFLAGS= -DHAS_MKL_LIB -openmp -fPIC -early-template-check -sox	\
 	-fno-exceptions -diag-enable
 
 ifeq ($(VES3D_TESTING),yes)
-  CXXFLAGS+= -g -O0 -DVERBOSE -DPROFILING #-DNDEBUG #-msse3
+  CXXFLAGS+= -g -O0 -fp-model precise -mp1 -DVERBOSE -DPROFILING #-DNDEBUG #-msse3
 else
   CXXFLAGS+= -O3 -finline -unroll-agressive #-ipo 			\
     #-DPROFILING #-opt-report #-msse3 #-malign-double

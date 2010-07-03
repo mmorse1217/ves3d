@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     Par sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = .5;    
-    sim_par.time_horizon = 2;
+    sim_par.time_horizon = 3;
     sim_par.rep_maxit = 20;
     sim_par.bg_flow_param = 0.1;    
     sim_par.save_data = true;    

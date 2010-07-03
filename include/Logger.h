@@ -110,6 +110,13 @@ class Logger
         <<"\n         Function : "<<__FUNCTION__<<endline,              \
         action                                                          \
                                                                         )
+
+#ifndef NDEBUG
+#define COUTDEBUG(str) (std::cout<<str)
+#else
+#define COUTDEBUG(str)
+#endif //NDEBUG
+                                                                        
 #ifdef VERBOSE
 #define COUT(str) (std::cout<<str)
 #else

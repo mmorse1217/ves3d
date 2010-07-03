@@ -3,11 +3,11 @@
 
 To build:
 ---------
- . set the appropritate platform in makefile.in.files/makefile.in and
-make sure that the corresponding makefile.in.$(PLATFORM) exist.
+ . make sure that the makefile corresponding to the host machine (the
+ value returned by hostname in the shell) exists in the
+ makefile.in.files/.
  
- . if necessary modify makefile for CXX flags and BLAS paths
- . call make at the VES3D_DIR
+ . call make at the VES3D_DIR directory
  . make a softlink to the directory precomputed/ in the test/ directory.
  . call "make check" in the test/
 

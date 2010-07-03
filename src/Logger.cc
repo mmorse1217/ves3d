@@ -75,7 +75,6 @@ void Logger::PurgeProfileHistory()
     
 void Logger::Report(enum ReportFormat rf) 
 {
-
     multimap<double, LogEvent> ReportMap;
     map<string, LogEvent>::iterator it;
 

@@ -2,7 +2,7 @@
 VES3D_DIR    ?= `pwd`
 USE_GPU      ?= no
 VES3D_TESTING = yes
-PLATFORM      = ion.icpc
+PLATFORM      = $(shell hostname).icpc
 
 # Compiler
 AR      = ar

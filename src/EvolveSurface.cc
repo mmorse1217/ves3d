@@ -57,8 +57,8 @@ void EvolveSurface<Container, Interaction>::operator()(Container &S,
     while ( M(S, t, dt) )
     {
         velocity.replicate(S.getPosition());
-        //F.updatePositionImplicit(dt);       
-        F.updatePositionExplicit(dt);
+        F.updatePositionImplicit(dt);       
+        //F.updatePositionExplicit(dt);
         F.reparam();
         t += dt;
     }
