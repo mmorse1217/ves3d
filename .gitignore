@@ -8,7 +8,6 @@
 *.d
 results/
 precomputed
-makefile.in.files/makefile.in
 docs/html/
 docs/latex/
 TAGS
