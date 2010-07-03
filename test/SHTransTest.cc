@@ -1,3 +1,6 @@
+///This test only performs the filtering. Use matlab/SHTransTest.m to
+///see the result in Matlab
+
 #include "Device.h"
 #include "OperatorsMats.h"
 #include "DataIO.h"

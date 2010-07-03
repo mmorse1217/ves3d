@@ -55,14 +55,14 @@ enum CoordinateOrder Vectors<T, DT, DEVICE>::getPointOrder() const
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Vectors<T, DT, DEVICE>::iterator Vectors<T, DT, DEVICE>::getSubN(size_t n)
+typename Vectors<T, DT, DEVICE>::iterator Vectors<T, DT, DEVICE>::getSubN(size_t n)
 {
     assert(n<num_sub_vecs_);
     return(this->begin() + n * this->getTheDim() * this->getStride());
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Vectors<T, DT, DEVICE>::const_iterator Vectors<T, DT, DEVICE>::getSubN(size_t n) const
+typename Vectors<T, DT, DEVICE>::const_iterator Vectors<T, DT, DEVICE>::getSubN(size_t n) const
 {
     assert(n<num_sub_vecs_);
     return(this->begin() + n * this->getTheDim() * this->getStride());

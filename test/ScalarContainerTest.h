@@ -10,9 +10,9 @@
 #include <iostream>
 #include "Scalars.h"
 #include "cstring"
+#include <typeinfo>
 
 using namespace std;
-using namespace containers;
 
 template<typename Container>
 class ScalarsTest
@@ -63,7 +63,11 @@ bool ScalarsTest<Container>::PerformAll()
     COUT(" Copying form to and from the container: "<<((res) ? "Pass" : "Fail")<<endl);
 
     if(res)
-        COUT(" The container "<<typeid(Container).name()<<" works fine."<<endl);
+        COUT("\n\n ====================================================================\n"
+            <<"  The container "<<typeid(Container).name()<<" works fine.\n"
+            <<" ===================================================================="<<endl);
+
+    sleep(.5);
     return res;
 }
     

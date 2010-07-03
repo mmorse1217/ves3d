@@ -1,4 +1,4 @@
-include $(VES3D_DIR)/makefile.in
+include ${VES3D_DIR}/makefile.in.files/makefile.in
 
 LIB_SRC = $(VES3D_DIR)/src/CPUKernels.cc $(VES3D_DIR)/src/Logger.cc
 LIB_OBJ = $(LIB_SRC:.cc=.o)
@@ -13,11 +13,11 @@ endif
 
 all: $(ARFILES)
 
-libves3d.a: $(LIB_OBJ) $(MAKEDEP)
+libves3d.a: $(LIB_OBJ) $(MAKEIN)
 	$(AR) $(ARFLAGS) $(VES3D_DIR)/lib/libves3d.a $(LIB_OBJ)
 	$(RANLIB) $(VES3D_DIR)/lib/libves3d.a
 
-libves3dgpu.a: $(LIB_OBJ_GPU) $(MAKEDEP)
+libves3dgpu.a: $(LIB_OBJ_GPU) $(MAKEIN)
 	$(AR) $(ARFLAGS) $(VES3D_DIR)/lib/libves3dgpu.a $(LIB_OBJ_GPU)
 	$(RANLIB) $(VES3D_DIR)/lib/libves3dgpu.a
 

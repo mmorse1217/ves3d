@@ -7,7 +7,10 @@
 #include "Parameters.h"
 
 extern const Device<CPU> the_cpu_device(0);
+#ifdef GPU_ACTIVE
 extern const Device<GPU> the_gpu_device(0);
+#endif //GPU_ACTIVE
+
 typedef float real;
 
 template<typename Sca, typename Vec, enum DeviceType DT>
@@ -119,23 +122,30 @@ void testSurface(const Device<DT> &dev)
         S.getNormal().size() * sizeof(real), MemcpyDeviceToDevice);
     S.mapToTangentSpace(grad);
     cout<<" Map to tangent space: "<<MaxAbs(grad)<<endl;
+    sleep(.5);
 }
 
 int main(int argc, char ** argv)
 {    
-    typedef containers::Scalars<real, CPU, the_cpu_device> ScaCPU;
-    typedef containers::Vectors<real, CPU, the_cpu_device> VecCPU;
+    COUT("\n\n ================\n  Surface test: \n ================"<<endl);
+    sleep(.5);
+
+    typedef Scalars<real, CPU, the_cpu_device> ScaCPU;
+    typedef Vectors<real, CPU, the_cpu_device> VecCPU;
     
     testSurface<ScaCPU, VecCPU, CPU>(the_cpu_device);
 
     PROFILEREPORT(SortTime);    
-    PROFLIECLEAR();
+    //PROFLIECLEAR();
 
-    typedef containers::Scalars<real, GPU, the_gpu_device> ScaGPU;
-    typedef containers::Vectors<real, GPU, the_gpu_device> VecGPU;
+#ifdef GPU_ACTIVE
+    typedef Scalars<real, GPU, the_gpu_device> ScaGPU;
+    typedef Vectors<real, GPU, the_gpu_device> VecGPU;
      
     testSurface<ScaGPU, VecGPU, GPU>(the_gpu_device);
 
     PROFILEREPORT(SortTime);
+#endif //GPU_ACTIVE
+    
     return 0;
 }

@@ -117,38 +117,38 @@ void Scalars<T, DT, DEVICE>::replicate(Vectors<T, DT, DEVICE> const& vec_in)
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::begin()
+typename Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::begin()
 {
     return(data_);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::begin() const
+typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::begin() const
 {
     return(data_);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::getSubN(size_t n)
+typename Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::getSubN(size_t n)
 {
     return(data_ + n * this->getTheDim() * this->getStride());
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::getSubN(
+typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::getSubN(
     size_t n) const
 {
     return(data_ + n * this->getTheDim() * this->getStride());
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::end()
+typename Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::end()
 {
     return(data_ + this->size());
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() const
+typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() const
 {
     return(data_ + this->size());
 }
@@ -200,5 +200,5 @@ template<typename Container>
 std::ostream& operator<<(std::ostream& output, const ShowEntries<Container> &se)
 {
     return(se(output));
-};
+}
     

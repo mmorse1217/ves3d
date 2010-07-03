@@ -3,17 +3,19 @@ EXEC =  LoggerTest.exe     \
 	BlasToyTest.exe    \
 	ScalarsTest.exe    \
 	BiCGStabTest.exe   \
-	SurfaceTest.exe #EvolveSurfaceTest.exe SHTransTest.exe #StokesTest.exe TimeStepperTest.exe VectorsTest.exe        
+	SurfaceTest.exe #EvolveSurfaceTest.exe #StokesTest.exe VectorsTest.exe        
 
-ARFILES = libves3d.a
+ARFILES = $(VES3D_DIR)/lib/libves3d.a
 
 ifeq ($(USE_GPU),yes)
-  ARFILES += libves3dgpu.a 
+  ARFILES += $(VES3D_DIR)/lib/libves3dgpu.a 
 endif
+
+include ${VES3D_DIR}/makefile.in.files/makefile.in
 
 all: $(EXEC)
 
-%.exe: %.o $(ARFILES) %.d $(MAKEDEP)
+%.exe: %.o $(ARFILES) %.d $(MAKEIN)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
 
 %.d: %.cc
@@ -27,6 +29,4 @@ clean:
 check:  $(EXEC)
 	@for exec in *.exe; do ./$$exec; done
 
-
-include $(VES3D_DIR)/makefile.in
 -include $(EXEC:.exe=.d)

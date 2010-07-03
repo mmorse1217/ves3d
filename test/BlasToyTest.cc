@@ -66,4 +66,5 @@ int main(int argc, char **argv)
   free(B_h);
 
   PROFILEREPORT(SortTime);
+  sleep(.5);
 }

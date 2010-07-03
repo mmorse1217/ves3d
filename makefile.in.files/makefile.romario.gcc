@@ -1,0 +1,67 @@
+CXX  = g++ 
+CC   = gcc
+
+# includes
+VES3D_TEMPLATES = -I$(VES3D_DIR)/src
+VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
+BLAS_INCLUDE    = -I/opt/CLAPACK-3.2.1/INCLUDE
+ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
+
+# Libraries
+VES3D_LIBS = -L$(VES3D_DIR)/lib -lves3d 
+BLAS_LIBS  = -L/usr/lib64/libblas.so.3gf -L/usr/lib64/liblapack.so.3gf
+
+# Flags
+ARFLAGS = -r
+CXXFLAGS= -fopenmp -fPIC -fno-exceptions -pedantic
+
+ifeq ($(VES3D_TESTING),yes)
+  CXXFLAGS+= -gstabs+ -O0 -DVERBOSE -DPROFILING #-DNDEBUG #-msse3
+else
+  CXXFLAGS+= -O3 -finline-functions -unroll-loops  			\
+    #-DPROFILING #-msse3 #-malign-double
+endif
+
+LDFLAGS  = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
+CXXFLAGS+= $(ALL_INCLUDE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

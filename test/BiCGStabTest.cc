@@ -36,20 +36,23 @@ class MatVec
         xy(diag, x, ax);
     }
 };
-#endif Doxygen_skip
+#endif //Doxygen_skip
 
 extern const Device<CPU> the_cpu_dev(0);
+
+#ifdef GPU_ACTIVE
 extern const Device<GPU> the_gpu_dev(0);
+#endif //GPU_ACTIVE
 
 int main(int argc, char **argv)
 {
     COUT("\n ==============================\n"
         <<"  BiCGStab Test:"
         <<"\n ==============================\n");
-    sleep(1);
+    sleep(.5);
     
     
-    typedef containers::Scalars<real,CPU, the_cpu_dev> ScaCPU;
+    typedef Scalars<real,CPU, the_cpu_dev> ScaCPU;
     
     int p = 12;
     int nfuns(1);
@@ -78,11 +81,12 @@ int main(int argc, char **argv)
         Ax(x,b);
         axpy((real) -1.0, b_ref, b, b);
                 
-        string formatstr ="\n  CPU data :\n     Residual: %2.4e\n     ";
+        string formatstr ="\n CPU data :\n     Residual: %2.4e\n     ";
         formatstr +="Iter    : %d\n     Error   : %2.4e\n";
         sprintf(cpu_out, formatstr.c_str(), tt, miter, MaxAbs(b));
     }
     
+#ifdef GPU_ACTIVE
     {
         typedef containers::Scalars<real,GPU, the_gpu_dev> ScaGPU;
         MatVec<ScaGPU> AxGPU(nfuns, p);
@@ -107,12 +111,19 @@ int main(int argc, char **argv)
 
         axpy((real) -1.0, b_ref, b_cpu, b_cpu);
         
-        string formatstr ="\n  GPU data :\n     Residual: %2.4e\n     ";
+        string formatstr ="\n GPU data :\n     Residual: %2.4e\n     ";
          formatstr +="Iter    : %d\n     Error   : %2.4e\n";
         sprintf(gpu_out, formatstr.c_str(), tt, miter, MaxAbs(b_cpu));
     }
+#endif //GPU_ACTIVE
     
-    cout<<cpu_out<<gpu_out<<endl;
-    return 0;
+    cout<<cpu_out;
+#ifdef GPU_ACTIVE
+    cout<<gpu_out;
+#endif //GPU_ACTIVE
+    cout<<endl;
+    sleep(.5);
+    
+   return 0;
 }
 

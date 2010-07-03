@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     COUT("\n ==============================\n"
         <<"  Logger Test:"
         <<"\n ==============================\n");
-    sleep(1);
+    sleep(.5);
 
     PROFILESTART();
     string log_file("LoggerTest.out");
@@ -72,4 +72,5 @@ int main(int argc, char** argv)
     file.close();
 
     remove(log_file.c_str());
+    sleep(.5);
 }

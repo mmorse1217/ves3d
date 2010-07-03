@@ -29,4 +29,4 @@ class GaussLegendreIntegrator
 
 #include "GLIntegrator.cc"
 
-#endif _GLINTEGRATOR_H_
+#endif //_GLINTEGRATOR_H_
