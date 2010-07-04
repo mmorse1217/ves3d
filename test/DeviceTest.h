@@ -1,5 +1,4 @@
 /**
- * @test
  * @file   DeviceTest.h
  * @author Abtin Rahimian <arahimian@acm.org>
  * @date   Sun Feb 28 12:54:20 2010
