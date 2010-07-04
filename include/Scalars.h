@@ -51,6 +51,8 @@ class Scalars
     inline iterator end();
     inline const_iterator end() const;
 
+    bool isNan() const;
+
   protected:
     int sh_order_;
     pair<int, int> grid_dim_;

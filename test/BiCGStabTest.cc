@@ -52,12 +52,12 @@ int main(int argc, char **argv)
     sleep(.5);
     
     
-    typedef Scalars<real,CPU, the_cpu_dev> ScaCPU;
+    typedef Scalars<real,CPU, the_cpu_dev> ScaCPU_t;
     
     int p = 12;
     int nfuns(1);
-    ScaCPU x_ref(nfuns,p), b_ref(nfuns,p);
-    MatVec<ScaCPU> Ax(nfuns, p);
+    ScaCPU_t x_ref(nfuns,p), b_ref(nfuns,p);
+    MatVec<ScaCPU_t> Ax(nfuns, p);
     const int max_iter = 200;
     const real tol = 1e-6;
 
@@ -68,11 +68,11 @@ int main(int argc, char **argv)
     char cpu_out[300], gpu_out[300];
     
     {
-        ScaCPU x(nfuns, p), b(nfuns,p);
+        ScaCPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
             b.size() * sizeof(real), MemcpyHostToDevice);
         
-        BiCGStab<ScaCPU, MatVec<ScaCPU> > Solver;
+        BiCGStab<ScaCPU_t, MatVec<ScaCPU_t> > Solver;
         int miter(max_iter);
         real tt(tol);
     
@@ -88,16 +88,16 @@ int main(int argc, char **argv)
     
 #ifdef GPU_ACTIVE
     {
-        typedef Scalars<real,GPU, the_gpu_dev> ScaGPU;
-        MatVec<ScaGPU> AxGPU(nfuns, p);
+        typedef Scalars<real,GPU, the_gpu_dev> ScaGPU_t;
+        MatVec<ScaGPU_t> AxGPU(nfuns, p);
         
-        ScaGPU x(nfuns, p), b(nfuns,p);
+        ScaGPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
             b.size() * sizeof(real), MemcpyHostToDevice);
 
         axpy(0, x, x);
 
-        BiCGStab<ScaGPU, MatVec<ScaGPU> > Solver;
+        BiCGStab<ScaGPU_t, MatVec<ScaGPU_t> > Solver;
         int miter(max_iter);
         real tt(tol);
         
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
         
         AxGPU(x,b);
         
-        ScaCPU b_cpu(nfuns, p);
+        ScaCPU_t b_cpu(nfuns, p);
         b.getDevice().Memcpy(b_cpu.begin(), b.begin(),
             b.size() * sizeof(real), MemcpyDeviceToHost);
 

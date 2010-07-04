@@ -16,8 +16,8 @@ extern Device<CPU> the_cpu_dev(0);
 
 int main(int argc, char *argv[])
 {
-    typedef typename containers::Scalars<real,CPU,the_cpu_dev> Sca;
-    typedef typename containers::Vectors<real,CPU,the_cpu_dev> Vec;
+    typedef typename containers::Scalars<real,CPU,the_cpu_dev> Sca_t;
+    typedef typename containers::Vectors<real,CPU,the_cpu_dev> Vec_t;
     
     int nVec(1), p(12), q(2*p);
     Parameters<real> params;

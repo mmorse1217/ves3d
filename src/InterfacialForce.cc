@@ -9,9 +9,9 @@ InterfacialForce<SurfContainer>::~InterfacialForce()
 
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::bendingForce(const SurfContainer &S, 
-    Vec &Fb) const
+    Vec_t &Fb) const
 { 
-    Sca t1, t2;
+    Sca_t t1, t2;
     
     Fb.replicate(S.getPosition());
     t1.replicate(S.getPosition());
@@ -34,9 +34,9 @@ void InterfacialForce<SurfContainer>::bendingForce(const SurfContainer &S,
 
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::linearBendingForce(const SurfContainer &S, 
-    const Vec &x_new, Vec &Fb) const
+    const Vec_t &x_new, Vec_t &Fb) const
 { 
-    Sca h_lin, tmp;
+    Sca_t h_lin, tmp;
     
     Fb.replicate(S.getPosition());
     h_lin.replicate(S.getPosition());
@@ -63,9 +63,9 @@ void InterfacialForce<SurfContainer>::linearBendingForce(const SurfContainer &S,
 
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::tensileForce(const SurfContainer &S, 
-    const Sca &tension, Vec &Fs) const
+    const Sca_t &tension, Vec_t &Fs) const
 {
-    Vec temp;
+    Vec_t temp;
     
     temp.replicate(S.getPosition());
     Fs.replicate(S.getPosition());

@@ -18,15 +18,15 @@ void FMM(const fmm_value_type*src, const fmm_value_type*den, size_t np, fmm_valu
 
 int main(int argc, char **argv)
 {
-    typedef containers::Scalars<real, CPU, the_cpu_dev> ScaCPU;
-    typedef containers::Vectors<real, CPU, the_cpu_dev> VecCPU;
-    typedef Surface<ScaCPU,VecCPU> SurCPU;
+    typedef containers::Scalars<real, CPU, the_cpu_dev> ScaCPU_t;
+    typedef containers::Vectors<real, CPU, the_cpu_dev> VecCPU_t;
+    typedef Surface<ScaCPU,VecCPU> SurCPU_t;
 
-    typedef containers::Scalars<real, GPU, the_gpu_dev> ScaGPU;
-    typedef containers::Vectors<real, GPU, the_gpu_dev> VecGPU;
-    typedef Surface<ScaCPU,VecCPU> SurGPU;
+    typedef containers::Scalars<real, GPU, the_gpu_dev> ScaGPU_t;
+    typedef containers::Vectors<real, GPU, the_gpu_dev> VecGPU_t;
+    typedef Surface<ScaCPU,VecCPU> SurGPU_t;
 
-    typedef Parameters<real> Par;
+    typedef Parameters<real> Par_t;
 
     // Setting the parameters
     Par::getInstanceModifiable().n_surfs = 2;   

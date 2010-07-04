@@ -6,11 +6,12 @@ Parameters<T>::Parameters() :
     bending_modulus(1e-2),
     outer_solver_maxit(15),
     inner_solver_maxit(15),
-    outer_solver_tol((typeid(T) == typeid(float)) ? 1e-4 : 1e-6),
+    outer_solver_tol((typeid(T) == typeid(float)) ? 1e-5 : 1e-6),
     inner_solver_tol((typeid(T) == typeid(float)) ? 1e-6 : 1e-8),
     n_steps(1),
     time_horizon(1),
     ts(1),
+    scheme(Explicit),
     rep_maxit(10),
     rep_up_freq(24),
     rep_filter_freq(4),
@@ -47,6 +48,7 @@ ostream& operator<<(ostream& output, const Parameters<T>& par)
     output<<"    Number of time steps     : "<<par.n_steps<<endl;
     output<<"    Time horizon             : "<<par.time_horizon<<endl;
     output<<"    Step size                : "<<par.ts<<endl;
+    output<<"    Scheme                   : "<<par.scheme<<endl;
     output<<" ------------------------------------"<<endl;
     output<<"  Reparametrization:"<<endl;
     output<<"    Rep maxit                : "<<par.rep_maxit<<endl;

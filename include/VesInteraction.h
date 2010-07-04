@@ -10,9 +10,9 @@ class VesInteraction
     enum InteractionReturn {InteractionSuccess = 0,
                             NoInteraction      = 1};
 
-    typedef void(*InteractionFun)(const T*, const T*, size_t, T*);    
+    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*);    
 
-    VesInteraction(InteractionFun interaction_handle = NULL, int num_threads = 1);
+    VesInteraction(InteractionFun_t interaction_handle = NULL, int num_threads = 1);
     ~VesInteraction();
 
     template<typename VecContainer>
@@ -34,7 +34,7 @@ class VesInteraction
     size_t getCpyDestIdx(size_t this_thread_np) const;
     void checkContainersSize() const;
     void updatePotential() const;
-    InteractionFun interaction_handle_;
+    InteractionFun_t interaction_handle_;
     
     VesInteraction(VesInteraction const &rhs);
     VesInteraction& operator=(const VesInteraction &rhs);

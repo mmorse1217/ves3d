@@ -23,7 +23,7 @@ void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
-    OperatorsMats<value_type, Device<CPU> > &mats, const Parameters<value_type> &params,
+    OperatorsMats<value_type, device_type> &mats, const Parameters<value_type> &params,
     BackgroundFlow &bgFlow) :
     S_(S_in),
     interaction_(Inter),
@@ -38,6 +38,10 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     u3_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
     wrk_.replicate(S_.getPosition());
+
+    //Setting initial tension to zero
+    tension_.getDevice().Memset(tension_.begin(), 0, 
+        tension_.size() * sizeof(value_type));
 
     int p = S_.getPosition().getShOrder();
     int np = S_.getPosition().getStride();
@@ -74,12 +78,12 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 updatePositionExplicit(const value_type &dt)
 {
     this->updateInteraction();
-
+    
     //Bending
     Intfcl_force_.bendingForce(S_, u1_);
     stokes(u1_, u2_);   
     axpy(static_cast<value_type>(1), u2_, velocity, velocity);
-  
+   
     //Tension
     getTension(velocity, tension_);
     Intfcl_force_.tensileForce(S_, tension_, u1_);
@@ -95,7 +99,7 @@ updatePositionImplicit(const value_type &dt)
 {
     this->updateInteraction();
 
-    //Bending
+    //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, u1_);
     stokes(u1_, u2_);   
     axpy(static_cast<value_type>(1), u2_, velocity, u1_);
@@ -105,29 +109,33 @@ updatePositionImplicit(const value_type &dt)
     Intfcl_force_.tensileForce(S_, tension_, u1_);
     stokes(u1_, u2_);
     axpy(static_cast<value_type>(1), u2_, velocity, u1_);
-    axpy(dt, u1_, u1_);
-
-    //Update position
+    
     axpy(dt, u1_, S_.getPosition(), u1_);
-        
-    int max_iter(params_.outer_solver_maxit);
-    value_type tol(params_.outer_solver_tol);
-
     u2_.getDevice().Memcpy(u2_.begin(), S_.getPosition().begin(), S_.getPosition().size()
         * sizeof(value_type), MemcpyDeviceToDevice);
+    
+    //Update position
+    int max_iter(params_.outer_solver_maxit);
+    value_type tol(params_.outer_solver_tol);
+    enum BiCGSReturn solver_ret;
 
+    COUT("\n Position solve\n --------------------------------");
     for(int ii=0; ii<2; ++ii)
     {
         int mIter(max_iter);
         value_type tt(tol);
         
-        if ( linear_solver_vec_(*this, u2_, u1_, mIter, tt) != BiCGSSuccess && ii==1 )
+        solver_ret = linear_solver_vec_(*this, u2_, u1_, mIter, tt);
+
+        if ( (solver_ret  != BiCGSSuccess && ii==1) || solver_ret == RelresIsNan )
         { 
-            cout<<mIter<<" "<<tt<<" "<<MaxAbs(u2_)<<endl;
-            CERR("\n The position solver did not converge!\n",endl<<endl, exit(1));
+            CERR("\n The position solver did not converge with the error \""
+                <<solver_ret<<"\"",endl<<endl,exit(1));
+            
         }
     }
-    
+    COUTDEBUG(" --------------------------------"<<endl);
+
     u2_.getDevice().Memcpy(S_.getPositionModifiable().begin(), u2_.begin(), 
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
 }
@@ -180,19 +188,20 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::updateInte
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension(
-    const Vec &vel_in, Sca &tension) const
+    const Vec_t &vel_in, Sca_t &tension) const
 {
-    Sca rhs;
+    Sca_t rhs;
     rhs.replicate(S_.getPosition());
     S_.div(vel_in, rhs);
-  
+    
     axpy(static_cast<typename SurfContainer::value_type>(-1), rhs, rhs);
     
     int max_iter(params_.inner_solver_maxit);
     value_type tol(params_.inner_solver_tol);
     enum BiCGSReturn solver_ret;
     ///@todo add the restart option to the Parameters
-            
+    
+    COUT("\n Tension solve\n --------------------------------");
     for(int ii=0; ii<2; ++ii)
     {
         int mIter(max_iter);
@@ -203,11 +212,12 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
             CERR("\n The tension solver did not converge with the error \""
                 <<solver_ret<<"\"",endl<<endl,exit(1));
     }
+    COUTDEBUG(" --------------------------------"<<endl);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
-    const Vec &force, Vec &velocity) const
+    const Vec_t &force, Vec_t &velocity) const
 {
     int p  = S_.getPosition().getShOrder();
     int np = S_.getPosition().getStride();
@@ -217,14 +227,14 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
     value_type alpha(1.0), beta(0.0);
     int trg_idx(0);
     
-    Sca t1(nv, p);
-    Sca t2(nv, p);
+    Sca_t t1(nv, p);
+    Sca_t t2(nv, p);
 
     xyInv(S_.getAreaElement(), w_sph_, t1);
     int nvX3= force.getTheDim() * nv;
 
-    Vec v1;
-    Vec v2;
+    Vec_t v1;
+    Vec_t v2;
     
     v1.replicate(S_.getPosition());
     v2.replicate(S_.getPosition());
@@ -259,9 +269,9 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
-operator()(const Vec &x_new, Vec &time_mat_vec) const
+operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
-    Vec fb;
+    Vec_t fb;
     fb.replicate(x_new);
     
     Intfcl_force_.linearBendingForce(S_, x_new, fb);
@@ -271,10 +281,10 @@ operator()(const Vec &x_new, Vec &time_mat_vec) const
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::operator()(
-    const Sca &tension, Sca &div_stokes_fs) const
+    const Sca_t &tension, Sca_t &div_stokes_fs) const
 {
-    Vec fs(tension.getNumSubs(), tension.getShOrder());
-    Vec u(tension.getNumSubs(), tension.getShOrder());
+    Vec_t fs(tension.getNumSubs(), tension.getShOrder());
+    Vec_t u(tension.getNumSubs(), tension.getShOrder());
     
     Intfcl_force_.tensileForce(S_, tension, fs);
     stokes(fs, u);

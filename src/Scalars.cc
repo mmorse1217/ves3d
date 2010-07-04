@@ -153,6 +153,13 @@ typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() co
     return(data_ + this->size());
 }
 
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+bool Scalars<T, DT, DEVICE>::isNan() const
+{
+    return(DEVICE.isNan(data_, this->size()));
+}
+
+/////////////////////////////////////////////////////////////////////////////////
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
 std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
 {

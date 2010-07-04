@@ -9,7 +9,7 @@ class Monitor
 {
   private:
     typedef typename SurfContainer::value_type value_type;
-    typedef typename SurfContainer::Sca::device_type device_type;
+    typedef typename SurfContainer::Sca_t::device_type device_type;
     value_type time_hor_;
     bool save_flag_;
     value_type save_stride_;
@@ -28,6 +28,8 @@ class EvolveSurface
   private:
     typedef typename Container::value_type value_type;   
     typedef typename Container::device_type device_type;   
+    typedef InterfacialVelocity<Container, Interaction> IntVel_t;
+    typedef void (IntVel_t::*Scheme_t)(const value_type &);
 
     OperatorsMats<value_type, device_type> &mats_;
     const Parameters<value_type> &params_;

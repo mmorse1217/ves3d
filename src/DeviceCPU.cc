@@ -11,63 +11,6 @@ inline pair<int, int> gridDimOf(int sh_order)
     return(make_pair(sh_order + 1, 2 * sh_order));
 }
 
-std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT)
-{    
-    switch (DT)
-    {
-        case CPU:
-            output<<"CPU";
-            break;
-        case GPU:
-            output<<"GPU";
-            break;
-    }
-    
-    return output;
-}    
-
-std::ostream& operator<<(std::ostream& output, const enum MemcpyKind &MK)
-{
-    switch (MK)
-    {
-        case MemcpyHostToHost:
-            output<<"MemcpyHostToHost";
-            break;
-
-        case MemcpyHostToDevice:
-            output<<"MemcpyHostToDevice";
-            break;
-
-        case MemcpyDeviceToHost:
-            output<<"MemcpyDeviceToHost";
-            break;
-
-        case MemcpyDeviceToDevice:
-            output<<"MemcpyDeviceToDevice";
-            break;
-    }
-    
-    return output;
-}    
-
-std::ostream& operator<<(std::ostream& output, const enum DeviceError &err)
-{
-    switch (err)
-    {
-        case Success:
-            output<<"DeviceError: Success";
-            break;
-        case InvalidDevice:
-            output<<"DeviceError: InvalidDevice";
-            break;
-        case SetOnActiveDevice:
-            output<<"DeviceError: SetOnActiveDevice";
-            break;
-    }
-    
-    return output;
-}    
-
 template<>
 Device<CPU>::Device(int device_id, enum DeviceError *err)
 {
@@ -676,6 +619,21 @@ T Device<CPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
     
     PROFILEEND("CPU",0);
     return(dot);
+}
+
+template<>
+template<typename T>
+bool Device<CPU>::isNan(const T* x, size_t length) const
+{
+    PROFILESTART();
+    bool is_nan(false);
+
+#pragma omp parallel for reduction(&&:is_nan)
+    for(size_t idx=0;idx<length; ++idx)   
+        is_nan = is_nan && ( x[idx] != x[idx] );
+    
+    PROFILEEND("CPU", 0);
+    return is_nan;
 }
 
 template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         

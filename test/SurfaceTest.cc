@@ -1,4 +1,4 @@
-#include <iostream>             // 
+#include <iostream>             
 #include "DataIO.h"
 #include "Scalars.h"
 #include "Vectors.h"
@@ -13,10 +13,12 @@ extern const Device<GPU> the_gpu_device(0);
 
 typedef float real;
 
+#ifndef Doxygen_skip
+
 template<typename Sca, typename Vec, enum DeviceType DT>
 void testSurface(const Device<DT> &dev)
 {
-    typedef OperatorsMats<real, Device<DT> > Opts;
+    typedef OperatorsMats<real, Device<DT> > Mats_t;
     int const p(12);
     int const nVec(2);
     
@@ -41,7 +43,7 @@ void testSurface(const Device<DT> &dev)
         
     //Reading operators from file
     bool readFromFile = true;
-    Opts mats(dev, myIO, readFromFile, sim_par);
+    Mats_t mats(dev, myIO, readFromFile, sim_par);
         
     //Creating objects
     Surface<Sca, Vec> S(x0, mats);
@@ -124,26 +126,27 @@ void testSurface(const Device<DT> &dev)
     COUT(" Map to tangent space: "<<MaxAbs(grad)<<endl);
     sleep(.5);
 }
+#endif //Doxygen_skip
 
 int main(int argc, char ** argv)
 {    
     COUT("\n\n ================\n  Surface test: \n ================"<<endl);
     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
 
-    typedef Scalars<real, CPU, the_cpu_device> ScaCPU;
-    typedef Vectors<real, CPU, the_cpu_device> VecCPU;
+    typedef Scalars<real, CPU, the_cpu_device> ScaCPU_t;
+    typedef Vectors<real, CPU, the_cpu_device> VecCPU_t;
     
-    testSurface<ScaCPU, VecCPU, CPU>(the_cpu_device);
+    testSurface<ScaCPU_t, VecCPU_t, CPU>(the_cpu_device);
 
     PROFILEREPORT(SortTime);    
 
 #ifdef GPU_ACTIVE
     PROFILECLEAR();
     COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
-    typedef Scalars<real, GPU, the_gpu_device> ScaGPU;
-    typedef Vectors<real, GPU, the_gpu_device> VecGPU;
+    typedef Scalars<real, GPU, the_gpu_device> ScaGPU_t;
+    typedef Vectors<real, GPU, the_gpu_device> VecGPU_t;
      
-    testSurface<ScaGPU, VecGPU, GPU>(the_gpu_device);
+    testSurface<ScaGPU_t, VecGPU_t, GPU>(the_gpu_device);
 
     PROFILEREPORT(SortTime);
 #endif //GPU_ACTIVE

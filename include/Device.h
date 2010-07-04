@@ -176,6 +176,9 @@ class Device
     template<typename T>
     T AlgebraicDot(const T* x, const T* y, size_t length) const;
 
+    template<typename T>
+    bool isNan(const T* x, size_t length) const;
+    
     //The comparison operator 
     template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         
     friend bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs);

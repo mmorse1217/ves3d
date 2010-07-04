@@ -5,36 +5,22 @@
 #include "OperatorsMats.h"
 #include "EvolveSurface.h"
 
-extern const Device<CPU> the_device(0);
+extern const Device<CPU> the_cpu_device(0);
+extern const Device<GPU> the_gpu_device(0);
 
 typedef float real;
 typedef float fmm_value_type;
 
-int main(int argc, char **argv)
-{
-    typedef Scalars<real, CPU, the_device> Sca;
-    typedef Vectors<real, CPU, the_device> Vec;
-    typedef Surface<Sca,Vec> Sur;
-    typedef Parameters<real> Par;
-    typedef VesInteraction<fmm_value_type> Interaction;
-    
-    // Setting the parameters
-    Par sim_par;
-    sim_par.n_surfs = 1;   
-    sim_par.ts = .5;    
-    sim_par.time_horizon = 3;
-    sim_par.rep_maxit = 20;
-    sim_par.bg_flow_param = 0.1;    
-    sim_par.save_data = true;    
-    sim_par.save_stride = 1;
-    sim_par.save_file_name = "EvolveSurf.out";
-    COUT(sim_par);
-    
-    //Cleaning the slate
-    remove(sim_par.save_file_name.c_str());
+#ifndef Doxygen_skip
 
+template<typename Sca, typename Vec, enum DeviceType DT>
+void EvolveSurfTest(const Device<DT> &dev, Parameters<real> &sim_par)
+{
+    typedef Surface<Sca,Vec> Sur_t;
+    typedef VesInteraction<fmm_value_type> Interaction_t;
+    
     //IO
-    DataIO<real, Device<CPU> > myIO(the_device);
+    DataIO<real, Device<DT> > myIO(dev);
 
     //Initializing vesicle positions from text file
     Vec x0(sim_par.n_surfs, sim_par.sh_order);
@@ -43,7 +29,7 @@ int main(int argc, char **argv)
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
         x0.getTheDim()*x0.getStride(), x0.begin());
     
-    //Making centers and populating the prototype
+    //Making Centers And Populating The Prototype
     if ( sim_par.n_surfs > 1 )
     {
         Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
@@ -56,18 +42,63 @@ int main(int argc, char **argv)
         Populate(x0, cntrs);
     }
 
-    // The interaction class
-    Interaction interaction(NULL);//&StokesAlltoAll);
+    // The Interaction Class
+    Interaction_t Interaction(NULL);//&StokesAlltoAll);
 
-    //Reading operators from file
+    //Reading Operators From File
     bool readFromFile = true;
-    OperatorsMats<real, Device<CPU> > mats(the_device, myIO, 
+    OperatorsMats<real, Device<DT> > Mats(dev, myIO, 
         readFromFile, sim_par);
 
-    //Making the surface, and time stepper
-    Sur S(x0, mats);
-    EvolveSurface<Sur, Interaction> Es(mats, sim_par);
-    Es(S, interaction);
-    
-    PROFILEREPORT(SortTime);
+    //Making The Surface, And Time Stepper
+    Sur_t S(x0, Mats);
+    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par);
+    Es(S, Interaction);
 }
+#endif //Doxygen_skip
+
+int main(int argc, char **argv)
+{
+    COUT("\n\n ========================\n  EvolveSurface test: "
+        <<"\n ========================"<<endl);
+
+    typedef Parameters<real> Par_t;
+    // Setting the parameters
+    Par_t sim_par;
+    sim_par.n_surfs = 1;   
+    sim_par.ts = .5;    
+    sim_par.time_horizon = 3;
+    sim_par.scheme = SemiImplicit;
+    sim_par.rep_maxit = 20;
+    sim_par.bg_flow_param = 0.1;    
+    sim_par.save_data = true;    
+    sim_par.save_stride = 1;
+    sim_par.save_file_name = "EvolveSurf.out";
+    COUT(sim_par);
+    
+    //Cleaning the slate
+    remove(sim_par.save_file_name.c_str());
+
+    COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
+
+    typedef Scalars<real, CPU, the_cpu_device> ScaCPU_t;
+    typedef Vectors<real, CPU, the_cpu_device> VecCPU_t;
+    
+    EvolveSurfTest<ScaCPU_t, VecCPU_t, CPU>(the_cpu_device, sim_par);
+    PROFILEREPORT(SortTime);    
+
+#ifdef GPU_ACTIVE
+    PROFILECLEAR();
+    COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
+    typedef Scalars<real, GPU, the_gpu_device> ScaGPU_t;
+    typedef Vectors<real, GPU, the_gpu_device> VecGPU_t;
+     
+    EvolveSurfTest<ScaGPU_t, VecGPU_t, GPU>(the_gpu_device, sim_par);
+
+    PROFILEREPORT(SortTime);
+#endif //GPU_ACTIVE
+
+
+}
+
+

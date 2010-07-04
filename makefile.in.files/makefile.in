@@ -1,6 +1,6 @@
 # User variables
 VES3D_DIR    ?= `pwd`
-USE_GPU      ?= no
+USE_GPU      ?= yes
 VES3D_TESTING = yes
 PLATFORM      = $(shell hostname).icpc
 
@@ -11,7 +11,7 @@ DOX     = doxygen
 TAGS    = etags
 
 # Platform dependent makefile 
-include $(VES3D_DIR)/makefile.in.files/makefile.$(PLATFORM)
+-include $(VES3D_DIR)/makefile.in.files/makefile.$(PLATFORM)
 
 # GPU
 ifeq ($(USE_GPU),yes)

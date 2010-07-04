@@ -7,7 +7,7 @@
  */
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(
-    const Vec& x_in, OperatorsMats<value_type, device_type> &mats) :
+    const Vec_t& x_in, OperatorsMats<value_type, device_type> &mats) :
     upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
@@ -32,7 +32,7 @@ Surface<ScalarContainer, VectorContainer>::~Surface()
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec& x_in)
+void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec_t& x_in)
 {
     containers_are_stale_ = true;
     first_forms_are_stale_ = true;
@@ -92,10 +92,10 @@ const ScalarContainer& Surface<ScalarContainer,VectorContainer>::getGaussianCurv
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
-getSmoothedShapePosition(Vec &smthd_pos) const
+getSmoothedShapePosition(Vec_t &smthd_pos) const
 {
-    Vec* wrk(generateVec(x_));
-    Vec* shc(generateVec(x_));
+    Vec_t* wrk(generateVec(x_));
+    Vec_t* shc(generateVec(x_));
     
     sht_rep_filter_.lowPassFilter(x_, *wrk, *shc, smthd_pos);
     
@@ -105,15 +105,15 @@ getSmoothedShapePosition(Vec &smthd_pos) const
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
-mapToTangentSpace(Vec &vec_fld) const
+mapToTangentSpace(Vec_t &vec_fld) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca* scp(generateSca(vec_fld));
-    Vec* wrk(generateVec(vec_fld));
-    Vec* shc(generateVec(vec_fld));
-    Vec* fld(generateVec(vec_fld));
+    Sca_t* scp(generateSca(vec_fld));
+    Vec_t* wrk(generateVec(vec_fld));
+    Vec_t* shc(generateVec(vec_fld));
+    Vec_t* fld(generateVec(vec_fld));
 
     //up-sampling
     int usf(sht_rep_upsample_.getShOrder());
@@ -156,10 +156,10 @@ updateFirstForms() const
     if(containers_are_stale_)
         checkContainers();
         
-    Vec* wrk(generateVec(x_));
-    Vec* shc(generateVec(x_));
-    Vec* dif(generateVec(x_));
-    Sca* scp(generateSca(x_));
+    Vec_t* wrk(generateVec(x_));
+    Vec_t* shc(generateVec(x_));
+    Vec_t* dif(generateVec(x_));
+    Sca_t* scp(generateSca(x_));
     
     // Spherical harmonic coefficient
     sht_.FirstDerivatives(x_, *wrk, *shc, *dif, normal_);
@@ -207,9 +207,9 @@ updateAll() const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Vec* wrk(generateVec(x_));
-    Vec* shc(generateVec(x_));
-    Vec* dif(generateVec(x_));
+    Vec_t* wrk(generateVec(x_));
+    Vec_t* shc(generateVec(x_));
+    Vec_t* dif(generateVec(x_));
 
     sht_.forward(x_, *wrk, *shc);
     
@@ -222,11 +222,11 @@ updateAll() const
     xy(F, h_, h_);
     axpy(static_cast<value_type>(-1), h_, h_);
 
-    Sca* L(generateSca(x_));
+    Sca_t* L(generateSca(x_));
     sht_.backward_d2u(*shc, *wrk, *dif);
     GeometricDot(*dif, normal_, *L);
     
-    Sca* N(generateSca(x_));
+    Sca_t* N(generateSca(x_));
     xy(G, *L, *N);
     axpy(static_cast<value_type>(.5), *N, h_, h_); 
 
@@ -263,10 +263,10 @@ grad(const ScalarContainer &f_in, VectorContainer &grad_f_out) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca* scw1(generateSca(x_));
-    Sca* scw2(generateSca(x_));
-    Vec* shc(generateVec(x_));
-    Vec* wrk(generateVec(x_));
+    Sca_t* scw1(generateSca(x_));
+    Sca_t* scw2(generateSca(x_));
+    Vec_t* shc(generateVec(x_));
+    Vec_t* wrk(generateVec(x_));
 
     sht_.FirstDerivatives(f_in, *wrk, *shc, *scw1, *scw2);
 
@@ -288,10 +288,10 @@ div(const VectorContainer &f_in, ScalarContainer &div_f_out) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Vec* dif(generateVec(x_));
-    Vec* shc(generateVec(x_));
-    Vec* wrk(generateVec(x_));
-    Sca* scw(generateSca(x_));
+    Vec_t* dif(generateVec(x_));
+    Vec_t* shc(generateVec(x_));
+    Vec_t* wrk(generateVec(x_));
+    Sca_t* scw(generateSca(x_));
     
     sht_.forward(f_in, *wrk, *shc);
     sht_.backward_du(*shc, *wrk, *dif);
@@ -326,7 +326,7 @@ volume(ScalarContainer &vol_out) const
     if(first_forms_are_stale_)
         updateFirstForms();
     
-    Sca* scw(generateSca(x_));
+    Sca_t* scw(generateSca(x_));
     GeometricDot(x_,normal_,*scw);
     axpy(static_cast<value_type>(1)/3, *scw, *scw);
 
@@ -336,16 +336,16 @@ volume(ScalarContainer &vol_out) const
 
 template< typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
-getCenters(Vec &centers) const
+getCenters(Vec_t &centers) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca* scw(generateSca(x_));
+    Sca_t* scw(generateSca(x_));
     GeometricDot(x_, x_, *scw);
     axpy(static_cast<value_type>(.5), *scw, *scw);
     
-    Vec* vcw(generateVec(x_));
+    Vec_t* vcw(generateVec(x_));
     xv(*scw, normal_, *vcw);
     recycleSca(scw);
 
@@ -380,7 +380,7 @@ template <typename ScalarContainer, typename VectorContainer>
 ScalarContainer* Surface<ScalarContainer, VectorContainer>::
 generateSca(const VectorContainer &ref) const
 {
-    Sca* scp;
+    Sca_t* scp;
     
     if(scalar_work_q_.empty())
         scp = new ScalarContainer;
@@ -397,7 +397,7 @@ generateSca(const VectorContainer &ref) const
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
-recycleSca(ScalarContainer* scp) const
+recycleSca(Sca_t* scp) const
 {
     scalar_work_q_.push(scp);
     --checked_out_work_sca_;
@@ -407,7 +407,7 @@ template <typename ScalarContainer, typename VectorContainer>
 VectorContainer* Surface<ScalarContainer, VectorContainer>::
 generateVec(const VectorContainer &ref) const
 {
-    Vec* vcp;
+    Vec_t* vcp;
     
     if(vector_work_q_.empty())
         vcp = new VectorContainer;
@@ -450,15 +450,15 @@ purgeTheWorkSpace() const
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
-linearizedMeanCurv(const Vec &x_new, Sca &h_lin) const
+linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
     
-    Vec* wrk(generateVec(x_));
-    Vec* shc(generateVec(x_));
-    Vec* dif(generateVec(x_));
-    Sca* scw(generateSca(x_));
+    Vec_t* wrk(generateVec(x_));
+    Vec_t* shc(generateVec(x_));
+    Vec_t* dif(generateVec(x_));
+    Sca_t* scw(generateSca(x_));
 
     sht_.forward(x_, *wrk, *shc);   
 

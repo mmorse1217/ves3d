@@ -20,5 +20,4 @@ float maxGpu(float *in, int n);
 float AlgebraicDotGpu(const float *x, const float *y, size_t length);
 void axGpu(const float* a, const float* x, size_t stride, size_t n_vecs, float* ax_out);
 
-
 #include "transpose_kernel.h"

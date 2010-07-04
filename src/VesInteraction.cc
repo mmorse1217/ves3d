@@ -1,5 +1,5 @@
 template<typename T>
-VesInteraction<T>::VesInteraction(InteractionFun interaction_handle,
+VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
     int num_threads) :
     num_threads_(num_threads),
     each_thread_np_(new size_t[num_threads_]),
@@ -34,11 +34,11 @@ VesInteraction<T>::InteractionReturn VesInteraction<T>::operator()(
     
     if ( interaction_handle_ == NULL )
     {
-        memset(potential.begin(), 0, potential.size() * 
-            sizeof(typename VecContainer::value_type));
+        potential.getDevice().Memset(potential.begin(), 
+            0, potential.size() * sizeof(value_type));
         return NoInteraction;
     }
-
+    
     //up-sampling
 
     //Getting the sizes
@@ -74,7 +74,7 @@ VesInteraction<T>::InteractionReturn VesInteraction<T>::operator()(
         delete[] buffer;
     }
     
-    updatePotential();
+     updatePotential();
 
     //Copying back the potential to the device(s)
     if(typeid(value_type) == typeid(T))
@@ -94,6 +94,7 @@ VesInteraction<T>::InteractionReturn VesInteraction<T>::operator()(
         
         delete[] buffer;
     }
+    
     return InteractionSuccess;
 }
 
@@ -158,10 +159,10 @@ void VesInteraction<T>::updatePotential() const
     assert(interaction_handle_ != NULL);
 #pragma omp master
     {
-        int the_dim = 3;
+        ///@todo gpu based interactions
         interaction_handle_(all_pos_, all_den_, np_, all_pot_);
     }
-    
+   
 #pragma omp barrier
 }
 

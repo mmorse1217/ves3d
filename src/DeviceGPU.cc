@@ -280,6 +280,7 @@ T Device<GPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
     PROFILEEND("GPU",0);
     return(dot);
 }
+
 template<>
 Device<GPU>::~Device()
 {

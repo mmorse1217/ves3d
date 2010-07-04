@@ -12,26 +12,27 @@ void ShearFlow(const VecContainer &pos, const typename
 
 template<typename SurfContainer, 
          typename Interaction,
-         typename BackgroundFlow = void(&)(const typename SurfContainer::Vec&, 
-             typename SurfContainer::value_type, typename SurfContainer::Vec&) >
+         typename BackgroundFlow = void(&)(const typename SurfContainer::Vec_t&, 
+             typename SurfContainer::value_type, typename SurfContainer::Vec_t&) >
 class InterfacialVelocity
 {
   private:
     typedef typename SurfContainer::value_type value_type;
-    typedef typename SurfContainer::Sca Sca;
-    typedef typename SurfContainer::Vec Vec;
+    typedef typename SurfContainer::device_type device_type;
+    typedef typename SurfContainer::Sca_t Sca_t;
+    typedef typename SurfContainer::Vec_t Vec_t;
     
   public:
     InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
-        OperatorsMats<value_type, Device<CPU> > &mats, const Parameters<value_type> &params, 
-        BackgroundFlow &bgFlow = ShearFlow<Vec>);
+        OperatorsMats<value_type, device_type> &mats, const Parameters<value_type> &params, 
+        BackgroundFlow &bgFlow = ShearFlow<Vec_t>);
    
     void updatePositionExplicit(const value_type &dt);
     void updatePositionImplicit(const value_type &dt);
     void reparam();
 
-    void operator()(const Vec &x_new, Vec &time_mat_vec) const; 
-    void operator()(const Sca &tension, Sca &tension_mat_vec) const; 
+    void operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const; 
+    void operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const; 
   
   private:
     SurfContainer &S_;
@@ -40,23 +41,23 @@ class InterfacialVelocity
     const Parameters<value_type> &params_;
     
     InterfacialForce<SurfContainer> Intfcl_force_;
-    BiCGStab<Sca, InterfacialVelocity> linear_solver_;
-    BiCGStab<Vec, InterfacialVelocity> linear_solver_vec_;
+    BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
+    BiCGStab<Vec_t, InterfacialVelocity> linear_solver_vec_;
 
     value_type dt_;
     //Operators 
-    Sca w_sph_;
-    Sca all_rot_mats_;
-    Sca rot_mat_;
-    Sca sing_quad_weights_;
-    Sca quad_weights_;
+    Sca_t w_sph_;
+    Sca_t all_rot_mats_;
+    Sca_t rot_mat_;
+    Sca_t sing_quad_weights_;
+    Sca_t quad_weights_;
     
     //Workspace
-    mutable Vec velocity, u1_, u2_, u3_;
-    mutable Sca tension_, wrk_;
+    mutable Vec_t velocity, u1_, u2_, u3_;
+    mutable Sca_t tension_, wrk_;
 
-    void getTension(const Vec &vel_in, Sca &tension) const;
-    void stokes(const Vec &force, Vec &vel) const;
+    void getTension(const Vec_t &vel_in, Sca_t &tension) const;
+    void stokes(const Vec_t &force, Vec_t &vel) const;
     void updateInteraction();
 };
 

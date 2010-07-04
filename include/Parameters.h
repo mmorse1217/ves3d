@@ -3,6 +3,7 @@
 
 #include <typeinfo>
 #include <iostream>
+#include "enums.h"
 
 template <typename T>
 struct Parameters 
@@ -27,7 +28,8 @@ struct Parameters
     int n_steps;
     T time_horizon;
     T ts;
-    
+    SolverScheme scheme;
+
     //Reparametrization
     int rep_maxit;
     int rep_up_freq;
