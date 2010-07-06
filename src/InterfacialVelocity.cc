@@ -77,6 +77,7 @@ template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 updatePositionExplicit(const value_type &dt)
 {
+    this->dt_ = dt;
     this->updateInteraction();
     
     //Bending
@@ -90,13 +91,14 @@ updatePositionExplicit(const value_type &dt)
     stokes(u1_, u2_);
     axpy(static_cast<value_type>(1), u2_, velocity, velocity);
 
-    axpy(dt, velocity, S_.getPosition(), S_.getPositionModifiable());
+    axpy(dt_, velocity, S_.getPosition(), S_.getPositionModifiable());
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 updatePositionImplicit(const value_type &dt)
 {
+    this->dt_ = dt;
     this->updateInteraction();
 
     //Explicit bending for tension
@@ -110,7 +112,7 @@ updatePositionImplicit(const value_type &dt)
     stokes(u1_, u2_);
     axpy(static_cast<value_type>(1), u2_, velocity, u1_);
     
-    axpy(dt, u1_, S_.getPosition(), u1_);
+    axpy(dt_, u1_, S_.getPosition(), u1_);
     u2_.getDevice().Memcpy(u2_.begin(), S_.getPosition().begin(), S_.getPosition().size()
         * sizeof(value_type), MemcpyDeviceToDevice);
     
@@ -119,22 +121,42 @@ updatePositionImplicit(const value_type &dt)
     value_type tol(params_.outer_solver_tol);
     enum BiCGSReturn solver_ret;
 
-    COUT("\n Position solve\n --------------------------------");
-    for(int ii=0; ii<2; ++ii)
+    int mIter;
+    value_type tt;
+    int ii, imax(2);
+
+    COUT("  Position solve\n ------------------------------------\n");
+    for ( ii=0; ii<imax; ++ii )
     {
-        int mIter(max_iter);
-        value_type tt(tol);
+        mIter = max_iter;
+        tt = tol;
         
         solver_ret = linear_solver_vec_(*this, u2_, u1_, mIter, tt);
-
-        if ( (solver_ret  != BiCGSSuccess && ii==1) || solver_ret == RelresIsNan )
+        
+        if ( solver_ret == BiCGSSuccess )
+            break;
+        
+        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
         { 
-            CERR("\n The position solver did not converge with the error \""
+            CERR(" The position solver did not converge with the error \""
                 <<solver_ret<<"\"",endl<<endl,exit(1));
             
         }
-    }
-    COUTDEBUG(" --------------------------------"<<endl);
+    }   
+
+    COUTDEBUG(" ------------------------------------"<<endl);
+    COUT("       Total iterations = "<< ii * max_iter + mIter
+        <<"\n                 Relres = "<<tt<<endl);
+
+#ifndef NDEBUG
+    (*this)(u2_, u3_);
+    axpy(static_cast<value_type>(-1), u3_, u1_, u3_);
+    tt = sqrt(AlgebraicDot(u3_, u3_))/sqrt(AlgebraicDot(u1_,u1_));
+#endif
+    COUTDEBUG("            True relres = "<<tt<<endl);
+
+    COUT(" ------------------------------------"<<endl);
+
 
     u2_.getDevice().Memcpy(S_.getPositionModifiable().begin(), u2_.begin(), 
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
@@ -201,18 +223,35 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
     enum BiCGSReturn solver_ret;
     ///@todo add the restart option to the Parameters
     
-    COUT("\n Tension solve\n --------------------------------");
-    for(int ii=0; ii<2; ++ii)
+    int mIter;
+    value_type tt;
+    int ii, imax(4);
+    COUT("  Tension solve\n ------------------------------------\n");
+    for ( ii=0; ii<imax; ++ii )
     {
-        int mIter(max_iter);
-        value_type tt(tol);
+        mIter = max_iter;
+        tt = tol;
         
         solver_ret = linear_solver_(*this, tension, rhs, mIter, tt);
-        if ( (solver_ret  != BiCGSSuccess && ii==1) || solver_ret == RelresIsNan )
-            CERR("\n The tension solver did not converge with the error \""
+        if ( solver_ret == BiCGSSuccess )
+            break;
+        
+        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
+            CERR(" The tension solver did not converge with the error \""
                 <<solver_ret<<"\"",endl<<endl,exit(1));
     }
-    COUTDEBUG(" --------------------------------"<<endl);
+    COUTDEBUG(" ------------------------------------"<<endl);
+    COUT("       Total iterations = "<< ii * max_iter + mIter
+        <<"\n                 Relres = "<<tt<<endl);
+
+#ifndef NDEBUG
+    (*this)(tension, wrk_);
+    axpy(static_cast<value_type>(-1), wrk_, rhs, wrk_);
+    tt = sqrt(AlgebraicDot(wrk_, wrk_))/sqrt(AlgebraicDot(rhs,rhs));
+#endif
+    COUTDEBUG("            True relres = "<<tt<<endl);
+
+    COUT(" ------------------------------------"<<endl);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
@@ -298,6 +337,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
     value_type vel;
 
     int ii(-1);
+    
+    COUT("  Reparametrization \n ------------------------------------\n");
     while ( ++ii < params_.rep_maxit )
     {
         S_.getSmoothedShapePosition(u1_);
@@ -309,18 +350,21 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
         //Advecting tension
         S_.grad(tension_, u2_);
         GeometricDot(u2_, u1_, wrk_);
-        axpy(-ts, wrk_, tension_, tension_);
-        
+        axpy(ts, wrk_, tension_, tension_);
+
         axpy(ts, u1_, S_.getPosition(), S_.getPositionModifiable());
         
-        vel = u1_.getDevice().MaxAbs(u1_.begin(), u1_.size());
+        vel = MaxAbs(u1_);
              
-        COUTDEBUG("\n Reparametrization :"
-            <<"\n           iteration = "<<ii
-            <<"\n           |vel|     = "<<vel<<endl);
+        COUTDEBUG("\n              Iteration = "<<ii
+            <<"\n                  |vel| = "<<vel<<endl);
         
         if(vel < params_.rep_tol )
             break;
 
     }
+    COUTDEBUG(" ------------------------------------"<<endl);
+    COUT("       Total iterations = "<<ii
+        <<"\n                  |vel| = "<<vel
+        <<"\n ------------------------------------"<<endl);
 }

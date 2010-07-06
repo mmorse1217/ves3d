@@ -4,7 +4,6 @@ void Identity<Container>::operator()(Container &in, Container &out) const
     axpy(1.0, in, out);
 }
 
-
 template<typename Container, typename MatVec, typename Precond>
 typename Container::value_type BiCGStab<Container, MatVec, Precond>::Norm(const Container &x) const
 {
@@ -34,8 +33,11 @@ std::ostream& operator<<(std::ostream& output, const enum BiCGSReturn &ret)
         case RelresIsNan:
             output<<"RelresIsNan";
             break;
+
+        default:
+            CERR("\n The BiCGSReturn type is not recognized. Please update the"
+                <<"\n overloaded insertion operator",endl, NULL);
     }
-    
     return output;
 }
 
@@ -76,8 +78,8 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         if ( resid != resid )
             return RelresIsNan;
 
-        COUTDEBUG("\n BiCGStab: iteration = "<<i-1
-            <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+        COUTDEBUG("\n  BiCGStab:   Iteration = "<<i-1
+            <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
 
         rho_1 = AlgebraicDot(rtilde, r);
         if (rho_1 == 0)
@@ -106,8 +108,8 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             axpy(alpha, phat, x , x);
             tol = resid;
             max_iter = i;
-            COUTDEBUG("\n BiCGStab: iteration = "<<i
-                <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
+                <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
             return BiCGSSuccess;
         }
 
@@ -124,8 +126,8 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         if ((resid = Norm(r) / normb) < tol) {
             tol = resid;
             max_iter = i;
-            COUTDEBUG("\n BiCGStab: iteration = "<<i
-                <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
+                <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
             return BiCGSSuccess;
         }
         if (omega == 0) {
@@ -156,7 +158,6 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         
     typename Container::value_type normb = Norm(b);
     A(x, r); 
-    CERR("THE BUG MAY BE IN THE MATVEC",endl, exit(1));
 
     axpy((typename Container::value_type) -1.0, r, b, r);
     axpy((typename Container::value_type)  0.0, r, r, rtilde);
@@ -168,13 +169,14 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         max_iter = 0;
         return BiCGSSuccess;
     }
+    
     for (int i = 1; i <= max_iter; i++) {
         
         if ( resid != resid )
             return RelresIsNan;
         
-        COUTDEBUG("\n BiCGStab: iteration = "<<i-1
-            <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+        COUTDEBUG("\n  BiCGStab:   Iteration = "<<i-1
+            <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
         
         rho_1 = AlgebraicDot(rtilde, r);
         if (rho_1 == 0)
@@ -201,11 +203,11 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             axpy(alpha, p, x , x);
             tol = resid;
             max_iter = i;
-            COUTDEBUG("\n BiCGStab: iteration = "<<i
-                <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
+                <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
             return BiCGSSuccess;
         }
-
+        
         A(s, t);
         omega = AlgebraicDot(t,s) / AlgebraicDot(t,t);
         axpy(alpha, p, x, x);
@@ -217,13 +219,13 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         if ((resid = Norm(r) / normb) < tol) {
             tol = resid;
             max_iter = i;
-            COUTDEBUG("\n BiCGStab: iteration = "<<i
-                <<"\n           relres    = "<<scientific<<setprecision(4)<<resid<<endl);
+            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
+                <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
             return BiCGSSuccess;
         }
     
         if (omega == 0) {
-            tol = Norm(r) / normb;
+            tol = resid;
             max_iter = i;
             return BreakDownOmegaZero;
         }

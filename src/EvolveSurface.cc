@@ -27,15 +27,19 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
         V0 = V;
     }
     
-    if(save_flag_ && (t/save_stride_ == static_cast<int>(t/save_stride_)))
-    {
-        IO.Append(state.getPosition().begin(), state.getPosition().size());
-    }
-
-    COUT(                              "\n Monitor : t            = "<<fixed<<t
+    COUT("\n  Monitor : t           = "<<fixed<<t
         <<scientific<<setprecision(4)<<"\n           area   error = "<<abs(A/A0-1)
         <<scientific<<setprecision(4)<<"\n           volume error = "<<abs(V/V0-1)<<endl);
-    return(t<time_hor_);
+    
+    if(save_flag_ && (t/save_stride_ == static_cast<int>(t/save_stride_)))
+    {
+        COUT("\n           Writing data to file."<<endl);
+        IO.Append(state.getPosition().begin(), state.getPosition().size());
+
+    }
+    COUT(" ------------------------------------"<<endl);
+
+return(t<time_hor_);
 }
 
 template<typename Container, typename Interaction>

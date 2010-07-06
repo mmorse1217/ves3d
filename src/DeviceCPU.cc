@@ -11,15 +11,14 @@ inline pair<int, int> gridDimOf(int sh_order)
     return(make_pair(sh_order + 1, 2 * sh_order));
 }
 
-template<>
-Device<CPU>::Device(int device_id, enum DeviceError *err)
+template<enum DeviceType DT>
+Device<DT>::Device(int device_id, enum DeviceError *err)
 {
     if(err!=0) *err = Success;
-
 }
 
-template<>
-Device<CPU>::~Device()
+template<enum DeviceType DT>
+Device<DT>::~Device()
 {}
 
 template<>
@@ -563,7 +562,7 @@ T Device<CPU>::MaxAbs(T *x_in, size_t length) const
 { 
     PROFILESTART();
     T *max_arr;
-    T n_threads;
+    int n_threads;
     
 #pragma omp parallel
     {

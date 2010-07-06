@@ -1,4 +1,5 @@
 #include "Scalars.h"
+#include "Vectors.h"
 #include "HelperFuns.h"
 #include "BiCGStab.h"
 #include <stdlib.h>
@@ -58,7 +59,7 @@ int main(int argc, char **argv)
     int nfuns(1);
     ScaCPU_t x_ref(nfuns,p), b_ref(nfuns,p);
     MatVec<ScaCPU_t> Ax(nfuns, p);
-    const int max_iter = 200;
+    const int max_iter = 2000;
     const real tol = 1e-6;
 
     for(int ii(0);ii<x_ref.size();++ii)
@@ -80,10 +81,11 @@ int main(int argc, char **argv)
        
         Ax(x,b);
         axpy((real) -1.0, b_ref, b, b);
-                
-        string formatstr ="\n CPU data :\n     Residual: %2.4e\n     ";
-        formatstr +="Iter    : %d\n     Error   : %2.4e\n";
-        sprintf(cpu_out, formatstr.c_str(), tt, miter, MaxAbs(b));
+        
+        string formatstr ="\n CPU data :\n   Residual     : %2.4e\n";
+        formatstr +="   Iter         : %d\n   True relres  : %2.4e\n";
+        sprintf(cpu_out, formatstr.c_str(), tt, miter, 
+            sqrt(AlgebraicDot(b,b)/AlgebraicDot(b_ref,b_ref)));
     }
     
 #ifdef GPU_ACTIVE
