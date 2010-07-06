@@ -67,10 +67,10 @@ int main(int argc, char **argv)
     Par_t sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 1;
+    sim_par.time_horizon = 80;
     sim_par.scheme = SemiImplicit;
     sim_par.bg_flow_param = 0.1;
-    sim_par.rep_maxit = 1;
+    sim_par.rep_maxit = 20;
     sim_par.save_data = true;    
     sim_par.save_stride = 2;
     sim_par.save_file_name = "EvolveSurf.out";

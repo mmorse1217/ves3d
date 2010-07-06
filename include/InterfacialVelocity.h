@@ -31,9 +31,13 @@ class InterfacialVelocity
     void updatePositionImplicit(const value_type &dt);
     void reparam();
 
+    void getTension(const Vec_t &vel_in, Sca_t &tension) const;
+    void stokes(const Vec_t &force, Vec_t &vel) const;
+    void updateInteraction();
+
     void operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const; 
-    void operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const; 
-  
+    void operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
+
   private:
     SurfContainer &S_;
     Interaction &interaction_;
@@ -55,10 +59,6 @@ class InterfacialVelocity
     //Workspace
     mutable Vec_t velocity, u1_, u2_, u3_;
     mutable Sca_t tension_, wrk_;
-
-    void getTension(const Vec_t &vel_in, Sca_t &tension) const;
-    void stokes(const Vec_t &force, Vec_t &vel) const;
-    void updateInteraction();
 };
 
 #include "InterfacialVelocity.cc"

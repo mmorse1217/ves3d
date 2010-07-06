@@ -169,6 +169,9 @@ class Device
     template<typename T>
     T MaxAbs(T *x_in, size_t length) const;
 
+    template<typename T>
+    void fillRand(T *x_in, size_t length) const;
+
     ///Transpose of a matrix
     template<typename T>
     T* Transpose(const T *in, size_t height, size_t width, T *out) const;

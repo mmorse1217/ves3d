@@ -460,7 +460,7 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
     Vec_t* dif(generateVec(x_));
     Sca_t* scw(generateSca(x_));
 
-    sht_.forward(x_, *wrk, *shc);   
+    sht_.forward(x_new, *wrk, *shc);   
 
     //duu
     sht_.backward_d2u(*shc, *wrk, *dif);

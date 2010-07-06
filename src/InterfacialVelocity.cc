@@ -29,7 +29,8 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     interaction_(Inter),
     bg_flow_(bgFlow),
     Intfcl_force_(params),
-    params_(params)
+    params_(params),
+    dt_(params_.ts)
 {
     w_sph_.replicate(S_.getPosition());
     velocity.replicate(S_.getPosition());
@@ -311,8 +312,6 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
     Vec_t fb;
-    fb.replicate(x_new);
-    
     Intfcl_force_.linearBendingForce(S_, x_new, fb);
     stokes(fb, time_mat_vec);
     axpy(-dt_, time_mat_vec, x_new, time_mat_vec);

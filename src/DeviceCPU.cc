@@ -635,6 +635,16 @@ bool Device<CPU>::isNan(const T* x, size_t length) const
     return is_nan;
 }
 
+template<>
+template<typename T>
+void Device<CPU>::fillRand(T* x, size_t length) const
+{
+    PROFILESTART();
+    for(size_t idx=0;idx<length; ++idx)   
+        x[idx] = static_cast<T>(drand48());
+    PROFILEEND("CPU", 0);
+}
+
 template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         
 inline bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs)
 {

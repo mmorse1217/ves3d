@@ -16,7 +16,7 @@ BLAS_LIBS  = -L/opt/intel/Compiler/11.1/046/mkl/lib/em64t 		\
 
 # Flags
 ARFLAGS = -r
-CXXFLAGS= -DHAS_MKL_LIB -DPROFILING -DVERBOSE -DNDEBUG -openmp -fPIC    \
+CXXFLAGS= -DHAS_MKL_LIB -DPROFILING -DVERBOSE -DNDEBUGX -openmp -fPIC    \
 	  -early-template-check -sox -fno-exceptions -diag-enable 
 
 ifeq ($(VES3D_TESTING),yes)

@@ -43,22 +43,19 @@ void InterfacialForce<SurfContainer>::linearBendingForce(const SurfContainer &S,
     tmp.replicate(S.getPosition());
 
     xy(S.getMeanCurv(), S.getMeanCurv(), tmp);
-    axpy(static_cast<typename SurfContainer::value_type>(-1), tmp, 
-        S.getGaussianCurv(), tmp);
+    axpy(static_cast<typename SurfContainer::value_type>(-1), 
+        S.getGaussianCurv(), tmp, tmp);
     
     S.linearizedMeanCurv(x_new, h_lin);
     xy(h_lin, tmp, tmp);
-
-    S.grad(h_lin, Fb);
-    S.div(Fb, h_lin);
-    axpy(static_cast<typename SurfContainer::value_type>(-1), h_lin, h_lin);
     
+    S.grad(h_lin, Fb);
+    S.div(Fb, h_lin);    
     axpy(static_cast<typename SurfContainer::value_type>(2), 
         tmp, h_lin, h_lin);
 
     xv(h_lin, S.getNormal(), Fb);
-    
-    axpy(bending_modulus_, Fb, Fb);
+    axpy(-bending_modulus_, Fb, Fb);
 }
 
 template<typename SurfContainer>

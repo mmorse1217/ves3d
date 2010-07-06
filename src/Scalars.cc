@@ -159,6 +159,12 @@ bool Scalars<T, DT, DEVICE>::isNan() const
     return(DEVICE.isNan(data_, this->size()));
 }
 
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+void Scalars<T, DT, DEVICE>::fillRand()
+{
+    return(DEVICE.fillRand(data_, this->size()));
+}
+
 /////////////////////////////////////////////////////////////////////////////////
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
 std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
