@@ -103,6 +103,7 @@ class Logger
 #endif //NDEBUG
 
 //Printing macro
+#define PRINTFRMT scientific<<setprecision(4)
 #define CERR(str,endline,action) (                                      \
         std::cerr<<endl<<str                                            \
         <<"\n         File     : "<< __FILE__                           \

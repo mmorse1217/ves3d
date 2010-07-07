@@ -23,8 +23,8 @@ void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
-    OperatorsMats<value_type, device_type> &mats, const Parameters<value_type> &params,
-    BackgroundFlow &bgFlow) :
+    OperatorsMats<value_type, device_type> &mats, 
+    const Parameters<value_type> &params, BackgroundFlow &bgFlow) :
     S_(S_in),
     interaction_(Inter),
     bg_flow_(bgFlow),
@@ -114,8 +114,8 @@ updatePositionImplicit(const value_type &dt)
     axpy(static_cast<value_type>(1), u2_, velocity, u1_);
     
     axpy(dt_, u1_, S_.getPosition(), u1_);
-    u2_.getDevice().Memcpy(u2_.begin(), S_.getPosition().begin(), S_.getPosition().size()
-        * sizeof(value_type), MemcpyDeviceToDevice);
+    u2_.getDevice().Memcpy(u2_.begin(), S_.getPosition().begin(), 
+        S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //Update position
     int max_iter(params_.outer_solver_maxit);
@@ -137,7 +137,8 @@ updatePositionImplicit(const value_type &dt)
         if ( solver_ret == BiCGSSuccess )
             break;
         
-        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
+        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || 
+            solver_ret == RelresIsNan )
         { 
             CERR(" The position solver did not converge with the error \""
                 <<solver_ret<<"\"",endl<<endl,exit(1));
@@ -149,12 +150,11 @@ updatePositionImplicit(const value_type &dt)
     COUT("       Total iterations = "<< ii * max_iter + mIter
         <<"\n                 Relres = "<<tt<<endl);
 
-#ifndef NDEBUG
-    (*this)(u2_, u3_);
-    axpy(static_cast<value_type>(-1), u3_, u1_, u3_);
-    tt = sqrt(AlgebraicDot(u3_, u3_))/sqrt(AlgebraicDot(u1_,u1_));
-#endif
-    COUTDEBUG("            True relres = "<<tt<<endl);
+    COUTDEBUG("            True relres = "<<
+        ((*this)(u2_, u3_),
+            axpy(static_cast<value_type>(-1), u3_, u1_, u3_),
+            tt = sqrt(AlgebraicDot(u3_, u3_))/sqrt(AlgebraicDot(u1_,u1_))
+         )<<endl);
 
     COUT(" ------------------------------------"<<endl);
 
@@ -164,7 +164,8 @@ updatePositionImplicit(const value_type &dt)
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::updateInteraction()
+void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+updateInteraction()
 {
     //Interfacial forces
     Intfcl_force_.bendingForce(S_, u1_);
@@ -237,7 +238,9 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
         if ( solver_ret == BiCGSSuccess )
             break;
         
-        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
+        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) 
+            || solver_ret == RelresIsNan )
+            
             CERR(" The tension solver did not converge with the error \""
                 <<solver_ret<<"\"",endl<<endl,exit(1));
     }
@@ -245,12 +248,11 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
     COUT("       Total iterations = "<< ii * max_iter + mIter
         <<"\n                 Relres = "<<tt<<endl);
 
-#ifndef NDEBUG
-    (*this)(tension, wrk_);
-    axpy(static_cast<value_type>(-1), wrk_, rhs, wrk_);
-    tt = sqrt(AlgebraicDot(wrk_, wrk_))/sqrt(AlgebraicDot(rhs,rhs));
-#endif
-    COUTDEBUG("            True relres = "<<tt<<endl);
+    COUTDEBUG("            True relres = "<<
+        ((*this)(tension, wrk_),
+            axpy(static_cast<value_type>(-1), wrk_, rhs, wrk_),
+            tt = sqrt(AlgebraicDot(wrk_, wrk_))/sqrt(AlgebraicDot(rhs,rhs))
+         )<<endl);
 
     COUT(" ------------------------------------"<<endl);
 }
@@ -367,3 +369,82 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
         <<"\n                  |vel| = "<<vel
         <<"\n ------------------------------------"<<endl);
 }
+
+#ifndef NDEBUG
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Sca_t &tension, Vec_t &vel, 
+    Vec_t &xnew, value_type tol) const
+{
+    bool res = 
+        benchmarkBendingForce(S_.getPosition(), Fb, tol) &&
+        benchmarkStokes(Fb, SFb, tol)                    &&
+        (/*///@todo add vinf to SFb */ benchmarkTension(SFb, tension, tol));
+    
+    COUTDEBUG("\n\n ------------------------------------"
+        <<" Explicit stepper benchmark "
+        <<((res) ? "*Passed*" : "*Failed*" )
+        <<" ------------------------------------"<<endl);
+    return ( res );
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
+{
+    COUTDEBUG("\n  Bending force benchmark"
+        <<"\n ------------------------------------\n");
+
+    Intfcl_force_.linearBendingForce(S_, x, u1_);
+    axpy(static_cast<value_type>(-1), Fb, u1_, Fb);
+    
+    value_type err = MaxAbs(Fb); 
+    axpy(static_cast<value_type>(1), u1_, Fb);
+    
+    COUTDEBUG("  The benchmark " 
+        <<((err<tol) ? "*Passed*" : "*Failed*" )
+        <<" with\n                  error = "<<PRINTFRMT<<err<<endl);
+        
+    return (err < tol);
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
+{
+    COUTDEBUG("\n  Singular Stokes benchmark"
+        <<"\n ------------------------------------\n");
+    stokes(F, u1_);
+    axpy(static_cast<value_type>(-1), SF, u1_, SF);
+    
+    value_type err = MaxAbs(SF); 
+    axpy(static_cast<value_type>(1), u1_, SF);
+    
+    COUTDEBUG("  The benchmark " 
+        <<((err<tol) ? "*Passed*" : "*Failed*" )
+        <<" with\n                  error = "<<PRINTFRMT<<err<<endl);
+
+    return (err < tol);
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
+{
+    COUTDEBUG("\n  Tension benchmark"
+        <<"\n ------------------------------------\n");
+    getTension(vel, wrk_);
+    axpy(static_cast<value_type>(-1), tension, wrk_, tension);
+    
+    value_type err = MaxAbs(tension); 
+    axpy(static_cast<value_type>(1), wrk_, tension);
+    
+    COUTDEBUG("  The benchmark " 
+        <<((err<tol) ? "*Passed*" : "*Failed*" )
+        <<" with\n                  error = "<<PRINTFRMT<<err);
+
+    return (err < tol);
+}
+
+#endif //NDEBUG

@@ -38,16 +38,26 @@ class DataIO
     DataIO(const Device &device_in, string file_name_in = "", 
         size_t buffer_size_in = 0);
     ~DataIO();
-    
+
+    // Basic type IO
     bool ReadData(const char* file_name_in, size_t data_size_in, 
         T* data_array_out) const;
-    
     bool WriteData(const char *file_name_in, size_t data_size_in, 
         const T* data_array_in, ios_base::openmode mode_in = ios::out) const;
-
     bool Append(const T *x_in, size_t length) const; 
     bool ResizeOutBuffer(size_t size_in) const;
     bool FlushBuffer() const;
+
+    // General container IO
+    template<typename Container>
+    bool ReadData(const char* file_name_in, Container &data) const;
+    
+    template<typename Container>
+    bool WriteData(const char *file_name_in, const Container &data, 
+        ios_base::openmode mode_in = ios::out) const;
+    
+    template<typename Container>
+    bool Append(const Container &data) const; 
 };
 
 #include "DataIO.cc"

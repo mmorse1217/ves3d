@@ -59,6 +59,18 @@ class InterfacialVelocity
     //Workspace
     mutable Vec_t velocity, u1_, u2_, u3_;
     mutable Sca_t tension_, wrk_;
+
+#ifndef NDEBUG
+  public:
+    bool benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Sca_t &tension, 
+        Vec_t &vel, Vec_t &xnew, value_type tol) const;
+        
+    bool benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const;
+    bool benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const;
+    bool benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const;
+    bool benchmarkTensileForce(const Sca_t &tension, Vec_t &Fs, value_type tol) const;
+    
+#endif //NDEBUG
 };
 
 #include "InterfacialVelocity.cc"

@@ -109,3 +109,25 @@ bool DataIO<T,Device>::FlushBuffer() const
 
     return(res);
 }
+
+template<typename T, typename Device>
+template<typename Container>
+bool DataIO<T,Device>::ReadData(const char* file_name_in, Container &data) const
+{
+    return(this->ReadData(file_name_in, data.size(), data.begin()));
+}
+
+template<typename T, typename Device>
+template<typename Container>
+bool DataIO<T,Device>::WriteData(const char *file_name_in, const Container &data, 
+    ios_base::openmode mode_in) const
+{
+    return(this->WriteData(file_name_in, data.size(), data.begin(), mode_in));
+}
+    
+template<typename T, typename Device>
+template<typename Container>
+bool DataIO<T,Device>::Append(const Container &data) const
+{
+    return(this->Append(data.begin(), data.size()));
+}
