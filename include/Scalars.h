@@ -27,7 +27,8 @@ class Scalars
     explicit Scalars(size_t num_subs = 0, int sh_order = 0, 
         pair<int, int> grid_dim = EMPTY_GRID);
     virtual ~Scalars();
-        
+
+    static enum DeviceType getDeviceType();
     static const device_type& getDevice();
     static inline int getTheDim();
 
@@ -75,11 +76,11 @@ template<typename Container>
 class ShowEntries
 {       
   public:
-    ShowEntries(Container &c);
+    ShowEntries(const Container &c);
     std::ostream& operator()(std::ostream &out) const;        
       
   private:
-    Container &c_;
+    const Container &c_;
 };
     
 template<typename Container>

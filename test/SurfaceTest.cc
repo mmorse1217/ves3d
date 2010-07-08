@@ -26,7 +26,7 @@ void testSurface(const Device<DT> &dev)
     Parameters<real> sim_par;
     
     //IO
-    DataIO<real, Device<DT> > myIO(dev);
+    DataIO myIO;
     
     // initializing vesicle positions from text file
     Vec x0(nVec, p);

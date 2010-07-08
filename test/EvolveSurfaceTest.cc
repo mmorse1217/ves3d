@@ -20,7 +20,7 @@ void EvolveSurfTest(const Device<DT> &dev, Parameters<real> &sim_par)
     typedef VesInteraction<fmm_value_type> Interaction_t;
     
     //IO
-    DataIO<real, Device<DT> > myIO(dev);
+    DataIO myIO;
 
     //Initializing vesicle positions from text file
     Vec x0(sim_par.n_surfs, sim_par.sh_order);
@@ -67,8 +67,8 @@ int main(int argc, char **argv)
     Par_t sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 80;
-    sim_par.scheme = SemiImplicit;
+    sim_par.time_horizon = 3;
+    sim_par.scheme = Explicit;//SemiImplicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = true;    

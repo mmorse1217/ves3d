@@ -3,7 +3,7 @@ Monitor<SurfContainer>::Monitor(const Parameters<value_type> &params) :
     time_hor_(params.time_horizon),
     save_flag_(params.save_data),
     save_stride_(params.save_stride),
-    IO(SurfContainer::Vec_t::getDevice(), params.save_file_name),
+    IO(params.save_file_name),
     A0(-1),
     V0(-1)
 {};

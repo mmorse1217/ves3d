@@ -30,16 +30,14 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     bg_flow_(bgFlow),
     Intfcl_force_(params),
     params_(params),
-    dt_(params_.ts)
+    dt_(params_.ts),
+    checked_out_work_sca_(0),
+    checked_out_work_vec_(0)
 {
     w_sph_.replicate(S_.getPosition());
     velocity.replicate(S_.getPosition());
-    u1_.replicate(S_.getPosition());
-    u2_.replicate(S_.getPosition());
-    u3_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
-    wrk_.replicate(S_.getPosition());
-
+    
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0, 
         tension_.size() * sizeof(value_type));
@@ -75,6 +73,16 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+~InterfacialVelocity()
+{
+    assert(!checked_out_work_sca_);
+    assert(!checked_out_work_vec_);
+
+    purgeTheWorkSpace();
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 updatePositionExplicit(const value_type &dt)
 {
@@ -82,17 +90,23 @@ updatePositionExplicit(const value_type &dt)
     this->updateInteraction();
     
     //Bending
-    Intfcl_force_.bendingForce(S_, u1_);
-    stokes(u1_, u2_);   
-    axpy(static_cast<value_type>(1), u2_, velocity, velocity);
+    Vec_t* u1 = checkoutVec(S_.getPosition());
+    Vec_t* u2 = checkoutVec(S_.getPosition());
+    
+    Intfcl_force_.bendingForce(S_, *u1);
+    stokes(*u1, *u2);   
+    axpy(static_cast<value_type>(1), *u2, velocity, velocity);
    
     //Tension
     getTension(velocity, tension_);
-    Intfcl_force_.tensileForce(S_, tension_, u1_);
-    stokes(u1_, u2_);
-    axpy(static_cast<value_type>(1), u2_, velocity, velocity);
+    Intfcl_force_.tensileForce(S_, tension_, *u1);
+    stokes(*u1, *u2);
+    axpy(static_cast<value_type>(1), *u2, velocity, velocity);
 
     axpy(dt_, velocity, S_.getPosition(), S_.getPositionModifiable());
+    
+    recycle(u1);
+    recycle(u2);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
@@ -102,19 +116,23 @@ updatePositionImplicit(const value_type &dt)
     this->dt_ = dt;
     this->updateInteraction();
 
+    Vec_t* u1 = checkoutVec(S_.getPosition());
+    Vec_t* u2 = checkoutVec(S_.getPosition());
+    Vec_t* u3 = checkoutVec(S_.getPosition());
+
     //Explicit bending for tension
-    Intfcl_force_.bendingForce(S_, u1_);
-    stokes(u1_, u2_);   
-    axpy(static_cast<value_type>(1), u2_, velocity, u1_);
+    Intfcl_force_.bendingForce(S_, *u1);
+    stokes(*u1, *u2);   
+    axpy(static_cast<value_type>(1), *u2, velocity, *u1);
   
     //Tension
-    getTension(u1_, tension_);
-    Intfcl_force_.tensileForce(S_, tension_, u1_);
-    stokes(u1_, u2_);
-    axpy(static_cast<value_type>(1), u2_, velocity, u1_);
+    getTension(*u1, tension_);
+    Intfcl_force_.tensileForce(S_, tension_, *u1);
+    stokes(*u1, *u2);
+    axpy(static_cast<value_type>(1), *u2, velocity, *u1);
     
-    axpy(dt_, u1_, S_.getPosition(), u1_);
-    u2_.getDevice().Memcpy(u2_.begin(), S_.getPosition().begin(), 
+    axpy(dt_, *u1, S_.getPosition(), *u1);
+    u2->getDevice().Memcpy(u2->begin(), S_.getPosition().begin(), 
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //Update position
@@ -132,7 +150,7 @@ updatePositionImplicit(const value_type &dt)
         mIter = max_iter;
         tt = tol;
         
-        solver_ret = linear_solver_vec_(*this, u2_, u1_, mIter, tt);
+        solver_ret = linear_solver_vec_(*this, *u2, *u1, mIter, tt);
         
         if ( solver_ret == BiCGSSuccess )
             break;
@@ -151,74 +169,87 @@ updatePositionImplicit(const value_type &dt)
         <<"\n                 Relres = "<<tt<<endl);
 
     COUTDEBUG("            True relres = "<<
-        ((*this)(u2_, u3_),
-            axpy(static_cast<value_type>(-1), u3_, u1_, u3_),
-            tt = sqrt(AlgebraicDot(u3_, u3_))/sqrt(AlgebraicDot(u1_,u1_))
+        ((*this)(*u2, *u3),
+            axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
+            tt = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
          )<<endl);
 
     COUT(" ------------------------------------"<<endl);
 
 
-    u2_.getDevice().Memcpy(S_.getPositionModifiable().begin(), u2_.begin(), 
+    u2->getDevice().Memcpy(S_.getPositionModifiable().begin(), u2->begin(), 
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
+
+    recycle(u1);
+    recycle(u2);
+    recycle(u3);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
-updateInteraction()
+updateInteraction() const
 {
     //Interfacial forces
-    Intfcl_force_.bendingForce(S_, u1_);
-    Intfcl_force_.tensileForce(S_, tension_, u3_);
-    axpy(static_cast<value_type>(1), u1_, u3_, u3_);
-    xv(S_.getAreaElement(), u3_, u3_);
+    Vec_t* u1 = checkoutVec(S_.getPosition());
+    Vec_t* u2 = checkoutVec(S_.getPosition());
+    Vec_t* u3 = checkoutVec(S_.getPosition());
+
+    Intfcl_force_.bendingForce(S_, *u1);
+    Intfcl_force_.tensileForce(S_, tension_, *u3);
+    axpy(static_cast<value_type>(1), *u1, *u3, *u3);
+    xv(S_.getAreaElement(), *u3, *u3);
     
     //Incorporating the quadrature weights into the density
-    for(int ii=0; ii<u3_.getNumSubs(); ++ii)
-        for(int jj=0; jj<u3_.getTheDim(); ++jj)
-            u3_.getDevice().xy(quad_weights_.begin(), 
-                u3_.getSubN(ii) + jj * u3_.getStride(), u3_.getStride(), 
-                u3_.getSubN(ii) + jj * u3_.getStride());                    
+    for(int ii=0; ii<u3->getNumSubs(); ++ii)
+        for(int jj=0; jj<u3->getTheDim(); ++jj)
+            u3->getDevice().xy(quad_weights_.begin(), 
+                u3->getSubN(ii) + jj * u3->getStride(), u3->getStride(), 
+                u3->getSubN(ii) + jj * u3->getStride());                    
 
     //Self-interaction, to be subtracted
-    velocity.getDevice().DirectStokes(S_.getPosition().begin(), u3_.begin(), 
+    velocity.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
         NULL, velocity.getStride(), velocity.getNumSubs(), 
         S_.getPosition().begin(), 0, velocity.getStride(), velocity.begin());
 
     //Shuffling points and densities
-    ShufflePoints(S_.getPosition(), u1_);
-    ShufflePoints(u3_, u2_);
-    u3_.setPointOrder(PointMajor);
+    ShufflePoints(S_.getPosition(), *u1);
+    ShufflePoints(*u3, *u2);
+    u3->setPointOrder(PointMajor);
 
     //Far interactions
     typename Interaction::InteractionReturn status;
-    status = interaction_(u1_, u2_, u3_);
+    status = interaction_(*u1, *u2, *u3);
     
     //Shuffling to the original order
-    ShufflePoints(u3_, u2_);
-    u1_.setPointOrder(AxisMajor);
-    u3_.setPointOrder(AxisMajor);
+    ShufflePoints(*u3, *u2);
+    u1->setPointOrder(AxisMajor);
+    u3->setPointOrder(AxisMajor);
 
     //Subtracting the self-interaction
     if(status)
         axpy(static_cast<value_type>(0), velocity, velocity);
     else
-        axpy(static_cast<value_type>(-1), velocity, u2_, velocity);
+        axpy(static_cast<value_type>(-1), velocity, *u2, velocity);
     
     //Background flow
-    bg_flow_(S_.getPosition(), params_.bg_flow_param, u2_);
-    axpy(static_cast<value_type>(1), u2_, velocity, velocity);
+    bg_flow_(S_.getPosition(), params_.bg_flow_param, *u2);
+    axpy(static_cast<value_type>(1), *u2, velocity, velocity);
+
+    recycle(u1);
+    recycle(u2);
+    recycle(u3);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
 {
-    Sca_t rhs;
-    rhs.replicate(S_.getPosition());
-    S_.div(vel_in, rhs);
+    Sca_t* rhs = checkoutSca(S_.getPosition());
+    Sca_t* wrk = checkoutSca(S_.getPosition());
+
+    S_.div(vel_in, *rhs);
     
-    axpy(static_cast<typename SurfContainer::value_type>(-1), rhs, rhs);
+    axpy(static_cast<typename SurfContainer::value_type>(-1), *rhs, *rhs);
     
     int max_iter(params_.inner_solver_maxit);
     value_type tol(params_.inner_solver_tol);
@@ -234,7 +265,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
         mIter = max_iter;
         tt = tol;
         
-        solver_ret = linear_solver_(*this, tension, rhs, mIter, tt);
+        solver_ret = linear_solver_(*this, tension, *rhs, mIter, tt);
         if ( solver_ret == BiCGSSuccess )
             break;
         
@@ -247,14 +278,15 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
     COUTDEBUG(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<< ii * max_iter + mIter
         <<"\n                 Relres = "<<tt<<endl);
-
     COUTDEBUG("            True relres = "<<
-        ((*this)(tension, wrk_),
-            axpy(static_cast<value_type>(-1), wrk_, rhs, wrk_),
-            tt = sqrt(AlgebraicDot(wrk_, wrk_))/sqrt(AlgebraicDot(rhs,rhs))
+        ((*this)(tension, *wrk),
+            axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
+            tt = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))
          )<<endl);
 
     COUT(" ------------------------------------"<<endl);
+    recycle(wrk);
+    recycle(rhs);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
@@ -269,18 +301,15 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
     value_type alpha(1.0), beta(0.0);
     int trg_idx(0);
     
-    Sca_t t1(nv, p);
-    Sca_t t2(nv, p);
+    Sca_t* t1 = checkoutSca(S_.getPosition());;
+    Sca_t* t2 = checkoutSca(S_.getPosition());;
 
-    xyInv(S_.getAreaElement(), w_sph_, t1);
+    xyInv(S_.getAreaElement(), w_sph_, *t1);
     int nvX3= force.getTheDim() * nv;
 
-    Vec_t v1;
-    Vec_t v2;
+    Vec_t* v1 = checkoutVec(S_.getPosition());;
+    Vec_t* v2 = checkoutVec(S_.getPosition());;
     
-    v1.replicate(S_.getPosition());
-    v2.replicate(S_.getPosition());
-
     for(int ii=0;ii <= p; ++ii)
     {
         for(int jj=0;jj < 2 * p; ++jj)
@@ -289,46 +318,55 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
             
             S_.getPosition().getDevice().gemm("N", "N", &np, &nvX3, &np, 
                 &alpha, rot_mat_.begin(), &np, S_.getPosition().begin(), 
-                &np, &beta, v1.begin(), &np);
+                &np, &beta, v1->begin(), &np);
             
             S_.getPosition().getDevice().gemm("N", "N", &np, &nvX3, &np, 
                 &alpha, rot_mat_.begin(), &np, force.begin(), &np, 
-                &beta, v2.begin(), &np);
+                &beta, v2->begin(), &np);
             
             S_.getPosition().getDevice().gemm("N", "N", &np, &nv, &np,
-                &alpha, rot_mat_.begin(), &np, t1.begin(), 
-                &np, &beta, t2.begin(), &np);
+                &alpha, rot_mat_.begin(), &np, t1->begin(), 
+                &np, &beta, t2->begin(), &np);
             
-            xy(t2, w_sph_, t2);
-            xv(t2, v2, v2);
+            xy(*t2, w_sph_, *t2);
+            xv(*t2, *v2, *v2);
             
-            S_.getPosition().getDevice().DirectStokes(v1.begin(), v2.begin(), 
+            S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(), 
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(), 
                 ii*2*p + jj, ii*2*p + jj + 1, velocity.begin());
         }
     }
+    recycle(t1);
+    recycle(t2);
+    recycle(v1);
+    recycle(v2);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
-    Vec_t fb;
-    Intfcl_force_.linearBendingForce(S_, x_new, fb);
-    stokes(fb, time_mat_vec);
+    Vec_t* fb = checkoutVec(S_.getPosition());
+
+    Intfcl_force_.linearBendingForce(S_, x_new, *fb);
+    stokes(*fb, time_mat_vec);
     axpy(-dt_, time_mat_vec, x_new, time_mat_vec);
+    recycle(fb);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::operator()(
     const Sca_t &tension, Sca_t &div_stokes_fs) const
 {
-    Vec_t fs(tension.getNumSubs(), tension.getShOrder());
-    Vec_t u(tension.getNumSubs(), tension.getShOrder());
+    Vec_t* fs = checkoutVec(S_.getPosition());
+    Vec_t* u = checkoutVec(S_.getPosition());
     
-    Intfcl_force_.tensileForce(S_, tension, fs);
-    stokes(fs, u);
-    S_.div(u, div_stokes_fs);
+    Intfcl_force_.tensileForce(S_, tension, *fs);
+    stokes(*fs, *u);
+    S_.div(*u, div_stokes_fs);
+
+    recycle(fs);
+    recycle(u);
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
@@ -338,24 +376,27 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
     value_type vel;
 
     int ii(-1);
-    
+    Vec_t* u1 = checkoutVec(S_.getPosition());
+    Vec_t* u2 = checkoutVec(S_.getPosition());
+    Sca_t* wrk = checkoutSca(S_.getPosition());
+ 
     COUT("  Reparametrization \n ------------------------------------\n");
     while ( ++ii < params_.rep_maxit )
     {
-        S_.getSmoothedShapePosition(u1_);
+        S_.getSmoothedShapePosition(*u1);
         axpy(static_cast<value_type>(-1), S_.getPosition(), 
-            u1_, u1_);
+            *u1, *u1);
         
-        S_.mapToTangentSpace(u1_);
+        S_.mapToTangentSpace(*u1);
         
         //Advecting tension
-        S_.grad(tension_, u2_);
-        GeometricDot(u2_, u1_, wrk_);
-        axpy(ts, wrk_, tension_, tension_);
+        S_.grad(tension_, *u2);
+        GeometricDot(*u2, *u1, *wrk);
+        axpy(ts, *wrk, tension_, tension_);
 
-        axpy(ts, u1_, S_.getPosition(), S_.getPositionModifiable());
+        axpy(ts, *u1, S_.getPosition(), S_.getPositionModifiable());
         
-        vel = MaxAbs(u1_);
+        vel = MaxAbs(*u1);
              
         COUTDEBUG("\n              Iteration = "<<ii
             <<"\n                  |vel| = "<<vel<<endl);
@@ -368,24 +409,102 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
     COUT("       Total iterations = "<<ii
         <<"\n                  |vel| = "<<vel
         <<"\n ------------------------------------"<<endl);
+
+    recycle(u1);
+    recycle(u2);
+    recycle(wrk);
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+typename SurfContainer::Sca_t* InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+checkoutSca(const Vec_t &ref) const
+{
+    Sca_t* scp;
+    
+    if(scalar_work_q_.empty())
+        scp = new Sca_t;
+    else
+    {
+        scp = scalar_work_q_.front();
+        scalar_work_q_.pop();
+    }
+    
+    scp->replicate(ref);
+    ++checked_out_work_sca_;
+    return(scp);
+}
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+recycle(Sca_t* scp) const
+{
+    scalar_work_q_.push(scp);
+    --checked_out_work_sca_;
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+typename SurfContainer::Vec_t* InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+checkoutVec(const Vec_t &ref) const
+{
+    Vec_t* vcp;
+    
+    if(vector_work_q_.empty())
+        vcp = new Vec_t;
+    else
+    {
+        vcp = vector_work_q_.front();
+        vector_work_q_.pop();
+    }
+    
+    vcp->replicate(ref);
+    ++checked_out_work_vec_;
+    
+    return(vcp);
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+recycle(Vec_t* vcp) const
+{
+    vector_work_q_.push(vcp);
+    --checked_out_work_vec_;
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+purgeTheWorkSpace() const
+{
+    while ( !scalar_work_q_.empty() )
+    {
+         delete scalar_work_q_.front();
+        scalar_work_q_.pop();
+    }
+    
+    while ( !vector_work_q_.empty() )
+    {
+        delete vector_work_q_.front();
+        vector_work_q_.pop();
+    }
 }
 
 #ifndef NDEBUG
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
-benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Sca_t &tension, Vec_t &vel, 
-    Vec_t &xnew, value_type tol) const
+benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel, Sca_t &tension, 
+    Vec_t &xnew, value_type tol)
 {
     bool res = 
         benchmarkBendingForce(S_.getPosition(), Fb, tol) &&
         benchmarkStokes(Fb, SFb, tol)                    &&
-        (/*///@todo add vinf to SFb */ benchmarkTension(SFb, tension, tol));
+        benchmarkBgFlow(SFb, vel, tol)                   &&
+        benchmarkTension(vel, tension, tol)              &&
+        benchmarkNewPostition(xnew, tol);
     
-    COUTDEBUG("\n\n ------------------------------------"
-        <<" Explicit stepper benchmark "
+    COUTDEBUG("\n\n -------------------------------"
+        <<" Explicit stepper benchmark with " 
+        << S_.getPosition().getNumSubs() << " surface(s) "
         <<((res) ? "*Passed*" : "*Failed*" )
-        <<" ------------------------------------"<<endl);
+        <<" -------------------------------"<<endl);
     return ( res );
 }
 
@@ -395,17 +514,19 @@ benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
 {
     COUTDEBUG("\n  Bending force benchmark"
         <<"\n ------------------------------------\n");
-
-    Intfcl_force_.linearBendingForce(S_, x, u1_);
-    axpy(static_cast<value_type>(-1), Fb, u1_, Fb);
+    
+    Vec_t* u1 = checkoutVec(S_.getPosition());
+    Intfcl_force_.linearBendingForce(S_, x, *u1);
+    axpy(static_cast<value_type>(-1), Fb, *u1, Fb);
     
     value_type err = MaxAbs(Fb); 
-    axpy(static_cast<value_type>(1), u1_, Fb);
+    axpy(static_cast<value_type>(1), *u1, Fb);
     
     COUTDEBUG("  The benchmark " 
         <<((err<tol) ? "*Passed*" : "*Failed*" )
         <<" with\n                  error = "<<PRINTFRMT<<err<<endl);
         
+    recycle(u1);
     return (err < tol);
 }
 
@@ -415,11 +536,36 @@ benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
 {
     COUTDEBUG("\n  Singular Stokes benchmark"
         <<"\n ------------------------------------\n");
-    stokes(F, u1_);
-    axpy(static_cast<value_type>(-1), SF, u1_, SF);
+    
+    Vec_t* u1 = checkoutVec(S_.getPosition());
+    stokes(F, *u1);
+    axpy(static_cast<value_type>(-1), SF, *u1, SF);
     
     value_type err = MaxAbs(SF); 
-    axpy(static_cast<value_type>(1), u1_, SF);
+    axpy(static_cast<value_type>(1), *u1, SF);
+    
+    COUTDEBUG("  The benchmark " 
+        <<((err<tol) ? "*Passed*" : "*Failed*" )
+        <<" with\n                  error = "<<PRINTFRMT<<err<<endl);
+
+    recycle(u1);
+    return (err < tol);
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
+{
+    COUTDEBUG("\n  Background flow benchmark"
+        <<"\n ------------------------------------\n");
+
+    this->updateInteraction();
+    axpy(static_cast<value_type>(1), SFb, velocity, velocity);
+
+    axpy(static_cast<value_type>(-1), vel, velocity, vel);
+    
+    value_type err = MaxAbs(vel); 
+    axpy(static_cast<value_type>(1), velocity, vel);
     
     COUTDEBUG("  The benchmark " 
         <<((err<tol) ? "*Passed*" : "*Failed*" )
@@ -434,15 +580,40 @@ benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
 {
     COUTDEBUG("\n  Tension benchmark"
         <<"\n ------------------------------------\n");
-    getTension(vel, wrk_);
-    axpy(static_cast<value_type>(-1), tension, wrk_, tension);
+    
+    Sca_t* wrk = checkoutSca(S_.getPosition());
+    axpy(static_cast<value_type>(0), *wrk, *wrk);
+    getTension(vel, *wrk);
+
+    axpy(static_cast<value_type>(-1), tension, *wrk, tension);
     
     value_type err = MaxAbs(tension); 
-    axpy(static_cast<value_type>(1), wrk_, tension);
+    axpy(static_cast<value_type>(1), *wrk, tension);
     
     COUTDEBUG("  The benchmark " 
         <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<PRINTFRMT<<err);
+        <<" with\n                  error = "<<PRINTFRMT<<err<<endl);
+
+    recycle(wrk);
+    return (err < tol);
+}
+
+template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
+bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+benchmarkNewPostition(Vec_t &xnew, value_type tol)
+{
+    COUTDEBUG("\n  New position benchmark"
+        <<"\n ------------------------------------\n");
+
+    updatePositionExplicit(dt_);
+
+    axpy(static_cast<value_type>(-1), S_.getPosition(), xnew, xnew);
+    value_type err = MaxAbs(xnew); 
+    axpy(static_cast<value_type>(1), S_.getPosition(), xnew);
+
+    COUTDEBUG("  The benchmark " 
+        <<((err<tol) ? "*Passed*" : "*Failed*" )
+        <<" with\n                  error = "<<PRINTFRMT<<err<<endl);
 
     return (err < tol);
 }

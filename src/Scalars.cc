@@ -61,6 +61,12 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs, int new_sh_order,
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+enum DeviceType Scalars<T, DT, DEVICE>::getDeviceType()
+{
+    return(DT);
+}
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 const Device<DT>& Scalars<T, DT, DEVICE>::getDevice()
 {
     return(DEVICE);
@@ -181,7 +187,7 @@ std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
 }
 
 template <typename Container>
-ShowEntries<Container>::ShowEntries(Container &c) : c_(c) {}
+ShowEntries<Container>::ShowEntries(const Container &c) : c_(c) {}
 
 template <typename Container>
 std::ostream& ShowEntries<Container>::operator()(std::ostream &output) const

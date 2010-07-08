@@ -13,7 +13,7 @@ class Monitor
     value_type time_hor_;
     bool save_flag_;
     value_type save_stride_;
-    DataIO<value_type, device_type> IO;
+    DataIO IO;
     value_type A0, V0;
     
   public:

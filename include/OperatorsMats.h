@@ -13,7 +13,7 @@ struct OperatorsMats
     
   public:
     
-    DataIO<T, Device> &fileIO_;
+    DataIO &fileIO_;
     int p_;
     int p_up_;   
 
@@ -26,7 +26,7 @@ struct OperatorsMats
     T *w_sph_;
     T *all_rot_mats_;  
 
-    OperatorsMats(const Device &dev, DataIO<T, Device> &fileIO_in, 
+    OperatorsMats(const Device &dev, DataIO &fileIO_in, 
         bool readFromFile, const Parameters<T> &params);
     ~OperatorsMats();
     size_t getDataLength() const;

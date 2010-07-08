@@ -23,44 +23,46 @@
  */
 using namespace std;
 
-template<typename T, typename Device>
 class DataIO
 {
-  private:
-    mutable size_t out_size_;
-    mutable size_t out_used_;
-    string out_file_name_;
-    mutable T* out_buffer_; 
-    int resize_factor_;
-
-    const Device &device_;
   public:
-    DataIO(const Device &device_in, string file_name_in = "", 
-        size_t buffer_size_in = 0);
+    explicit DataIO(string file_name = "", size_t buffer_size = 0, 
+        int resize_factor = 2);    
     ~DataIO();
-
-    // Basic type IO
-    bool ReadData(const char* file_name_in, size_t data_size_in, 
-        T* data_array_out) const;
-    bool WriteData(const char *file_name_in, size_t data_size_in, 
-        const T* data_array_in, ios_base::openmode mode_in = ios::out) const;
-    bool Append(const T *x_in, size_t length) const; 
-    bool ResizeOutBuffer(size_t size_in) const;
-    bool FlushBuffer() const;
-
-    // General container IO
-    template<typename Container>
-    bool ReadData(const char* file_name_in, Container &data) const;
     
     template<typename Container>
-    bool WriteData(const char *file_name_in, const Container &data, 
-        ios_base::openmode mode_in = ios::out) const;
+    bool ReadData(const string &file_name, Container &data) const;
+    
+    template<typename Container>
+    bool WriteData(const string &file_name, const Container &data, 
+        ios_base::openmode mode = ios::out) const;
     
     template<typename Container>
     bool Append(const Container &data) const; 
+
+    // Basic type IO
+    template<typename T>
+    bool ReadData(const string &file_name, size_t size, T* data) const;
+    
+    template<typename T>
+    bool WriteData(const string &file_name, size_t size, const T* data, 
+        ios_base::openmode mode = ios::out) const;
+    
+    template<typename T>
+    bool Append(const T *data, size_t length) const; 
+
+  private:
+    string out_file_;
+    mutable size_t out_size_;
+    mutable size_t out_used_;
+    mutable char* out_buffer_; 
+    int resize_factor_;
+   
+    bool ResizeOutBuffer(size_t buffer_size) const;
+    bool FlushBuffer() const;
 };
 
-#include "DataIO.cc"
+#include "DataIO_templates.cc"
 
 #endif
 

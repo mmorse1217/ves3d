@@ -1,5 +1,5 @@
 template <typename T, typename Device>
-OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO<T, Device> 
+OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO 
     &fileIO_in, bool readFromFile, const Parameters<T> &params) :
     device_(dev),
     fileIO_(fileIO_in),
