@@ -43,6 +43,7 @@ int main(int argc, char** argv)
     sim_par.filter_freq = 8;
     sim_par.bending_modulus = 1e-2;
     sim_par.inner_solver_tol = 1e-1 * tol;
+    sim_par.outer_solver_tol = 1e-1 * tol;
     sim_par.ts = 1;
     sim_par.bg_flow_param = 1e-1;
 
@@ -107,11 +108,24 @@ int main(int argc, char** argv)
     myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_xnew.bin",xnew); 
     
     S.setPosition(x);
-    {
+    if(0){
         Interaction_t Interaction(StokesAlltoAll);
         IntVel_t F(S, Interaction, Mats, sim_par);   
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
     }
 
+    // Multiple vesicles implicit
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_x0.bin",x);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_matvec.bin",vel);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_tension.bin",tension);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_xnew.bin",xnew); 
+    
+    S.setPosition(x);
+    {
+        Interaction_t Interaction(StokesAlltoAll);
+        IntVel_t F(S, Interaction, Mats, sim_par);   
+        // b-marking
+        F.benchmarkImplicit(tension, vel, xnew, tol);
+    }
 }

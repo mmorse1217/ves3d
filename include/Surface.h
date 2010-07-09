@@ -83,13 +83,13 @@ class Surface
     mutable Sca_t E, F, G;
   
     mutable queue<Sca_t*> scalar_work_q_;
-    Sca_t* generateSca(const Vec_t &ref) const;
-    void recycleSca(Sca_t* scp) const;
+    Sca_t* checkoutSca() const;
+    void recycle(Sca_t* scp) const;
     mutable int checked_out_work_sca_;
     
     mutable queue<Vec_t*> vector_work_q_;
-    Vec_t* generateVec(const Vec_t &ref) const;
-    void recycleVec(Vec_t* vcp) const;
+    Vec_t* checkoutVec() const;
+    void recycle(Vec_t* vcp) const;
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;

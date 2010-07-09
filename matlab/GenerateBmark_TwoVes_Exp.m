@@ -1,4 +1,4 @@
-function err = GenerateBmark_MultVes_Exp(precision)
+function err = GenerateBmark_TwoVes_Exp(precision)
   
   VES3D_PATH = pwd;
   MATLAB_PATH = '/home/abtin/school/projects/Ves3DMat/Shravan/';
@@ -18,7 +18,8 @@ function err = GenerateBmark_MultVes_Exp(precision)
     saveThis(VES3D_PATH, 'x0.bin', ves, precision);
     subplot(1,2,1); PlotShape(ves);
     
-    Nv = length(ves); GS = cell(Nv,1); Fb = cell(Nv,1); W = cell(Nv,1); nor = cell(Nv,1);
+    Nv = length(ves); GS = cell(Nv,1); 
+    Fb = cell(Nv,1); W = cell(Nv,1); nor = cell(Nv,1);
     Fsig = cell(Nv,1); [Fsig{:}] = deal(zeros(6*m*(m+1),1));
     FI = cell(Nv,1); [FI{:}] = deal(zeros(6*m*(m+1),1));
     
