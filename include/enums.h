@@ -21,6 +21,8 @@ enum CoordinateOrder {PointMajor, AxisMajor};
 
 enum SolverScheme {Explicit, SemiImplicit};
 
+enum SingularStokesRot {Direct, ViaSpHarm};
+
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT);
 std::ostream& operator<<(std::ostream& output, const enum MemcpyKind &MK);
 std::ostream& operator<<(std::ostream& output, const enum DeviceError &err);

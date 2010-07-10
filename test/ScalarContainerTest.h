@@ -1,5 +1,5 @@
 /**
- * @file   ScalarsTest.h
+ * @file   ScalarContaiersTest.h
  * @author Abtin Rahimian <arahimian@acm.org>
  * @date   Tue Mar  2 09:55:22 2010
  *

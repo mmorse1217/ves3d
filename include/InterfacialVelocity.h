@@ -6,10 +6,14 @@
 #include "Logger.h"
 #include "Device.h"
 #include <queue>
+#include <memory>
+#include "enums.h"
+#include "MovePole.h"
 
 template<typename VecContainer>
 void ShearFlow(const VecContainer &pos, const typename 
     VecContainer::value_type shear_rate, VecContainer &vel_inf);
+
 
 template<typename SurfContainer, 
          typename Interaction,
@@ -36,7 +40,7 @@ class InterfacialVelocity
     void getTension(const Vec_t &vel_in, Sca_t &tension) const;
     void stokes(const Vec_t &force, Vec_t &vel) const;
     void updateInteraction() const;
-
+    
     void operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const; 
     void operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
 
@@ -57,19 +61,20 @@ class InterfacialVelocity
     Sca_t rot_mat_;
     Sca_t sing_quad_weights_;
     Sca_t quad_weights_;
-    
+
+    mutable MovePole<Sca_t> move_pole;
     mutable Vec_t velocity;
     mutable Sca_t tension_;
 
     //Workspace
     mutable queue<Sca_t*> scalar_work_q_;
-    Sca_t* checkoutSca() const;
-    void recycle(Sca_t* scp) const;
+    auto_ptr<Sca_t> checkoutSca() const;
+    void recycle(auto_ptr<Sca_t> scp) const;
     mutable int checked_out_work_sca_;
     
     mutable queue<Vec_t*> vector_work_q_;
-    Vec_t* checkoutVec() const;
-    void recycle(Vec_t* vcp) const;
+    auto_ptr<Vec_t> checkoutVec() const;
+    void recycle(auto_ptr<Vec_t> vcp) const;
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;

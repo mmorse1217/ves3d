@@ -1,5 +1,5 @@
 /**
- * @file   SHVectors.h
+ * @file   Vectors.h
  * @author Abtin Rahimian <arahimian@acm.org>
  * @date   Thu Jan 28 14:23:48 2010
  * 

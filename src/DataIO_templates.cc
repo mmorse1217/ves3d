@@ -93,7 +93,7 @@ bool DataIO::ReadData(const string &file_name, Container &data) const
         return(this->ReadData(file_name, size, (char*) data.begin()));
     else
     {
-        char* buffer =new char[size];
+        char* buffer(new char[size]);
         bool ret = ReadData(file_name, size, buffer);
         
         data.getDevice().Memcpy(data.begin(), buffer, size

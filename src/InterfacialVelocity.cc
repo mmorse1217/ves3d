@@ -31,6 +31,7 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     Intfcl_force_(params),
     params_(params),
     dt_(params_.ts),
+    move_pole(all_rot_mats_, rot_mat_),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
 {
@@ -90,8 +91,8 @@ updatePositionExplicit(const value_type &dt)
     this->updateInteraction();
     
     //Bending
-    Vec_t* u1 = checkoutVec();
-    Vec_t* u2 = checkoutVec();
+    auto_ptr<Vec_t> u1 = checkoutVec();
+    auto_ptr<Vec_t> u2 = checkoutVec();
     
     Intfcl_force_.bendingForce(S_, *u1);
     stokes(*u1, *u2);   
@@ -116,9 +117,9 @@ updatePositionImplicit(const value_type &dt)
     this->dt_ = dt;
     this->updateInteraction();
 
-    Vec_t* u1 = checkoutVec();
-    Vec_t* u2 = checkoutVec();
-    Vec_t* u3 = checkoutVec();
+    auto_ptr<Vec_t> u1 = checkoutVec();
+    auto_ptr<Vec_t> u2 = checkoutVec();
+    auto_ptr<Vec_t> u3 = checkoutVec();
 
     //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, *u1);
@@ -190,9 +191,9 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 updateInteraction() const
 {
     //Interfacial forces
-    Vec_t* u1 = checkoutVec();
-    Vec_t* u2 = checkoutVec();
-    Vec_t* u3 = checkoutVec();
+    auto_ptr<Vec_t> u1 = checkoutVec();
+    auto_ptr<Vec_t> u2 = checkoutVec();
+    auto_ptr<Vec_t> u3 = checkoutVec();
 
     Intfcl_force_.bendingForce(S_, *u1);
     Intfcl_force_.tensileForce(S_, tension_, *u3);
@@ -244,8 +245,8 @@ template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
 {
-    Sca_t* rhs = checkoutSca();
-    Sca_t* wrk = checkoutSca();
+    auto_ptr<Sca_t> rhs = checkoutSca();
+    auto_ptr<Sca_t> wrk = checkoutSca();
 
     S_.div(vel_in, *rhs);
     
@@ -293,49 +294,35 @@ template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
     const Vec_t &force, Vec_t &velocity) const
 {
-    int p  = S_.getPosition().getShOrder();
+    int imax(S_.getPosition().getGridDim().first);
+    int jmax(S_.getPosition().getGridDim().second);
     int np = S_.getPosition().getStride();
     int nv = S_.getPosition().getNumSubs();
-    //int rot_chunck = 2 * p * np;
-    
-    value_type alpha(1.0), beta(0.0);
-    int trg_idx(0);
-    
-    Sca_t* t1 = checkoutSca();;
-    Sca_t* t2 = checkoutSca();;
+
+    auto_ptr<Sca_t> t1 = checkoutSca();
+    auto_ptr<Sca_t> t2 = checkoutSca();
+    auto_ptr<Vec_t> v1 = checkoutVec();
+    auto_ptr<Vec_t> v2 = checkoutVec();
 
     xyInv(S_.getAreaElement(), w_sph_, *t1);
-    int nvX3= force.getTheDim() * nv;
-
-    Vec_t* v1 = checkoutVec();;
-    Vec_t* v2 = checkoutVec();;
     
-    for(int ii=0;ii <= p; ++ii)
-    {
-        for(int jj=0;jj < 2 * p; ++jj)
+    int numinputs = 3;
+    const Sca_t* inputs[] = {&S_.getPosition(), &force, t1.get()};
+    Sca_t* outputs[] = {v1.get(), v2.get(), t2.get()};
+    move_pole.setOperands(inputs, numinputs, ViaSpHarm);
+
+    for(int ii=0;ii < imax; ++ii)
+        for(int jj=0;jj < jmax; ++jj)
         {
-            CircShift(all_rot_mats_.begin() + ii * np * np, jj * np, rot_mat_);
-            
-            S_.getPosition().getDevice().gemm("N", "N", &np, &nvX3, &np, 
-                &alpha, rot_mat_.begin(), &np, S_.getPosition().begin(), 
-                &np, &beta, v1->begin(), &np);
-            
-            S_.getPosition().getDevice().gemm("N", "N", &np, &nvX3, &np, 
-                &alpha, rot_mat_.begin(), &np, force.begin(), &np, 
-                &beta, v2->begin(), &np);
-            
-            S_.getPosition().getDevice().gemm("N", "N", &np, &nv, &np,
-                &alpha, rot_mat_.begin(), &np, t1->begin(), 
-                &np, &beta, t2->begin(), &np);
-            
+            move_pole(ii, jj, outputs);
             xy(*t2, w_sph_, *t2);
             xv(*t2, *v2, *v2);
             
             S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(), 
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(), 
-                ii*2*p + jj, ii*2*p + jj + 1, velocity.begin());
+                ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
         }
-    }
+    
     recycle(t1);
     recycle(t2);
     recycle(v1);
@@ -346,7 +333,7 @@ template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
-    Vec_t* fb = checkoutVec();
+    auto_ptr<Vec_t> fb = checkoutVec();
 
     Intfcl_force_.linearBendingForce(S_, x_new, *fb);
     stokes(*fb, time_mat_vec);
@@ -358,8 +345,8 @@ template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::operator()(
     const Sca_t &tension, Sca_t &div_stokes_fs) const
 {
-    Vec_t* fs = checkoutVec();
-    Vec_t* u = checkoutVec();
+    auto_ptr<Vec_t> fs = checkoutVec();
+    auto_ptr<Vec_t> u = checkoutVec();
     
     Intfcl_force_.tensileForce(S_, tension, *fs);
     stokes(*fs, *u);
@@ -376,9 +363,9 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
     value_type vel;
 
     int ii(-1);
-    Vec_t* u1 = checkoutVec();
-    Vec_t* u2 = checkoutVec();
-    Sca_t* wrk = checkoutSca();
+    auto_ptr<Vec_t> u1 = checkoutVec();
+    auto_ptr<Vec_t> u2 = checkoutVec();
+    auto_ptr<Sca_t> wrk = checkoutSca();
  
     COUT("  Reparametrization \n ------------------------------------\n");
     while ( ++ii < params_.rep_maxit )
@@ -416,16 +403,16 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-typename SurfContainer::Sca_t* InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+auto_ptr<typename SurfContainer::Sca_t> InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 checkoutSca() const
 {
-    Sca_t* scp;
+    auto_ptr<Sca_t> scp;
     
     if(scalar_work_q_.empty())
-        scp = new Sca_t;
+        scp = static_cast<auto_ptr<Sca_t> >(new Sca_t);
     else
     {
-        scp = scalar_work_q_.front();
+        scp = static_cast<auto_ptr<Sca_t> >(scalar_work_q_.front());
         scalar_work_q_.pop();
     }
     
@@ -435,23 +422,23 @@ checkoutSca() const
 }
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
-recycle(Sca_t* scp) const
+recycle(auto_ptr<Sca_t> scp) const
 {
-    scalar_work_q_.push(scp);
+    scalar_work_q_.push(scp.release());
     --checked_out_work_sca_;
 }
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-typename SurfContainer::Vec_t* InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+auto_ptr<typename SurfContainer::Vec_t> InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 checkoutVec() const
 {
-    Vec_t* vcp;
+    auto_ptr<Vec_t> vcp;
     
     if(vector_work_q_.empty())
-        vcp = new Vec_t;
+        vcp = static_cast<auto_ptr<Vec_t> >(new Vec_t);
     else
     {
-        vcp = vector_work_q_.front();
+        vcp = static_cast<auto_ptr<Vec_t> >(vector_work_q_.front());
         vector_work_q_.pop();
     }
     
@@ -463,9 +450,9 @@ checkoutVec() const
 
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
-recycle(Vec_t* vcp) const
+recycle(auto_ptr<Vec_t> vcp) const
 {
-    vector_work_q_.push(vcp);
+    vector_work_q_.push(vcp.release());
     --checked_out_work_vec_;
 }
 
@@ -533,7 +520,7 @@ benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
     COUTDEBUG("\n  Bending force benchmark"
         <<"\n ------------------------------------\n");
     
-    Vec_t* u1 = checkoutVec();
+    auto_ptr<Vec_t> u1 = checkoutVec();
     Intfcl_force_.linearBendingForce(S_, x, *u1);
     axpy(static_cast<value_type>(-1), Fb, *u1, Fb);
     
@@ -555,7 +542,7 @@ benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
     COUTDEBUG("\n  Singular Stokes benchmark"
         <<"\n ------------------------------------\n");
     
-    Vec_t* u1 = checkoutVec();
+    auto_ptr<Vec_t> u1 = checkoutVec();
     stokes(F, *u1);
     axpy(static_cast<value_type>(-1), SF, *u1, SF);
     
@@ -599,7 +586,7 @@ benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
     COUTDEBUG("\n  Tension benchmark"
         <<"\n ------------------------------------\n");
     
-    Sca_t* wrk = checkoutSca();
+    auto_ptr<Sca_t> wrk = checkoutSca();
     axpy(static_cast<value_type>(0), *wrk, *wrk);
     getTension(vel, *wrk);
 
@@ -645,9 +632,9 @@ benchmarkTensionImplicit(Sca_t &tension, value_type tol)
     
     this->updateInteraction();
 
-    Vec_t* u1 = checkoutVec();
-    Vec_t* u2 = checkoutVec();
-    Sca_t* scp = checkoutSca();
+    auto_ptr<Vec_t> u1 = checkoutVec();
+    auto_ptr<Vec_t> u2 = checkoutVec();
+    auto_ptr<Sca_t> scp = checkoutSca();
     
     //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, *u1);
@@ -681,7 +668,7 @@ benchmarkMatVecImplicit(const Vec_t &x, Vec_t &matvec, value_type tol)
     COUTDEBUG("\n  Implicit MatVec benchmark"
         <<"\n ------------------------------------\n");
     
-    Vec_t* b = checkoutVec();
+    auto_ptr<Vec_t> b = checkoutVec();
     this->operator()(x, *b);
 
     axpy(static_cast<value_type>(-1), matvec, *b, matvec);

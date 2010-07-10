@@ -94,13 +94,13 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 getSmoothedShapePosition(Vec_t &smthd_pos) const
 {
-    Vec_t* wrk(checkoutVec());
-    Vec_t* shc(checkoutVec());
+    auto_ptr<Vec_t> wrk(checkoutVec());
+    auto_ptr<Vec_t> shc(checkoutVec());
     
     sht_rep_filter_.lowPassFilter(x_, *wrk, *shc, smthd_pos);
     
-    recycleVec(wrk);
-    recycleVec(shc);
+    recycle(wrk);
+    recycle(shc);
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
@@ -110,10 +110,10 @@ mapToTangentSpace(Vec_t &vec_fld) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca_t* scp(checkoutSca());
-    Vec_t* wrk(checkoutVec());
-    Vec_t* shc(checkoutVec());
-    Vec_t* fld(checkoutVec());
+    auto_ptr<Sca_t> scp(checkoutSca());
+    auto_ptr<Vec_t> wrk(checkoutVec());
+    auto_ptr<Vec_t> shc(checkoutVec());
+    auto_ptr<Vec_t> fld(checkoutVec());
 
     //up-sampling
     int usf(sht_rep_upsample_.getShOrder());
@@ -143,10 +143,10 @@ mapToTangentSpace(Vec_t &vec_fld) const
     Resample(normal_, sht_rep_upsample_, sht_, *shc, *wrk, normal_);
     normal_.resize(normal_.getNumSubs(), sht_.getShOrder());
 
-    recycleSca(scp);
-    recycleVec(wrk);
-    recycleVec(shc);
-    recycleVec(fld);
+    recycle(scp);
+    recycle(wrk);
+    recycle(shc);
+    recycle(fld);
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
@@ -156,10 +156,10 @@ updateFirstForms() const
     if(containers_are_stale_)
         checkContainers();
         
-    Vec_t* wrk(checkoutVec());
-    Vec_t* shc(checkoutVec());
-    Vec_t* dif(checkoutVec());
-    Sca_t* scp(checkoutSca());
+    auto_ptr<Vec_t> wrk(checkoutVec());
+    auto_ptr<Vec_t> shc(checkoutVec());
+    auto_ptr<Vec_t> dif(checkoutVec());
+    auto_ptr<Sca_t> scp(checkoutSca());
     
     // Spherical harmonic coefficient
     sht_.FirstDerivatives(x_, *wrk, *shc, *dif, normal_);
@@ -207,9 +207,9 @@ updateAll() const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Vec_t* wrk(checkoutVec());
-    Vec_t* shc(checkoutVec());
-    Vec_t* dif(checkoutVec());
+    auto_ptr<Vec_t> wrk(checkoutVec());
+    auto_ptr<Vec_t> shc(checkoutVec());
+    auto_ptr<Vec_t> dif(checkoutVec());
 
     sht_.forward(x_, *wrk, *shc);
     
@@ -222,11 +222,11 @@ updateAll() const
     xy(F, h_, h_);
     axpy(static_cast<value_type>(-1), h_, h_);
 
-    Sca_t* L(checkoutSca());
+    auto_ptr<Sca_t> L(checkoutSca());
     sht_.backward_d2u(*shc, *wrk, *dif);
     GeometricDot(*dif, normal_, *L);
     
-    Sca_t* N(checkoutSca());
+    auto_ptr<Sca_t> N(checkoutSca());
     xy(G, *L, *N);
     axpy(static_cast<value_type>(.5), *N, h_, h_); 
 
@@ -259,24 +259,22 @@ updateAll() const
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
 grad(const ScalarContainer &f_in, VectorContainer &grad_f_out) const
-{
+{    
     if(first_forms_are_stale_)
         updateFirstForms();
-
-    Sca_t* scw1(checkoutSca());
-    Sca_t* scw2(checkoutSca());
-    Vec_t* shc(checkoutVec());
-    Vec_t* wrk(checkoutVec());
+    
+    auto_ptr<Sca_t> scw1(checkoutSca());
+    auto_ptr<Sca_t> scw2(checkoutSca());
+    auto_ptr<Vec_t> shc(checkoutVec());
+    auto_ptr<Vec_t> wrk(checkoutVec());
 
     sht_.FirstDerivatives(f_in, *wrk, *shc, *scw1, *scw2);
-
-    xv(*scw1, cu_, grad_f_out);
-    recycle(scw1);
-
+    xv(*scw1, cu_, grad_f_out);           
     xvpw(*scw2, cv_, grad_f_out, grad_f_out);
-    recycle(scw2);
-
     sht_.lowPassFilter(grad_f_out, *wrk, *shc, grad_f_out);
+    
+    recycle(scw1);
+    recycle(scw2);
     recycle(shc);
     recycle(wrk);
 }
@@ -288,10 +286,10 @@ div(const VectorContainer &f_in, ScalarContainer &div_f_out) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Vec_t* dif(checkoutVec());
-    Vec_t* shc(checkoutVec());
-    Vec_t* wrk(checkoutVec());
-    Sca_t* scw(checkoutSca());
+    auto_ptr<Vec_t> dif(checkoutVec());
+    auto_ptr<Vec_t> shc(checkoutVec());
+    auto_ptr<Vec_t> wrk(checkoutVec());
+    auto_ptr<Sca_t> scw(checkoutSca());
     
     sht_.forward(f_in, *wrk, *shc);
     sht_.backward_du(*shc, *wrk, *dif);
@@ -326,12 +324,12 @@ volume(ScalarContainer &vol_out) const
     if(first_forms_are_stale_)
         updateFirstForms();
     
-    Sca_t* scw(checkoutSca());
+    auto_ptr<Sca_t> scw(checkoutSca());
     GeometricDot(x_,normal_,*scw);
     axpy(static_cast<value_type>(1)/3, *scw, *scw);
 
     integrator_(*scw, w_, vol_out);
-    recycleSca(scw);
+    recycle(scw);
 }
 
 template< typename ScalarContainer, typename VectorContainer>
@@ -341,11 +339,11 @@ getCenters(Vec_t &centers) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
-    Sca_t* scw(checkoutSca());
+    auto_ptr<Sca_t> scw(checkoutSca());
     GeometricDot(x_, x_, *scw);
     axpy(static_cast<value_type>(.5), *scw, *scw);
     
-    Vec_t* vcw(checkoutVec());
+    auto_ptr<Vec_t> vcw(checkoutVec());
     xv(*scw, normal_, *vcw);
     recycleSca(scw);
 
@@ -378,16 +376,16 @@ checkContainers() const
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-ScalarContainer* Surface<ScalarContainer, VectorContainer>::
+auto_ptr<ScalarContainer> Surface<ScalarContainer, VectorContainer>::
 checkoutSca() const
 {
-    Sca_t* scp;
+    auto_ptr<Sca_t> scp;
     
-    if(scalar_work_q_.empty())
-        scp = new ScalarContainer;
+   if(scalar_work_q_.empty())
+        scp = static_cast<auto_ptr<Sca_t> >(new ScalarContainer);
     else
     {
-        scp = scalar_work_q_.front();
+        scp = static_cast<auto_ptr<Sca_t> >(scalar_work_q_.front());
         scalar_work_q_.pop();
     }
     
@@ -398,23 +396,23 @@ checkoutSca() const
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
-recycle(Sca_t* scp) const
+recycle(auto_ptr<Sca_t> scp) const
 {
-    scalar_work_q_.push(scp);
+    scalar_work_q_.push(scp.release());
     --checked_out_work_sca_;
 }
 
 template <typename ScalarContainer, typename VectorContainer>  
-VectorContainer* Surface<ScalarContainer, VectorContainer>::
+auto_ptr<VectorContainer> Surface<ScalarContainer, VectorContainer>::
 checkoutVec() const
 {
-    Vec_t* vcp;
+    auto_ptr<Vec_t> vcp;
     
     if(vector_work_q_.empty())
-        vcp = new VectorContainer;
+        vcp = static_cast<auto_ptr<Vec_t> >(new VectorContainer);
     else
     {
-        vcp = vector_work_q_.front();
+        vcp = static_cast<auto_ptr<Vec_t> >(vector_work_q_.front());
         vector_work_q_.pop();
     }
     
@@ -426,9 +424,9 @@ checkoutVec() const
 
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::recycle(
-    VectorContainer* vcp) const
+    auto_ptr<Vec_t> vcp) const
 {
-    vector_work_q_.push(vcp);
+    vector_work_q_.push(vcp.release());
     --checked_out_work_vec_;
 }
 
@@ -456,10 +454,10 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
     if(first_forms_are_stale_)
         updateFirstForms();
     
-    Vec_t* wrk(checkoutVec());
-    Vec_t* shc(checkoutVec());
-    Vec_t* dif(checkoutVec());
-    Sca_t* scw(checkoutSca());
+    auto_ptr<Vec_t> wrk(checkoutVec());
+    auto_ptr<Vec_t> shc(checkoutVec());
+    auto_ptr<Vec_t> dif(checkoutVec());
+    auto_ptr<Sca_t> scw(checkoutSca());
 
     sht_.forward(x_new, *wrk, *shc);   
 

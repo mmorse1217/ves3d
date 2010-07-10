@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     //Making The Surface, And Time Stepper
     Sur_t S(x, Mats);
     
-    if(0){
+    {
         Interaction_t Interaction(NULL);
         IntVel_t F(S, Interaction, Mats, sim_par);   
         // b-marking
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     tension.resize(nvec); copyIdenticalTheFirst(tension);
     S.setPosition(x);
     
-    if(0){
+    {
         Interaction_t Interaction(NULL);
         IntVel_t F(S, Interaction, Mats, sim_par);   
         // b-marking
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
     myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_xnew.bin",xnew); 
     
     S.setPosition(x);
-    if(0){
+    {
         Interaction_t Interaction(StokesAlltoAll);
         IntVel_t F(S, Interaction, Mats, sim_par);   
         // b-marking

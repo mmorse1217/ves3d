@@ -17,6 +17,7 @@
 #include <cassert>
 #include "Logger.h"
 #include "enums.h"
+#include <memory>
 /**
  * A simple data I/O class tailored for this project. It reads data
  * from and writes data to file. 

@@ -61,7 +61,7 @@ class Scalars
     size_t stride_;
     size_t num_subs_;
     size_t capacity_;
-    T *data_;
+    T* data_;
 
     static const int the_dim_ = 1;
 
