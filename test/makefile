@@ -5,7 +5,8 @@ EXEC =  LoggerTest.exe        \
 	BiCGStabTest.exe      \
 	SurfaceTest.exe       \
 	EvolveSurfaceTest.exe \
-	BenchmarkInterfacialVel.exe #StokesTest.exe VectorsTest.exe        
+	BenchmarkInterfacialVel.exe \
+	MovePoleTest.exe #StokesTest.exe VectorsTest.exe        
 
 ARFILES = $(VES3D_DIR)/lib/libves3d.a
 
