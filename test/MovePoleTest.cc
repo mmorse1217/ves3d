@@ -29,24 +29,22 @@ int main(int , char** )
         
     fname = "precomputed/dumbbell_cart12_single.txt";
     myIO.ReadData(fname, fLen * x0.getTheDim(), x0.begin());
+    Sca_t sp_harm_rot_mats(p+1, 1, make_pair(1, p * (4 * p * p -  1)/3 + 4 * p * p));  
+    fname = "precomputed/SpHarmRotMats_p12_float.bin";
+    myIO.ReadData(fname, sp_harm_rot_mats);
 
     bool readFromFile = true;
     Mats_t mats(the_cpu_device, myIO, readFromFile, sim_par);
 
-    int np = x0.getStride();
-    Sca_t rot_mat(p + 1, 1, make_pair(2 * p, np));
-    Sca_t all_rot_mats(p + 1, 1, make_pair(np, np));
-    Sca_t sp_harm_rot_mats(p+1, 1, make_pair(1, (p + 1) * (2 * p +  1) * (2 * p + 3)/3));
-
-    fname = "precomputed/SpHarmRotMats_p12_float.bin";
-    myIO.ReadData(fname, sp_harm_rot_mats);
+    SHTrans<Sca_t, SHTMats<real, Device<DT> > > sht(p, mats.mats_p_);
+    MovePole<Sca_t, Mats_t> move_pole(mats, sp_harm_rot_mats);
     
-    MovePole<Sca_t> move_pole(all_rot_mats, rot_mat, sp_harm_rot_mats);
+    Vec_t shc(nVec,p), wrk(nVec,p);
     
     const Sca_t* inputs[] = {&x0};
     Sca_t* outputs[] = {&xr};
+    
     move_pole.setOperands(inputs, 1, ViaSpHarm);
     move_pole(3, 0, outputs);
-
     myIO.Append(xr);    
 }

@@ -1,66 +1,9 @@
 function Generate_Cpp_data(p, precision)
   
   R = GenerateShRotMats(p);
-  saveData(['SpHarmRotMats_p' num2str(p) '_' precision '.bin'], R, precision);  
-
-function Rall = GenerateShRotMats(p)
-
-  addpath ../../Ves3DMat/src/
-  addpath ../../Ves3DMat/util/
-
-  Rall = [];
-  for trgIdx = 1:p+1
-    R = cell(p+1,1);
-    u = parDomain(p);
-    theta = u(trgIdx);
-    
-    for n=0:p
-      R{n+1} = zeros(2*n+1);
-    end
-    
-    shcIn = zeros((p+1)*(2*p+1),2*p+1);
-    for m=1:2*p+1
-      ind = (m-1)*(p+1)+1;
-      shcIn(ind:ind+p,m) = 1;
-    end
-    
-    fIn = shSyn(shcIn);
-    [fRot shcOut]= movePole(fIn,theta,0);
-    
-    if max(max(imag(shcOut))) > 1e-10
-      warning(['The imaginary component of the spherical coeffienets is larger ' ...
-               'than the set tolerance.']);
-    end
-    shcOut = real(shcOut);
-    for m=-p:p
-      temp = reshape(shcOut(:,p+1+m),p+1,[]);
-      for n=abs(m):p
-        R{n+1}(:,n+m+1) = temp(n+1,p+1+(-n:n));
-      end
-    end
-    
-    if ( nargout == 0 )
-      X = boundary(p,'dumbbell');
-      X = reshape(X.cart.vecForm(),[],3);
-      shc = shAna(X);
-      for ii=1:3
-        temp = reshape(shc(:,ii),p+1,[]);
-        shcTemp = zeros(p+1,2*p+1);
-        for jj=0:p
-          shcTemp(jj+1,p+1+(-jj:jj)) = R{jj+1} * temp(jj+1,p + 1 + (-jj:jj))';
-        end
-        shcRot(:,ii) = shcTemp(:);
-      end
-      X = shSyn(shcRot,1);
-      plotb(X);
-      pause(.1);
-    end
-    
-    for n=0:p  
-      Rall = [Rall; R{n+1}(:)];
-    end
-  end
-
+  fileName = ['SpHarmRotMats_p' num2str(p) '_' precision];
+  saveData([fileName '.bin'], R, precision);  
+  %save([fileName '.txt'],'R','-ascii'); 
 
 % Script to make the Legendre and inverse Legendre transforms.
 
