@@ -1,4 +1,4 @@
-function F = shSynReal(SHC)
+function [F IDFT ILT]= shSynReal(SHC)
   
   if(nargin == 0) testThis();return; end;
   

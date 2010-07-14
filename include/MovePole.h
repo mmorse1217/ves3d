@@ -30,7 +30,9 @@ class MovePole
     //operator matrices
     Container sp_harm_mats_;
     Container all_rot_mats_;
-    Container long_rot_;
+    Container longitude_rot_;
+    int* row_idx;
+    int* col_idx;
 
     SHTrans<Container, Mats_t> sht_;
 
@@ -51,6 +53,7 @@ class MovePole
     
     void movePoleViaSpHarm(int trg_i, int trg_j, 
         Container** results) const;
+    void alignMeridian(int trg_j, Container** results) const;
 };
 
 #include "MovePole.cc"

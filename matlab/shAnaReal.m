@@ -1,4 +1,4 @@
-function SHC = shAnaReal(F)
+function [SHC DFT LT]= shAnaReal(F)
   
 %-- Extracting the size
   [d1 d2] = size(F);

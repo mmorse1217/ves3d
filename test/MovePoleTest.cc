@@ -45,6 +45,6 @@ int main(int , char** )
     Sca_t* outputs[] = {&xr};
     
     move_pole.setOperands(inputs, 1, ViaSpHarm);
-    move_pole(3, 0, outputs);
+    move_pole(7, 9, outputs);
     myIO.Append(xr);    
 }
