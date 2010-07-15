@@ -3,15 +3,27 @@
 
 To build:
 ---------
- . make sure that the makefile corresponding to the host machine (the
- value returned by hostname in the shell) exists in the
- makefile.in.files/.
+
+ . In makefile.in.files directory, copy the makefile.in.sample file to
+ makefile.in then
+   
+    1. Make sure that the makefile corresponding to the host machine
+    (the value returned by hostname in the shell) exists in the
+    makefile.in.files/ or alternatively set the PLATFORM enviromental
+    variable or modify the PLATFORM in makefile.in.
+    
+    2. In the platform specific makefile, set the corret include paths
+    for libraries
  
+    3. If the makefile corresponding to your choice of compiler does
+    not exist, you also need to write that makefile (with the correct
+    extension)
+
  . call make at the VES3D_DIR directory
  . make a softlink to the directory precomputed/ in the test/ directory.
  . call "make check" in the test/
 
- . Code-specific compiler options are: VERBOSE, and PROFILING
+ . Code-specific compiler options are: VERBOSE, and PROFILING, VES3D_TESTING
 
 if you want the GPU code compiled set "USE_GPU=yes" in makefile.in
 

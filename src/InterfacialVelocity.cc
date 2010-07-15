@@ -31,7 +31,7 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     Intfcl_force_(params),
     params_(params),
     dt_(params_.ts),
-    move_pole(all_rot_mats_, rot_mat_),
+    move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
 {
@@ -309,7 +309,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
     int numinputs = 3;
     const Sca_t* inputs[] = {&S_.getPosition(), &force, t1.get()};
     Sca_t* outputs[] = {v1.get(), v2.get(), t2.get()};
-    move_pole.setOperands(inputs, numinputs, ViaSpHarm);
+    move_pole.setOperands(inputs, numinputs, Direct);
 
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)

@@ -1,8 +1,8 @@
 # User variables
 VES3D_DIR    ?= `pwd`
 USE_GPU      ?= no
-VES3D_TESTING = no
-PLATFORM      = $(shell hostname)
+VES3D_TESTING?= no
+PLATFORM     ?= $(shell hostname)
 
 # Compiler
 CXX     = icpc

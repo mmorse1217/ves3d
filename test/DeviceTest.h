@@ -966,7 +966,7 @@ bool DeviceTest<DT,T>::TestMax()
         T* x = (T*) device->Malloc(length * sizeof(T));
         T* x_host = (T*) malloc(length * sizeof(T));
             
-        T max = abs(x_host[0]);
+        T max = 0;
         for(int idx=0;idx<length;idx++)
         {
             x_host[idx] = (T) drand48() * 10 - 5;
@@ -979,6 +979,7 @@ bool DeviceTest<DT,T>::TestMax()
         device->Free(x);
         free(x_host);
                         
+        //cout<<mx<<" "<<max<<endl;
         T err = fabs(mx-max);
         res = res && (err<eps) ? true : false;
             
