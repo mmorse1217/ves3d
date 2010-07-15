@@ -37,13 +37,15 @@ double Logger::Tic()
 
 double Logger::Toc()
 {
+    double toc;
     if(Logger::TicStack.empty())
-        CERR(" There is no matching Logger::Tic() call.",endl,sleep(0));
-
-    double toc = Logger::Now();
-    toc -= Logger::TicStack.top();
-    Logger::TicStack.pop();
-
+        CERR(" There is no matching Logger::Tic() call.",endl, toc=0);
+    else
+    {
+        toc = Logger::Now();
+        toc -= Logger::TicStack.top();
+        Logger::TicStack.pop();
+    }
     return(toc);
 }
 

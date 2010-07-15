@@ -17,9 +17,9 @@ class SHTrans
         Container &shc, Container &du, Container &dv) const;
 
     void forward(const Container &in, Container &work, Container &shc) const;
-    void backward    (const Container &shc, Container &work, 
+    void backward(const Container &shc, Container &work, 
         Container &out) const;
-    void backward_du (const Container &shc, Container &work, 
+    void backward_du(const Container &shc, Container &work, 
         Container &out) const;
     void backward_dv (const Container &shc, Container &work, 
         Container &out) const;
@@ -32,6 +32,9 @@ class SHTrans
 
     void lowPassFilter(const Container &in, Container &work, 
         Container &shc, Container &out) const;
+
+    void collectSameOrder(const Container &in, Container &out) const;
+    void collectSameFreq(const Container &in, Container &out) const;
     
   private:
     const typename Container::device_type &device_;

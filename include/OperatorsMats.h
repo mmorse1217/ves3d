@@ -25,6 +25,7 @@ struct OperatorsMats
     T *sing_quad_weights_;
     T *w_sph_;
     T *all_rot_mats_;  
+    T *sh_rot_mats_;
 
     OperatorsMats(const Device &dev, DataIO &fileIO_in, 
         bool readFromFile, const Parameters<T> &params);

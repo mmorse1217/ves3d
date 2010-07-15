@@ -16,8 +16,8 @@ int main(int , char** )
     typedef Scalars<real, DT, the_cpu_device> Sca_t;
     typedef Vectors<real, DT, the_cpu_device> Vec_t;
     typedef OperatorsMats<real, Device<DT> > Mats_t;
-    int const p(12);
-    int const nVec(1);
+    int p(12);
+    int nVec(1);
     
     Parameters<real> sim_par;
     char *fname = "MovePole.out";
@@ -26,25 +26,54 @@ int main(int , char** )
     
     Vec_t x0(nVec, p), xr(nVec, p);
     int fLen = x0.getStride();
-        
+    
+    x0.fillRand();
     fname = "precomputed/dumbbell_cart12_single.txt";
-    myIO.ReadData(fname, fLen * x0.getTheDim(), x0.begin());
-    Sca_t sp_harm_rot_mats(p+1, 1, make_pair(1, p * (4 * p * p -  1)/3 + 4 * p * p));  
-    fname = "precomputed/SpHarmRotMats_p12_float.bin";
-    myIO.ReadData(fname, sp_harm_rot_mats);
-
+    myIO.ReadData(fname, fLen * DIM, x0.begin());
+    
     bool readFromFile = true;
     Mats_t mats(the_cpu_device, myIO, readFromFile, sim_par);
 
     SHTrans<Sca_t, SHTMats<real, Device<DT> > > sht(p, mats.mats_p_);
-    MovePole<Sca_t, Mats_t> move_pole(mats, sp_harm_rot_mats);
-    
-    Vec_t shc(nVec,p), wrk(nVec,p);
-    
+    MovePole<Sca_t, Mats_t> move_pole(mats);
+        
     const Sca_t* inputs[] = {&x0};
     Sca_t* outputs[] = {&xr};
     
-    move_pole.setOperands(inputs, 1, ViaSpHarm);
-    move_pole(7, 9, outputs);
-    myIO.Append(xr);    
+    //Correctness
+    move_pole.setOperands(inputs, ViaSpHarm);
+    for(int ii=0; ii<x0.getGridDim().first; ++ii)
+        for(int jj=0; jj<x0.getGridDim().second; ++jj)
+        {    
+            move_pole(ii, jj, outputs);
+            myIO.Append(xr);    
+        }
+
+    //Profile
+    nVec = 100;
+    x0.resize(nVec);
+    xr.resize(nVec);
+    int rep(2);
+    PROFILESTART();
+    move_pole.setOperands(inputs, Direct);
+    for(int kk=0;kk<rep; ++kk)
+        for(int ii=0; ii<x0.getGridDim().first; ++ii)
+            for(int jj=0; jj<x0.getGridDim().second; ++jj)
+            {    
+                move_pole(ii, jj, outputs);
+                //myIO.Append(xr);    
+            }
+    PROFILEEND("Direct rotation",0);
+
+    PROFILESTART();
+    move_pole.setOperands(inputs, ViaSpHarm);
+    for(int kk=0;kk<rep; ++kk)
+        for(int ii=0; ii<x0.getGridDim().first; ++ii)
+            for(int jj=0; jj<x0.getGridDim().second; ++jj)
+            {    
+                move_pole(ii, jj, outputs);
+                //myIO.Append(xr);    
+            }
+    PROFILEEND("SpHarm rotation",0);
+    PROFILEREPORT(SortTime);
 }

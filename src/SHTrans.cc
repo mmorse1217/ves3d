@@ -186,3 +186,66 @@ void SHTrans<Container, Mats>::FirstDerivatives(const Container &in,
     backward_du(shc, work, du);
     backward_dv(shc, work, dv);
 }
+
+template<typename Container, typename Mats>
+void SHTrans<Container, Mats>::collectSameOrder(const Container &in, 
+    Container &out) const
+{
+    ///@todo this code need to be moved to the device
+    const typename Container::value_type *inPtr(NULL);
+    typename Container::value_type *outPtr(NULL), *head(out.begin());
+
+    int ns = in.getNumSubs() * in.getTheDim();
+  
+    for(int ii=0; ii<= p; ++ii)
+    {
+        int len = 2*ii + 1 - (ii/p);
+                
+        inPtr = in.begin() + ii;       
+        for(int jj=0; jj<= 2*ii-(ii/p); ++jj)
+        {
+            outPtr = head + jj;
+            int dist = (p + 1 - (jj + 1)/2);
+            for(int ss=0; ss<ns; ++ss)
+            {
+                *outPtr = *inPtr;
+                inPtr += dist;
+                outPtr+= len;
+            }
+            inPtr--;
+            inPtr += jj%2;
+        }
+        head += ns * len;
+    }
+}
+
+template<typename Container, typename Mats>
+void SHTrans<Container, Mats>::collectSameFreq(const Container &in, 
+    Container &out) const
+{
+    ///@todo this code need to be moved to the device
+    const typename Container::value_type *inPtr(NULL), *head(in.begin());
+    typename Container::value_type *outPtr(NULL);
+
+    int ns = in.getNumSubs() * in.getTheDim();  
+    for(int ii=0; ii<= p; ++ii)
+    {
+        int len = 2*ii + 1 - (ii/p);
+                
+        outPtr = out.begin() + ii;       
+        for(int jj=0; jj<= 2*ii-(ii/p); ++jj)
+        {
+            inPtr = head + jj;
+            int dist = (p + 1 - (jj + 1)/2);
+            for(int ss=0; ss<ns; ++ss)
+            {
+                *outPtr = *inPtr;
+                outPtr += dist;
+                inPtr  += len;
+            }
+            outPtr--;
+            outPtr += jj%2;
+        }
+        head += ns * len;
+    }
+}

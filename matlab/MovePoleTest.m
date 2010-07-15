@@ -1,6 +1,23 @@
 addpath ../../Ves3DMat/src/
 addpath ../../Ves3DMat/util/
 
+fileName = '../test/MovePole.out';
+
+p = 12;
+nv = 1;
+np = 2 * p * (p + 1);
+fid = fopen(fileName,'r');
+
+XX = fread(fid,'float');
+fclose(fid);
+
+XX = reshape(XX,3*np*nv,[]);
+for jj=1:size(XX,2)
+  PlotShape(reshape(XX(:,jj),[],nv),p);
+  pause(.1);
+end
+
+
 %clear all;clc
 
 % p = 12;
@@ -37,21 +54,4 @@ addpath ../../Ves3DMat/util/
 % plotb(Xr);
 % pause(.1);
 % end
-
-fileName = '../test/MovePole.out';
-
-p = 12;
-np = 2 * p * (p + 1);
-fid = fopen(fileName,'r');
-XX = fread(fid, 3*np, 'float');
-fclose(fid);
-
-XX = reshape(XX,3*np,[]);
-
-clf;
-NV = 1;
-for ii=1:size(XX,2)/NV
-  PlotShape(XX(:,NV*(ii-1) + (1:NV)),p);
-  pause(.1);
-end
 

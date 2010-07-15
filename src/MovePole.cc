@@ -1,6 +1,5 @@
 template<typename Container, typename Operators>
-MovePole<Container, Operators>::MovePole(Operators &mats, 
-    Container &sp_mats) :
+MovePole<Container, Operators>::MovePole(Operators &mats) :
     p_(mats.p_),
     np_(gridDimOf(p_).first * gridDimOf(p_).second),
     sp_harm_mats_(gridDimOf(p_).first, 1, 
@@ -21,7 +20,7 @@ MovePole<Container, Operators>::MovePole(Operators &mats,
     Container::getDevice().Memcpy(all_rot_mats_.begin(), mats.all_rot_mats_,
         all_rot_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
 
-    Container::getDevice().Memcpy(sp_harm_mats_.begin(), sp_mats.begin(),
+    Container::getDevice().Memcpy(sp_harm_mats_.begin(), mats.sh_rot_mats_,
         sp_harm_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //Generating the longitudinal rotation matrices stored in the
@@ -104,7 +103,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
             shc_[ii].replicate(*(arr_[ii]));
             wrk_.replicate(*(arr_[ii]));
             sht_.forward(*(arr_[ii]), shc_[ii], wrk_);
-            this->shuffleShCoeff(wrk_, shc_[ii]);
+            sht_.collectSameOrder(wrk_, shc_[ii]);
         }
     }
     num_ = num;
@@ -170,7 +169,7 @@ void MovePole<Container, Operators>::movePoleViaSpHarm(int trg_i, int trg_j,
             resPtr += matsize * nsub;
         }
         
-        unShuffleShCoeff(wrk_, shc_out);
+        sht_.collectSameFreq(wrk_, shc_out);
         sht_.backward(shc_out, wrk_, *(results[ii]));
     }
 }
@@ -211,66 +210,5 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
             srcPtr += matsize * nsub;
             resPtr += matsize * nsub;
         }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////
-template<typename Container, typename Operators>
-void MovePole<Container, Operators>::shuffleShCoeff(const Container &in, 
-    Container &out) const
-{
-    const typename Container::value_type *inPtr(NULL);
-    typename Container::value_type *outPtr(NULL), *head(out.begin());
-
-    int ns = in.getNumSubs();  
-    for(int ii=0; ii<= p_; ++ii)
-    {
-        int len = 2*ii + 1 - (ii/p_);
-                
-        inPtr = in.begin() + ii;       
-        for(int jj=0; jj<= 2*ii-(ii/p_); ++jj)
-        {
-            outPtr = head + jj;
-            int dist = (p_ + 1 - (jj + 1)/2);
-            for(int ss=0; ss<ns; ++ss)
-            {
-                *outPtr = *inPtr;
-                inPtr += dist;
-                outPtr+= len;
-            }
-            inPtr--;
-            inPtr += jj%2;
-        }
-        head += ns * len;
-    }
-}
-
-template<typename Container, typename Operators>
-void MovePole<Container, Operators>::unShuffleShCoeff(const Container &in, 
-    Container &out) const
-{
-    const typename Container::value_type *inPtr(NULL), *head(in.begin());
-    typename Container::value_type *outPtr(NULL);
-
-    int ns = in.getNumSubs();  
-    for(int ii=0; ii<= p_; ++ii)
-    {
-        int len = 2*ii + 1 - (ii/p_);
-                
-        outPtr = out.begin() + ii;       
-        for(int jj=0; jj<= 2*ii-(ii/p_); ++jj)
-        {
-            inPtr = head + jj;
-            int dist = (p_ + 1 - (jj + 1)/2);
-            for(int ss=0; ss<ns; ++ss)
-            {
-                *outPtr = *inPtr;
-                outPtr += dist;
-                inPtr  += len;
-            }
-            outPtr--;
-            outPtr += jj%2;
-        }
-        head += ns * len;
     }
 }

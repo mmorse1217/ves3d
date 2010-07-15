@@ -3,7 +3,7 @@ function Generate_Cpp_data(p, precision)
   R = GenerateShRotMats(p);
   fileName = ['SpHarmRotMats_p' num2str(p) '_' precision];
   saveData([fileName '.bin'], R, precision);  
-  %save([fileName '.txt'],'R','-ascii'); 
+  save([fileName '.txt'],'R','-ascii'); 
 
 % Script to make the Legendre and inverse Legendre transforms.
 

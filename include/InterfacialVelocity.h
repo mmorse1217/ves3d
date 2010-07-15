@@ -26,10 +26,11 @@ class InterfacialVelocity
     typedef typename SurfContainer::device_type device_type;
     typedef typename SurfContainer::Sca_t Sca_t;
     typedef typename SurfContainer::Vec_t Vec_t;
+    typedef OperatorsMats<value_type, device_type> Mats_t;
     
   public:
     InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
-        OperatorsMats<value_type, device_type> &mats, const Parameters<value_type> &params, 
+        Mats_t &mats, const Parameters<value_type> &params, 
         BackgroundFlow &bgFlow = ShearFlow<Vec_t>);
     ~InterfacialVelocity();
     
@@ -62,7 +63,7 @@ class InterfacialVelocity
     Sca_t sing_quad_weights_;
     Sca_t quad_weights_;
 
-    mutable MovePole<Sca_t> move_pole;
+    mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t velocity;
     mutable Sca_t tension_;
 

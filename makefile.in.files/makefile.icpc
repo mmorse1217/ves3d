@@ -1,0 +1,10 @@
+# Flags
+ARFLAGS = -r
+CXXFLAGS= -DHAS_MKL_LIB -DPROFILING -DVERBOSE -DNDEBUGX -openmp -fPIC    \
+	  -early-template-check -sox -fno-exceptions -diag-enable -Wall  
+
+ifeq ($(VES3D_TESTING),yes)
+  CXXFLAGS+= -g -O0 -fp-model precise -mp1 #-msse3
+else
+  CXXFLAGS+= -O3 -finline -unroll-agressive #-ipo -opt-report -msse3 -malign-double
+endif

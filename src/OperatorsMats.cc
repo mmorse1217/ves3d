@@ -10,7 +10,9 @@ OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO
     mats_p_up_(dev, p_up_, data_ + SHTMats<T, Device>::getDataLength(p_), readFromFile)
 {
     int np = 2 * p_ * ( p_ + 1);   
-    
+    int rot_mat_size =  np * np * (p_ + 1);
+    int spharm_rot_size = (p_ + 1) * (p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
+
     quad_weights_       = data_ + 
         SHTMats<T,Device>::getDataLength(p_) + 
         SHTMats<T,Device>::getDataLength(p_up_);
@@ -18,9 +20,8 @@ OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO
     sing_quad_weights_  = quad_weights_       + np;
     w_sph_              = sing_quad_weights_  + np;
     all_rot_mats_       = w_sph_              + np;   
+    sh_rot_mats_        = all_rot_mats_ + rot_mat_size;
 
-    int rot_mat_size =  np * np * (p_ + 1);
-    
     if(readFromFile)
     {
         char fname[500];
@@ -36,6 +37,9 @@ OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO
 
         sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p_);
         fileIO_.ReadData(fname, rot_mat_size, all_rot_mats_);
+        
+        sprintf(fname,"precomputed/SpHarmRotMats_p%u_float.txt",p_);
+        fileIO_.ReadData(fname, spharm_rot_size, sh_rot_mats_);
 
         //p
         sprintf(fname,"precomputed/legTrans%u_single.txt",p_);
@@ -76,8 +80,10 @@ size_t OperatorsMats<T, Device>::getDataLength() const
 {
     int np = 2 * p_ * ( p_ + 1);
     int rot_mat_size =  np * np * (p_ + 1);
-    
-    return(3*np + rot_mat_size +  SHTMats<T,Device>::getDataLength(p_) + 
+    int spharm_rot_size = (p_ + 1) * (p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
+
+    return(3*np + rot_mat_size +  spharm_rot_size + 
+        SHTMats<T,Device>::getDataLength(p_)      + 
         SHTMats<T,Device>::getDataLength(p_up_));
 }
 

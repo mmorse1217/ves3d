@@ -1,0 +1,19 @@
+HAS_MKL = yes 
+
+# includes and libraries
+VES3D_TEMPLATES = -I$(VES3D_DIR)/src
+VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
+VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
+
+ifeq ($(CXX),icpc)
+  BLAS_INCLUDE  = -I/opt/intel/mkl/10.2.4.032/include
+  BLAS_LIBS     = -L/opt/intel/Compiler/11.1/046/mkl/lib/em64t 	\
+	-Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread	\
+	-lmkl_core -Wl,--end-group
+else
+ BLAS_INCLUDE   = -I/opt/CLAPACK-3.2.1/INCLUDE	
+ BLAS_LIBS      = -L/usr/lib64/libblas.so.3gf -L/usr/lib64/liblapack.so.3gf
+endif
+
+ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
+LDFLAGS  = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 

@@ -45,7 +45,6 @@ void stokesTest(const Device &dev)
     int mIter(100);
     real tol(1e-4);
     
-
     unsigned short tt = time(NULL);
     seed48(&tt);
     

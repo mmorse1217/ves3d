@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _MOVEPOLE_H_
 #define _MOVEPOLE_H_
 
@@ -13,18 +14,15 @@ class MovePole
     typedef SHTMats<value_type, typename Container::device_type> Mats_t;
 
   public:
-    MovePole(Operators &mats, Container &sp_mats);
+    MovePole(Operators &mats);
     ~MovePole();
     
     void setOperands(const Container** arr, int num, 
-        enum SingularStokesRot rot_scheme);
+        enum SingularStokesRot rot_scheme = Direct);
 
     inline void operator()(int trg_i, int trg_j, 
         Container** results) const;
 
-    void shuffleShCoeff(const Container &in, Container &out) const;
-    void unShuffleShCoeff(const Container &in, Container &out) const;
-    
   private:
     int p_, np_;
     //operator matrices
@@ -53,6 +51,7 @@ class MovePole
     
     void movePoleViaSpHarm(int trg_i, int trg_j, 
         Container** results) const;
+
     void alignMeridian(int trg_j, Container** results) const;
 };
 
