@@ -26,7 +26,7 @@ class InterfacialVelocity
     typedef typename SurfContainer::device_type device_type;
     typedef typename SurfContainer::Sca_t Sca_t;
     typedef typename SurfContainer::Vec_t Vec_t;
-    typedef OperatorsMats<value_type, device_type> Mats_t;
+    typedef OperatorsMats<Sca_t> Mats_t;
     
   public:
     InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 

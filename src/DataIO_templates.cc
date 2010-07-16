@@ -25,7 +25,7 @@ bool DataIO::ReadData(const string &file_name, size_t size, T* data) const
     size_t idx=0;
     while (idx<size )
         data_file>>data[idx++];
-    
+
     data_file.close();
     return(true);
 }
@@ -65,7 +65,7 @@ bool DataIO::ReadData(const string &file_name, Container &data,
     int offset, int length) const
 {
     size_t size((length == -1)  ? data.size()-offset : length);
-
+    
     if(Container::getDeviceType() == CPU)
         return(this->ReadData(file_name, size, data.begin()+offset));
     else
@@ -74,8 +74,8 @@ bool DataIO::ReadData(const string &file_name, Container &data,
             buffer(new typename Container::value_type[size]);
         bool ret = ReadData(file_name, size, buffer);
         
-        data.getDevice().Memcpy(data.begin() + offset, buffer, size
-            , MemcpyHostToDevice);
+        Container::getDevice().Memcpy(data.begin() + offset, buffer, 
+            size * sizeof(typename Container::value_type), MemcpyHostToDevice);
         
         delete[] buffer;
         return  ret;

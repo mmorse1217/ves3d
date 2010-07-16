@@ -27,7 +27,7 @@ void EvolveSurfTest(const Device<DT> &dev, Parameters<real> &sim_par)
     
     //reading the prototype form file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-        x0.getTheDim()*x0.getStride(), x0.begin());
+        x0, 0, DIM*x0.getStride());
     
     //Making Centers And Populating The Prototype
     if ( sim_par.n_surfs > 1 )
@@ -47,8 +47,7 @@ void EvolveSurfTest(const Device<DT> &dev, Parameters<real> &sim_par)
 
     //Reading Operators From File
     bool readFromFile = true;
-    OperatorsMats<real, Device<DT> > Mats(dev, myIO, 
-        readFromFile, sim_par);
+    OperatorsMats<Sca> Mats(readFromFile, sim_par);
 
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);

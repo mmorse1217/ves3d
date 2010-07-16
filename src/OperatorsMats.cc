@@ -19,14 +19,13 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     sing_quad_weights_  = quad_weights_       + np;
     w_sph_              = sing_quad_weights_  + np;
     all_rot_mats_       = w_sph_              + np;   
-    sh_rot_mats_        = all_rot_mats_ + rot_mat_size;
+    sh_rot_mats_        = all_rot_mats_       + rot_mat_size;
 
     DataIO fileIO;
 
     if(readFromFile)
     {
         char fname[500];
-
         sprintf(fname,"precomputed/quad_weights_%u_single.txt",p_);
         fileIO.ReadData(fname, data_,quad_weights_ - data_.begin(), np);
 
@@ -40,9 +39,9 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
         fileIO.ReadData(fname, data_, all_rot_mats_- data_.begin(),
             rot_mat_size);
         
-        sprintf(fname,"precomputed/SpHarmRotMats_p%u_float.txt",p_);
-        fileIO.ReadData(fname, data_, sh_rot_mats_- data_.begin(),
-            spharm_rot_size);
+//         sprintf(fname,"precomputed/SpHarmRotMats_p%u_float.txt",p_);
+//         fileIO.ReadData(fname, data_, sh_rot_mats_- data_.begin(),
+//             spharm_rot_size);
 
         //p
         sprintf(fname,"precomputed/legTrans%u_single.txt",p_);

@@ -52,17 +52,15 @@ int main(int argc, char** argv)
     Sca_t tension(nvec, p);    
     
     //reading the prototype form file
-    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_x0.bin",x);   
-    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_Fb.bin",Fb);   
-    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_SFb.bin",SFb);   
-    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_vel.bin",vel);   
-    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_tension.bin",tension);   
-    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_xnew.bin",xnew); 
-  
+    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_x0.txt",x);   
+    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_Fb.txt",Fb);   
+    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_SFb.txt",SFb);   
+    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_vel.txt",vel);   
+    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_tension.txt",tension);   
+    myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_xnew.txt",xnew); 
     //Reading Operators From File
     bool readFromFile = true;
-    OperatorsMats<real, Device<DT> > Mats(the_device, myIO, 
-        readFromFile, sim_par);
+    OperatorsMats<Sca_t> Mats(readFromFile, sim_par);
 
     //Making The Surface, And Time Stepper
     Sur_t S(x, Mats);
@@ -100,12 +98,12 @@ int main(int argc, char** argv)
     xnew.resize(nvec);    
     tension.resize(nvec); 
 
-    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_x0.bin",x);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_Fb.bin",Fb);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_SFb.bin",SFb);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_vel.bin",vel);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_tension.bin",tension);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_xnew.bin",xnew); 
+    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_x0.txt",x);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_Fb.txt",Fb);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_SFb.txt",SFb);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_vel.txt",vel);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_tension.txt",tension);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Exp_p12_float_xnew.txt",xnew); 
     
     S.setPosition(x);
     {
@@ -116,10 +114,10 @@ int main(int argc, char** argv)
     }
 
     // Multiple vesicles implicit
-    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_x0.bin",x);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_matvec.bin",vel);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_tension.bin",tension);   
-    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_xnew.bin",xnew); 
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_x0.txt",x);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_matvec.txt",vel);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_tension.txt",tension);   
+    myIO.ReadData("precomputed/Bmark_TwoVes_Imp_p12_float_xnew.txt",xnew); 
     
     S.setPosition(x);
     {

@@ -33,7 +33,7 @@ class DataIO
     
     template<typename Container>
     bool ReadData(const string &file_name, Container &data, 
-        int offset = 0 , int length = 0) const;
+        int offset = 0 , int length = -1) const;
     
     template<typename Container>
     bool WriteData(const string &file_name, const Container &data, 

@@ -15,7 +15,7 @@ function err = GenerateBmark_TwoVes_Imp(precision)
 
     %% boundary 
     ves = boundaryMultiple(m);
-    saveThis(VES3D_PATH, 'x0.bin', ves, precision);
+    saveThis(VES3D_PATH, 'x0.txt', ves, precision);
     subplot(1,2,1); PlotShape(ves);
     
     Nv = length(ves); 
@@ -61,9 +61,9 @@ function err = GenerateBmark_TwoVes_Imp(precision)
       ves{k} = Xn; 
     end
     
-    saveThis(VES3D_PATH, 'matvec.bin', MatVecRes, precision);
-    saveThis(VES3D_PATH, 'tension.bin', tension, precision);
-    saveThis(VES3D_PATH, 'xnew.bin', ves, precision);
+    saveThis(VES3D_PATH, 'matvec.txt', MatVecRes, precision);
+    saveThis(VES3D_PATH, 'tension.txt', tension, precision);
+    saveThis(VES3D_PATH, 'xnew.txt', ves, precision);
     
     subplot(1,2,2); PlotShape(ves);
   catch err
@@ -93,7 +93,11 @@ function saveThis(path, name, array, precision)
   
   name = [path filesep  'Bmark_TwoVes_Imp_p' num2str(m) '_' precision '_' name];
   disp(['Saving ' name]);
-  fid = fopen(name,'w');
-  fwrite(fid, array,precision);
-  fclose(fid);
+
+  save(name,'array','-ascii'); 
+%   fid = fopen(name,'w');
+%   fwrite(fid, array,precision);
+%   fclose(fid);
+
+
   

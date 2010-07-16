@@ -31,6 +31,6 @@ clean:
 	-$(RM) *.o *.exe *.out *.d
 
 check:  $(EXEC)
-	@for exec in *.exe; do ./$$exec; done
+	@for exec in *.exe; do ./$$exec; sleep 2; done
 
 -include $(EXEC:.exe=.d)

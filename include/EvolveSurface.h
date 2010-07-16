@@ -31,11 +31,11 @@ class EvolveSurface
     typedef InterfacialVelocity<Container, Interaction> IntVel_t;
     typedef void (IntVel_t::*Scheme_t)(const value_type &);
 
-    OperatorsMats<value_type, device_type> &mats_;
+    OperatorsMats<typename Container::Sca_t> &mats_;
     const Parameters<value_type> &params_;
 
   public:
-    EvolveSurface(OperatorsMats<value_type, device_type >
+    EvolveSurface(OperatorsMats<typename Container::Sca_t>
         &mats, const Parameters<value_type> &params);
     void operator()(Container &S, Interaction &Inter);
 };
