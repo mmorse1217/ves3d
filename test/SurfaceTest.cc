@@ -18,32 +18,32 @@ typedef float real;
 template<typename Sca, typename Vec, enum DeviceType DT>
 void testSurface(const Device<DT> &dev)
 {
-    typedef OperatorsMats<real, Device<DT> > Mats_t;
+    typedef OperatorsMats<Sca> Mats_t;
     int const p(12);
     int const nVec(2);
     
-    ///@todo Parameters have nothing to do with the surface
-    Parameters<real> sim_par;
-    
     //IO
     DataIO myIO;
+    
+    ///@todo Parameters have nothing to do with the surface
+    Parameters<real> sim_par;
     
     // initializing vesicle positions from text file
     Vec x0(nVec, p);
     int fLen = x0.getStride();
         
-    char fname[400];
-    sprintf(fname, "%s/precomputed/dumbbell_cart12_single.txt",
-        getenv("VES3D_DIR"));
-    myIO.ReadData(fname, fLen * x0.getTheDim(), x0.begin());
+     char fname[400];
+     sprintf(fname, "%s/precomputed/dumbbell_cart12_single.txt",
+         getenv("VES3D_DIR"));
+     myIO.ReadData(fname, x0);
         
-    for(int ii=1;ii<nVec; ++ii)
-        x0.getDevice().Memcpy(x0.getSubN(ii), x0.begin(), x0.getTheDim() * 
-            fLen * sizeof(real), MemcpyDeviceToDevice);
-        
+     for(int ii=1;ii<nVec; ++ii)
+         x0.getDevice().Memcpy(x0.getSubN(ii), x0.begin(), x0.getTheDim() * 
+             fLen * sizeof(real), MemcpyDeviceToDevice);
+     
     //Reading operators from file
     bool readFromFile = true;
-    Mats_t mats(dev, myIO, readFromFile, sim_par);
+    Mats_t mats(readFromFile, sim_par);
         
     //Creating objects
     Surface<Sca, Vec> S(x0, mats);

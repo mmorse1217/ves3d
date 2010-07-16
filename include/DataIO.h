@@ -32,7 +32,8 @@ class DataIO
     ~DataIO();
     
     template<typename Container>
-    bool ReadData(const string &file_name, Container &data) const;
+    bool ReadData(const string &file_name, Container &data, 
+        int offset = 0 , int length = 0) const;
     
     template<typename Container>
     bool WriteData(const string &file_name, const Container &data, 
@@ -41,6 +42,7 @@ class DataIO
     template<typename Container>
     bool Append(const Container &data) const; 
 
+  private:
     // Basic type IO
     template<typename T>
     bool ReadData(const string &file_name, size_t size, T* data) const;
@@ -49,9 +51,6 @@ class DataIO
     bool WriteData(const string &file_name, size_t size, const T* data, 
         ios_base::openmode mode = ios::out) const;
     
-    template<typename T>
-    bool Append(const T *data, size_t length) const; 
-
   private:
     string out_file_;
     mutable size_t out_size_;

@@ -11,7 +11,8 @@ DataIO::DataIO(string file_name, size_t buffer_size,
     
 DataIO::~DataIO()
 {
-    FlushBuffer();
+    if(out_used_ > 0)
+        FlushBuffer();
     free(out_buffer_);
 }    
     

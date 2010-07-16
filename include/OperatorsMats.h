@@ -5,33 +5,32 @@
 #include "Parameters.h"
 #include "SHTMats.h"
 
-template <typename T, typename Device>
+template <typename Container>
 struct OperatorsMats
 {
-  private:
-    const Device &device_;
-    
   public:
+    typedef typename Container::value_type value_type;
+    typedef typename Container::device_type device_type;
     
-    DataIO &fileIO_;
     int p_;
     int p_up_;   
 
-    T *data_;
+    Container data_;
+    
+    SHTMats<value_type,device_type> mats_p_;
+    SHTMats<value_type,device_type> mats_p_up_;
+    
+    value_type *quad_weights_;
+    value_type *sing_quad_weights_;
+    value_type *w_sph_;
+    value_type *all_rot_mats_;  
+    value_type *sh_rot_mats_;
 
-    SHTMats<T,Device> mats_p_;
-    SHTMats<T,Device> mats_p_up_;
-    T *quad_weights_;
-    T *sing_quad_weights_;
-    T *w_sph_;
-    T *all_rot_mats_;  
-    T *sh_rot_mats_;
-
-    OperatorsMats(const Device &dev, DataIO &fileIO_in, 
-        bool readFromFile, const Parameters<T> &params);
-    ~OperatorsMats();
+    OperatorsMats(bool readFromFile, 
+        const Parameters<value_type> &params);
+       
     size_t getDataLength() const;
-    const Device& getDevice() const;
+    //const Device& getDevice() const;
 
   private:
     OperatorsMats(const OperatorsMats& mat_in);

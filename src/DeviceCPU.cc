@@ -8,7 +8,7 @@
 
 inline pair<int, int> gridDimOf(int sh_order)
 {
-    return(make_pair(sh_order + 1, 2 * sh_order));
+    return((sh_order >= 0) ? make_pair(sh_order + 1, 2 * sh_order) : make_pair(1,1));
 }
 
 template<enum DeviceType DT>
