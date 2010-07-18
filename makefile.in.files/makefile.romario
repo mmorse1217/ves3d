@@ -1,4 +1,5 @@
-HAS_MKL = yes 
+BLASPKG         = HAS_MKL
+CXXFLAGS       += -D$(BLASPKG)
 
 # includes and libraries
 VES3D_TEMPLATES = -I$(VES3D_DIR)/src
