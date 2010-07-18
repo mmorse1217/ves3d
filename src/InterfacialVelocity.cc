@@ -24,7 +24,7 @@ template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
     OperatorsMats<Sca_t> &mats, 
-    const Parameters<value_type> &params, BackgroundFlow &bgFlow) :
+    const Parameters<value_type> &params, BackgroundFlow bgFlow) :
     S_(S_in),
     interaction_(Inter),
     bg_flow_(bgFlow),
@@ -218,7 +218,7 @@ updateInteraction() const
     u3->setPointOrder(PointMajor);
 
     //Far interactions
-    typename Interaction::InteractionReturn status;
+    InteractionReturn status;
     status = interaction_(*u1, *u2, *u3);
     
     //Shuffling to the original order

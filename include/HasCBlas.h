@@ -1,10 +1,9 @@
-#include <blas.h>
-// #include "f2c.h"
-// #include "clapack.h"
-
 #ifdef __cplusplus
 extern "C"{
 #endif
+
+#include <cblas.h>
+#include <clapack.h>
 
 #define sgemm sgemm_
     extern "C"{
@@ -24,18 +23,30 @@ extern "C"{
             const double* BETA, double* C, const int* LDC); 
     }
     
-// #define ssteqr ssteqr_
-//     extern "C"{
-//         void ssteqr_(char *compz, int &n, float *d, float *e, 
-//             float *z, int &ldz, float *work, int &info);
-//     }
+#define ssteqr ssteqr_
+    extern "C"{
+        void ssteqr_(char *compz, int &n, float *d, float *e, 
+            float *z, int &ldz, float *work, int &info);
+    }
 
-// #define dsteqr dsteqr_
-//     extern "C"{
-//         void dsteqr_(char *compz, int &n, double *d, double *e, 
-//             double *z, int &ldz, double *work, int &info);
-//     }
+#define dsteqr dsteqr_
+    extern "C"{
+        void dsteqr_(char *compz, int &n, double *d, double *e, 
+            double *z, int &ldz, double *work, int &info);
+    }
     
 #ifdef __cplusplus
 }
 #endif
+
+void steqr(char *compz, int &n, float *d, float *e, float *z, 
+    int &ldz, float *work, int &info)
+{
+    ssteqr(compz, n, d, e, z, ldz, work, info);
+}
+
+void steqr(char *compz, int &n, double *d, double *e, double *z,
+    int &ldz, double *work, int &info)
+{
+    dsteqr(compz, n, d, e, z, ldz, work, info);
+}

@@ -46,10 +46,16 @@ class DataIO
     // Basic type IO
     template<typename T>
     bool ReadData(const string &file_name, size_t size, T* data) const;
+    bool ReadData(const string &file_name, size_t size, char* data) const;
+
     
     template<typename T>
     bool WriteData(const string &file_name, size_t size, const T* data, 
         ios_base::openmode mode = ios::out) const;
+    
+    bool WriteData(const string &file_name, size_t size, const char* data, 
+        ios_base::openmode mode) const;
+
     
   private:
     string out_file_;

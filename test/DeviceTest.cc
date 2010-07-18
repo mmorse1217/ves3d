@@ -5,7 +5,7 @@ int main(int argc, char** argv)
     COUT("\n ==============================\n"
         <<"  Device Test:"
         <<"\n ==============================\n");
-    sleep(.5);
+    sleep(1);
 
     PROFILESTART();
     bool res;
@@ -19,7 +19,7 @@ int main(int argc, char** argv)
         cout<<" * Initialization: "<<err<<" *"<<endl;
         DeviceTest<CPU,float> dvt_f(&cpu);
         res = dvt_f.PerformAll();
-        sleep(.5);
+        sleep(1);
     }
 
     {
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
         Device<CPU> cpu;
         DeviceTest<CPU,double> dvt_d(&cpu);
         res &= dvt_d.PerformAll();
-        sleep(.5);
+        sleep(1);
     }
 
 #ifdef GPU_ACTIVE
@@ -49,6 +49,6 @@ int main(int argc, char** argv)
     PROFILEEND("",0);
     PROFILEREPORT(SortTime);
     
-    sleep(.5);
+    sleep(1);
     return 0;
 }

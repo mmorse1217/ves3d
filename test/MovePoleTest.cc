@@ -26,7 +26,7 @@ int main(int , char** )
     
     Vec_t x0(nVec, p), xr(nVec, p);
     int fLen = x0.getStride();
-    
+  
     x0.fillRand();
     fname = "precomputed/dumbbell_cart12_single.txt";
     myIO.ReadData(fname, x0, 0, fLen * DIM);
@@ -41,7 +41,7 @@ int main(int , char** )
     Sca_t* outputs[] = {&xr};
     
     //Correctness
-    move_pole.setOperands(inputs, ViaSpHarm);
+    move_pole.setOperands(inputs, Direct);
     for(int ii=0; ii<x0.getGridDim().first; ++ii)
         for(int jj=0; jj<x0.getGridDim().second; ++jj)
         {    

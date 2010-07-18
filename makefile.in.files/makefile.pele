@@ -1,14 +1,13 @@
-HAS_MKL = no
+BLASPKG         = HAS_CBLAS
+CXXFLAGS       += -D$(BLASPKG)
 
 # includes and libraries
 VES3D_TEMPLATES = -I$(VES3D_DIR)/src
 VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
 VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
 
-ifeq ($(CXX),g++)
- BLAS_INCLUDE   = 
- BLAS_LIBS      = -L/usr/lib64/
-endif
+BLAS_INCLUDE   = -I/usr/include/atlas/ -I/usr/lib64/atlas/
+BLAS_LIBS      = -L/usr/lib64/atlas/ -llapack -lcblas
 
 ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
 LDFLAGS  = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
