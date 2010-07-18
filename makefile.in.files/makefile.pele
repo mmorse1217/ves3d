@@ -1,0 +1,14 @@
+HAS_MKL = no
+
+# includes and libraries
+VES3D_TEMPLATES = -I$(VES3D_DIR)/src
+VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
+VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
+
+ifeq ($(CXX),g++)
+ BLAS_INCLUDE   = 
+ BLAS_LIBS      = -L/usr/lib64/
+endif
+
+ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
+LDFLAGS  = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
