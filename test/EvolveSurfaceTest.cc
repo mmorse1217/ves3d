@@ -8,8 +8,8 @@
 extern const Device<CPU> the_cpu_device(0);
 extern const Device<GPU> the_gpu_device(0);
 
-typedef double real;
-typedef double fmm_value_type;
+typedef float real;
+typedef float fmm_value_type;
 
 #ifndef Doxygen_skip
 
@@ -66,12 +66,12 @@ int main(int argc, char **argv)
     Par_t sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 3;
-    sim_par.scheme = Explicit;//SemiImplicit;
+    sim_par.time_horizon = 20;
+    sim_par.scheme = SemiImplicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = true;    
-    sim_par.save_stride = 2;
+    sim_par.save_stride = 1;
     sim_par.save_file_name = "EvolveSurf.out";
     COUT(sim_par);
     

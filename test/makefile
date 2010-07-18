@@ -23,7 +23,7 @@ all: $(EXEC)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
 
 %.d: %.cc
-	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@ $(LDFLAGS)
+	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@
 
 .PHONY: clean check
 
@@ -31,6 +31,6 @@ clean:
 	-$(RM) *.o *.exe *.out *.d
 
 check:  $(EXEC)
-	@for exec in *.exe; do ./$$exec; sleep 2; done
+	@for exec in *.exe; do ./$$exec; done
 
 -include $(EXEC:.exe=.d)
