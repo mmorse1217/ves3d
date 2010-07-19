@@ -13,7 +13,7 @@ To build:
     variable or modify the PLATFORM in makefile.in.
     
     2. In the platform specific makefile, set the corret include paths
-    for libraries
+      for libraries
  
     3. If the makefile corresponding to your choice of compiler does
     not exist, you also need to write that makefile (with the correct
