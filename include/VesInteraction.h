@@ -1,15 +1,13 @@
 #ifndef _VESINTERACTION_H_
 #define _VESINTERACTION_H_
 
-#include<typeinfo>
+#include <typeinfo>
+#include "enums.h"
 
 template<typename T>
 class VesInteraction
 {
   public:
-    enum InteractionReturn {InteractionSuccess = 0,
-                            NoInteraction      = 1};
-
     typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*);    
 
     VesInteraction(InteractionFun_t interaction_handle = NULL, int num_threads = 1);

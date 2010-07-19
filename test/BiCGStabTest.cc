@@ -113,9 +113,10 @@ int main(int argc, char **argv)
 
         axpy((real) -1.0, b_ref, b_cpu, b_cpu);
         
-        string formatstr ="\n GPU data :\n     Residual: %2.4e\n     ";
-         formatstr +="Iter    : %d\n     Error   : %2.4e\n";
-        sprintf(gpu_out, formatstr.c_str(), tt, miter, MaxAbs(b_cpu));
+        string formatstr ="\n GPU data :\n   Residual     : %2.4e\n";
+        formatstr +="   Iter         : %d\n   True relres  : %2.4e\n";
+        sprintf(gpu_out, formatstr.c_str(), tt, miter, 
+            sqrt(AlgebraicDot(b_cpu,b_cpu)/AlgebraicDot(b_ref,b_ref)));
     }
 #endif //GPU_ACTIVE
     

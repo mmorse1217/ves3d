@@ -23,8 +23,8 @@ void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
 template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
 InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
 InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
-    OperatorsMats<value_type, device_type> &mats, 
-    const Parameters<value_type> &params, BackgroundFlow &bgFlow) :
+    OperatorsMats<Sca_t> &mats, 
+    const Parameters<value_type> &params, BackgroundFlow bgFlow) :
     S_(S_in),
     interaction_(Inter),
     bg_flow_(bgFlow),
@@ -218,7 +218,7 @@ updateInteraction() const
     u3->setPointOrder(PointMajor);
 
     //Far interactions
-    typename Interaction::InteractionReturn status;
+    InteractionReturn status;
     status = interaction_(*u1, *u2, *u3);
     
     //Shuffling to the original order

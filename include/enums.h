@@ -21,6 +21,9 @@ enum CoordinateOrder {PointMajor, AxisMajor};
 
 enum SolverScheme {Explicit, SemiImplicit};
 
+enum InteractionReturn {InteractionSuccess = 0,
+                        NoInteraction      = 1};
+
 enum SingularStokesRot {Direct, ViaSpHarm};
 
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT);

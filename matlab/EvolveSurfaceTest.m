@@ -3,16 +3,16 @@ clear all;clc
 fileName = '../test/EvolveSurf.out';
 
 p = 12;
+nv = 2;
 np = 2 * p * (p + 1);
 fid = fopen(fileName,'r');
-XX = fscanf(fid,'%g');
+XX = fread(fid,'float');
 fclose(fid);
-XX = reshape(XX,3*np,[]);
+XX = reshape(XX,3*np*nv,[]);
 
 clf;
-NV = 1;
-for ii=1:size(XX,2)/NV
-  PlotShape(XX(:,NV*(ii-1) + (1:NV)),p);
+for ii=1:size(XX,2)
+  PlotShape(reshape(XX(:,ii),[],nv),p);
   pause(.1);
 end
 

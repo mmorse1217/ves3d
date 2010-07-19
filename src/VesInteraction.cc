@@ -26,7 +26,7 @@ VesInteraction<T>::~VesInteraction()
 }    
 template<typename T>
 template<typename VecContainer>
-VesInteraction<T>::InteractionReturn VesInteraction<T>::operator()(
+InteractionReturn VesInteraction<T>::operator()(
     const VecContainer &position, VecContainer &density, 
     VecContainer &potential) const
 {

@@ -1,0 +1,38 @@
+# Flags
+ARFLAGS = -r
+CXXFLAGS= -fopenmp -fPIC -fno-exceptions
+
+ifeq ($(VES3D_TESTING),yes)
+  CXXFLAGS+= -gstabs+ -O0 -DVERBOSE -DPROFILING #-pedantic #-DNDEBUG #-msse3
+else
+  CXXFLAGS+= -O3 -finline-functions -unroll-loops -w  			\
+    -funsafe-loop-optimizations #-DPROFILING #-msse3 #-malign-double
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

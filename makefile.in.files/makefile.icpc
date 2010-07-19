@@ -1,6 +1,6 @@
 # Flags
-ARFLAGS = -r
-CXXFLAGS= -DHAS_MKL_LIB -DPROFILING -DVERBOSE -DNDEBUGX -openmp -fPIC    \
+ARFLAGS  = -r
+CXXFLAGS+= -DPROFILING -DVERBOSE -DNDEBUGX -openmp -fPIC    \
 	  -early-template-check -sox -fno-exceptions -diag-enable -Wall  
 
 ifeq ($(VES3D_TESTING),yes)

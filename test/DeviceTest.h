@@ -84,7 +84,7 @@ bool DeviceTest<DT,T>::PerformAll()
 template<enum DeviceType DT, typename T>
 bool DeviceTest<DT,T>::TestMalloc()
 {
-    size_t arr_size(1e6);
+    size_t arr_size(static_cast<size_t>(1e6));
     bool res(false);
     T* a = (T*) device->Malloc(arr_size * sizeof(T));
     if(a != NULL)

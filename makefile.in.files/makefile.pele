@@ -1,4 +1,4 @@
-BLASPKG         = HAS_MKL
+BLASPKG         = HAS_CBLAS
 CXXFLAGS       += -D$(BLASPKG)
 
 # includes and libraries
@@ -6,12 +6,8 @@ VES3D_TEMPLATES = -I$(VES3D_DIR)/src
 VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
 VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
 
-ifeq ($(CXX),icpc)
- BLAS_LIBS      = -L/opt/intel/Compiler/11.1/059/mkl/lib/em64t 		\
-	-Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread		\
-	-lmkl_core -Wl,--end-group
- BLAS_INCLUDE   = -I/opt/intel/mkl/10.2.2.025/include
-endif
+BLAS_INCLUDE   = -I/usr/include/atlas/ -I/usr/lib64/atlas/
+BLAS_LIBS      = -L/usr/lib64/atlas/ -llapack -lcblas
 
 ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
 LDFLAGS  = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 

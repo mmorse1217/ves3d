@@ -17,7 +17,7 @@ void ShearFlow(const VecContainer &pos, const typename
 
 template<typename SurfContainer, 
          typename Interaction,
-         typename BackgroundFlow = void(&)(const typename SurfContainer::Vec_t&, 
+         typename BackgroundFlow = void(*)(const typename SurfContainer::Vec_t&, 
              typename SurfContainer::value_type, typename SurfContainer::Vec_t&) >
 class InterfacialVelocity
 {
@@ -26,12 +26,12 @@ class InterfacialVelocity
     typedef typename SurfContainer::device_type device_type;
     typedef typename SurfContainer::Sca_t Sca_t;
     typedef typename SurfContainer::Vec_t Vec_t;
-    typedef OperatorsMats<value_type, device_type> Mats_t;
+    typedef OperatorsMats<Sca_t> Mats_t;
     
   public:
     InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
         Mats_t &mats, const Parameters<value_type> &params, 
-        BackgroundFlow &bgFlow = ShearFlow<Vec_t>);
+        BackgroundFlow bgFlow = &ShearFlow<Vec_t>);
     ~InterfacialVelocity();
     
     void updatePositionExplicit(const value_type &dt);

@@ -34,7 +34,7 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
     if(save_flag_ && (t/save_stride_ == static_cast<int>(t/save_stride_)))
     {
         COUT("\n           Writing data to file."<<endl);
-        IO.Append(state.getPosition().begin(), state.getPosition().size());
+        IO.Append(state.getPosition());
 
     }
     COUT(" ------------------------------------"<<endl);
@@ -43,8 +43,9 @@ return(t<time_hor_);
 }
 
 template<typename Container, typename Interaction>
-EvolveSurface<Container, Interaction>::EvolveSurface(OperatorsMats<value_type, 
-    device_type> &mats, const Parameters<value_type> &params) : 
+EvolveSurface<Container, Interaction>::EvolveSurface(
+    OperatorsMats<typename Container::Sca_t> &mats, 
+    const Parameters<value_type> &params) : 
     mats_(mats), params_(params){}
 
 template<typename Container, typename Interaction>

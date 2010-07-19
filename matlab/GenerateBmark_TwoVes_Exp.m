@@ -15,7 +15,7 @@ function err = GenerateBmark_TwoVes_Exp(precision)
 
     %% boundary 
     ves = boundaryMultiple(m);
-    saveThis(VES3D_PATH, 'x0.bin', ves, precision);
+    saveThis(VES3D_PATH, 'x0.txt', ves, precision);
     subplot(1,2,1); PlotShape(ves);
     
     Nv = length(ves); GS = cell(Nv,1); 
@@ -30,7 +30,7 @@ function err = GenerateBmark_TwoVes_Exp(precision)
       Fn = -DivS{k}(GradS{k}(H{k})) - 2*H{k}.*(H{k}.^2 - K);   
       Fb{k} = kappa*repmat(Fn, 3, 1).*nor{k};                  
     end
-    saveThis(VES3D_PATH, 'Fb.bin', Fb, precision);
+    saveThis(VES3D_PATH, 'Fb.txt', Fb, precision);
     
     for p = 1:Nv
       for q = setdiff(1:Nv, p)
@@ -56,10 +56,10 @@ function err = GenerateBmark_TwoVes_Exp(precision)
       ves{k} = ves{k} + ts*F;                  
     end
       
-    saveThis(VES3D_PATH, 'SFb.bin', SFb, precision);
-    saveThis(VES3D_PATH, 'vel.bin', vel, precision);
-    saveThis(VES3D_PATH, 'tension.bin', tension, precision);
-    saveThis(VES3D_PATH, 'xnew.bin', ves, precision);
+    saveThis(VES3D_PATH, 'SFb.txt', SFb, precision);
+    saveThis(VES3D_PATH, 'vel.txt', vel, precision);
+    saveThis(VES3D_PATH, 'tension.txt', tension, precision);
+    saveThis(VES3D_PATH, 'xnew.txt', ves, precision);
     subplot(1,2,2); PlotShape(ves);
   catch err
     disp(' There was an error in invoking the Matlab code:');
@@ -88,7 +88,9 @@ function saveThis(path, name, array, precision)
   
   name = [path filesep  'Bmark_TwoVes_Exp_p' num2str(m) '_' precision '_' name];
   disp(['Saving ' name]);
-  fid = fopen(name,'w');
-  fwrite(fid, array,precision);
-  fclose(fid);
+
+  save(name,'array','-ascii'); 
+%   fid = fopen(name,'w');
+%   fwrite(fid, array,precision);
+%   fclose(fid);
   

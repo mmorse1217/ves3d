@@ -23,7 +23,7 @@ all: $(EXEC)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
 
 %.d: %.cc
-	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@ $(LDFLAGS)
+	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@
 
 .PHONY: clean check
 

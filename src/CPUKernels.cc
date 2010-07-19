@@ -609,7 +609,7 @@ void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot)
     const float *trg(src), *srcPtr(src), *denPtr(den);
 
 #pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)   
-    for (size_t trg_idx=0; trg_idx<np; ++trg_idx)
+    for (int trg_idx=0; trg_idx<np; ++trg_idx)
     {
         px = 0; py = 0; pz = 0;
         tx=trg[3*trg_idx]; ty=trg[3*trg_idx+1]; tz=trg[3*trg_idx+2];

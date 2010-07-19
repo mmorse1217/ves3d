@@ -24,7 +24,7 @@ class Scalars
     typedef const T* const_iterator;
     typedef T value_type;
 
-    explicit Scalars(size_t num_subs = 0, int sh_order = 0, 
+    explicit Scalars(size_t num_subs = 0, int sh_order = -1, 
         pair<int, int> grid_dim = EMPTY_GRID);
     virtual ~Scalars();
 

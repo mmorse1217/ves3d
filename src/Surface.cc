@@ -7,7 +7,7 @@
  */
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(
-    const Vec_t& x_in, OperatorsMats<value_type, device_type> &mats) :
+    const Vec_t& x_in, OperatorsMats<Sca_t> &mats) :
     upsample_freq_(2 * x_in.getShOrder()),
     rep_filter_freq_(x_in.getShOrder()/3),
     sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
