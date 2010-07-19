@@ -2,8 +2,8 @@
 extern "C"{
 #endif
 
-#include <cblas.h>
-#include <clapack.h>
+  //#include <cblas.h>
+  //#include <clapack.h>
 
 #define sgemm sgemm_
     extern "C"{
