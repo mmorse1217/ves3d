@@ -38,8 +38,8 @@ OperatorsMats<T, Device>::OperatorsMats(const Device &dev, DataIO
         sprintf(fname,"precomputed/all_rot_mats_%u_single.txt",p_);
         fileIO_.ReadData(fname, rot_mat_size, all_rot_mats_);
         
-        sprintf(fname,"precomputed/SpHarmRotMats_p%u_float.txt",p_);
-        fileIO_.ReadData(fname, spharm_rot_size, sh_rot_mats_);
+        //sprintf(fname,"precomputed/SpHarmRotMats_p%u_float.txt",p_);
+        //fileIO_.ReadData(fname, spharm_rot_size, sh_rot_mats_);
 
         //p
         sprintf(fname,"precomputed/legTrans%u_single.txt",p_);
