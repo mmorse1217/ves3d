@@ -7,8 +7,8 @@
 #elif  HAS_ATLAS
   #include "HasAtlas.h"
 
-#elif  HAS_CBLAS
-  #include "HasCBlas.h"
+#elif  HAS_BLAS
+  #include "HasBlas.h"
 
 #endif
 

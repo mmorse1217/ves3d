@@ -1,4 +1,4 @@
-BLASPKG         = HAS_CBLAS
+BLASPKG         = HAS_BLAS
 CXXFLAGS       += -D$(BLASPKG)
 
 # includes and libraries
