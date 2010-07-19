@@ -40,7 +40,9 @@ void xInv(const ScalarContainer &x_in, ScalarContainer &xInv_out)
 {
     assert(AreCompatible(x_in,xInv_out));
 
-    x_in.getDevice().xyInv(0, x_in.begin(), x_in.size(), xInv_out.begin());
+    x_in.getDevice().xyInv(static_cast<typename 
+        ScalarContainer::value_type*>(NULL), x_in.begin(), 
+        x_in.size(), xInv_out.begin());
 }
 
 template<typename ScalarContainer>

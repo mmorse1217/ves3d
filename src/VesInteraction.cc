@@ -1,15 +1,16 @@
 template<typename T>
 VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
-    int num_threads) :
+    void* user_ptr, int num_threads) :
+    interaction_handle_(interaction_handle),
     num_threads_(num_threads),
+    user_ptr_(user_ptr),
     each_thread_np_(new size_t[num_threads_]),
     each_thread_idx_(new size_t[num_threads_ + 1]),
     np_(0),
     containers_capacity_(0),
     all_pos_(NULL),
     all_den_(NULL),
-    all_pot_(NULL),
-    interaction_handle_(interaction_handle)
+    all_pot_(NULL)
 {
     each_thread_idx_[0] = 0;
 }
@@ -159,8 +160,8 @@ void VesInteraction<T>::updatePotential() const
     assert(interaction_handle_ != NULL);
 #pragma omp master
     {
-        ///@todo gpu based interactions
-        interaction_handle_(all_pos_, all_den_, np_, all_pot_);
+        interaction_handle_(all_pos_, all_den_, np_, all_pot_, 
+            user_ptr_);
     }
    
 #pragma omp barrier

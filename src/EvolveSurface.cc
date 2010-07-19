@@ -39,7 +39,7 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
     }
     COUT(" ------------------------------------"<<endl);
 
-return(t<time_hor_);
+    return(t<time_hor_);
 }
 
 template<typename Container, typename Interaction>

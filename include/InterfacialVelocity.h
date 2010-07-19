@@ -48,7 +48,7 @@ class InterfacialVelocity
   private:
     SurfContainer &S_;
     Interaction &interaction_;
-    BackgroundFlow &bg_flow_;
+    BackgroundFlow bg_flow_;
     const Parameters<value_type> &params_;
     
     InterfacialForce<SurfContainer> Intfcl_force_;

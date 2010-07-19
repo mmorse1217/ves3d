@@ -8,20 +8,23 @@ template<typename T>
 class VesInteraction
 {
   public:
-    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*);    
+    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void*);    
 
-    VesInteraction(InteractionFun_t interaction_handle = NULL, int num_threads = 1);
+    explicit VesInteraction(InteractionFun_t interaction_handle = NULL, 
+        void* user_ptr  = NULL, int num_threads = 1);
     ~VesInteraction();
 
     template<typename VecContainer>
-    InteractionReturn operator()(const VecContainer &position, VecContainer &density,
-        VecContainer &potential) const;
+    InteractionReturn operator()(const VecContainer &position, 
+        VecContainer &density, VecContainer &potential) const;
 
   private:
+    InteractionFun_t interaction_handle_;
     int num_threads_;
+    void * user_ptr_;    
     size_t* each_thread_np_;
     size_t* each_thread_idx_;
-    
+
     mutable size_t np_;
     mutable size_t containers_capacity_;
 
@@ -32,7 +35,6 @@ class VesInteraction
     size_t getCpyDestIdx(size_t this_thread_np) const;
     void checkContainersSize() const;
     void updatePotential() const;
-    InteractionFun_t interaction_handle_;
     
     VesInteraction(VesInteraction const &rhs);
     VesInteraction& operator=(const VesInteraction &rhs);

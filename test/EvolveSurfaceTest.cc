@@ -67,7 +67,7 @@ int main(int argc, char **argv)
     sim_par.n_surfs = 1;   
     sim_par.ts = 1;    
     sim_par.time_horizon = 20;
-    sim_par.scheme = SemiImplicit;
+    sim_par.scheme = Explicit;//SemiImplicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = true;    

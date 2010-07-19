@@ -27,8 +27,8 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head, int trg_idx
     const float *trg, const float *src, const float *den, float *pot);
 
 ///All to all interaction
-void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot);
-void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot);
+void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot, void*);
+void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot, void*);
 
 
 #endif//_CPUKERNELS_H_
