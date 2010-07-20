@@ -150,14 +150,10 @@ class Device
         T *C, const int *ldc) const;
     
     ///Direct stokes integration.
-    void DirectStokes(const float *src, const float *den, const float *qw, 
-        size_t stride, size_t n_surfs, const float *trg, size_t trg_idx_head, 
-        size_t trg_idx_tail, float *pot) const;
-
-    ///Direct stokes integration.
-    void DirectStokes(const double *src, const double *den, const double *qw, 
-        size_t stride, size_t n_surfs, const double *trg, size_t trg_idx_head, 
-        size_t trg_idx_tail, double *pot) const;
+    template<typename T>
+    void DirectStokes(const T *src, const T *den, const T *qw, 
+        size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head, 
+        size_t trg_idx_tail, T *pot) const;
 
     ///The max of an array.
     template<typename T>

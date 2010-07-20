@@ -49,8 +49,9 @@ class Logger
 
     ///Records accumulative log events corresponding to functions
     ///calling this method.
-    static void Record(string fun_name, string prefix, double time, double flop);
-
+    static void Record(string fun_name, string prefix, double time,
+        double flop);
+    
     ///Reports all accumulative data corresponding to all the calls to
     ///the Record() function.
     static void Report(enum ReportFormat rf);

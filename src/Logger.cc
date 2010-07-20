@@ -49,7 +49,8 @@ double Logger::Toc()
     return(toc);
 }
 
-void Logger::Record(string fun_name, string prefix, double time, double flop)
+void Logger::Record(string fun_name, string prefix, 
+    double time, double flop)
 {
     fun_name = prefix+fun_name;
 #pragma omp critical
