@@ -6,5 +6,5 @@ CXXFLAGS+= -DPROFILING -DVERBOSE -DNDEBUG -openmp -fPIC    \
 ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS+= -g -O0 -fp-model precise -mp1
 else
-  CXXFLAGS+= -O3 -finline -unroll-agressive -msse2 -malign-double
+  CXXFLAGS+= -O3 -finline -unroll-agressive -msse3 -malign-double
 endif

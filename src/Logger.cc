@@ -4,7 +4,7 @@ stack<double> Logger::TicStack;
 map<string, LogEvent> Logger::PrflMap;
 string Logger::log_file;
 
-//The variables for the timing macro.
+// //The variables for the timing macro.
 // struct timeval  tt;
 // struct timezone ttz;
 

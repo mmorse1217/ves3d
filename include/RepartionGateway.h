@@ -1,0 +1,4 @@
+#ifndef _REPARTIONGATEWAY_H_
+#define _REPARTIONGATEWAY_H_
+
+#endif // _REPARTIONGATEWAY_H_
