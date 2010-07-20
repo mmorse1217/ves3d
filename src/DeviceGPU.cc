@@ -160,7 +160,7 @@ template<typename T>
 T* Device<GPU>::apx(T* a_in, const T* x_in, size_t stride, 
         size_t n_subs, T* axpy_out) const
 {
-    CERR("TO NE IMPLEMENTED", endl, exit(1));
+    apxGpu( a_in, x_in, stride, n_subs, axpy_out);
     return(a_in);
 }
 
@@ -173,8 +173,8 @@ T*  Device<GPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in,
     if(w_in !=NULL)
         avpwGpu(a_in, v_in, w_in, stride, num_surfs, avpw_out);
     else
-        CERR("This kernel is not implemented for GPU", endl, exit(1));
-    
+        avpwGpu(a_in, v_in, stride, num_surfs, avpw_out);
+        
     PROFILEEND("GPU",0);
     return avpw_out;
 }
@@ -200,13 +200,13 @@ T*  Device<GPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
     const T *quad_w_in, size_t stride, size_t num_surfs, T  *int_x_dw) const
 {
     PROFILESTART();
-    assert(x_dim < 2); //other cases need to be implemented for gpu
-    ReduceGpu(x_in, w_in, quad_w_in, stride, num_surfs, int_x_dw);
+    ReduceGpu(x_in, x_dim, w_in, quad_w_in, stride, num_surfs, int_x_dw);
     PROFILEEND("GPU",0);
     return int_x_dw;
 }
 
 template<>
+template<typename T>
 float* Device<GPU>::gemm(const char *transA, const char *transB, 
     const int *m, const int *n, const int *k, const float *alpha, 
     const float *A, const int *lda, const float *B, const int *ldb, 
@@ -220,34 +220,27 @@ float* Device<GPU>::gemm(const char *transA, const char *transB,
     return C;
 }
 
-template<>
-double* Device<GPU>::gemm(const char *transA, const char *transB, 
-    const int *m, const int *n, const int *k, const double *alpha, 
-    const double *A, const int *lda, const double *B, const int *ldb, 
-    const double *beta, double *C, const int *ldc) const
-{
-    CERR("The general matrix multiply is not implemented for the data type of double",endl, exit(1));
-    return(C);
-}
+// template<>
+// double* Device<GPU>::gemm(const char *transA, const char *transB, 
+//     const int *m, const int *n, const int *k, const double *alpha, 
+//     const double *A, const int *lda, const double *B, const int *ldb, 
+//     const double *beta, double *C, const int *ldc) const
+// {
+//     CERR("The general matrix multiply is not implemented for the data type of double",endl, exit(1));
+//     return(C);
+// }
 
 template<>
-void Device<GPU>::DirectStokes(const float *src, const float *den,
-    const float *qw, size_t stride, size_t n_surfs, const float *trg,
-    size_t trg_idx_head, size_t trg_idx_tail, float *pot) const
+template<typename T>
+void Device<GPU>::DirectStokes(const T *src, const T *den,
+    const T *qw, size_t stride, size_t n_surfs, const T *trg,
+    size_t trg_idx_head, size_t trg_idx_tail, T *pot) const
 {
     PROFILESTART();
     cuda_stokes(stride, n_surfs, trg_idx_head, trg_idx_tail, 
         trg, src, den, pot, qw);
     PROFILEEND("GPU",0);
     return;
-}
-
-template<>
-void Device<GPU>::DirectStokes(const double *src, const double *den, 
-    const double *qw, size_t stride, size_t n_surfs, const double *trg, 
-    size_t trg_idx_head, size_t trg_idx_tail, double *pot) const
-{
-    CERR("The Stokes' kernel is not implemented for the double data type",endl, exit(1));
 }
 
 template<>

@@ -97,4 +97,41 @@ void cu_trans(float *out, const float *in, int width, int height) {
 }
 
 
+
+//##############################################################
+//                DOUBLE PRECISION KERNEL
+//##############################################################
+
+__global__ void transpose(double *odata, const double *idata, int width, int height)
+{
+        __shared__ double block[BLOCK_DIM][BLOCK_DIM+1];
+
+        // read the matrix tile into shared memory
+        unsigned int xIndex = blockIdx.x * BLOCK_DIM + threadIdx.x;
+        unsigned int yIndex = blockIdx.y * BLOCK_DIM + threadIdx.y;
+        if((xIndex < width) && (yIndex < height))
+        {
+                unsigned int index_in = yIndex * width + xIndex;
+                block[threadIdx.y][threadIdx.x] = idata[index_in];
+        }
+
+        __syncthreads();
+
+        // write the transposed matrix tile to global memory
+        xIndex = blockIdx.y * BLOCK_DIM + threadIdx.x;
+        yIndex = blockIdx.x * BLOCK_DIM + threadIdx.y;
+        if((xIndex < height) && (yIndex < width))
+        {
+                unsigned int index_out = yIndex * height + xIndex;
+                odata[index_out] = block[threadIdx.x][threadIdx.y];
+        }
+}
+
+void cu_trans(double *out, const double *in, int width, int height) {
+
+  dim3 grid(width / BLOCK_DIM + 1, height / BLOCK_DIM + 1, 1);
+  dim3 threads(BLOCK_DIM, BLOCK_DIM, 1);
+  transpose<<<grid, threads>>>(out, in, width, height);
+}
+
 //#endif // _TRANSPOSE_KERNEL_H_
