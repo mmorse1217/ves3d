@@ -10,16 +10,20 @@ Monitor<SurfContainer>::Monitor(const Parameters<value_type> &params) :
     
 template<typename SurfContainer>
 bool Monitor<SurfContainer>::operator()(const SurfContainer &state, 
-    value_type &t, value_type &dt)
+    value_type &t, value_type &dt, 
+    void*/* to be compatible with the general signature, not used*/)
 {
+    ///@todo move temporary object
     typename SurfContainer::Sca_t area, vol;
     area.replicate(state.getPosition());
     vol.replicate(state.getPosition());
     state.area(area);
     state.volume(vol);
     
-    value_type A(area.getDevice().MaxAbs(area.begin(), state.getPosition().getNumSubs()));
-    value_type V( vol.getDevice().MaxAbs( vol.begin(), state.getPosition().getNumSubs()));
+    value_type A(area.getDevice().MaxAbs(area.begin(), 
+            state.getPosition().getNumSubs()));
+    value_type V( vol.getDevice().MaxAbs( vol.begin(), 
+            state.getPosition().getNumSubs()));
     
     if(A0 == -1)
     {
@@ -28,8 +32,10 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
     }
     
     COUT("\n  Monitor : t           = "<<fixed<<t
-        <<scientific<<setprecision(4)<<"\n           area   error = "<<abs(A/A0-1)
-        <<scientific<<setprecision(4)<<"\n           volume error = "<<abs(V/V0-1)<<endl);
+        <<scientific<<setprecision(4)
+        <<"\n           area   error = "<<abs(A/A0-1)
+        <<scientific<<setprecision(4)
+        <<"\n           volume error = "<<abs(V/V0-1)<<endl);
     
     if(save_flag_ && (t/save_stride_ == static_cast<int>(t/save_stride_)))
     {
@@ -42,21 +48,24 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
     return(t<time_hor_);
 }
 
-template<typename Container, typename Interaction>
-EvolveSurface<Container, Interaction>::EvolveSurface(
+template<typename Container, 
+         typename Interaction,
+         typename Mntr>
+EvolveSurface<Container, Interaction, Mntr>::EvolveSurface(
     OperatorsMats<typename Container::Sca_t> &mats, 
-    const Parameters<value_type> &params) : 
-    mats_(mats), params_(params){}
+    const Parameters<value_type> &params, Mntr monitor) : 
+    mats_(mats), params_(params), monitor_(monitor) {}
 
-template<typename Container, typename Interaction>
-void EvolveSurface<Container, Interaction>::operator()(Container &S, 
-    Interaction &Inter)
+template<typename Container, 
+         typename Interaction,
+         typename Mntr>
+void EvolveSurface<Container, Interaction, Mntr>::operator()(
+    Container &S, Interaction &Inter)
 {
     value_type t(0);
     value_type dt(params_.ts);
     IntVel_t F(S, Inter, mats_, params_);
-    Monitor<Container> M(params_);
-    
+        
     Scheme_t updater;
     switch ( params_.scheme )
     {
@@ -70,8 +79,8 @@ void EvolveSurface<Container, Interaction>::operator()(Container &S,
     }
     
     typename Container::Vec_t velocity;
-
-    while ( M(S, t, dt) )
+    
+    while ( monitor_(S, t, dt) )
     {
         velocity.replicate(S.getPosition());
         (F.*updater)(dt);       

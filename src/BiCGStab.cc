@@ -50,7 +50,6 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     typename Container::value_type resid, beta, rho_1;
     typename Container::value_type rho_2(1), alpha(1), omega(1);
 
-    Container p, s, t, v, r, rtilde, shat, phat;
     p.replicate(x);
     s.replicate(x);
     t.replicate(x);
@@ -148,7 +147,6 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     typename Container::value_type resid, beta, rho_1;
     typename Container::value_type rho_2(1), alpha(1), omega(1);
     
-    Container p, s, t, v, r, rtilde, shat, phat;
     p.replicate(x);
     s.replicate(x);
     t.replicate(x);

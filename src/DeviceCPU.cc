@@ -495,26 +495,15 @@ T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *
 }
 
 template<>
-float* Device<CPU>::gemm(const char *transA, const char *transB, 
-    const int *m, const int *n, const int *k, const float *alpha, 
-    const float *A, const int *lda, const float *B, const int *ldb, 
-    const float *beta, float *C, const int *ldc) const
+template<typename T>
+T* Device<CPU>::gemm(const char *transA, const char *transB, 
+    const int *m, const int *n, const int *k, const T *alpha, 
+    const T *A, const int *lda, const T *B, const int *ldb, 
+    const T *beta, T *C, const int *ldc) const
 {
     PROFILESTART();
-    sgemm(transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+    Gemm(transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
     PROFILEEND("CPUs", (double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
-    return C;
-}
-
-template<>
-double* Device<CPU>::gemm(const char *transA, const char *transB, 
-    const int *m, const int *n, const int *k, const double *alpha, 
-    const double *A, const int *lda, const double *B, const int *ldb, 
-    const double *beta, double *C, const int *ldc) const
-{
-    PROFILESTART();
-    dgemm(transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-    PROFILEEND("CPUd",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
     return C;
 }
 

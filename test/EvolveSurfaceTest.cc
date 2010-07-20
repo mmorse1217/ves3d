@@ -51,7 +51,8 @@ void EvolveSurfTest(const Device<DT> &dev, Parameters<real> &sim_par)
 
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
-    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par);
+    Monitor<Sur_t> M(sim_par);
+    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M);
     Es(S, Interaction);
 }
 #endif //Doxygen_skip
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
     Par_t sim_par;
     sim_par.n_surfs = 1;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 20;
+    sim_par.time_horizon = 5;
     sim_par.scheme = Explicit;//SemiImplicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;

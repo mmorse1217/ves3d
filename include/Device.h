@@ -143,17 +143,11 @@ class Device
     
     ///General matrix-matrix multiplication. consult BLAS
     ///documentation for the detail of the syntax.
-    float* gemm(const char *transA, const char *transB, const int *m, 
-        const int *n, const int *k, const float *alpha, const float *A, 
-        const int *lda, const float *B, const int *ldb, const float *beta, 
-        float *C, const int *ldc) const;
-
-    ///General matrix-matrix multiplication. consult BLAS
-    ///documentation for the detail of the syntax.
-    double* gemm(const char *transA, const char *transB, const int *m, 
-        const int *n, const int *k, const double *alpha, const double *A, 
-        const int *lda, const double *B, const int *ldb, const double *beta, 
-        double *C, const int *ldc) const;
+    template<typename T>
+    T* gemm(const char *transA, const char *transB, const int *m, 
+        const int *n, const int *k, const T *alpha, const T *A, 
+        const int *lda, const T *B, const int *ldb, const T *beta, 
+        T *C, const int *ldc) const;
     
     ///Direct stokes integration.
     void DirectStokes(const float *src, const float *den, const float *qw, 

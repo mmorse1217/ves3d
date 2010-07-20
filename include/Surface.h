@@ -62,7 +62,7 @@ class Surface
     int upsample_freq_;
     int rep_filter_freq_;
     
-    typedef SHTMats<value_type,device_type> Mats_t;
+    typedef SHTMats<value_type, device_type> Mats_t;
     SHTrans<Sca_t,Mats_t> sht_;
     SHTrans<Sca_t,Mats_t> sht_rep_filter_;
     SHTrans<Sca_t,Mats_t> sht_rep_upsample_;

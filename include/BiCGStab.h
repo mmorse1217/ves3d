@@ -40,7 +40,9 @@ class BiCGStab
 {
   private:    
     typename Container::value_type Norm(const Container &x) const;
-    
+
+    mutable Container p, s, t, v, r, rtilde, shat, phat;
+  
   public:
     
     /** 

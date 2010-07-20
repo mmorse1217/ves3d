@@ -1,9 +1,8 @@
 template<typename T>
 VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
-    void* user_ptr, int num_threads) :
+    int num_threads) :
     interaction_handle_(interaction_handle),
     num_threads_(num_threads),
-    user_ptr_(user_ptr),
     each_thread_np_(new size_t[num_threads_]),
     each_thread_idx_(new size_t[num_threads_ + 1]),
     np_(0),
@@ -29,7 +28,7 @@ template<typename T>
 template<typename VecContainer>
 InteractionReturn VesInteraction<T>::operator()(
     const VecContainer &position, VecContainer &density, 
-    VecContainer &potential) const
+    VecContainer &potential, void* user_ptr) const
 {
     typedef typename VecContainer::value_type value_type;
     
@@ -39,9 +38,7 @@ InteractionReturn VesInteraction<T>::operator()(
             0, potential.size() * sizeof(value_type));
         return NoInteraction;
     }
-    
-    //up-sampling
-
+     
     //Getting the sizes
     size_t np(position.getNumSubs() * position.getStride());
     size_t n_cpy(position.size());
@@ -75,8 +72,8 @@ InteractionReturn VesInteraction<T>::operator()(
         delete[] buffer;
     }
     
-     updatePotential();
-
+    updatePotential(user_ptr);
+    
     //Copying back the potential to the device(s)
     if(typeid(value_type) == typeid(T))
     {
@@ -155,13 +152,12 @@ void VesInteraction<T>::checkContainersSize() const
 }
 
 template<typename T>
-void VesInteraction<T>::updatePotential() const
+void VesInteraction<T>::updatePotential(void* user_ptr) const
 {
     assert(interaction_handle_ != NULL);
 #pragma omp master
     {
-        interaction_handle_(all_pos_, all_den_, np_, all_pot_, 
-            user_ptr_);
+        interaction_handle_(all_pos_, all_den_, np_, all_pot_, user_ptr);
     }
    
 #pragma omp barrier

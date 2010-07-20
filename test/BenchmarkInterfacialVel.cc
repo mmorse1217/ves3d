@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 
     DataIO myIO;
     Vec_t x(nvec, p), Fb(nvec, p), SFb(nvec, p), vel(nvec, p), xnew(nvec, p);
-    Sca_t tension(nvec, p);    
+    Sca_t tension(nvec, p);   
     
     //reading the prototype form file
     myIO.ReadData("precomputed/Bmark_SingleVes_Exp_p12_float_x0.txt",x);   

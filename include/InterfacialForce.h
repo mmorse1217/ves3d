@@ -13,7 +13,10 @@ class InterfacialForce
     typedef typename SurfContainer::value_type value_type;
 
     value_type bending_modulus_;
- 
+
+    mutable Sca_t s1, s2;
+    mutable Vec_t v1;
+
   public:
     InterfacialForce(const Parameters<value_type> &params);
     ~InterfacialForce();

@@ -56,7 +56,7 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
     *(d + order - 1) = 0;
     
      int info;
-     steqr("I", order, d, e, eig, order, work, info);
+     Steqr("I", order, d, e, eig, order, work, info);
     
     //d holds the quadrature points
     

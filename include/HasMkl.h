@@ -17,14 +17,3 @@ void coomm(char *transa, int *m, int *n, int *k, double *alpha,
         colind, nnz, b, ldb, beta, c, ldc);
 }
 
-void steqr(char *compz, int &n, float *d, float *e, float *z, 
-    int &ldz, float *work, int &info)
-{
-    ssteqr(compz, &n, d, e, z, &ldz, work, &info);
-}
-
-void steqr(char *compz, int &n, double *d, double *e, double *z,
-    int &ldz, double *work, int &info)
-{
-    dsteqr(compz, &n, d, e, z, &ldz, work, &info);
-}

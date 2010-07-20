@@ -3,6 +3,7 @@
 
 #include "InterfacialForce.h"
 #include "BiCGStab.h"
+#include "SHTrans.h"
 #include "Logger.h"
 #include "Device.h"
 #include <queue>
@@ -62,6 +63,10 @@ class InterfacialVelocity
     Sca_t rot_mat_;
     Sca_t sing_quad_weights_;
     Sca_t quad_weights_;
+
+    
+    SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_;
+    SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_upsample_;
 
     mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t velocity;

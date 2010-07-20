@@ -30,7 +30,9 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     bg_flow_(bgFlow),
     Intfcl_force_(params),
     params_(params),
-    dt_(params_.ts),
+    dt_(params_.ts),   
+    sht_(mats.p_, mats.mats_p_),
+    sht_upsample_(mats.p_up_, mats.mats_p_up_),
     move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
@@ -194,6 +196,8 @@ updateInteraction() const
     auto_ptr<Vec_t> u1 = checkoutVec();
     auto_ptr<Vec_t> u2 = checkoutVec();
     auto_ptr<Vec_t> u3 = checkoutVec();
+//     auto_ptr<Vec_t> shc = checkoutVec();
+//     auto_ptr<Vec_t> wrk = checkoutVec();
 
     Intfcl_force_.bendingForce(S_, *u1);
     Intfcl_force_.tensileForce(S_, tension_, *u3);
@@ -211,6 +215,16 @@ updateInteraction() const
     velocity.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
         NULL, velocity.getStride(), velocity.getNumSubs(), 
         S_.getPosition().begin(), 0, velocity.getStride(), velocity.begin());
+
+    //upsample
+//     int usf(sht_upsample_.getShOrder());
+//     u1->resize(u1->getNumSubs(), usf);
+//     u2->resize(u2->getNumSubs(), usf);
+//     shc->resize(shc->getNumSubs(), usf);
+//     wrk->resize(wrk->getNumSubs(), usf);
+    
+//     Resample(S_.getPosition(), sht_, sht_upsample_, *shc, *wrk, *u2);
+//     Resample(*u3             , sht_, sht_upsample_, *shc, *wrk, *u2);
 
     //Shuffling points and densities
     ShufflePoints(S_.getPosition(), *u1);

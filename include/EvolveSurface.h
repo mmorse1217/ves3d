@@ -19,10 +19,12 @@ class Monitor
   public:
     Monitor(const Parameters<value_type> &params);
     bool operator()(const SurfContainer &state, 
-        value_type &t, value_type &dt);
+        value_type &t, value_type &dt, void* user = NULL);
 };
 
-template<typename Container, typename Interaction>
+template<typename Container, 
+         typename Interaction, 
+         typename Mntr = Monitor<Container>& >
 class EvolveSurface
 {
   private:
@@ -33,10 +35,13 @@ class EvolveSurface
 
     OperatorsMats<typename Container::Sca_t> &mats_;
     const Parameters<value_type> &params_;
-
+    Mntr monitor_;
+  
   public:
     EvolveSurface(OperatorsMats<typename Container::Sca_t>
-        &mats, const Parameters<value_type> &params);
+        &mats, const Parameters<value_type> &params, 
+        Mntr monitor);
+    
     void operator()(Container &S, Interaction &Inter);
 };
 
