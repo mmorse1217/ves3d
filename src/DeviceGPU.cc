@@ -207,10 +207,10 @@ T*  Device<GPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
 
 template<>
 template<typename T>
-float* Device<GPU>::gemm(const char *transA, const char *transB, 
-    const int *m, const int *n, const int *k, const float *alpha, 
-    const float *A, const int *lda, const float *B, const int *ldb, 
-    const float *beta, float *C, const int *ldc) const
+T* Device<GPU>::gemm(const char *transA, const char *transB, 
+    const int *m, const int *n, const int *k, const T *alpha, 
+    const T *A, const int *lda, const T *B, const int *ldb, 
+    const T *beta, T *C, const int *ldc) const
 {
     PROFILESTART();
     cublasSgemm(*transA, *transB, *m, *n, *k, *alpha, A, *lda, B, 

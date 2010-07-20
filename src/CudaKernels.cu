@@ -1447,7 +1447,8 @@ __global__
 void sqrtKernel(const double *x_in, int length, double *x_out) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   if (idx < length) {
-    x_out[idx] = sqrtf(x_in[idx]);
+      ///@bug the sqrt is float
+      x_out[idx] = sqrtf(x_in[idx]);
   }
 }
 
