@@ -1,5 +1,5 @@
 #ifdef NDEBUG
-#error "This is a test file and would not compile in the non-debug mode. Remove the -DNDEBUG option and recompile."
+#warning "This is a test file and would not compile in the non-debug mode. Remove the -DNDEBUG option and recompile."
 #endif
 
 #include "Vectors.h"

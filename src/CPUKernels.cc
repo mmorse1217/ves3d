@@ -1,4 +1,6 @@
 #include "CPUKernels.h"
+#include <iostream>
+using namespace std;
 
 #define I_PI 1.0/M_PI/8.0
 #define IDEAL_ALIGNMENT 16
@@ -244,7 +246,6 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
         exit(1);
 
 #pragma omp parallel for
-    ///@todo add the openmp instructions
     for (int vt=0; vt<n_surfs; vt++)
     {
         float aux_arr[3*SIMD_LEN_F+3]; 
@@ -316,6 +317,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
             // Load and calculate in groups of SIMD_LEN
             size_t loop_limit = stride-SIMD_LEN_F;
             for (; s <= loop_limit; s += SIMD_LEN_F) {
+                cout<<"I"<<endl;
                 __m128 sxj = _mm_load_ps (src+3*stride*vt+         s);
                 __m128 syj = _mm_load_ps (src+3*stride*vt+  stride+s);
                 __m128 szj = _mm_load_ps (src+3*stride*vt+2*stride+s);
