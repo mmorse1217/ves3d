@@ -1,4 +1,4 @@
-include ${VES3D_DIR}/makefile.in.files/makefile.in
+include $(VES3D_DIR)/makefile.in.files/makefile.in
 
 LIB_SRC = $(VES3D_DIR)/src/CPUKernels.cc \
 	  $(VES3D_DIR)/src/Logger.cc	 \

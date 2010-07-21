@@ -1,4 +1,4 @@
-include ${VES3D_DIR}/makefile.in.files/makefile.in
+include $(VES3D_DIR)/makefile.in.files/makefile.in
 
 all: docs TAGS lib test
 

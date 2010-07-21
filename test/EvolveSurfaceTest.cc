@@ -8,8 +8,8 @@
 extern const Device<CPU> the_cpu_device(0);
 extern const Device<GPU> the_gpu_device(0);
 
-typedef float real;
-typedef float fmm_value_type;
+typedef double real;
+typedef double fmm_value_type;
 
 #ifndef Doxygen_skip
 

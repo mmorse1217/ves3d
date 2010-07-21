@@ -14,7 +14,7 @@ ifeq ($(USE_GPU),yes)
   ARFILES += $(VES3D_DIR)/lib/libves3dgpu.a 
 endif
 
-MAKEIN = ${VES3D_DIR}/makefile.in.files/makefile.in
+MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
 include $(MAKEIN)
 
 all: $(EXEC)

@@ -213,8 +213,9 @@ updateInteraction() const
 
     //Self-interaction, to be subtracted
     velocity.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
-        NULL, velocity.getStride(), velocity.getNumSubs(), 
-        S_.getPosition().begin(), 0, velocity.getStride(), velocity.begin());
+        static_cast<const value_type*>(NULL), velocity.getStride(), 
+        velocity.getNumSubs(), S_.getPosition().begin(), 0, 
+        velocity.getStride(), velocity.begin());
 
     //upsample
 //     int usf(sht_upsample_.getShOrder());

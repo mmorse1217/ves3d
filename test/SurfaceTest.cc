@@ -11,7 +11,7 @@ extern const Device<CPU> the_cpu_device(0);
 extern const Device<GPU> the_gpu_device(0);
 #endif //GPU_ACTIVE
 
-typedef float real;
+typedef double real;
 
 #ifndef Doxygen_skip
 

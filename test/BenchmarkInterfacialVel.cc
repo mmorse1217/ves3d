@@ -9,8 +9,8 @@
 #include "OperatorsMats.h"
 #include "InterfacialVelocity.h"
 
-typedef float real;
-#define DT CPU
+typedef double real;
+#define DT GPU
 
 extern const Device<DT> the_device(0);
 using namespace std;
