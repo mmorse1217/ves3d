@@ -32,14 +32,27 @@ int main(int argc, char** argv)
 
 #ifdef GPU_ACTIVE
     {
-        cout<<sep<<"\n  GPU -- float\n"<<sep<<endl;
-        int id = 0;
-        enum DeviceError err;
-        Device<GPU> gpu(id, &err);
-        cout<<" * Initialization: "<<err<<" *"<<endl;
-        DeviceTest<GPU,float> dvt_gf(&gpu);
-        res &= dvt_gf.PerformAll();
-        sleep(.5);
+        {
+            cout<<sep<<"\n  GPU -- float\n"<<sep<<endl;
+            int id = 0;
+            enum DeviceError err;
+            Device<GPU> gpu(id, &err);
+            cout<<" * Initialization: "<<err<<" *"<<endl;
+            DeviceTest<GPU,float> dvt_gf(&gpu);
+            res &= dvt_gf.PerformAll();
+            sleep(1);
+        }
+
+        {
+            cout<<sep<<"\n  GPU -- double\n"<<sep<<endl;
+            int id = 0;
+            enum DeviceError err;
+            Device<GPU> gpu(id, &err);
+            cout<<" * Initialization: "<<err<<" *"<<endl;
+            DeviceTest<GPU,double> dvt_gf(&gpu);
+            res &= dvt_gf.PerformAll();
+            sleep(1);
+        }
     }
 #endif //GPU_ACTIVE
 
@@ -47,7 +60,7 @@ int main(int argc, char** argv)
     cout<<sep<<"\n  The device class " + res_print<<endl<<sep<<endl;
    
     PROFILEEND("",0);
-    PROFILEREPORT(SortTime);
+    PROFILEREPORT(SortFunName);
     
     sleep(1);
     return 0;
