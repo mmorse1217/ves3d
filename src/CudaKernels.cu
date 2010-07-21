@@ -1447,7 +1447,7 @@ __global__
 void sqrtKernel(const double *x_in, int length, double *x_out) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   if (idx < length) {
-    x_out[idx] = sqrtf(x_in[idx]);
+    x_out[idx] = sqrt(x_in[idx]);
   }
 }
 
@@ -1684,7 +1684,7 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
     dis_reg[1] = src_reg[1] - trg_reg[1];
     dis_reg[2] = src_reg[2] - trg_reg[2];
 
-    double inv_r = rsqrtf(dis_reg[0] * dis_reg[0] + dis_reg[1] * dis_reg[1]
+    double inv_r = rsqrt(dis_reg[0] * dis_reg[0] + dis_reg[1] * dis_reg[1]
                           + dis_reg[2] * dis_reg[2]);
 
     inv_r = inv_r + (inv_r-inv_r);
@@ -1762,7 +1762,7 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
     dis_reg[1] = src_reg[1] - trg_reg[1];
     dis_reg[2] = src_reg[2] - trg_reg[2];
 
-    double inv_r = rsqrtf(dis_reg[0] * dis_reg[0] + dis_reg[1] * dis_reg[1]
+    double inv_r = rsqrt(dis_reg[0] * dis_reg[0] + dis_reg[1] * dis_reg[1]
                           + dis_reg[2] * dis_reg[2]);
 
     inv_r = inv_r + (inv_r-inv_r);
