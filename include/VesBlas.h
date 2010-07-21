@@ -44,6 +44,25 @@ void Steqr(char *compz, int &n, double *d, double *e, double *z,
 
 #ifdef GPU_ACTIVE
 #include "cublas.h"
+
+void cugemm(const char *transa, const char *transb, 
+    const int *m, const int *n, const int *k, const float *alpha, 
+    const float *A, const int *lda, const float *B, const int *ldb, 
+    const float *beta, float *C, const int *ldc)
+{
+    cublasSgemm(*transa, *transb, *m, *n, *k, *alpha, A, *lda, B, 
+        *ldb, *beta, C, *ldc); 
+}    
+
+void cugemm(const char *transa, const char *transb, 
+    const int *m, const int *n, const int *k, const double *alpha, 
+    const double *A, const int *lda, const double *B, const int *ldb, 
+    const double *beta, double *C, const int *ldc)
+{
+    cublasDgemm(*transa, *transb, *m, *n, *k, *alpha, A, *lda, B, 
+        *ldb, *beta, C, *ldc); 
+}    
+
 #endif //GPU_ACTIVE
 
 #endif //_VESBLAS_H_

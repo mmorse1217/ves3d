@@ -213,22 +213,12 @@ T* Device<GPU>::gemm(const char *transA, const char *transB,
     const T *beta, T *C, const int *ldc) const
 {
     PROFILESTART();
-    cublasSgemm(*transA, *transB, *m, *n, *k, *alpha, A, *lda, B, 
-        *ldb, *beta, C, *ldc); 
+    cugemm(transA, transB, m, n, k, alpha, A, lda, B, 
+        ldb, beta, C, ldc); 
     cudaThreadSynchronize();
-    PROFILEEND("GPUs",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
+    PROFILEEND("GPU",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
     return C;
 }
-
-// template<>
-// double* Device<GPU>::gemm(const char *transA, const char *transB, 
-//     const int *m, const int *n, const int *k, const double *alpha, 
-//     const double *A, const int *lda, const double *B, const int *ldb, 
-//     const double *beta, double *C, const int *ldc) const
-// {
-//     CERR("The general matrix multiply is not implemented for the data type of double",endl, exit(1));
-//     return(C);
-// }
 
 template<>
 template<typename T>

@@ -1,5 +1,7 @@
 #include "Device.h"
 
+typedef double real;
+
 int main(int argc, char **argv)
 {
     COUT("\n ==============================\n"
@@ -14,11 +16,11 @@ int main(int argc, char **argv)
     size_t sb = n*k;
     size_t sc = n*k;
 
-    float *A_h = (float*) malloc(sa * sizeof(float));
-    float *B_h = (float*) malloc(sb * sizeof(float));
+    real *A_h = (real*) malloc(sa * sizeof(real));
+    real *B_h = (real*) malloc(sb * sizeof(real));
 
-    float alpha = 1.0;
-    float beta = 0.0;
+    real alpha = 1.0;
+    real beta = 0.0;
 
     for(int ii=0;ii<n;++ii)
         for(int jj=0;jj<n;++jj)
@@ -31,9 +33,9 @@ int main(int argc, char **argv)
     {// cpu
         Device<CPU> cpu(0);
       
-        float *A = (float*) cpu.Malloc(sa * sizeof(float));
-        float *B = (float*) cpu.Malloc(sb * sizeof(float));
-        float *C = (float*) cpu.Malloc(sc * sizeof(float));
+        real *A = (real*) cpu.Malloc(sa * sizeof(real));
+        real *B = (real*) cpu.Malloc(sb * sizeof(real));
+        real *C = (real*) cpu.Malloc(sc * sizeof(real));
       
         cpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
         cpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
@@ -48,9 +50,9 @@ int main(int argc, char **argv)
     {
         Device<GPU> gpu(0);
 
-        float *A = (float*) gpu.Malloc(sa * sizeof(float));
-        float *B = (float*) gpu.Malloc(sb * sizeof(float));
-        float *C = (float*) gpu.Malloc(sc * sizeof(float));
+        real *A = (real*) gpu.Malloc(sa * sizeof(real));
+        real *B = (real*) gpu.Malloc(sb * sizeof(real));
+        real *C = (real*) gpu.Malloc(sc * sizeof(real));
       
         gpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
         gpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
@@ -65,6 +67,6 @@ int main(int argc, char **argv)
     free(A_h);
     free(B_h);
 
-    PROFILEREPORT(SortTime);
+    PROFILEREPORT(SortFlopRate);
     sleep(.5);
 }
