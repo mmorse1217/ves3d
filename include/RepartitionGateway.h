@@ -19,7 +19,7 @@ class RepartitionGateway
     ~RepartitionGateway();
 
     void operator()(Container &coord, Container &tension, 
-        void* user_ptr) const;
+        void* user_ptr = NULL) const;
     
   private:
     GlobalRepart_t g_repart_handle_;
@@ -40,7 +40,7 @@ class RepartitionGateway
 
     size_t getCpyIdx(size_t this_thread_nv, size_t stride) const;
     size_t getNvShare() const;
-    void checkContainersSize() const;
+    void checkContainersSize(size_t stride) const;
         
     RepartitionGateway(RepartitionGateway const &rhs);
     RepartitionGateway& operator=(const RepartitionGateway &rhs);

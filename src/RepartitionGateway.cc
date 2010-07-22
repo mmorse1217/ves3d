@@ -33,12 +33,16 @@ void RepartitionGateway<Container>::operator()(Container &coord,
 {  
     if ( g_repart_handle_ == NULL ) 
         return;
-    else
-        exit(1);
+
     //Getting the sizes
-    size_t nv(coord.getNumSubs());
-    size_t stride(coord.getStride());
+    size_t nv(tension.getNumSubs());
+    size_t stride(tension.getStride());
     size_t idx(this->getCpyIdx(nv, stride));
+    
+#pragma omp barrier
+    {
+        checkContainersSize(stride);
+    }
     
     //Copying to the host 
     Container::getDevice().Memcpy(all_pos_ + DIM * idx, coord.begin(),
@@ -48,17 +52,17 @@ void RepartitionGateway<Container>::operator()(Container &coord,
         tension.size() * sizeof(value_type), MemcpyDeviceToHost);
 
     // call user interaction routine
-// #pragma omp barrier 
+#pragma omp barrier 
     
-// #pragma omp master 
-//     // g_repart_handle_(nv_, stride, all_pos_, all_tension_, &nvr_
-//     //    &posr_, &tensionr_, user_ptr);
+#pragma omp master 
+    g_repart_handle_(nv_, stride, all_pos_, all_tension_, &nvr_, 
+        &posr_, &tensionr_, user_ptr);
 
-// #pragma omp barrier 
+#pragma omp barrier 
     
     nv = getNvShare();
     idx = this->getCpyIdx(nv, stride);
-    coord.resize(nv);
+    coord.resize(DIM * nv);
     tension.resize(nv);
     
     //Copying back the new values to the device(s)
@@ -79,13 +83,59 @@ template<typename Container>
 size_t RepartitionGateway<Container>::getCpyIdx(size_t this_thread_nv, 
     size_t stride) const
 {
-    return stride;
+    int threadNum = omp_get_thread_num();
+    each_thread_nv_[threadNum] = this_thread_nv;
+    
+#pragma omp barrier
+    {
+        if ( threadNum == 0 )
+        {
+            nv_ = 0;
+                        
+            for(int ii=1; ii<=num_threads_; ++ii)
+            {
+                nv_ += each_thread_nv_[ii-1];
+                each_thread_idx_[ii] = each_thread_idx_[ii-1] + 
+                    stride * each_thread_nv_[ii-1]; 
+            }
+        }
+    }
+
+#pragma omp barrier
+    
+    return(each_thread_idx_[threadNum]);
 }
 
 template<typename Container>
 size_t RepartitionGateway<Container>::getNvShare() const
 {
-    return 1;
+    size_t nv(nvr_/num_threads_);
+    
+    if ( omp_get_thread_num() == 0 )
+        nv = nvr_ - (num_threads_ - 1) * nv;
+    
+    return nv;
 }
+
+template<typename Container>
+void RepartitionGateway<Container>::checkContainersSize(size_t stride) const
+{
+#pragma omp master
+    {
+        if ( capacity_ < nv_ )
+        {
+
+            delete[] all_pos_;
+            all_pos_ = new value_type[nv_ * DIM * stride];
+
+            delete[] all_tension_;
+            all_tension_ = new value_type[nv_ * stride];
+                    
+            capacity_ = nv_;
+        }
+    }
+#pragma omp barrier
+}
+
 
 
