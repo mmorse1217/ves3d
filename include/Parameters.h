@@ -35,7 +35,7 @@ struct Parameters
     int rep_up_freq;
     int rep_filter_freq;
     T rep_ts;
-    T rep_tol;
+   	T rep_tol;  
 
     //Background flow
     T bg_flow_param;

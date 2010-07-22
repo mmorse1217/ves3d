@@ -14,7 +14,7 @@ typedef double fmm_value_type;
 #ifndef Doxygen_skip
 
 template<typename Sca, typename Vec, enum DeviceType DT>
-void EvolveSurfTest(const Device<DT> &dev, Parameters<real> &sim_par)
+void EvolveSurfaceTest(const Device<DT> &dev, Parameters<real> &sim_par)
 {
     typedef Surface<Sca,Vec> Sur_t;
     typedef VesInteraction<fmm_value_type> Interaction_t;
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     typedef Scalars<real, CPU, the_cpu_device> ScaCPU_t;
     typedef Vectors<real, CPU, the_cpu_device> VecCPU_t;
     
-    EvolveSurfTest<ScaCPU_t, VecCPU_t, CPU>(the_cpu_device, sim_par);
+    EvolveSurfaceTest<ScaCPU_t, VecCPU_t, CPU>(the_cpu_device, sim_par);
     PROFILEREPORT(SortTime);    
 
 #ifdef GPU_ACTIVE
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     typedef Scalars<real, GPU, the_gpu_device> ScaGPU_t;
     typedef Vectors<real, GPU, the_gpu_device> VecGPU_t;
      
-    EvolveSurfTest<ScaGPU_t, VecGPU_t, GPU>(the_gpu_device, sim_par);
+    EvolveSurfaceTest<ScaGPU_t, VecGPU_t, GPU>(the_gpu_device, sim_par);
 
     PROFILEREPORT(SortTime);
 #endif //GPU_ACTIVE
