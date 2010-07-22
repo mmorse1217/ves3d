@@ -1,7 +1,7 @@
 # Flags
 ARFLAGS  = -r
 CXXFLAGS+= -DPROFILING -DVERBOSE -DNDEBUG -openmp -fPIC    \
-	  -early-template-check -sox -fno-exceptions -diag-enable -Wall 
+	  -early-template-check -sox -fno-exceptions  -Wall 
 
 ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS+= -g -O0 -fp-model precise -mp1

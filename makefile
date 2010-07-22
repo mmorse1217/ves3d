@@ -8,7 +8,10 @@ docs: $(MAKEDEP)
 	-$(DOX) ./docs/Doxyfile
 
 TAGS: $(MAKEDEP)
-	-$(TAGS) src/* include/*
+	-$(TAGS) src/* include/* 
+
+tags: $(MAKEDEP)
+	-$(TAGS) src/*.cc  include/*.h test/*.cc test/*.h
 
 lib:
 	$(MAKE) -C  ${VES3D_DIR}/lib/ all

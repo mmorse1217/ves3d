@@ -71,8 +71,12 @@ InteractionReturn VesInteraction<T>::operator()(
 
         delete[] buffer;
     }
-    
+
+		// call user interaction routine
+#pragma omp barrier
+#pragma omp master
     updatePotential(user_ptr);
+#pragma omp barrier
     
     //Copying back the potential to the device(s)
     if(typeid(value_type) == typeid(T))
@@ -155,12 +159,9 @@ template<typename T>
 void VesInteraction<T>::updatePotential(void* user_ptr) const
 {
     assert(interaction_handle_ != NULL);
-#pragma omp master
     {
         interaction_handle_(all_pos_, all_den_, np_, all_pot_, user_ptr);
     }
-   
-#pragma omp barrier
 }
 
 // template<typename Device>
