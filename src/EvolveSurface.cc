@@ -50,16 +50,18 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
 
 template<typename Container, 
          typename Interaction,
-         typename Mntr>
-EvolveSurface<Container, Interaction, Mntr>::EvolveSurface(
+         typename Mntr,
+         typename Repart>
+EvolveSurface<Container, Interaction, Mntr, Repart>::EvolveSurface(
     OperatorsMats<typename Container::Sca_t> &mats, 
-    const Parameters<value_type> &params, Mntr monitor) : 
-    mats_(mats), params_(params), monitor_(monitor) {}
+    const Parameters<value_type> &params, Mntr monitor, Repart repartion) : 
+    mats_(mats), params_(params), monitor_(monitor), repartion_(repartion) {}
 
 template<typename Container, 
          typename Interaction,
-         typename Mntr>
-void EvolveSurface<Container, Interaction, Mntr>::operator()(
+         typename Mntr,
+         typename Repart>
+void EvolveSurface<Container, Interaction, Mntr, Repart>::operator()(
     Container &S, Interaction &Inter)
 {
     value_type t(0);
@@ -86,5 +88,7 @@ void EvolveSurface<Container, Interaction, Mntr>::operator()(
         (F.*updater)(dt);       
         F.reparam();
         t += dt;
+        
+        //Repart();
     }
 }

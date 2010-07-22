@@ -3,6 +3,7 @@
 
 #include "InterfacialVelocity.h"
 #include "Logger.h"
+#include "RepartionGateway.h"
 
 template<typename SurfContainer>
 class Monitor
@@ -24,7 +25,8 @@ class Monitor
 
 template<typename Container, 
          typename Interaction, 
-         typename Mntr = Monitor<Container>& >
+         typename Mntr = Monitor<Container>,
+         typename Repart = RepartionGateway<typename Container::Sca_t> >
 class EvolveSurface
 {
   private:
@@ -36,11 +38,11 @@ class EvolveSurface
     OperatorsMats<typename Container::Sca_t> &mats_;
     const Parameters<value_type> &params_;
     Mntr monitor_;
-  
+    Repart repartion_;
   public:
     EvolveSurface(OperatorsMats<typename Container::Sca_t>
         &mats, const Parameters<value_type> &params, 
-        Mntr monitor);
+        Mntr monitor, Repart repartion = Repart() );
     
     void operator()(Container &S, Interaction &Inter);
 };
