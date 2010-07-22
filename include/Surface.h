@@ -30,8 +30,8 @@ class Surface
     ~Surface();
 
     void setPosition(const Vec_t& x_in);
-		int getNumberOfSurfaces() { getPosition().getNumSubs(); }
-		int getShOrder() { getPosition().getShOrder(); }
+    int getNumberOfSurfaces() { return(getPosition().getNumSubs()); }
+    int getShOrder() { return(getPosition().getShOrder()); }
     
     Vec_t& getPositionModifiable();
     const Vec_t& getPosition() const;

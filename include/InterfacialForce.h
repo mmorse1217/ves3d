@@ -30,4 +30,4 @@ class InterfacialForce
 
 #include "InterfacialForce.cc"
 
-#endif _INTERFACIALFORCE_H_
+#endif //_INTERFACIALFORCE_H_

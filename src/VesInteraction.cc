@@ -24,11 +24,12 @@ VesInteraction<T>::~VesInteraction()
     delete[] all_den_;
     delete[] all_pot_;
 }    
+
 template<typename T>
 template<typename VecContainer>
 InteractionReturn VesInteraction<T>::operator()(
     const VecContainer &position, VecContainer &density, 
-    VecContainer &potential, void* user_ptr) const
+    VecContainer &potential, void* usr_ptr) const
 {
     typedef typename VecContainer::value_type value_type;
     
@@ -72,10 +73,10 @@ InteractionReturn VesInteraction<T>::operator()(
         delete[] buffer;
     }
 
-		// call user interaction routine
+    // call user interaction routine
 #pragma omp barrier
 #pragma omp master
-    updatePotential(user_ptr);
+    interaction_handle_(all_pos_, all_den_, np_, all_pot_, usr_ptr);
 #pragma omp barrier
     
     //Copying back the potential to the device(s)
@@ -153,15 +154,6 @@ void VesInteraction<T>::checkContainersSize() const
         }
     }
 #pragma omp barrier
-}
-
-template<typename T>
-void VesInteraction<T>::updatePotential(void* user_ptr) const
-{
-    assert(interaction_handle_ != NULL);
-    {
-        interaction_handle_(all_pos_, all_den_, np_, all_pot_, user_ptr);
-    }
 }
 
 // template<typename Device>

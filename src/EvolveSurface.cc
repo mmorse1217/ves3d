@@ -54,19 +54,25 @@ template<typename Container,
          typename Repart>
 EvolveSurface<Container, Interaction, Mntr, Repart>::EvolveSurface(
     OperatorsMats<typename Container::Sca_t> &mats, 
-    const Parameters<value_type> &params, Mntr monitor, Repart repartion) : 
-    mats_(mats), params_(params), monitor_(monitor), repartion_(repartion) {}
+    const Parameters<value_type> &params, Mntr& monitor, 
+    Repart& repartion) : 
+    mats_(mats), 
+    params_(params), 
+    monitor_(monitor), 
+    repartition_(repartion)
+{}
 
 template<typename Container, 
          typename Interaction,
          typename Mntr,
          typename Repart>
 void EvolveSurface<Container, Interaction, Mntr, Repart>::operator()(
-    Container &S, Interaction &Inter)
+    Container &S, Interaction &Inter, void* usr_ptr)
 {
     value_type t(0);
     value_type dt(params_.ts);
     IntVel_t F(S, Inter, mats_, params_);
+    F.usr_ptr_ = usr_ptr;
         
     Scheme_t updater;
     switch ( params_.scheme )
@@ -80,15 +86,12 @@ void EvolveSurface<Container, Interaction, Mntr, Repart>::operator()(
             break;
     }
     
-    typename Container::Vec_t velocity;
-    
-    while ( monitor_(S, t, dt) )
+    while ( monitor_(S, t, dt, usr_ptr) )
     {
-        velocity.replicate(S.getPosition());
         (F.*updater)(dt);       
         F.reparam();
         t += dt;
         
-        //Repart();
+        repartition_(S.getPositionModifiable(), F.tension(), usr_ptr);
     }
 }

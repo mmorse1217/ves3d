@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _MOVEPOLE_H_
 #define _MOVEPOLE_H_
 

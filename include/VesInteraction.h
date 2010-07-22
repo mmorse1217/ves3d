@@ -17,7 +17,7 @@ class VesInteraction
     template<typename VecContainer>
     InteractionReturn operator()(const VecContainer &position, 
         VecContainer &density, VecContainer &potential,
-        void* user_ptr = NULL) const;
+        void* usr_ptr = NULL) const;
 
   private:
     InteractionFun_t interaction_handle_;
@@ -34,7 +34,6 @@ class VesInteraction
     
     size_t getCpyDestIdx(size_t this_thread_np) const;
     void checkContainersSize() const;
-    void updatePotential(void* user_ptr = NULL) const;
     
     VesInteraction(VesInteraction const &rhs);
     VesInteraction& operator=(const VesInteraction &rhs);

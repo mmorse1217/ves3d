@@ -52,7 +52,9 @@ void EvolveSurfaceTest(const Device<DT> &dev, Parameters<real> &sim_par)
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
     Monitor<Sur_t> M(sim_par);
-    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M);
+    RepartitionGateway<Sca> repart;
+    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
+   
     Es(S, Interaction);
 }
 #endif //Doxygen_skip
