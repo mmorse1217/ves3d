@@ -283,7 +283,7 @@ T*  Device<CPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T* 
 
 template<>
 template<typename T>
-T*  Device<CPU>::apx(T* a_in, const T* x_in, size_t stride, 
+T*  Device<CPU>::apx(const T* a_in, const T* x_in, size_t stride, 
     size_t n_subs, T* apx_out) const
 {
     PROFILESTART();

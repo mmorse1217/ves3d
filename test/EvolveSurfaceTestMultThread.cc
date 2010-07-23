@@ -2,92 +2,111 @@
 #include "Parameters.h"
 #include "Surface.h"
 #include "VesInteraction.h"
-//#include "EvolveSurface.h"
+#include "EvolveSurface.h"
 
-extern const Device<CPU> the_cpu_dev(0);
-extern const Device<GPU> the_gpu_dev(0);
+extern const Device<CPU> dev1(0);
+extern const Device<CPU> dev2(0);
 
-typedef float real;
+typedef double real;
 typedef double fmm_value_type;
+typedef VesInteraction<fmm_value_type> Interaction_t;
 
-void FMM(const fmm_value_type*src, const fmm_value_type*den, size_t np, fmm_value_type*pot)
-{
-    cout<<"FMM with "<<np<<endl;
-    sleep(2);
-}
+#ifndef Doxygen_skip
 
-int main(int argc, char **argv)
-{
-    typedef containers::Scalars<real, CPU, the_cpu_dev> ScaCPU_t;
-    typedef containers::Vectors<real, CPU, the_cpu_dev> VecCPU_t;
-    typedef Surface<ScaCPU,VecCPU> SurCPU_t;
-
-    typedef containers::Scalars<real, GPU, the_gpu_dev> ScaGPU_t;
-    typedef containers::Vectors<real, GPU, the_gpu_dev> VecGPU_t;
-    typedef Surface<ScaCPU,VecCPU> SurGPU_t;
-
-    typedef Parameters<real> Par_t;
-
-    // Setting the parameters
-    Par::getInstanceModifiable().n_surfs = 2;   
-    //Par::getInstanceModifiable().n_steps = 20;
-    Par::getInstanceModifiable().ts = .5;    
-    Par::getInstanceModifiable().time_horizon = 30;
-    Par::getInstanceModifiable().inner_solver_maxit = 15;    
-    //Par::getInstanceModifiable().bg_flow_param = 0;    
-    cout<<Par::getInstance()<<endl;
-
-    //IO
-    DataIO<real, CPU> myIO(the_cpu_dev);
+// void MyRepart(size_t nv, size_t stride, const double* x, 
+//     const double* tension, size_t* nvr, 
+//     double** xr, double** tensionr, void*)
+// {
+//     cout<<"Repart"<<endl;
+//     *nvr = nv;
+//     *xr = new double[nv * stride * DIM];
+//     *tensionr = new double[nv * stride];
     
+//     memcpy(*xr, x, nv * DIM * stride * sizeof(double));
+//     memcpy(*tensionr, tension, nv * stride * sizeof(double));
+// }
+
+template<enum DeviceType DT, const Device<DT> &DEVICE>
+void EvolveSurfaceTest(Parameters<real> &sim_par, 
+    Interaction_t& Interaction)
+{
+    typedef Scalars<real, CPU, DEVICE> Sca_t;
+    typedef Vectors<real, CPU, DEVICE> Vec_t;
+
+    typedef Surface<Sca_t,Vec_t> Sur_t;
+    
+    //IO
+    DataIO myIO;
+
     //Initializing vesicle positions from text file
-    Vec x0(Par::getInstance().n_surfs,
-        Par::getInstance().sh_order);
+    Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
     
     //reading the prototype form file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-        x0.getSubN(1)-x0.begin(), x0.begin());
+        x0, 0, DIM*x0.getStride());
     
-    //Making centers and populating the prototype
-    Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
-    real cntrs_host[] = {-5, 0,  1,
-                         5, 0, -1};
-    
+    //Making Centers And Populating The Prototype
+    int nVec = sim_par.n_surfs;
+    real* cntrs_host =  new real[nVec * DIM];
+    for(int ii=0; ii<nVec; ++ii)
+    {
+        cntrs_host[DIM*ii    ] = 3 * omp_get_thread_num();
+        cntrs_host[DIM*ii + 1] = 3*ii;
+        cntrs_host[DIM*ii + 2] = 0;
+    }
+    Array<real, DT, DEVICE> cntrs(DIM * sim_par.n_surfs);
     cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
         cntrs.size() * sizeof(real), MemcpyHostToDevice);
-    
     Populate(x0, cntrs);
 
-    // The interaction class
-    int nThreads(2);
-    VesInteraction<fmm_value_type> interaction(nThreads, &FMM);
+    //Reading Operators From File
+    bool readFromFile = true;
+    OperatorsMats<Sca_t> Mats(readFromFile, sim_par);
 
-// Making multiple threads
+    //Making The Surface, And Time Stepper
+    Sur_t S(x0, Mats);
+    Monitor<Sur_t> M(sim_par);
+    RepartitionGateway<Sca_t> repart(NULL);
+    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
+   
+    Es(S, Interaction);
+}
+#endif //Doxygen_skip
+
+int main(int argc, char **argv)
+{
+    typedef Parameters<real> Par_t;
+
+    // Setting the parameters
+    Par_t sim_par;
+    sim_par.n_surfs = 2;   
+    sim_par.ts = 1;    
+    sim_par.time_horizon = 5;
+    sim_par.scheme = Explicit;
+    sim_par.bg_flow_param = 0.1;
+    sim_par.rep_maxit = 20;
+    sim_par.save_data = true;    
+    sim_par.save_stride = 1;
+    sim_par.save_file_name = "EvolveSurfMT.out";
+    COUT(sim_par);
+    remove(sim_par.save_file_name.c_str());
+
+    int nThreads = 2;
+    // The Interaction Class
+    Interaction_t Interaction(&StokesAlltoAll, nThreads);
+    
+    // Making multiple threads
 #pragma omp parallel num_threads(nThreads)
     {
         if(omp_get_thread_num() == 0)
         {   
-            VecCPU thVec(omp_get_thread_num() + 1, 4);
-            interaction(thVec, thVec, thVec);
-            cout<<"Thread "<<omp_get_thread_num()<<endl;
+            EvolveSurfaceTest<CPU,dev1>(sim_par, Interaction);
         }
         else
         {
-            VecGPU thVec(omp_get_thread_num() + 2, 4);
-            interaction(thVec, thVec, thVec);
-            cout<<"Thread "<<omp_get_thread_num()<<endl;
+            EvolveSurfaceTest<CPU,dev2>(sim_par, Interaction);
         }        
     }
-
-
-
-//     //Making the surface, and time stepper
-//     Sur S(x0);
-//     EvolveSurface<Sur> Es;
-//     Es(S);
-
-//     myIO.WriteData("EvolveSurf.txt", S.getPosition().size(), 
-//         S.getPosition().begin());
-
-//     PROFILEREPORT(SortTime);
+    
+    PROFILEREPORT(SortTime);
 }

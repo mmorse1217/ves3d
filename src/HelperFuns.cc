@@ -218,8 +218,8 @@ inline void CircShift(const typename ScalarContainer::value_type *x_in,
     }
 }
 
-template<typename VectorContainer>
-inline void Populate(VectorContainer &x,typename VectorContainer::value_type* centers)
+template<typename VectorContainer, typename CentCont>
+inline void Populate(VectorContainer &x, const CentCont &centers)
 {        
     size_t cpysize = x.getSubLength();
     cpysize *=sizeof(typename VectorContainer::value_type);
@@ -228,7 +228,7 @@ inline void Populate(VectorContainer &x,typename VectorContainer::value_type* ce
         VectorContainer::getDevice().Memcpy(x.getSubN(ii), x.begin(), 
             cpysize, MemcpyDeviceToDevice);
 
-    VectorContainer::getDevice().apx(centers, x.begin(), 
+    VectorContainer::getDevice().apx(centers.begin(), x.begin(), 
         x.getStride(), x.getTheDim() * x.getNumSubs(), x.begin());
 }
 

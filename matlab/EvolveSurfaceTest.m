@@ -1,9 +1,9 @@
 clear all;clc
 
-fileName = '../test/EvolveSurf.out';
+fileName = '../test/EvolveSurfMT.out';
 
 p = 12;
-nv = 1;
+nv = 4;
 np = 2 * p * (p + 1);
 fid = fopen(fileName,'r');
 XX = fread(fid,'double');

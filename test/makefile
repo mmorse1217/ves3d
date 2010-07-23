@@ -5,6 +5,7 @@ EXEC =  LoggerTest.exe        \
 	BiCGStabTest.exe      \
 	SurfaceTest.exe       \
 	EvolveSurfaceTest.exe \
+	EvolveSurfaceTestMultiThread.exe \
 	BenchmarkInterfacialVel.exe \
 	MovePoleTest.exe #StokesTest.exe 
 

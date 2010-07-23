@@ -81,9 +81,8 @@ template<typename ScalarContainer>
 inline void CircShift(const typename ScalarContainer::value_type *x_in,
     int shift, ScalarContainer &x_out);
     
-template<typename VectorContainer>
-inline void Populate(VectorContainer &x, 
-    typename VectorContainer::value_type* centers);
+template<typename VectorContainer, typename CentCont>
+inline void Populate(VectorContainer &x, const CentCont &centers);
 
 template<typename Container>
 inline typename Container::value_type MaxAbs(Container &x);

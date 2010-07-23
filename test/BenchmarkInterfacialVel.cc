@@ -10,7 +10,7 @@
 #include "InterfacialVelocity.h"
 
 typedef double real;
-#define DT GPU
+#define DT CPU
 
 extern const Device<DT> the_device(0);
 using namespace std;

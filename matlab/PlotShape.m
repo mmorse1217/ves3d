@@ -11,7 +11,7 @@ function PlotShape(X,p)
     surf([x x(:,1)], [y y(:,1)], [z z(:,1)]);  
     
     camlight; lighting gouraud; lightangle(100,0)
-    set(gca,'CameraPosition',[2 10 3]);
+    set(gca,'CameraPosition',[10 -10 3]);
     axis equal;
     colormap([1 0.3 0.3]) 
   end

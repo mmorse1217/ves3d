@@ -123,7 +123,7 @@ class Device
         T* axpy_out) const;
     
     template<typename T>
-    T* apx(T* a_in, const T* x_in, size_t stride, 
+    T* apx(const T* a_in, const T* x_in, size_t stride, 
         size_t n_subs, T* axpy_out) const;
     
     ///Element-wise scaling and addition.

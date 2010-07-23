@@ -11,65 +11,20 @@ Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
     sh_order_(sh_order),
     grid_dim_((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order_) : grid_dim),
     stride_(grid_dim_.first * grid_dim_.second),
-    num_subs_(num_subs),
-    capacity_(stride_ * num_subs_),
-    data_((capacity_ > 0) ? (T*) DEVICE.Malloc(the_dim_ * capacity_ * sizeof(T)) : NULL)
-{}
+    num_subs_(num_subs)
+{
+    Array<T, DT, DEVICE>::resize(this->getStride() * this->getTheDim() 
+        * this->getNumSubs());
+}
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 Scalars<T, DT, DEVICE>::~Scalars()
-{
-    DEVICE.Free(data_);
-}
+{}
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs, int new_sh_order,
-    pair<int, int> new_grid_dim)
+int Scalars<T, DT, DEVICE>::getTheDim()
 {
-    ///Note that num_subs = 0 frees all the memory (no recovery).
-    
-    sh_order_ = (new_sh_order == -1) ? sh_order_ : new_sh_order;
-    grid_dim_ = (new_grid_dim == EMPTY_GRID) ? 
-        gridDimOf(sh_order_) : new_grid_dim;
-    
-    size_t new_stride(grid_dim_.first * grid_dim_.second);
-    size_t new_capacity(new_stride * new_num_subs);
-
-    if ( new_capacity > capacity_ )
-    {
-        T *data_old(data_);
-        data_ = (T*) DEVICE.Malloc(the_dim_ * new_capacity * sizeof(T));
-        
-        if(data_old != NULL) 
-        {
-            DEVICE.Memcpy(data_, data_old, 
-                the_dim_ * stride_ * num_subs_ * sizeof(T), 
-                MemcpyDeviceToDevice);
-            DEVICE.Free(data_old);
-        }
-        capacity_ = new_capacity;
-    } 
-    else if (new_capacity == 0 && data_ != NULL)
-    {
-        DEVICE.Free(data_);
-        data_ = NULL;
-        capacity_ = 0;
-    }
-
-    stride_ = new_stride;
-    num_subs_ = new_num_subs;
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-enum DeviceType Scalars<T, DT, DEVICE>::getDeviceType()
-{
-    return(DT);
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-const Device<DT>& Scalars<T, DT, DEVICE>::getDevice()
-{
-    return(DEVICE);
+    return(the_dim_);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
@@ -91,27 +46,30 @@ size_t Scalars<T, DT, DEVICE>::getStride() const
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-size_t Scalars<T, DT, DEVICE>::size() const
-{
-    return(this->getTheDim() * this->getStride() * this->getNumSubs());
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 size_t Scalars<T, DT, DEVICE>::getNumSubs() const
 {
     return(num_subs_);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-int Scalars<T, DT, DEVICE>::getTheDim()
-{
-    return(the_dim_);
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 size_t Scalars<T, DT, DEVICE>::getSubLength() const
 {
     return(the_dim_ * stride_);
+}
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs, int new_sh_order,
+    pair<int, int> new_grid_dim)
+{
+    num_subs_ = new_num_subs;
+    sh_order_ = (new_sh_order == -1) ? sh_order_ : new_sh_order;
+    grid_dim_ = (new_grid_dim == EMPTY_GRID) ? 
+        gridDimOf(sh_order_) : new_grid_dim;
+    stride_   = grid_dim_.first * grid_dim_.second;
+
+    Array<T, DT, DEVICE>::resize(this->getStride() * this->getTheDim() 
+        * this->getNumSubs());
+
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
@@ -129,52 +87,18 @@ void Scalars<T, DT, DEVICE>::replicate(Vectors<T, DT, DEVICE> const& vec_in)
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-typename Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::begin()
+T* Scalars<T, DT, DEVICE>::getSubN(size_t n)
 {
-    return(data_);
+    return(Array<T, DT, DEVICE>::begin() + n * this->getTheDim()
+        * this->getStride());
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::begin() const
-{
-    return(data_);
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-typename Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::getSubN(size_t n)
-{
-    return(data_ + n * this->getTheDim() * this->getStride());
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::getSubN(
+const T* Scalars<T, DT, DEVICE>::getSubN(
     size_t n) const
 {
-    return(data_ + n * this->getTheDim() * this->getStride());
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-typename Scalars<T, DT, DEVICE>::iterator Scalars<T, DT, DEVICE>::end()
-{
-    return(data_ + this->size());
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-typename Scalars<T, DT, DEVICE>::const_iterator Scalars<T, DT, DEVICE>::end() const
-{
-    return(data_ + this->size());
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-bool Scalars<T, DT, DEVICE>::isNan() const
-{
-    return(DEVICE.isNan(data_, this->size()));
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
-void Scalars<T, DT, DEVICE>::fillRand()
-{
-    return(DEVICE.fillRand(data_, this->size()));
+    return(Array<T, DT, DEVICE>::begin() + n * this->getTheDim() 
+        * this->getStride());
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -19,16 +19,19 @@ template<typename T>
 bool DataIO::WriteData(const string &file_name, size_t size, const T* data, 
     ios_base::openmode mode) const
 {
-    ofstream data_file(file_name.c_str(), mode);
-    if(!data_file)
-        CERR(" Could not write the data to the file." 
-            <<"\n\n File name : "<< file_name, endl, exit(1));
-    
-    size_t idx=0;
-    while  (idx <size )
-        data_file<<data[idx++]<<endl;
-    
-    data_file.close();
+#pragma omp critical
+    {    
+        ofstream data_file(file_name.c_str(), mode);
+        if(!data_file)
+            CERR(" Could not write the data to the file." 
+                <<"\n\n File name : "<< file_name, endl, exit(1));
+        
+        size_t idx=0;
+        while  (idx <size )
+            data_file<<data[idx++]<<endl;
+        
+        data_file.close();
+    }
     return(true);
 }
 
@@ -66,23 +69,25 @@ bool DataIO::Append(const Container &data) const
 {
     size_t length(data.size());
     length *= sizeof(typename Container::value_type);
-
-    COUTDEBUG("\n  DataIO::Append():"
-        <<"\n              Size      = "<<length
-        <<"\n              Total     = "<<out_size_
-        <<"\n              Used      = "<<out_used_
-        <<"\n              Available = "<<out_size_-out_used_<<endl);
+#pragma omp critical
+    {
+        COUTDEBUG("\n  DataIO::Append():"
+            <<"\n              Size      = "<<length
+            <<"\n              Total     = "<<out_size_
+            <<"\n              Used      = "<<out_used_
+            <<"\n              Available = "<<out_size_-out_used_<<endl);
         
-    if(length > out_size_)
-        ResizeOutBuffer(length);
-    
-    if(length > (out_size_ - out_used_))
-        FlushBuffer();
-    
-    Container::getDevice().Memcpy(out_buffer_ + out_used_, data.begin(), 
-        length, MemcpyDeviceToHost);
-    out_used_ +=length;
-    
+        if(length > out_size_)
+            ResizeOutBuffer(length);
+        
+        if(length > (out_size_ - out_used_))
+            FlushBuffer();
+        
+        Container::getDevice().Memcpy(out_buffer_ + out_used_, data.begin(), 
+            length, MemcpyDeviceToHost);
+        
+        out_used_ +=length;
+    }
     return(true);
 }
 

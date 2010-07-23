@@ -11,60 +11,52 @@ extern const Device<GPU> the_gpu_device(0);
 typedef double real;
 typedef double fmm_value_type;
 
-void MyRepart(size_t nv, size_t stride, const double* x, 
-    const double* tension, size_t* nvr, 
-    double** xr, double** tensionr, void*)
-{
-    cout<<"Repart"<<endl;
-    *nvr = nv;
-    *xr = new double[nv * stride * DIM];
-    *tensionr = new double[nv * stride];
-    
-    memcpy(*xr, x, nv * DIM * stride * sizeof(double));
-    memcpy(*tensionr, tension, nv * stride * sizeof(double));
-}
-
 #ifndef Doxygen_skip
 
-template<typename Sca, typename Vec, enum DeviceType DT>
-void EvolveSurfaceTest(const Device<DT> &dev, Parameters<real> &sim_par)
+template<enum DeviceType DT, const Device<DT> &DEVICE>
+void EvolveSurfaceTest(Parameters<real> &sim_par)
 {
-    typedef Surface<Sca,Vec> Sur_t;
+    typedef Scalars<real, CPU, DEVICE> Sca_t;
+    typedef Vectors<real, CPU, DEVICE> Vec_t;
+
+    typedef Surface<Sca_t,Vec_t> Sur_t;
     typedef VesInteraction<fmm_value_type> Interaction_t;
     
     //IO
     DataIO myIO;
 
     //Initializing vesicle positions from text file
-    Vec x0(sim_par.n_surfs, sim_par.sh_order);
+    Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
     
     //reading the prototype form file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
         x0, 0, DIM*x0.getStride());
     
     //Making Centers And Populating The Prototype
-    if ( sim_par.n_surfs > 1 )
+    int nVec = sim_par.n_surfs;
+    real* cntrs_host =  new real[nVec * DIM];
+    for(int ii=0; ii<nVec; ++ii)
     {
- //        real cntrs_host[] = {-5, 0,  1,
-//                              5, 0, -1};
-//         real* cntrs = 
-//         cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
-//             cntrs.size() * sizeof(real), MemcpyHostToDevice);
-        
-//         Populate(x0, cntrs);
+        cntrs_host[DIM*ii    ] = 0;
+        cntrs_host[DIM*ii + 1] = 3*ii;
+        cntrs_host[DIM*ii + 2] = 0;
     }
+    Array<real, DT, DEVICE> cntrs(DIM * sim_par.n_surfs);
+    cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
+        cntrs.size() * sizeof(real), MemcpyHostToDevice);
+    Populate(x0, cntrs);
 
     // The Interaction Class
-    Interaction_t Interaction(NULL);//&StokesAlltoAll);
+    Interaction_t Interaction(&StokesAlltoAll);
 
     //Reading Operators From File
     bool readFromFile = true;
-    OperatorsMats<Sca> Mats(readFromFile, sim_par);
+    OperatorsMats<Sca_t> Mats(readFromFile, sim_par);
 
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
     Monitor<Sur_t> M(sim_par);
-    RepartitionGateway<Sca> repart(&MyRepart);
+    RepartitionGateway<Sca_t> repart(NULL);
     EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
    
     Es(S, Interaction);
@@ -79,10 +71,10 @@ int main(int argc, char **argv)
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
-    sim_par.n_surfs = 2;   
+    sim_par.n_surfs = 5;   
     sim_par.ts = 1;    
     sim_par.time_horizon = 5;
-    sim_par.scheme = Explicit;//SemiImplicit;
+    sim_par.scheme = Explicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = true;    
@@ -94,22 +86,15 @@ int main(int argc, char **argv)
     remove(sim_par.save_file_name.c_str());
 
     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
-
-    typedef Scalars<real, CPU, the_cpu_device> ScaCPU_t;
-    typedef Vectors<real, CPU, the_cpu_device> VecCPU_t;
-    
-    EvolveSurfaceTest<ScaCPU_t, VecCPU_t, CPU>(the_cpu_device, sim_par);
+    EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
     PROFILEREPORT(SortTime);    
 
 #ifdef GPU_ACTIVE
     PROFILECLEAR();
     COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
-    typedef Scalars<real, GPU, the_gpu_device> ScaGPU_t;
-    typedef Vectors<real, GPU, the_gpu_device> VecGPU_t;
-     
-    EvolveSurfaceTest<ScaGPU_t, VecGPU_t, GPU>(the_gpu_device, sim_par);
-
+    EvolveSurfaceTest<GPU, the_gpu_device>(sim_par);
     PROFILEREPORT(SortTime);
+
 #endif //GPU_ACTIVE
 
 

@@ -1,10 +1,10 @@
 # Flags
 ARFLAGS  = -r
-CXXFLAGS+= -DPROFILING -DVERBOSE -DNDEBUG -openmp -fPIC    \
+CXXFLAGS+= -DPROFILING -DVERBOSE -openmp -fPIC    \
 	  -early-template-check -sox -fno-exceptions  #-Wall 
 
 ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS+= -g -O0 -fp-model precise -mp1
 else
-  CXXFLAGS+= -O3 -finline -unroll-agressive -msse3 -malign-double
+  CXXFLAGS+= -O3 -finline -DNDEBUG -unroll-agressive -msse3 -malign-double
 endif

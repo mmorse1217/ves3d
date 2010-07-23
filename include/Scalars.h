@@ -11,31 +11,24 @@
 #define _SCALARS_H_
 
 #include "Device.h"
+#include "Array.h"
 
 template <typename T, enum DeviceType DT, const Device<DT> &DEVICE>
 class Vectors;
 
 template <typename T, enum DeviceType DT, const Device<DT> &DEVICE>
-class Scalars
+class Scalars : public Array<T, DT, DEVICE>
 {
   public:
-    typedef Device<DT> device_type;
-    typedef T* iterator;
-    typedef const T* const_iterator;
-    typedef T value_type;
-
     explicit Scalars(size_t num_subs = 0, int sh_order = -1, 
         pair<int, int> grid_dim = EMPTY_GRID);
     virtual ~Scalars();
 
-    static enum DeviceType getDeviceType();
-    static const device_type& getDevice();
     static inline int getTheDim();
 
     inline int getShOrder() const;
     inline pair<int, int> getGridDim() const;
     inline size_t getStride() const;
-    inline size_t size() const;
     inline size_t getNumSubs() const;
     inline size_t getSubLength() const;
         
@@ -44,26 +37,15 @@ class Scalars
     inline void replicate(Scalars<T, DT, DEVICE> const& sc_in);
     inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);
                 
-    inline iterator begin();
-    inline const_iterator begin() const;
-
-    inline iterator getSubN(size_t n);
-    inline const_iterator getSubN(size_t n) const;
-
-    inline iterator end();
-    inline const_iterator end() const;
-
-    bool isNan() const;
-    void fillRand();
+    inline T* getSubN(size_t n);
+    inline const T* getSubN(size_t n) const;
     
   protected:
     int sh_order_;
     pair<int, int> grid_dim_;
     size_t stride_;
     size_t num_subs_;
-    size_t capacity_;
-    T* data_;
-
+    
     static const int the_dim_ = 1;
 
     Scalars(Scalars<T, DT, DEVICE> const& sc_in);
