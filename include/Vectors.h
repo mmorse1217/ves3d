@@ -28,6 +28,7 @@ class Vectors : public Scalars<T, DT, DEVICE>
     ///This is intentionally non-virtual
     inline size_t getNumSubs() const; 
     static inline int getTheDim();
+    inline size_t getSubLength() const;
 
     inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);
         

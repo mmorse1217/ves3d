@@ -37,6 +37,7 @@ class Scalars
     inline size_t getStride() const;
     inline size_t size() const;
     inline size_t getNumSubs() const;
+    inline size_t getSubLength() const;
         
     void resize(size_t new_num_subs, int new_sh_order = -1,
         pair<int, int> new_grid_dim = EMPTY_GRID);

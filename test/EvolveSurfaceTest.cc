@@ -11,6 +11,19 @@ extern const Device<GPU> the_gpu_device(0);
 typedef double real;
 typedef double fmm_value_type;
 
+void MyRepart(size_t nv, size_t stride, const double* x, 
+    const double* tension, size_t* nvr, 
+    double** xr, double** tensionr, void*)
+{
+    cout<<"Repart"<<endl;
+    *nvr = nv;
+    *xr = new double[nv * stride * DIM];
+    *tensionr = new double[nv * stride];
+    
+    memcpy(*xr, x, nv * DIM * stride * sizeof(double));
+    memcpy(*tensionr, tension, nv * stride * sizeof(double));
+}
+
 #ifndef Doxygen_skip
 
 template<typename Sca, typename Vec, enum DeviceType DT>
@@ -32,14 +45,13 @@ void EvolveSurfaceTest(const Device<DT> &dev, Parameters<real> &sim_par)
     //Making Centers And Populating The Prototype
     if ( sim_par.n_surfs > 1 )
     {
-        Vec cntrs(x0.getNumSubs(), 0, make_pair(1,1));
-        real cntrs_host[] = {-5, 0,  1,
-                             5, 0, -1};
+ //        real cntrs_host[] = {-5, 0,  1,
+//                              5, 0, -1};
+//         real* cntrs = 
+//         cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
+//             cntrs.size() * sizeof(real), MemcpyHostToDevice);
         
-        cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
-            cntrs.size() * sizeof(real), MemcpyHostToDevice);
-        
-        Populate(x0, cntrs);
+//         Populate(x0, cntrs);
     }
 
     // The Interaction Class
@@ -52,7 +64,7 @@ void EvolveSurfaceTest(const Device<DT> &dev, Parameters<real> &sim_par)
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
     Monitor<Sur_t> M(sim_par);
-    RepartitionGateway<Sca> repart;
+    RepartitionGateway<Sca> repart(&MyRepart);
     EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
    
     Es(S, Interaction);
@@ -67,7 +79,7 @@ int main(int argc, char **argv)
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
-    sim_par.n_surfs = 1;   
+    sim_par.n_surfs = 2;   
     sim_par.ts = 1;    
     sim_par.time_horizon = 5;
     sim_par.scheme = Explicit;//SemiImplicit;

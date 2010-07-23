@@ -109,6 +109,12 @@ int Scalars<T, DT, DEVICE>::getTheDim()
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+size_t Scalars<T, DT, DEVICE>::getSubLength() const
+{
+    return(the_dim_ * stride_);
+}
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 void Scalars<T, DT, DEVICE>::replicate(Scalars<T, DT, DEVICE> const& sc_in)
 {
     this->resize(sc_in.getNumSubs(), sc_in.getShOrder(), 

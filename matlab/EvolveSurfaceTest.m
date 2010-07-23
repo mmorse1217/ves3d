@@ -3,10 +3,10 @@ clear all;clc
 fileName = '../test/EvolveSurf.out';
 
 p = 12;
-nv = 2;
+nv = 1;
 np = 2 * p * (p + 1);
 fid = fopen(fileName,'r');
-XX = fread(fid,'float');
+XX = fread(fid,'double');
 fclose(fid);
 XX = reshape(XX,3*np*nv,[]);
 

@@ -35,6 +35,12 @@ int Vectors<T, DT, DEVICE>::getTheDim()
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
+size_t Vectors<T, DT, DEVICE>::getSubLength() const
+{
+    return(the_dim_ * this->getStride() );
+}
+
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 void Vectors<T, DT, DEVICE>::replicate(Vectors<T, DT, DEVICE> const& vec_in)
 {
     this->resize(vec_in.getNumSubs(), vec_in.getShOrder(), 

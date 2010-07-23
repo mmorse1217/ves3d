@@ -219,26 +219,24 @@ inline void CircShift(const typename ScalarContainer::value_type *x_in,
 }
 
 template<typename VectorContainer>
-inline void Populate(VectorContainer &x,VectorContainer &centers)
-{
-    assert(x.getNumSubs() == centers.getNumSubs());
-        
-    int cpysize = x.getSubN(1) - x.begin();
+inline void Populate(VectorContainer &x,typename VectorContainer::value_type* centers)
+{        
+    size_t cpysize = x.getSubLength();
     cpysize *=sizeof(typename VectorContainer::value_type);
 
     for(int ii=1; ii<x.getNumSubs(); ++ii)
-        x.getDevice().Memcpy(x.getSubN(ii), x.begin(), 
+        VectorContainer::getDevice().Memcpy(x.getSubN(ii), x.begin(), 
             cpysize, MemcpyDeviceToDevice);
 
-    x.getDevice().apx(centers.begin(), x.begin(), 
+    VectorContainer::getDevice().apx(centers, x.begin(), 
         x.getStride(), x.getTheDim() * x.getNumSubs(), x.begin());
 }
-///@todo this need to be implemented for the GPU
+
 template<typename ScalarContainer>
 typename ScalarContainer::value_type AlgebraicDot(const ScalarContainer &x, 
     const ScalarContainer &y)
 {
-    return(x.getDevice().AlgebraicDot(x.begin(), y.begin(), x.size()));
+    return(ScalarContainer::getDevice().AlgebraicDot(x.begin(), y.begin(), x.size()));
 }
 
 template<typename Container>
