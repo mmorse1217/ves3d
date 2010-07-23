@@ -3,21 +3,19 @@
 
 #include <omp.h>
 
-template<typename Container>
+template<typename T>
 class RepartitionGateway
 {
-  private:
-    typedef typename Container::value_type value_type;
-    
   public:
     typedef void(*GlobalRepart_t)(size_t nv, size_t stride, 
-        const value_type* x, const value_type* tension, size_t* nvr, 
-        value_type** xr, value_type** tensionr, void* user_ptr);
+        const T* x, const T* tension, size_t* nvr, T** xr,
+        T** tensionr, void* user_ptr);
     
     explicit RepartitionGateway(GlobalRepart_t fun_ptr = NULL, 
         int num_threads = 1);
     ~RepartitionGateway();
 
+    template<typename Container>
     void operator()(Container &coord, Container &tension, 
         void* user_ptr = NULL) const;
     
@@ -30,11 +28,11 @@ class RepartitionGateway
     mutable size_t nv_;
     mutable size_t capacity_;
     
-    mutable value_type* all_pos_;
-    mutable value_type* all_tension_;
+    mutable T* all_pos_;
+    mutable T* all_tension_;
     
-    mutable value_type* posr_;
-    mutable value_type* tensionr_;
+    mutable T* posr_;
+    mutable T* tensionr_;
     mutable size_t nvr_;
 
 

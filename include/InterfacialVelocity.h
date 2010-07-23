@@ -47,7 +47,7 @@ class InterfacialVelocity
     void operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
     
     void* usr_ptr_;
-    Sca_t& tension(){ return tension_;};
+    Sca_t& tension(){ return tension_;}
 
   private:
     SurfContainer &S_;
@@ -72,7 +72,7 @@ class InterfacialVelocity
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_upsample_;
 
     mutable MovePole<Sca_t,Mats_t> move_pole;
-    mutable Vec_t velocity;
+    mutable Vec_t velocity_;
     mutable Sca_t tension_;
 
     //Workspace

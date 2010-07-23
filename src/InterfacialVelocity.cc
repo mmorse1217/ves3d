@@ -39,7 +39,7 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     checked_out_work_vec_(0)
 {
     w_sph_.replicate(S_.getPosition());
-    velocity.replicate(S_.getPosition());
+    velocity_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
     
     //Setting initial tension to zero
@@ -92,22 +92,22 @@ updatePositionExplicit(const value_type &dt)
 {
     this->dt_ = dt;
     this->updateInteraction();
-    
+
     //Bending
     auto_ptr<Vec_t> u1 = checkoutVec();
     auto_ptr<Vec_t> u2 = checkoutVec();
     
     Intfcl_force_.bendingForce(S_, *u1);
     stokes(*u1, *u2);   
-    axpy(static_cast<value_type>(1), *u2, velocity, velocity);
+    axpy(static_cast<value_type>(1), *u2, velocity_, velocity_);
    
     //Tension
-    getTension(velocity, tension_);
+    getTension(velocity_, tension_);
     Intfcl_force_.tensileForce(S_, tension_, *u1);
     stokes(*u1, *u2);
-    axpy(static_cast<value_type>(1), *u2, velocity, velocity);
+    axpy(static_cast<value_type>(1), *u2, velocity_, velocity_);
 
-    axpy(dt_, velocity, S_.getPosition(), S_.getPositionModifiable());
+    axpy(dt_, velocity_, S_.getPosition(), S_.getPositionModifiable());
     
     recycle(u1);
     recycle(u2);
@@ -123,17 +123,17 @@ updatePositionImplicit(const value_type &dt)
     auto_ptr<Vec_t> u1 = checkoutVec();
     auto_ptr<Vec_t> u2 = checkoutVec();
     auto_ptr<Vec_t> u3 = checkoutVec();
-
+    
     //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, *u1);
     stokes(*u1, *u2);   
-    axpy(static_cast<value_type>(1), *u2, velocity, *u1);
+    axpy(static_cast<value_type>(1), *u2, velocity_, *u1);
   
     //Tension
     getTension(*u1, tension_);
     Intfcl_force_.tensileForce(S_, tension_, *u1);
     stokes(*u1, *u2);
-    axpy(static_cast<value_type>(1), *u2, velocity, *u1);
+    axpy(static_cast<value_type>(1), *u2, velocity_, *u1);
     
     axpy(dt_, *u1, S_.getPosition(), *u1);
     u2->getDevice().Memcpy(u2->begin(), S_.getPosition().begin(), 
@@ -197,6 +197,7 @@ updateInteraction() const
     auto_ptr<Vec_t> u1 = checkoutVec();
     auto_ptr<Vec_t> u2 = checkoutVec();
     auto_ptr<Vec_t> u3 = checkoutVec();
+    velocity_.replicate(S_.getPosition());
 //     auto_ptr<Vec_t> shc = checkoutVec();
 //     auto_ptr<Vec_t> wrk = checkoutVec();
 
@@ -213,10 +214,10 @@ updateInteraction() const
                 u3->getSubN(ii) + jj * u3->getStride());                    
 
     //Self-interaction, to be subtracted
-    velocity.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
-        static_cast<const value_type*>(NULL), velocity.getStride(), 
-        velocity.getNumSubs(), S_.getPosition().begin(), 0, 
-        velocity.getStride(), velocity.begin());
+    velocity_.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
+        static_cast<const value_type*>(NULL), velocity_.getStride(), 
+        velocity_.getNumSubs(), S_.getPosition().begin(), 0, 
+        velocity_.getStride(), velocity_.begin());
 
     //upsample
 //     int usf(sht_upsample_.getShOrder());
@@ -244,13 +245,13 @@ updateInteraction() const
 
     //Subtracting the self-interaction
     if(status)
-        axpy(static_cast<value_type>(0), velocity, velocity);
+        axpy(static_cast<value_type>(0), velocity_, velocity_);
     else
-        axpy(static_cast<value_type>(-1), velocity, *u2, velocity);
+        axpy(static_cast<value_type>(-1), velocity_, *u2, velocity_);
     
     //Background flow
     bg_flow_(S_.getPosition(), params_.bg_flow_param, *u2);
-    axpy(static_cast<value_type>(1), *u2, velocity, velocity);
+    axpy(static_cast<value_type>(1), *u2, velocity_, velocity_);
 
     recycle(u1);
     recycle(u2);
@@ -581,12 +582,12 @@ benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
         <<"\n ------------------------------------\n");
 
     this->updateInteraction();
-    axpy(static_cast<value_type>(1), SFb, velocity, velocity);
+    axpy(static_cast<value_type>(1), SFb, velocity_, velocity_);
 
-    axpy(static_cast<value_type>(-1), vel, velocity, vel);
+    axpy(static_cast<value_type>(-1), vel, velocity_, vel);
     
     value_type err = MaxAbs(vel); 
-    axpy(static_cast<value_type>(1), velocity, vel);
+    axpy(static_cast<value_type>(1), velocity_, vel);
     
     COUTDEBUG("  The benchmark " 
         <<((err<tol) ? "*Passed*" : "*Failed*" )
@@ -655,7 +656,7 @@ benchmarkTensionImplicit(Sca_t &tension, value_type tol)
     //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, *u1);
     stokes(*u1, *u2);   
-    axpy(static_cast<value_type>(1), *u2, velocity, *u1);
+    axpy(static_cast<value_type>(1), *u2, velocity_, *u1);
   
     //Tension
     axpy(static_cast<value_type>(0), *scp, *scp);

@@ -4,6 +4,7 @@
 #include <emmintrin.h>
 #include <omp.h>
 #include <math.h>
+#include "Logger.h"
 
 ///Single precision
 void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,

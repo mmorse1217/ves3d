@@ -19,7 +19,7 @@ template<typename T>
 bool DataIO::WriteData(const string &file_name, size_t size, const T* data, 
     ios_base::openmode mode) const
 {
-#pragma omp critical
+#pragma omp ordered //critical writeData
     {    
         ofstream data_file(file_name.c_str(), mode);
         if(!data_file)
@@ -69,7 +69,8 @@ bool DataIO::Append(const Container &data) const
 {
     size_t length(data.size());
     length *= sizeof(typename Container::value_type);
-#pragma omp critical
+
+#pragma omp critical (IOAppend)
     {
         COUTDEBUG("\n  DataIO::Append():"
             <<"\n              Size      = "<<length

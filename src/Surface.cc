@@ -360,7 +360,7 @@ getCenters(Vec_t &centers) const
 template <typename ScalarContainer, typename VectorContainer>  
 void Surface<ScalarContainer, VectorContainer>::
 checkContainers() const
-{
+{    
     normal_.replicate(x_);
     w_.replicate(x_);    
     h_.replicate(x_);    
@@ -370,8 +370,11 @@ checkContainers() const
     
     E.replicate(x_);    
     F.replicate(x_);    
-    G.replicate(x_);    
-    
+    G.replicate(x_);
+   
+#pragma omp critical (tmp1)
+    cout<<"Changing size"<<omp_get_thread_num()<<"\n"<<x_<<h_<<endl;
+
     containers_are_stale_ = false;
 }
 

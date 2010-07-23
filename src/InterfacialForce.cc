@@ -58,6 +58,8 @@ template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::tensileForce(const SurfContainer &S, 
     const Sca_t &tension, Vec_t &Fs) const
 {    
+    cout<<"tf\n"<<S.getPosition()<<S.getMeanCurv()<<endl;
+
     v1.replicate(S.getPosition());
     Fs.replicate(S.getPosition());
 

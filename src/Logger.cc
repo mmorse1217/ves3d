@@ -53,7 +53,7 @@ void Logger::Record(string fun_name, string prefix,
     double time, double flop)
 {
     fun_name = prefix+fun_name;
-#pragma omp critical
+#pragma omp critical (loggerRecord)
     if(Logger::PrflMap.count(fun_name))
     {
         Logger::PrflMap[fun_name].num_calls++;

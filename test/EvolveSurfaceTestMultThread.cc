@@ -8,27 +8,26 @@ extern const Device<CPU> dev1(0);
 extern const Device<CPU> dev2(0);
 
 typedef double real;
-typedef double fmm_value_type;
-typedef VesInteraction<fmm_value_type> Interaction_t;
+typedef VesInteraction<real> Interaction_t;
+typedef RepartitionGateway<real> Repart_t;
 
 #ifndef Doxygen_skip
 
-// void MyRepart(size_t nv, size_t stride, const double* x, 
-//     const double* tension, size_t* nvr, 
-//     double** xr, double** tensionr, void*)
-// {
-//     cout<<"Repart"<<endl;
-//     *nvr = nv;
-//     *xr = new double[nv * stride * DIM];
-//     *tensionr = new double[nv * stride];
+void MyRepart(size_t nv, size_t stride, const double* x, 
+    const double* tension, size_t* nvr, 
+    double** xr, double** tensionr, void*)
+{
+    *nvr = nv;
+    *xr = new double[nv * stride * DIM];
+    *tensionr = new double[nv * stride];
     
-//     memcpy(*xr, x, nv * DIM * stride * sizeof(double));
-//     memcpy(*tensionr, tension, nv * stride * sizeof(double));
-// }
+    memcpy(*xr      ,       x, DIM * nv * stride * sizeof(double));
+    memcpy(*tensionr, tension,       nv * stride * sizeof(double));
+}
 
 template<enum DeviceType DT, const Device<DT> &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par, 
-    Interaction_t& Interaction)
+    Interaction_t& Interaction, Repart_t &repart)
 {
     typedef Scalars<real, CPU, DEVICE> Sca_t;
     typedef Vectors<real, CPU, DEVICE> Vec_t;
@@ -66,10 +65,9 @@ void EvolveSurfaceTest(Parameters<real> &sim_par,
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
     Monitor<Sur_t> M(sim_par);
-    RepartitionGateway<Sca_t> repart(NULL);
-    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
-   
+    EvolveSurface<Sur_t, Interaction_t, Monitor<Sur_t>, Repart_t> Es(Mats, sim_par, M, repart);
     Es(S, Interaction);
+    
 }
 #endif //Doxygen_skip
 
@@ -77,34 +75,36 @@ int main(int argc, char **argv)
 {
     typedef Parameters<real> Par_t;
 
-    // Setting the parameters
-    Par_t sim_par;
-    sim_par.n_surfs = 2;   
-    sim_par.ts = 1;    
-    sim_par.time_horizon = 5;
-    sim_par.scheme = Explicit;
-    sim_par.bg_flow_param = 0.1;
-    sim_par.rep_maxit = 20;
-    sim_par.save_data = true;    
-    sim_par.save_stride = 1;
-    sim_par.save_file_name = "EvolveSurfMT.out";
-    COUT(sim_par);
-    remove(sim_par.save_file_name.c_str());
-
     int nThreads = 2;
-    // The Interaction Class
-    Interaction_t Interaction(&StokesAlltoAll, nThreads);
+    Interaction_t interaction(&StokesAlltoAll, nThreads);
+    Repart_t repart(&MyRepart, nThreads);
     
     // Making multiple threads
 #pragma omp parallel num_threads(nThreads)
     {
+        // Setting the parameters
+        Par_t sim_par;
+        sim_par.ts = 1;    
+        sim_par.time_horizon = 3;
+        sim_par.scheme = Explicit;
+        sim_par.bg_flow_param = 0.1;
+        sim_par.rep_maxit = 20;
+        sim_par.save_data = true;    
+        sim_par.save_stride = 1;
+        COUT(sim_par);
+        remove(sim_par.save_file_name.c_str());
+        
         if(omp_get_thread_num() == 0)
         {   
-            EvolveSurfaceTest<CPU,dev1>(sim_par, Interaction);
+            sim_par.save_file_name = "EvolveSurfMT_0.out";
+            sim_par.n_surfs = 1; 
+            EvolveSurfaceTest<CPU,dev1>(sim_par, interaction, repart);
         }
         else
         {
-            EvolveSurfaceTest<CPU,dev2>(sim_par, Interaction);
+            sim_par.save_file_name = "EvolveSurfMT_1.out";
+            sim_par.n_surfs = 3;
+            EvolveSurfaceTest<CPU,dev2>(sim_par, interaction, repart);
         }        
     }
     

@@ -35,7 +35,9 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
         <<scientific<<setprecision(4)
         <<"\n           area   error = "<<abs(A/A0-1)
         <<scientific<<setprecision(4)
-        <<"\n           volume error = "<<abs(V/V0-1)<<endl);
+        <<"\n           volume error = "<<abs(V/V0-1)
+        <<"\n           thread/all   = "<<omp_get_thread_num()
+        <<"/"<<omp_get_num_threads()<<endl);
     
     if(save_flag_ && (t/save_stride_ == static_cast<int>(t/save_stride_)))
     {
@@ -92,6 +94,7 @@ void EvolveSurface<Container, Interaction, Mntr, Repart>::operator()(
         F.reparam();
         t += dt;
         
-        repartition_(S.getPositionModifiable(), F.tension(), usr_ptr);
+        repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
+            F.tension(), usr_ptr);
     }
 }

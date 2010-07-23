@@ -1,5 +1,5 @@
-template<typename Container>
-RepartitionGateway<Container>::RepartitionGateway(GlobalRepart_t fun_ptr, 
+template<typename T>
+RepartitionGateway<T>::RepartitionGateway(GlobalRepart_t fun_ptr, 
     int num_threads) :
     g_repart_handle_(fun_ptr),
     num_threads_(num_threads),
@@ -16,8 +16,8 @@ RepartitionGateway<Container>::RepartitionGateway(GlobalRepart_t fun_ptr,
     each_thread_idx_[0] = 0;
 }
 
-template<typename Container>
-RepartitionGateway<Container>::~RepartitionGateway()
+template<typename T>
+RepartitionGateway<T>::~RepartitionGateway()
 {
     delete[] each_thread_nv_;
     delete[] each_thread_idx_;
@@ -27,10 +27,13 @@ RepartitionGateway<Container>::~RepartitionGateway()
 }    
 
     
+template<typename T>
 template<typename Container>
-void RepartitionGateway<Container>::operator()(Container &coord, 
+void RepartitionGateway<T>::operator()(Container &coord, 
     Container &tension, void* user_ptr) const
 {  
+    assert( typeid(T) == typeid(typename Container::value_type) );
+
     if ( g_repart_handle_ == NULL ) 
         return;
 
@@ -38,7 +41,7 @@ void RepartitionGateway<Container>::operator()(Container &coord,
     size_t nv(tension.getNumSubs());
     size_t stride(tension.getStride());
     size_t idx(this->getCpyIdx(nv, stride));
-    
+
 #pragma omp barrier
     {
         checkContainersSize(stride);
@@ -46,10 +49,10 @@ void RepartitionGateway<Container>::operator()(Container &coord,
     
     //Copying to the host 
     Container::getDevice().Memcpy(all_pos_ + DIM * idx, coord.begin(),
-        coord.size() * sizeof(value_type), MemcpyDeviceToHost);
+        coord.size() * sizeof(T), MemcpyDeviceToHost);
     
     Container::getDevice().Memcpy(all_tension_ + idx, tension.begin(),
-        tension.size() * sizeof(value_type), MemcpyDeviceToHost);
+        tension.size() * sizeof(T), MemcpyDeviceToHost);
 
     // call user interaction routine
 #pragma omp barrier 
@@ -67,11 +70,11 @@ void RepartitionGateway<Container>::operator()(Container &coord,
     
     //Copying back the new values to the device(s)
     Container::getDevice().Memcpy(coord.begin(), posr_ + DIM * idx, 
-        coord.size() * sizeof(value_type), MemcpyHostToDevice);
+        coord.size() * sizeof(T), MemcpyHostToDevice);
     
     Container::getDevice().Memcpy(tension.begin(), tensionr_ + idx, 
-        tension.size() * sizeof(value_type), MemcpyHostToDevice);
-    
+        tension.size() * sizeof(T), MemcpyHostToDevice);
+
 #pragma omp master
     {
         delete[] posr_;
@@ -79,8 +82,8 @@ void RepartitionGateway<Container>::operator()(Container &coord,
     }
 }
 
-template<typename Container>
-size_t RepartitionGateway<Container>::getCpyIdx(size_t this_thread_nv, 
+template<typename T>
+size_t RepartitionGateway<T>::getCpyIdx(size_t this_thread_nv, 
     size_t stride) const
 {
     int threadNum = omp_get_thread_num();
@@ -106,8 +109,8 @@ size_t RepartitionGateway<Container>::getCpyIdx(size_t this_thread_nv,
     return(each_thread_idx_[threadNum]);
 }
 
-template<typename Container>
-size_t RepartitionGateway<Container>::getNvShare() const
+template<typename T>
+size_t RepartitionGateway<T>::getNvShare() const
 {
     size_t nv(nvr_/num_threads_);
     
@@ -117,8 +120,8 @@ size_t RepartitionGateway<Container>::getNvShare() const
     return nv;
 }
 
-template<typename Container>
-void RepartitionGateway<Container>::checkContainersSize(size_t stride) const
+template<typename T>
+void RepartitionGateway<T>::checkContainersSize(size_t stride) const
 {
 #pragma omp master
     {
@@ -126,10 +129,10 @@ void RepartitionGateway<Container>::checkContainersSize(size_t stride) const
         {
 
             delete[] all_pos_;
-            all_pos_ = new value_type[nv_ * DIM * stride];
+            all_pos_ = new T[nv_ * DIM * stride];
 
             delete[] all_tension_;
-            all_tension_ = new value_type[nv_ * stride];
+            all_tension_ = new T[nv_ * stride];
                     
             capacity_ = nv_;
         }

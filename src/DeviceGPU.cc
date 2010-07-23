@@ -157,7 +157,7 @@ T*  Device<GPU>::axpy(T a_in, const T*  x_in, const T*  y_in,
 
 template<>
 template<typename T>
-T* Device<GPU>::apx(T* a_in, const T* x_in, size_t stride, 
+T* Device<GPU>::apx(const T* a_in, const T* x_in, size_t stride, 
         size_t n_subs, T* axpy_out) const
 {
     apxGpu( a_in, x_in, stride, n_subs, axpy_out);
