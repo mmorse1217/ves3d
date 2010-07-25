@@ -11,7 +11,7 @@ class VesInteraction
     typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void*);    
     
     explicit VesInteraction(InteractionFun_t interaction_handle = NULL,
-        int num_threads = 1);
+        int num_threads = omp_get_max_threads());
     ~VesInteraction();
 
     template<typename VecContainer>

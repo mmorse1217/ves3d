@@ -32,6 +32,7 @@ bool Monitor<SurfContainer>::operator()(const SurfContainer &state,
     }
     
     COUT("\n  Monitor : t           = "<<fixed<<t
+        <<"\n     Number of surfaces = "<<state.getPosition().getNumSubs()
         <<scientific<<setprecision(4)
         <<"\n           area   error = "<<abs(A/A0-1)
         <<scientific<<setprecision(4)

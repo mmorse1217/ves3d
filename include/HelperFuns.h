@@ -63,6 +63,9 @@ inline void xvpw(const ScalarContainer &x_in,
 template<typename ScalarContainer, typename VectorContainer>
 inline void xv(const ScalarContainer &x_in, 
     const VectorContainer &v_in, VectorContainer &xvpw_out);
+
+template<typename Container>
+inline void ax(const Container& a, const Container& x, Container& ax_out);
     
 template<typename ScalarContainer, typename IntegrandContainer>
 inline void Reduce(const IntegrandContainer &x_in, 

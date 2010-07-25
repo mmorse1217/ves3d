@@ -13,16 +13,25 @@ typedef RepartitionGateway<real> Repart_t;
 
 #ifndef Doxygen_skip
 
-void MyRepart(size_t nv, size_t stride, const double* x, 
-    const double* tension, size_t* nvr, 
-    double** xr, double** tensionr, void*)
+void MyRepart(size_t nv, size_t stride, const real* x, 
+    const real* tension, size_t* nvr, 
+    real** xr, real** tensionr, void*)
 {
-    *nvr = nv;
-    *xr = new double[nv * stride * DIM];
-    *tensionr = new double[nv * stride];
+    *nvr = 2*nv;
+    *xr = new real[*nvr * stride * DIM];
+    *tensionr = new real[*nvr * stride];
+        
+    for(int ii=0; ii<*nvr; ++ii)
+    {
+        for(int jj=0;jj<stride;++jj)
+        {
+            *(*xr + ii * DIM * stride +              jj) = x[             jj];
+            *(*xr + ii * DIM * stride +     stride + jj) = x[stride     + jj] + 3*ii;
+            *(*xr + ii * DIM * stride + 2 * stride + jj) = x[2 * stride + jj];
+        }
+        memcpy(*tensionr + ii* stride, tension, stride * sizeof(real));
+    }    
     
-    memcpy(*xr      ,       x, DIM * nv * stride * sizeof(double));
-    memcpy(*tensionr, tension,       nv * stride * sizeof(double));
 }
 
 template<enum DeviceType DT, const Device<DT> &DEVICE>
@@ -42,15 +51,15 @@ void EvolveSurfaceTest(Parameters<real> &sim_par,
     
     //reading the prototype form file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-        x0, 0, DIM*x0.getStride());
+        x0, 0, x0.getSubLength());
     
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
     real* cntrs_host =  new real[nVec * DIM];
     for(int ii=0; ii<nVec; ++ii)
     {
-        cntrs_host[DIM*ii    ] = 3 * omp_get_thread_num();
-        cntrs_host[DIM*ii + 1] = 3*ii;
+        cntrs_host[DIM*ii    ] = 0;//3 * omp_get_thread_num();
+        cntrs_host[DIM*ii + 1] = 3 * omp_get_thread_num();//3*ii;
         cntrs_host[DIM*ii + 2] = 0;
     }
     Array<real, DT, DEVICE> cntrs(DIM * sim_par.n_surfs);
@@ -78,7 +87,7 @@ int main(int argc, char **argv)
     int nThreads = 2;
     Interaction_t interaction(&StokesAlltoAll, nThreads);
     Repart_t repart(&MyRepart, nThreads);
-    
+
     // Making multiple threads
 #pragma omp parallel num_threads(nThreads)
     {
@@ -97,13 +106,15 @@ int main(int argc, char **argv)
         if(omp_get_thread_num() == 0)
         {   
             sim_par.save_file_name = "EvolveSurfMT_0.out";
-            sim_par.n_surfs = 1; 
+            sim_par.n_surfs = 0; 
+            remove(sim_par.save_file_name.c_str());
             EvolveSurfaceTest<CPU,dev1>(sim_par, interaction, repart);
         }
         else
         {
             sim_par.save_file_name = "EvolveSurfMT_1.out";
-            sim_par.n_surfs = 3;
+            sim_par.n_surfs = 2;
+            remove(sim_par.save_file_name.c_str());
             EvolveSurfaceTest<CPU,dev2>(sim_par, interaction, repart);
         }        
     }

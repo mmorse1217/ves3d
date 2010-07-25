@@ -160,6 +160,16 @@ inline void xvpw(const ScalarContainer &x_in,
         w_in.begin(), v_in.getStride(), v_in.getNumSubs(), xvpw_out.begin());
 }
 
+template<typename Container>
+inline void ax(const Container& a, const Container& x, Container& ax_out)
+{
+    assert( a.getStride() == x.getStride() );
+    assert( AreCompatible(x, ax_out) );
+    Container::getDevice().ax(a.begin(), x.begin(), x.getStride(), 
+        x.getNumSubs() * x.getTheDim(), ax_out.begin());
+}
+
+
 template<typename ScalarContainer, typename VectorContainer>
 inline void xv(const ScalarContainer &x_in, 
     const VectorContainer &v_in, VectorContainer &xvpw_out)
@@ -224,10 +234,13 @@ inline void Populate(VectorContainer &x, const CentCont &centers)
     size_t cpysize = x.getSubLength();
     cpysize *=sizeof(typename VectorContainer::value_type);
 
+    if ( cpysize == 0)
+        return;
+
     for(int ii=1; ii<x.getNumSubs(); ++ii)
         VectorContainer::getDevice().Memcpy(x.getSubN(ii), x.begin(), 
             cpysize, MemcpyDeviceToDevice);
-
+    
     VectorContainer::getDevice().apx(centers.begin(), x.begin(), 
         x.getStride(), x.getTheDim() * x.getNumSubs(), x.begin());
 }

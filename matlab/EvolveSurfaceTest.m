@@ -13,6 +13,7 @@ XX = reshape(XX,3*np*nv,[]);
 clf;
 for ii=1:size(XX,2)
   PlotShape(reshape(XX(:,ii),[],nv),p);
-  pause(.1);
+  axis on;
+  pause;
 end
 

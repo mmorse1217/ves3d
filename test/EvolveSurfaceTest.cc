@@ -30,7 +30,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     
     //reading the prototype form file
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-        x0, 0, DIM*x0.getStride());
+        x0, 0, x0.getSubLength());
     
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
@@ -56,7 +56,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
     Monitor<Sur_t> M(sim_par);
-    RepartitionGateway<Sca_t> repart(NULL);
+    RepartitionGateway<real> repart(NULL);
     EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
    
     Es(S, Interaction);
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
-    sim_par.n_surfs = 5;   
+    sim_par.n_surfs = 0;   
     sim_par.ts = 1;    
     sim_par.time_horizon = 5;
     sim_par.scheme = Explicit;

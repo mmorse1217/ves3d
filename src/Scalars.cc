@@ -54,7 +54,7 @@ size_t Scalars<T, DT, DEVICE>::getNumSubs() const
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 size_t Scalars<T, DT, DEVICE>::getSubLength() const
 {
-    return(the_dim_ * stride_);
+    return((num_subs_ > 0 ) * the_dim_ * stride_);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
@@ -81,7 +81,7 @@ void Scalars<T, DT, DEVICE>::replicate(Scalars<T, DT, DEVICE> const& sc_in)
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 void Scalars<T, DT, DEVICE>::replicate(Vectors<T, DT, DEVICE> const& vec_in)
-{
+{ 
     this->resize(vec_in.getNumSubs(), vec_in.getShOrder(), 
         vec_in.getGridDim());
 }

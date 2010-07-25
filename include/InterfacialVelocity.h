@@ -61,7 +61,7 @@ class InterfacialVelocity
 
     value_type dt_;
     //Operators 
-    Sca_t w_sph_;
+    Sca_t w_sph_, w_sph_inv_;
     Sca_t all_rot_mats_;
     Sca_t rot_mat_;
     Sca_t sing_quad_weights_;

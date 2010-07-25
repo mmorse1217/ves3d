@@ -11,7 +11,8 @@ VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
     all_den_(NULL),
     all_pot_(NULL)
 {
-    each_thread_idx_[0] = 0;
+    for(int ii=0; ii<num_threads_; ++ii)
+        each_thread_idx_[ii] = each_thread_np_[ii] = 0;
 }
 
 template<typename T>

@@ -26,7 +26,7 @@ class Monitor
 template<typename Container, 
          typename Interaction, 
          typename Mntr = Monitor<Container>,
-         typename Repart = RepartitionGateway<typename Container::Sca_t> >
+         typename Repart = RepartitionGateway<typename Container::value_type> >
 class EvolveSurface
 {
   private:

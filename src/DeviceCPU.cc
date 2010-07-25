@@ -220,7 +220,7 @@ template<typename T>
 T*  Device<CPU>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_surfs, T* uyInv_out) const
 {
     PROFILESTART();
-    assert(u_in!=NULL);
+    assert( u_in!=NULL || num_surfs == 0 );
     
     size_t y_base, base, y_idx;
     register T uy;
@@ -251,7 +251,7 @@ template<typename T>
 T*  Device<CPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T*  axpy_out) const
 {
     PROFILESTART();
-    assert(x_in != NULL);
+    assert(x_in != NULL || length == 0);
     
     register T val;
     
@@ -287,8 +287,8 @@ T*  Device<CPU>::apx(const T* a_in, const T* x_in, size_t stride,
     size_t n_subs, T* apx_out) const
 {
     PROFILESTART();
-    assert(a_in != NULL);
-    assert(x_in != NULL);
+    assert(a_in != NULL || n_subs == 0);
+    assert(x_in != NULL || n_subs == 0);
     
 #pragma omp parallel for
     for (size_t ii = 0; ii < n_subs; ++ii)
@@ -546,6 +546,9 @@ T Device<CPU>::MaxAbs(T *x_in, size_t length) const
     T *max_arr;
     int n_threads;
     
+    if (length == 0)
+        return 0;
+    
 #pragma omp parallel
     {
         if(omp_get_thread_num() == 0)
@@ -575,7 +578,7 @@ template<>
 template<typename T>
 T* Device<CPU>::Transpose(const T *in, size_t height, size_t width, T *out) const
 { 
-    assert(out != in);
+    assert(out != in || height * width == 0);
     PROFILESTART();
     
 #pragma omp parallel for

@@ -13,7 +13,8 @@ RepartitionGateway<T>::RepartitionGateway(GlobalRepart_t fun_ptr,
     tensionr_(NULL),
     nvr_(0)
 {
-    each_thread_idx_[0] = 0;
+    for(int ii=0; ii<num_threads_; ++ii)
+        each_thread_idx_[ii] = each_thread_nv_[ii] = 0;
 }
 
 template<typename T>
@@ -65,7 +66,7 @@ void RepartitionGateway<T>::operator()(Container &coord,
     
     nv = getNvShare();
     idx = this->getCpyIdx(nv, stride);
-    coord.resize(DIM * nv);
+    coord.resize(nv);
     tension.resize(nv);
     
     //Copying back the new values to the device(s)

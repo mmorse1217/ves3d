@@ -32,7 +32,7 @@ class Scalars : public Array<T, DT, DEVICE>
     inline size_t getNumSubs() const;
     inline size_t getSubLength() const;
         
-    void resize(size_t new_num_subs, int new_sh_order = -1,
+    inline virtual void resize(size_t new_num_subs, int new_sh_order = -1,
         pair<int, int> new_grid_dim = EMPTY_GRID);
     inline void replicate(Scalars<T, DT, DEVICE> const& sc_in);
     inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);

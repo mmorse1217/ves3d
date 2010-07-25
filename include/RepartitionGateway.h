@@ -12,7 +12,7 @@ class RepartitionGateway
         T** tensionr, void* user_ptr);
     
     explicit RepartitionGateway(GlobalRepart_t fun_ptr = NULL, 
-        int num_threads = 1);
+        int num_threads = omp_get_max_threads());
     ~RepartitionGateway();
 
     template<typename Container>

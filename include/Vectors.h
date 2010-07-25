@@ -22,7 +22,7 @@ class Vectors : public Scalars<T, DT, DEVICE>
     explicit Vectors(size_t num_vecs = 0, int sh_order = 0,
         pair<int, int> grid_dim = EMPTY_GRID);
         
-    void resize(size_t new_num_vecs, int new_sh_order = -1,
+    inline virtual void resize(size_t new_num_vecs, int new_sh_order = -1,
         pair<int, int> new_grid_dim = EMPTY_GRID);
         
     ///This is intentionally non-virtual

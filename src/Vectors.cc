@@ -37,7 +37,7 @@ int Vectors<T, DT, DEVICE>::getTheDim()
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 
 size_t Vectors<T, DT, DEVICE>::getSubLength() const
 {
-    return(the_dim_ * this->getStride() );
+    return((num_sub_vecs_ > 0 ) * the_dim_ * this->getStride() );
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE> 

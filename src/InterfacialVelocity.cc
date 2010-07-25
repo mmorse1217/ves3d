@@ -38,7 +38,6 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
 {
-    w_sph_.replicate(S_.getPosition());
     velocity_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
     
@@ -56,13 +55,11 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
         all_rot_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //W_spherical
+    w_sph_.resize(1, p);
+    w_sph_inv_.resize(1, p);
     w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
         np * sizeof(value_type), MemcpyDeviceToDevice);
-    
-    for(int ii=1;ii<S_.getPosition().getNumSubs();++ii)
-        w_sph_.getDevice().Memcpy(w_sph_.begin() + ii*np, 
-            w_sph_.begin(), np * sizeof(value_type), 
-            MemcpyDeviceToDevice);
+    xInv(w_sph_,w_sph_inv_);
     
     //Singular quadrature weights
     sing_quad_weights_.resize(1,p);
@@ -207,11 +204,7 @@ updateInteraction() const
     xv(S_.getAreaElement(), *u3, *u3);
     
     //Incorporating the quadrature weights into the density
-    for(int ii=0; ii<u3->getNumSubs(); ++ii)
-        for(int jj=0; jj<u3->getTheDim(); ++jj)
-            u3->getDevice().xy(quad_weights_.begin(), 
-                u3->getSubN(ii) + jj * u3->getStride(), u3->getStride(), 
-                u3->getSubN(ii) + jj * u3->getStride());                    
+    ax<Sca_t>(quad_weights_,*u3, *u3);
 
     //Self-interaction, to be subtracted
     velocity_.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
@@ -321,7 +314,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
     auto_ptr<Vec_t> v1 = checkoutVec();
     auto_ptr<Vec_t> v2 = checkoutVec();
 
-    xyInv(S_.getAreaElement(), w_sph_, *t1);
+    ax(w_sph_inv_, S_.getAreaElement(), *t1);
     
     int numinputs = 3;
     const Sca_t* inputs[] = {&S_.getPosition(), &force, t1.get()};
@@ -332,7 +325,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
         for(int jj=0;jj < jmax; ++jj)
         {
             move_pole(ii, jj, outputs);
-            xy(*t2, w_sph_, *t2);
+            ax(w_sph_, *t2, *t2); 
             xv(*t2, *v2, *v2);
             
             S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(), 
