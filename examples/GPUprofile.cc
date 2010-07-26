@@ -5,15 +5,15 @@
 #include "OperatorsMats.h"
 #include "EvolveSurface.h"
 
-typedef double real;
-#define DT CPU
+typedef float real;
+#define DT GPU
 extern const Device<DT> the_device(0);
 
 template<const Device<DT> &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par)
 {
-    typedef Scalars<real, CPU, DEVICE> Sca_t;
-    typedef Vectors<real, CPU, DEVICE> Vec_t;
+    typedef Scalars<real, DT, DEVICE> Sca_t;
+    typedef Vectors<real, DT, DEVICE> Vec_t;
 
     typedef Surface<Sca_t,Vec_t> Sur_t;
     typedef VesInteraction<real> Interaction_t;
@@ -70,16 +70,16 @@ int main(int argc, char **argv)
     // Setting the parameters
     Par_t sim_par;
     sim_par.n_surfs = 0;   
-    sim_par.ts = 1;    
-    sim_par.time_horizon = 5;
+    sim_par.ts = .1;    
+    sim_par.time_horizon = .3;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
     
     sim_par.scheme = Explicit;
-    int maxexp = 12; // nmax = 4096
-    int p[] = {6};//, 12, 16, 24, 32};
-    int plength = 1;
+    int maxexp = 11; // nmax = 4096
+    int p[] = {6, 12, 16, 24};
+    int plength = 5;
 
     for(int ii=0;ii<plength; ++ii)
     {
@@ -91,6 +91,8 @@ int main(int argc, char **argv)
         //rep_ts(1),
         for(int jj = 0; jj<maxexp; ++jj)
         {
+            PROFILECLEAR();
+            PROFILESTART();
             n0 *= 2;
             sim_par.n_surfs = n0; 
             
@@ -98,8 +100,8 @@ int main(int argc, char **argv)
                 <<p[ii]<<"------------------------------------------------------------"<<endl);
             COUT(sim_par);
             
-            PROFILECLEAR();
             EvolveSurfaceTest<the_device>(sim_par);
+            PROFILEEND("",0);
             PROFILEREPORT(SortTime);
         }
     }
