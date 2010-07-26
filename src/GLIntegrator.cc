@@ -8,9 +8,11 @@ GaussLegendreIntegrator<Container>::GaussLegendreIntegrator()
 template<typename Container>
 GaussLegendreIntegrator<Container>::~GaussLegendreIntegrator()
 {
+    ///@bug this defeats the purpose of static, map is cleared
     typename map<int, Container*>::iterator it(qw_map.begin());
     for ( ; it != qw_map.end(); ++it)
         delete it->second;
+    qw_map.clear();
 }
 
 template<typename Container>
@@ -24,7 +26,8 @@ Container* GaussLegendreIntegrator<Container>::getQuadWeights(
         Container* qw(buildQuadWeights(key));
         it = qw_map.insert(qw_map.begin(), make_pair(key, qw));
     }
-    return(it->second);
+    
+    return(it->second);    
 }
 
 template<typename Container>

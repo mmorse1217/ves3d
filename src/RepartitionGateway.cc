@@ -64,6 +64,7 @@ void RepartitionGateway<T>::operator()(Container &coord,
 
 #pragma omp barrier 
     
+    int oldnv(nv);
     nv = getNvShare();
     idx = this->getCpyIdx(nv, stride);
     coord.resize(nv);
@@ -80,6 +81,17 @@ void RepartitionGateway<T>::operator()(Container &coord,
     {
         delete[] posr_;
         delete[] tensionr_;
+    }
+    
+
+#pragma omp critical (reparamPrint)
+    {
+        COUT("\n  Repartitioning :\n"
+            <<"\n                thread = "<<omp_get_thread_num()
+            <<"/"<<omp_get_num_threads()
+            <<"\n      initial surfaces = "<<oldnv
+            <<"\n          new surfaces = "<<nv
+            <<"\n ------------------------------------"<<endl);
     }
 }
 
