@@ -16,8 +16,8 @@ typedef double fmm_value_type;
 template<enum DeviceType DT, const Device<DT> &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par)
 {
-    typedef Scalars<real, CPU, DEVICE> Sca_t;
-    typedef Vectors<real, CPU, DEVICE> Vec_t;
+    typedef Scalars<real, DT, DEVICE> Sca_t;
+    typedef Vectors<real, DT, DEVICE> Vec_t;
 
     typedef Surface<Sca_t,Vec_t> Sur_t;
     typedef VesInteraction<fmm_value_type> Interaction_t;
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
-    sim_par.n_surfs = 0;   
+    sim_par.n_surfs = 2;   
     sim_par.ts = 1;    
     sim_par.time_horizon = 5;
     sim_par.scheme = Explicit;
