@@ -12,7 +12,7 @@ ifeq ($(CXX),icpc)
 else
  
  BLASPKG        = HAS_BLAS
- BLAS_LIBS      = 
+ BLAS_LIBS      = -L/usr/lib64/ /usr/lib64/liblapack.so.3.0.3 -lblas
  BLAS_INCLUDE   = 
 endif
 
