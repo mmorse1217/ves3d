@@ -5,7 +5,7 @@
 #include "OperatorsMats.h"
 #include "EvolveSurface.h"
 
-typedef float real;
+typedef double real;
 #define DT GPU
 extern const Device<DT> the_device(0);
 
@@ -77,9 +77,9 @@ int main(int argc, char **argv)
     sim_par.save_data = false;    
     
     sim_par.scheme = Explicit;
-    int maxexp = 11; // nmax = 4096
+    int maxexp = 10; // nmax = 1024
     int p[] = {6, 12, 16, 24};
-    int plength = 5;
+    int plength = 4;
 
     for(int ii=0;ii<plength; ++ii)
     {
@@ -97,7 +97,8 @@ int main(int argc, char **argv)
             sim_par.n_surfs = n0; 
             
             COUT("\n --- n = " << n0 <<" p = "
-                <<p[ii]<<"------------------------------------------------------------"<<endl);
+                <<p[ii]<<"----------------------------------------"
+                <<"-----------------------------------------------------"<<endl);
             COUT(sim_par);
             
             EvolveSurfaceTest<the_device>(sim_par);
