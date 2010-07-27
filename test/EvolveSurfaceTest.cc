@@ -73,7 +73,7 @@ int main(int argc, char **argv)
     Par_t sim_par;
     sim_par.n_surfs = 2;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 5;
+    sim_par.time_horizon = 2;
     sim_par.scheme = Explicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
@@ -84,10 +84,12 @@ int main(int argc, char **argv)
     
     //Cleaning the slate
     remove(sim_par.save_file_name.c_str());
-
+    
+    PROFILESTART();
     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
-    PROFILEREPORT(SortTime);    
+    PROFILEEND("",0);
+    PROFILEREPORT(SortFlop);    
 
 #ifdef GPU_ACTIVE
     PROFILECLEAR();

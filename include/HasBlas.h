@@ -21,11 +21,11 @@ extern "C"{
         const double* B, const int* LDB, 
         const double* BETA, double* C, const int* LDC); 
 
-    void ssteqr_(char *compz, int &n, float *d, float *e, 
-        float *z, int &ldz, float *work, int &info);
+    void ssteqr_(char *compz, const int *n, float *d, float *e, 
+        float *z, const int *ldz, float *work, const int *info);
 
-    void dsteqr_(char *compz, int &n, double *d, double *e, 
-        double *z, int &ldz, double *work, int &info);
+    void dsteqr_(char *compz, const int *n, double *d, double *e, 
+        double *z, const int *ldz, double *work, const int *info);
     
 #ifdef __cplusplus
 }

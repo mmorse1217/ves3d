@@ -78,6 +78,9 @@ class Logger
     ///The stack used by Tic() and Toc().
     static stack<double> TicStack;
 
+    ///The stack to have cumulative 
+    static stack<double> FlopStack;
+    
     ///The file name for the logger.
     static string log_file;
 };

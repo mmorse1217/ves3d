@@ -1,6 +1,7 @@
 #include "Logger.h"
 
 stack<double> Logger::TicStack;
+stack<double> Logger::FlopStack;
 map<string, LogEvent> Logger::PrflMap;
 string Logger::log_file;
 
@@ -32,6 +33,7 @@ double Logger::Tic()
 {
     double now = Logger::Now();
     Logger::TicStack.push(now);
+    Logger::FlopStack.push(0);
     return(now);
 }
 
@@ -52,28 +54,41 @@ double Logger::Toc()
 void Logger::Record(string fun_name, string prefix, 
     double time, double flop)
 {
-    fun_name = prefix+fun_name;
 #pragma omp critical (loggerRecord)
-    if(Logger::PrflMap.count(fun_name))
     {
-        Logger::PrflMap[fun_name].num_calls++;
-        Logger::PrflMap[fun_name].time +=time;
-        Logger::PrflMap[fun_name].flop +=flop;
-    }
-    else
-    {
-        LogEvent ev;
-        ev.fun_name = fun_name;
-        ev.num_calls = 1;
-        ev.time = time;
-        ev.flop = flop;
-        Logger::PrflMap.insert(make_pair(fun_name, ev));
+        fun_name = prefix+fun_name;
+        flop += Logger::FlopStack.top();
+        Logger::FlopStack.pop();
+        if ( !Logger::FlopStack.empty() )
+            Logger::FlopStack.top() += flop;
+        
+        if(Logger::PrflMap.count(fun_name))
+        {
+            Logger::PrflMap[fun_name].num_calls++;
+            Logger::PrflMap[fun_name].time +=time;
+            Logger::PrflMap[fun_name].flop +=flop;
+        }
+        else
+        {
+            LogEvent ev;
+            ev.fun_name = fun_name;
+            ev.num_calls = 1;
+            ev.time = time;
+            ev.flop = flop;
+            Logger::PrflMap.insert(make_pair(fun_name, ev));
+        }
     }
 }
 
 void Logger::PurgeProfileHistory()
 {
     Logger::PrflMap.clear();
+    
+    while ( !Logger::TicStack.empty() )
+        Logger::TicStack.pop();
+
+    while ( !Logger::FlopStack.empty() )
+        Logger::FlopStack.pop();
 }
     
 void Logger::Report(enum ReportFormat rf) 

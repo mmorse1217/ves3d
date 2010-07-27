@@ -64,7 +64,7 @@ T* Device<GPU>::DotProduct(const T* u_in, const T* v_in, size_t stride,
 {
     PROFILESTART();
     DotProductGpu(u_in, v_in, stride, n_vecs, x_out);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", 5 * n_vecs * stride);
     return x_out;
 }
 
@@ -76,7 +76,7 @@ T* Device<GPU>::CrossProduct(const T* u_in, const T* v_in,
     PROFILESTART();
     assert(DIM==3);
     CrossProductGpu(u_in, v_in, stride, num_surfs, w_out); 
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", 9 * stride * num_surfs);
     return w_out;
 }
 
@@ -86,7 +86,7 @@ T* Device<GPU>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
 {
     PROFILESTART();
     SqrtGpu(x_in, length, sqrt_out);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", length);
     return sqrt_out;
 }
 
@@ -98,7 +98,7 @@ T* Device<GPU>::ax(const T* a, const T* x, size_t length,
 {   
     PROFILESTART();
     axGpu(a, x, length, n_vecs, ax_out);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", length * n_vecs);
     return(ax_out);
 }
 
@@ -108,7 +108,7 @@ T* Device<GPU>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
 {
     PROFILESTART();
     xyGpu(x_in, y_in, length, xy_out);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", length);
     return xy_out;
 }
 
@@ -123,7 +123,7 @@ T* Device<GPU>::xyInv(const T* x_in, const T* y_in,
     else
         xyInvGpu(x_in, y_in, length, xyInv_out);
 
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU",length);
     return xyInv_out;
 }
 
@@ -135,7 +135,7 @@ T*  Device<GPU>::uyInv(const T* u_in, const T* y_in,
     PROFILESTART();
     assert(u_in!=NULL);
     uyInvGpu(u_in, y_in, stride, num_surfs, uyInv_out);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", stride * num_surfs);
     return uyInv_out;
 }
 
@@ -151,7 +151,8 @@ T*  Device<GPU>::axpy(T a_in, const T*  x_in, const T*  y_in,
     else
         axpbGpu(a_in, x_in, (T) 0.0, length, axpy_out);
         
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", 2 * length);
+    
     return axpy_out;
 }
 
@@ -160,7 +161,10 @@ template<typename T>
 T* Device<GPU>::apx(const T* a_in, const T* x_in, size_t stride, 
         size_t n_subs, T* apx_out) const
 {
+    PROFILESTART();
     apxGpu(a_in, x_in, stride, n_subs, apx_out);
+    PROFILEEND("GPU", n_subs * stride);
+
     return(apx_out);
 }
 
@@ -171,11 +175,15 @@ T*  Device<GPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in,
 {
     PROFILESTART();
     if(w_in !=NULL)
+    {
         avpwGpu(a_in, v_in, w_in, stride, num_surfs, avpw_out);
+        PROFILEEND("GPU", 6 * num_surfs * stride);
+    }
     else
+    {
         avpwGpu(a_in, v_in, stride, num_surfs, avpw_out);
-        
-    PROFILEEND("GPU",0);
+        PROFILEEND("GPU", 3 * num_surfs * stride);
+    }
     return avpw_out;
 }
 
@@ -186,11 +194,15 @@ T*  Device<GPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in,
 {
     PROFILESTART();
     if(w_in !=NULL)
+    {
         xvpwGpu(v_in, x_in, w_in, stride, num_surfs, xvpw_out);
+        PROFILEEND("GPU", 6 * stride * num_surfs);
+    }
     else
+    {
         xvpbGpu(v_in, x_in, (T) 0.0, stride, num_surfs, xvpw_out);
-    
-    PROFILEEND("GPU",0);
+        PROFILEEND("GPU", 6 * stride * num_surfs);
+    }
     return xvpw_out;
 }
 
@@ -201,7 +213,7 @@ T*  Device<GPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
 {
     PROFILESTART();
     ReduceGpu(x_in, x_dim, w_in, quad_w_in, stride, num_surfs, int_x_dw);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", ((x_in == NULL) ? 2 : 3 * x_dim) * num_surfs * stride);
     return int_x_dw;
 }
 
@@ -229,7 +241,7 @@ void Device<GPU>::DirectStokes(const T *src, const T *den,
     PROFILESTART();
     cuda_stokes(stride, n_surfs, trg_idx_head, trg_idx_tail, 
         trg, src, den, pot, qw);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU",((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
     return;
 }
 
@@ -239,7 +251,7 @@ T Device<GPU>::MaxAbs(T *x_in, size_t length) const
 { 
     PROFILESTART();
     T m = maxGpu(x_in, length);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", 0);
     return m;
 }
 
@@ -250,7 +262,7 @@ T* Device<GPU>::Transpose(const T *in, size_t height,
 {
     PROFILESTART();
     cu_trans(out, in, width, height);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", 0);
     return(out);
 }
 
@@ -260,7 +272,7 @@ T Device<GPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
 {
     PROFILESTART();
     T dot = AlgebraicDotGpu(x, y, length);
-    PROFILEEND("GPU",0);
+    PROFILEEND("GPU", length);
     return(dot);
 }
 

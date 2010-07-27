@@ -5,8 +5,8 @@
 #include "OperatorsMats.h"
 #include "EvolveSurface.h"
 
-typedef double real;
-#define DT GPU
+typedef float real;
+#define DT CPU
 extern const Device<DT> the_device(0);
 
 template<const Device<DT> &DEVICE>

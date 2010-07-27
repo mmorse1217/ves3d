@@ -1,5 +1,5 @@
-#ifndef _VESBLAS_H
-#define _VESBLAS_H
+#ifndef _VESBLAS_H_
+#define _VESBLAS_H_
 
 #ifdef HAS_MKL
   #include "HasMkl.h"   
@@ -9,7 +9,6 @@
 
 #elif  HAS_BLAS
   #include "HasBlas.h"
-
 #endif
 
 void Gemm(const char* transa, const char* transb,
@@ -40,7 +39,6 @@ void Steqr(char *compz, int &n, double *d, double *e, double *z,
 {
     dsteqr(compz, &n, d, e, z, &ldz, work, &info);
 }
-
 
 #ifdef GPU_ACTIVE
 #include "cublas.h"

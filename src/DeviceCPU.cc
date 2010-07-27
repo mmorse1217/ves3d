@@ -88,7 +88,7 @@ T* Device<CPU>::DotProduct(const T* u_in, const T* v_in, size_t stride,
         }
     }
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", 5 * n_vecs * stride);
     return x_out;
 }
 
@@ -125,7 +125,7 @@ T* Device<CPU>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t
         }
     }
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", 9 * stride * num_surfs);
     return w_out;
 }
 
@@ -140,7 +140,7 @@ T* Device<CPU>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
         assert(x_in[idx] >= (T) 0.0);
         sqrt_out[idx] = ::sqrt(x_in[idx]);
     }
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", length);
     return sqrt_out;
 }
 
@@ -156,7 +156,7 @@ T* Device<CPU>::ax(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_o
             ax_out[n*stride + idx]  = a[idx] * x[n * stride + idx];
     
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", stride * n_vecs);
     return ax_out;
 }
 
@@ -175,7 +175,7 @@ T* Device<CPU>::xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const
         xy_out[idx] = xTy;
     }
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", length);
     return xy_out;
 }
 
@@ -211,7 +211,7 @@ T* Device<CPU>::xyInv(const T* x_in, const T* y_in, size_t length, T* xyInv_out)
         }
     }
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU",length);
     return xyInv_out;
 }
 
@@ -242,7 +242,7 @@ T*  Device<CPU>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_s
         }
     }
     
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU",stride * num_surfs);
     return uyInv_out;
 }
 
@@ -265,6 +265,7 @@ T*  Device<CPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T* 
             val += y_in[idx];
             axpy_out[idx] = val;
         }
+        PROFILEEND("CPU",2 * length);
     }
     else
     {
@@ -275,9 +276,9 @@ T*  Device<CPU>::axpy(T a_in, const T*  x_in, const T*  y_in, size_t length, T* 
             val *= x_in[idx];
             axpy_out[idx] = val;
         }
+        PROFILEEND("CPU", length);
     }    
-
-    PROFILEEND("CPU",0);
+    
     return axpy_out;
 }
 
@@ -296,7 +297,7 @@ T*  Device<CPU>::apx(const T* a_in, const T* x_in, size_t stride,
             apx_out[ii * stride + jj] = a_in[ii] + x_in[ii * stride + jj];
            
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", stride * n_subs);
     return apx_out;
 }
 
@@ -335,6 +336,7 @@ T*  Device<CPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stri
                 avpw_out[idx] = val;
             }
         }
+        PROFILEEND("CPU", 6 * num_surfs * stride);
     }
     else
     {
@@ -360,9 +362,9 @@ T*  Device<CPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stri
                 avpw_out[idx] = val;
             }
         }
+        PROFILEEND("CPU", 3 * num_surfs * stride);
     }
 
-    PROFILEEND("CPU",0);
     return avpw_out;
 }
 
@@ -377,68 +379,68 @@ T*  Device<CPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stri
     if(w_in !=NULL)
     {
 #pragma omp parallel for private(base, x_base, vec, s, idx, x_idx, val)
-    for (vec = 0; vec < num_surfs; vec++)
-    {
-        base = vec*length;
-        x_base = vec*stride;
-        
-        for (s = 0; s < stride; s++)
+        for (vec = 0; vec < num_surfs; vec++)
         {
-            idx = base+s;
-            x_idx = x_base+s;
+            base = vec*length;
+            x_base = vec*stride;
             
-            val  = x_in[x_idx];
-            val *= v_in[idx];
-            val += w_in[idx];
-            xvpw_out[idx]  = val;
-
-            idx +=stride;
-            val  = x_in[x_idx];
-            val *= v_in[idx];
-            val += w_in[idx];
-            xvpw_out[idx]  = val;
-
-            idx +=stride;
-            val  = x_in[x_idx];
-            val *= v_in[idx];
-            val += w_in[idx];
-            xvpw_out[idx]  = val;
+            for (s = 0; s < stride; s++)
+            {
+                idx = base+s;
+                x_idx = x_base+s;
+                
+                val  = x_in[x_idx];
+                val *= v_in[idx];
+                val += w_in[idx];
+                xvpw_out[idx]  = val;
+                
+                idx +=stride;
+                val  = x_in[x_idx];
+                val *= v_in[idx];
+                val += w_in[idx];
+                xvpw_out[idx]  = val;
+                
+                idx +=stride;
+                val  = x_in[x_idx];
+                val *= v_in[idx];
+                val += w_in[idx];
+                xvpw_out[idx]  = val;
+            }
         }
-    }
-
+        PROFILEEND("CPU", 6 * num_surfs * stride);
     }
     else
     {
-
-#pragma omp parallel for private(base, x_base, vec, s, idx, x_idx, val)
-    for (vec = 0; vec < num_surfs; vec++)
-    {
-        base = vec*length;
-        x_base = vec*stride;
         
-        for (s = 0; s < stride; s++)
+#pragma omp parallel for private(base, x_base, vec, s, idx, x_idx, val)
+        for (vec = 0; vec < num_surfs; vec++)
         {
-            idx = base+s;
-            x_idx = x_base+s;
+            base = vec*length;
+            x_base = vec*stride;
             
-            val  = x_in[x_idx];
-            val *= v_in[idx];
-            xvpw_out[idx]  = val;
-
-            idx +=stride;
-            val  = x_in[x_idx];
-            val *= v_in[idx];
-            xvpw_out[idx]  = val;
-
-            idx +=stride;
-            val  = x_in[x_idx];
-            val *= v_in[idx];
-            xvpw_out[idx]  = val;
+            for (s = 0; s < stride; s++)
+            {
+                idx = base+s;
+                x_idx = x_base+s;
+                
+                val  = x_in[x_idx];
+                val *= v_in[idx];
+                xvpw_out[idx]  = val;
+                
+                idx +=stride;
+                val  = x_in[x_idx];
+                val *= v_in[idx];
+                xvpw_out[idx]  = val;
+                
+                idx +=stride;
+                val  = x_in[x_idx];
+                val *= v_in[idx];
+                xvpw_out[idx]  = val;
+            }
         }
+        PROFILEEND("CPU", 3 * stride * num_surfs);
     }
-    }
-
-    PROFILEEND("CPU",0);
+    
     return xvpw_out;
 }
 
@@ -473,7 +475,10 @@ T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *
                 x_dw[ii*x_dim + kk] = sum;
             }
         }
-    } else{
+        PROFILEEND("CPU", 3 * ns * x_dim * stride );
+    }
+    else
+    {
 #pragma omp parallel for private(val,sum)
         for (size_t ii = 0; ii < ns; ++ii)
         {
@@ -488,9 +493,9 @@ T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *
 
            x_dw[ii] = sum;
         }
+    PROFILEEND("CPU", 2 * ns * stride );
     }
 
-    PROFILEEND("CPU",0);
     return x_dw;
 }
 
@@ -523,7 +528,7 @@ void Device<CPU>::DirectStokes(const T *src, const T *den, const T *qw,
     else
         DirectStokesSSE_Noqw(stride, n_surfs, trg_idx_head, 
             trg_idx_tail, trg, src, den, pot);
-    PROFILEEND("CPUSSE",0);
+    PROFILEEND("CPUSSE", ((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
 #else
 #warning "SSE instructions are not available: the non-SSE version of the Stokes kernel will be called"
    
@@ -534,7 +539,7 @@ void Device<CPU>::DirectStokes(const T *src, const T *den, const T *qw,
         DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head, 
             trg_idx_tail, trg, src, den, pot);
     
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU",((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
 #endif   
 }
 
@@ -586,7 +591,7 @@ T* Device<CPU>::Transpose(const T *in, size_t height, size_t width, T *out) cons
         for(size_t ii=0;ii<height;++ii)
             out[jj*height + ii] = in[ii * width + jj];
 
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", 0);
     return(out);
 }
 
@@ -601,7 +606,7 @@ T Device<CPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
     for(size_t idx=0;idx<length; ++idx)   
         dot = dot + (x[idx] * y[idx]);
     
-    PROFILEEND("CPU",0);
+    PROFILEEND("CPU", length);
     return(dot);
 }
 
