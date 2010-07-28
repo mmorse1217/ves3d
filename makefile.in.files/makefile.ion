@@ -19,4 +19,3 @@ endif
 CXXFLAGS       += -D$(BLASPKG)
 ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
 LDFLAGS         = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
-
