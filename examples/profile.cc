@@ -5,7 +5,7 @@
 #include "OperatorsMats.h"
 #include "EvolveSurface.h"
 
-typedef float real;
+typedef double real;
 #define DT CPU
 extern const Device<DT> the_device(0);
 
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
     sim_par.save_data = false;    
     
     sim_par.scheme = Explicit;
-    int maxexp = 10; // nmax = 1024
+    int maxexp = 9; // nmax = 512
     int p[] = {6, 12, 16, 24};
     int plength = 4;
 
