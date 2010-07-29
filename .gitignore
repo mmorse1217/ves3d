@@ -2,6 +2,7 @@
 *~
 *.out
 *.exe
+*.pbs
 *.txt
 *.tar
 *.bk

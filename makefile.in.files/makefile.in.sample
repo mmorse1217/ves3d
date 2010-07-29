@@ -1,6 +1,5 @@
 # User variables
-VES3D_DIR     ?= `pwd`
-USE_GPU       ?= no
+USE_GPU       ?= yes
 VES3D_TESTING ?= no
 PLATFORM      ?= $(shell hostname)
 
@@ -11,6 +10,7 @@ AR      = ar
 RANLIB  = ranlib
 DOX     = doxygen
 TAGS    = etags
+
 
 # Platform dependent makefile 
 include $(VES3D_DIR)/makefile.in.files/makefile.$(CXX)
@@ -24,15 +24,15 @@ ifeq ($(USE_GPU),yes)
   NVCC          = $(CUDA_DIR)/bin/nvcc
   CUDA_LIBS     = -L$(CUDA_DIR)/lib64 -lcublas -lcudart	#-Wl,-rpath $(CUDA_DIR)/lib64
   CUDA_INCLUDE  = -I$(CUDA_DIR)/include
-  CUDAFLAGS     = $(ALL_INCLUDE) 
+  CUDAFLAGS     = $(ALL_INCLUDE) -arch=sm_13
 
   CXXFLAGS     += -DGPU_ACTIVE
   VES3D_LIBS   += $(VES3D_GPU_LIBS)
   ALL_INCLUDE  += $(CUDA_INCLUDE)
   LDFLAGS      += $(CUDA_LIBS) 	
 
-%.o: %.cu $(MAKEIN)
-	$(NVCC) $(ALL_INCLUDE) -c -o $@ $<
+  %.o: %.cu $(MAKEIN)
+	$(NVCC) $(ALL_INCLUDE) $(CUDAFLAGS) -c -o $@ $<
 endif
 
 # Adjustments

@@ -1,78 +1,78 @@
 #!/bin/sh
-#input EXECUTABLENAME [JOBFILE] [OMP_NUM_THREADS] [LABEL]
+#input EXECUTABLENAME [JOBFILE_SUFFIX] [OMP_NUM_THREADS] [LABEL_BASE]
 
 #--- general options ------------------------------------
-USEREMAIL="rahimian@gatech.edu"
-GRANTNUMBER=""
+useremail="rahimian@gatech.edu"
+grantnumber=""
 
-MACHINE=$(hostname)
-WALLTIME=24:00:00
-CODEVERSION="VES3D_$(git tag)"
-SRCDIR=$VES3D_DIR
-JOBFILE=$2
+machine=$(hostname)
+walltime=24:00:00
+codeversion="VES3D_$(git tag)"
+srcdir=$VES3D_DIR
+jobfile=$2
 
 #- openmp
-NP=1
-OPENMP=y
-NUMTHREADS=$3
+np=1
+openmp=y
+numthreads=$3
 
-if [ -z $NUMTHREADS ]; then
-    NUMTHREADS=1
+if [ -z $numthreads ]; then
+    numthreads=1
 fi
 
-if [ -n $OPENMP ]; then
-    OMPTHREADS="export OMP_NUM_THREADS=$NUMTHREADS"
-    OPENMPLABEL="omp$NUMTHREADS"
-    NPREQUESTED=$NP
+if [ -n $openmp ]; then
+    ompthreads="export OMP_NUM_THREADS=$numthreads"
+    openmplabel="omp$numthreads"
+    nprequested=$np
 fi
 
 #- label
-USETIMELABEL=y
-LABEL=$4
+usetimelabel=y
+label=$4
 
-MON=`date +%b`
-DAY=`date +%d`
-HRM=`date +%H%M`
+mon=`date +%b`
+day=`date +%d`
+hrm=`date +%H%M`
 
-if [ $LABEL ]; then
-    LABEL="$LABEL."
+if [ $label ]; then
+    label=$label.
 fi
 
-if [ $USETIMELABEL ]; then
-    LABEL="$MON$DAY.$HRM.$LABEL"
+if [ $usetimelabel ]; then
+    label=$mon$day.$hrm.$label
 fi
-LABEL="$LABEL$OPENMPLABEL.p$NPREQUESTED"
+label=$label$openmplabel.p$nprequested
 
-#- filename options
-EXECUTABLE=$1
-EXECPATH=`dirname $EXECUTABLE`
-EXECUTABLE=${EXECUTABLE##*/}
-EXECUTABLE=${EXECUTABLE%.*}
+#- filename generation
+executable=$1
+execpath=`dirname $executable`
+executable=${executable##*/}
+executable=${executable%.*}
 
-SCRATCHDIR=$SRCDIR/scratch/
+scratchdir=$srcdir/scratch/
 
-TARGETEXECUTABLE="$EXECUTABLE.$LABEL.exe"
-OUTFILE="$EXECUTABLE.$LABEL.out"
+targetexecutable=$label.$executable.exe
+outfile=$label.$executable.out
 
-#- vesicles options
-if [ $JOBFILE ]; then
-    JOBFILE=$JOBFILE.$EXECUTABLE.$LABEL
-    exec > $JOBFILE
+#- checking the output format
+if [ $jobfile ]; then
+    jobfile=$label.$executable.$jobfile
+    exec > $jobfile  #redirecting stdout to the file
 fi
 
-#--- generating the job ---------------------------------
-echo "#PBS -M $USEREMAIL" 
+#--- generating the job file ------------------------------
+echo "#PBS -M $useremail" 
 echo "#PBS -m ae"
-if [ $GRANTNUMBER ]; then
-    echo "#PBS -A $GRANTNUMBER"
+if [ $grantnumber ]; then
+    echo "#PBS -A $grantnumber"
 fi
-echo "#PBS -l walltime=$WALLTIME"
-echo "#PBS -l nodes=$NPREQUESTED"
-echo "#PBS -N $TARGETEXECUTABLE"
+echo "#PBS -l walltime=$walltime"
+echo "#PBS -l nodes=$nprequested"
+echo "#PBS -N $targetexecutable"
 echo
-echo "cp $SRCDIR/$EXECPATH/$EXECUTABLE.exe $SCRATCHDIR/$TARGETEXECUTABLE"
-echo "$OMPTHREADS"
+echo "cp $srcdir/$execpath/$executable.exe $scratchdir/$targetexecutable"
+echo "$ompthreads"
 echo 
-echo "cd $SCRATCHDIR"
-echo "./$TARGETEXECUTABLE > $OUTFILE"
-echo "mv $OUTFILE $SRCDIR/results"
+echo "cd $scratchdir"
+echo "./$targetexecutable > $outfile"
+echo "mv $outfile $srcdir/results"
