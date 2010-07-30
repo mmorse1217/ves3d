@@ -1,0 +1,21 @@
+# includes and libraries
+VES3D_TEMPLATES = -I$(VES3D_DIR)/src
+VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
+VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
+
+ifeq ($(CXX),icpc)
+ BLASPKG        = HAS_MKL
+ BLAS_LIBS      = -Wl,-rpath,$(TACC_MKL_LIB) -L$(TACC_MKL_LIB) \
+	-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core
+ BLAS_INCLUDE   = -I$(TACC_MKL_INC)
+
+else
+ 
+ BLASPKG        = HAS_BLAS
+ BLAS_LIBS      = -L$(TACC_GOTOBLAS_LIB) -lgoto_lp64
+ BLAS_INCLUDE   = -I$(TACC_GOTOBLAS_)/LIB
+endif
+
+CXXFLAGS       += -D$(BLASPKG)
+ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
+LDFLAGS         = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
