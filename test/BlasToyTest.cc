@@ -1,6 +1,6 @@
 #include "Device.h"
 
-typedef double real;
+typedef float real;
 
 int main(int argc, char **argv)
 {
@@ -9,7 +9,7 @@ int main(int argc, char **argv)
         <<"\n ==============================\n");
     sleep(1);
     
-    int k = 4096;
+    int k = 4*4096;
     int n = 4096;
 
     size_t sa = n*n;
