@@ -11,7 +11,7 @@ Monitor<SurfContainer>::Monitor(const Parameters<value_type> &params) :
 template<typename SurfContainer>
 bool Monitor<SurfContainer>::operator()(const SurfContainer &state, 
     value_type &t, value_type &dt, 
-    void*/* to be compatible with the general signature, not used*/)
+    void* /* to be compatible with the general signature, not used*/)
 {
     ///@todo move temporary object
     typename SurfContainer::Sca_t area, vol;
