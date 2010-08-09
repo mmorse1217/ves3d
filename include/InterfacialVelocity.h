@@ -15,7 +15,6 @@ template<typename VecContainer>
 void ShearFlow(const VecContainer &pos, const typename 
     VecContainer::value_type shear_rate, VecContainer &vel_inf);
 
-
 template<typename SurfContainer, 
          typename Interaction,
          typename BackgroundFlow = void(*)(const typename SurfContainer::Vec_t&, 

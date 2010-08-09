@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-#  commandline option:
-#    executablename [jobfile_suffix] [walltime (min)] [OMP_NUM_THREADS] [label]
+# commandline option:
+#   executablename [jobfile_suffix] [walltime (min)] [OMP_NUM_THREADS] [label]
 
 ######################################################################
 ######################################################################

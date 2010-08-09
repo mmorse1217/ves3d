@@ -97,7 +97,7 @@ void EvolveSurface<Container, Interaction, Mntr, Repart>::operator()(
         F.reparam();
         t += dt;
         
-        repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
-            F.tension(), usr_ptr);
+        // repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
+        //     F.tension(), usr_ptr);
     }
 }
