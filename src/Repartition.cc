@@ -1,5 +1,5 @@
 template<typename T>
-RepartitionGateway<T>::RepartitionGateway(GlobalRepart_t fun_ptr, 
+Repartition<T>::Repartition(GlobalRepart_t fun_ptr, 
     int num_threads) :
     g_repart_handle_(fun_ptr),
     num_threads_(num_threads),
@@ -18,7 +18,7 @@ RepartitionGateway<T>::RepartitionGateway(GlobalRepart_t fun_ptr,
 }
 
 template<typename T>
-RepartitionGateway<T>::~RepartitionGateway()
+Repartition<T>::~Repartition()
 {
     delete[] each_thread_nv_;
     delete[] each_thread_idx_;
@@ -30,7 +30,7 @@ RepartitionGateway<T>::~RepartitionGateway()
     
 template<typename T>
 template<typename Container>
-void RepartitionGateway<T>::operator()(Container &coord, 
+void Repartition<T>::operator()(Container &coord, 
     Container &tension, void* user_ptr) const
 {  
     assert( typeid(T) == typeid(typename Container::value_type) );
@@ -96,7 +96,7 @@ void RepartitionGateway<T>::operator()(Container &coord,
 }
 
 template<typename T>
-size_t RepartitionGateway<T>::getCpyIdx(size_t this_thread_nv, 
+size_t Repartition<T>::getCpyIdx(size_t this_thread_nv, 
     size_t stride) const
 {
     int threadNum = omp_get_thread_num();
@@ -123,7 +123,7 @@ size_t RepartitionGateway<T>::getCpyIdx(size_t this_thread_nv,
 }
 
 template<typename T>
-size_t RepartitionGateway<T>::getNvShare() const
+size_t Repartition<T>::getNvShare() const
 {
     size_t nv(nvr_/num_threads_);
     
@@ -134,7 +134,7 @@ size_t RepartitionGateway<T>::getNvShare() const
 }
 
 template<typename T>
-void RepartitionGateway<T>::checkContainersSize(size_t stride) const
+void Repartition<T>::checkContainersSize(size_t stride) const
 {
 #pragma omp master
     {

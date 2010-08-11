@@ -27,43 +27,43 @@ Parameters<T>::~Parameters()
 {}
 
 template<typename T>
-ostream& operator<<(ostream& output, const Parameters<T>& par)
+std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
 {
-    output<<"\n ===================================="<<endl;
-    output<<"  Simulator parameters"<<endl;
-    output<<" ===================================="<<endl;
-    output<<"  Surface:"<<endl;
-    output<<"    Number of surfaces       : "<<par.n_surfs<<endl;
-    output<<"    SH order                 : "<<par.sh_order<<endl;
-    output<<"    Filter freq              : "<<par.filter_freq<<endl;
-    output<<"    Bending modulus          : "<<par.bending_modulus<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  Solver:"<<endl;
-    output<<"    Outer solver maxit       : "<<par.outer_solver_maxit<<endl;
-    output<<"    Inner solver maxit       : "<<par.inner_solver_maxit<<endl;
-    output<<"    Outer solver tol         : "<<par.outer_solver_tol<<endl;
-    output<<"    Inner solver tol         : "<<par.inner_solver_tol<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  Time stepper:"<<endl;
-    output<<"    Number of time steps     : "<<par.n_steps<<endl;
-    output<<"    Time horizon             : "<<par.time_horizon<<endl;
-    output<<"    Step size                : "<<par.ts<<endl;
-    output<<"    Scheme                   : "<<par.scheme<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  Reparametrization:"<<endl;
-    output<<"    Rep maxit                : "<<par.rep_maxit<<endl;
-    output<<"    Rep upsample freq        : "<<par.rep_up_freq<<endl;
-    output<<"    Rep filter freq          : "<<par.rep_filter_freq<<endl;
-    output<<"    Rep step size            : "<<par.rep_ts<<endl;
-    output<<"    Rep tol                  : "<<par.rep_tol<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  Saving:"<<endl;
-    output<<"    Save data                : "<<boolalpha<<par.save_data<<endl;
-    output<<"    Save stride              : "<<par.save_stride<<endl;
-    output<<" ------------------------------------"<<endl;
-    output<<"  Background flow:"<<endl;
-    output<<"    Background flow parameter: "<<par.bg_flow_param<<endl;
-    output<<" ===================================="<<endl<<endl;
+    output<<"\n ===================================="<<std::endl;
+    output<<"  Simulator parameters"<<std::endl;
+    output<<" ===================================="<<std::endl;
+    output<<"  Surface:"<<std::endl;
+    output<<"    Number of surfaces       : "<<par.n_surfs<<std::endl;
+    output<<"    SH order                 : "<<par.sh_order<<std::endl;
+    output<<"    Filter freq              : "<<par.filter_freq<<std::endl;
+    output<<"    Bending modulus          : "<<par.bending_modulus<<std::endl;
+    output<<" ------------------------------------"<<std::endl;
+    output<<"  Solver:"<<std::endl;
+    output<<"    Outer solver maxit       : "<<par.outer_solver_maxit<<std::endl;
+    output<<"    Inner solver maxit       : "<<par.inner_solver_maxit<<std::endl;
+    output<<"    Outer solver tol         : "<<par.outer_solver_tol<<std::endl;
+    output<<"    Inner solver tol         : "<<par.inner_solver_tol<<std::endl;
+    output<<" ------------------------------------"<<std::endl;
+    output<<"  Time stepper:"<<std::endl;
+    output<<"    Number of time steps     : "<<par.n_steps<<std::endl;
+    output<<"    Time horizon             : "<<par.time_horizon<<std::endl;
+    output<<"    Step size                : "<<par.ts<<std::endl;
+    output<<"    Scheme                   : "<<par.scheme<<std::endl;
+    output<<" ------------------------------------"<<std::endl;
+    output<<"  Reparametrization:"<<std::endl;
+    output<<"    Rep maxit                : "<<par.rep_maxit<<std::endl;
+    output<<"    Rep upsample freq        : "<<par.rep_up_freq<<std::endl;
+    output<<"    Rep filter freq          : "<<par.rep_filter_freq<<std::endl;
+    output<<"    Rep step size            : "<<par.rep_ts<<std::endl;
+    output<<"    Rep tol                  : "<<par.rep_tol<<std::endl;
+    output<<" ------------------------------------"<<std::endl;
+    output<<"  Saving:"<<std::endl;
+    output<<"    Save data                : "<<std::boolalpha<<par.save_data<<std::endl;
+    output<<"    Save stride              : "<<par.save_stride<<std::endl;
+    output<<" ------------------------------------"<<std::endl;
+    output<<"  Background flow:"<<std::endl;
+    output<<"    Background flow parameter: "<<par.bg_flow_param<<std::endl;
+    output<<" ===================================="<<std::endl<<std::endl;
 
     return output;
 }

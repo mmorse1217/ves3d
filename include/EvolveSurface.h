@@ -2,7 +2,7 @@
 #define _EVOLVESURFACE_H_
 
 #include "Logger.h"
-#include "RepartitionGateway.h"
+#include "Repartition.h"
 #include "InterfacialVelocity.h"
 
 template<typename SurfContainer>

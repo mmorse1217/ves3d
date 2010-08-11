@@ -4,8 +4,32 @@
 #include <typeinfo>
 #include "enums.h"
 
+/**
+ * The abstract base class for interaction between vesicles. Derived
+ * classed act as a gateway between the local code and the far
+ * interaction FMM code. They take care of multi-threads, orgainzing
+ * date, copying to the host, etc. The typedef
+ * <tt>ExternalInteractionFun_t</tt> defines the expected signature of
+ * the FMM function.
+ */
 template<typename T>
-class VesInteraction
+class VesInteractionBase
+{
+  public:
+    typedef void(*InteractionFun_t)(const T* pos, const T*den, size_t np, 
+        T* pot, void* usr_ptr);    
+    
+    ~VesInteractionBase() = 0;
+
+    template<typename VecContainer>
+    InteractionReturn operator()(const VecContainer &position, 
+        VecContainer &density, VecContainer &potential,
+        void* usr_ptr = NULL) const;
+};
+
+///The gateway function between the local code and FMM.
+template<typename T>
+class VesInteraction : public VesInteractionBase<T>
 {
   public:
     typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void*);    

@@ -1,5 +1,5 @@
-#include "Vectors.h"
 #include "Parameters.h"
+#include "Vectors.h"
 #include "Surface.h"
 #include "VesInteraction.h"
 #include "OperatorsMats.h"
@@ -56,7 +56,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     //Making The Surface, And Time Stepper
     Sur_t S(x0, Mats);
     Monitor<Sur_t> M(sim_par);
-    RepartitionGateway<real> repart(NULL);
+    Repartition<real> repart(NULL);
     EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
    
     Es(S, Interaction);

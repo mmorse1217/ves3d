@@ -3,6 +3,7 @@
 
 #include <typeinfo>
 #include <iostream>
+#include <string>
 #include "enums.h"
 
 template <typename T>
@@ -43,7 +44,7 @@ struct Parameters
     //Monitoring
     bool save_data;
     T save_stride;
-    string save_file_name;
+    std::string save_file_name;
 
   private:
     Parameters(Parameters<T> &rhs);
@@ -51,7 +52,7 @@ struct Parameters
 };
 
 template<typename T>
-ostream& operator<<(ostream& output, const Parameters<T>& par);
+std::ostream& operator<<(std::ostream& output, const Parameters<T>& par);
 
 #include "Parameters.cc"
 
