@@ -1,30 +1,8 @@
-template<typename VecContainer>
-void ShearFlow(const VecContainer &pos, typename VecContainer::value_type
-    shear_rate, VecContainer &vel_inf)
-{
-    int n_surfs = pos.getNumSubs();
-    int stride = pos.getStride();
-    int idx;
-    
-    axpy(0.0, pos, vel_inf);
-    for(int ii=0;ii<n_surfs;ii++)
-    {
-        idx = pos.getTheDim() * ii * stride;
-        pos.getDevice().Memcpy(vel_inf.begin() + idx, 
-            pos.begin() + idx + stride + stride
-            ,stride * sizeof(typename VecContainer::value_type), 
-            MemcpyDeviceToDevice);
-    }
-    axpy(shear_rate, vel_inf, vel_inf); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
-InterfacialVelocity(SurfContainer &S_in, Interaction &Inter, 
+template<typename SurfContainer, typename Interaction>
+InterfacialVelocity<SurfContainer, Interaction>::
+InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter, 
     OperatorsMats<Sca_t> &mats, 
-    const Parameters<value_type> &params, BackgroundFlow bgFlow) :
+    const Parameters<value_type> &params, const BgFlowBase<Vec_t> &bgFlow) :
     usr_ptr_(NULL),
     S_(S_in),
     interaction_(Inter),
@@ -73,8 +51,8 @@ InterfacialVelocity(SurfContainer &S_in, Interaction &Inter,
         quad_weights_.size() * sizeof(value_type), MemcpyDeviceToDevice);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+InterfacialVelocity<SurfContainer, Interaction>::
 ~InterfacialVelocity()
 {
     assert(!checked_out_work_sca_);
@@ -83,8 +61,8 @@ InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
     purgeTheWorkSpace();
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 updatePositionExplicit(const value_type &dt)
 {
     this->dt_ = dt;
@@ -110,8 +88,8 @@ updatePositionExplicit(const value_type &dt)
     recycle(u2);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 updatePositionImplicit(const value_type &dt)
 {
     this->dt_ = dt;
@@ -186,8 +164,8 @@ updatePositionImplicit(const value_type &dt)
     recycle(u3);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 updateInteraction() const
 {
     //Interfacial forces
@@ -243,7 +221,8 @@ updateInteraction() const
         axpy(static_cast<value_type>(-1), velocity_, *u2, velocity_);
     
     //Background flow
-    bg_flow_(S_.getPosition(), params_.bg_flow_param, *u2);
+    ///@bug the time should be passed to the BgFlow handle.
+    bg_flow_(S_.getPosition(), 0, *u2);
     axpy(static_cast<value_type>(1), *u2, velocity_, velocity_);
 
     recycle(u1);
@@ -251,8 +230,8 @@ updateInteraction() const
     recycle(u3);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension(
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
 {
     auto_ptr<Sca_t> rhs = checkoutSca();
@@ -260,7 +239,7 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
 
     S_.div(vel_in, *rhs);
     
-    axpy(static_cast<typename SurfContainer::value_type>(-1), *rhs, *rhs);
+    axpy(static_cast<value_type>(-1), *rhs, *rhs);
     
     int max_iter(params_.inner_solver_maxit);
     value_type tol(params_.inner_solver_tol);
@@ -300,8 +279,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::getTension
     recycle(rhs);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::stokes(
     const Vec_t &force, Vec_t &velocity) const
 {
     int imax(S_.getPosition().getGridDim().first);
@@ -339,8 +318,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::stokes(
     recycle(v2);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
     auto_ptr<Vec_t> fb = checkoutVec();
@@ -351,8 +330,8 @@ operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
     recycle(fb);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::operator()(
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::operator()(
     const Sca_t &tension, Sca_t &div_stokes_fs) const
 {
     auto_ptr<Vec_t> fs = checkoutVec();
@@ -366,8 +345,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::operator()
     recycle(u);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
     value_type ts(params_.rep_ts);
     value_type vel;
@@ -412,8 +391,8 @@ void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::reparam()
     recycle(wrk);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-auto_ptr<typename SurfContainer::Sca_t> InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+auto_ptr<typename SurfContainer::Sca_t> InterfacialVelocity<SurfContainer, Interaction>::
 checkoutSca() const
 {
     auto_ptr<Sca_t> scp;
@@ -430,16 +409,16 @@ checkoutSca() const
     ++checked_out_work_sca_;
     return(scp);
 }
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 recycle(auto_ptr<Sca_t> scp) const
 {
     scalar_work_q_.push(scp.release());
     --checked_out_work_sca_;
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-auto_ptr<typename SurfContainer::Vec_t> InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+auto_ptr<typename SurfContainer::Vec_t> InterfacialVelocity<SurfContainer, Interaction>::
 checkoutVec() const
 {
     auto_ptr<Vec_t> vcp;
@@ -458,16 +437,16 @@ checkoutVec() const
     return(vcp);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 recycle(auto_ptr<Vec_t> vcp) const
 {
     vector_work_q_.push(vcp.release());
     --checked_out_work_vec_;
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-void InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
 purgeTheWorkSpace() const
 {
     while ( !scalar_work_q_.empty() )
@@ -485,8 +464,8 @@ purgeTheWorkSpace() const
 
 #ifndef NDEBUG
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel, Sca_t &tension, 
     Vec_t &xnew, value_type tol)
 {
@@ -505,8 +484,8 @@ benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel, Sca_t &tension,
     return ( res );
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkImplicit(Sca_t &tension, Vec_t &matvec, Vec_t &xnew, value_type tol)
 {
     bool res = 
@@ -523,8 +502,8 @@ benchmarkImplicit(Sca_t &tension, Vec_t &matvec, Vec_t &xnew, value_type tol)
     return ( res );
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
 {
     COUTDEBUG("\n  Bending force benchmark"
@@ -545,8 +524,8 @@ benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
 {
     COUTDEBUG("\n  Singular Stokes benchmark"
@@ -567,8 +546,8 @@ benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
 {
     COUTDEBUG("\n  Background flow benchmark"
@@ -589,8 +568,8 @@ benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
 {
     COUTDEBUG("\n  Tension benchmark"
@@ -613,8 +592,8 @@ benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkNewPostitionExplicit(Vec_t &xnew, value_type tol)
 {
     COUTDEBUG("\n  Explicit update benchmark"
@@ -633,8 +612,8 @@ benchmarkNewPostitionExplicit(Vec_t &xnew, value_type tol)
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkTensionImplicit(Sca_t &tension, value_type tol)
 {
     COUTDEBUG("\n  Tension (implicit) benchmark"
@@ -671,8 +650,8 @@ benchmarkTensionImplicit(Sca_t &tension, value_type tol)
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkMatVecImplicit(const Vec_t &x, Vec_t &matvec, value_type tol)
 {
     COUTDEBUG("\n  Implicit MatVec benchmark"
@@ -693,8 +672,8 @@ benchmarkMatVecImplicit(const Vec_t &x, Vec_t &matvec, value_type tol)
     return (err < tol);
 }
 
-template<typename SurfContainer, typename Interaction, typename BackgroundFlow>
-bool InterfacialVelocity<SurfContainer, Interaction, BackgroundFlow>::
+template<typename SurfContainer, typename Interaction>
+bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkNewPostitionImplicit(Vec_t &xnew, value_type tol)
 {
     COUTDEBUG("\n  Implicit update benchmark"

@@ -10,15 +10,9 @@
 #include <memory>
 #include "enums.h"
 #include "MovePole.h"
+#include "BgFlowBase.h"
 
-template<typename VecContainer>
-void ShearFlow(const VecContainer &pos, const typename 
-    VecContainer::value_type shear_rate, VecContainer &vel_inf);
-
-template<typename SurfContainer, 
-         typename Interaction,
-         typename BackgroundFlow = void(*)(const typename SurfContainer::Vec_t&, 
-             typename SurfContainer::value_type, typename SurfContainer::Vec_t&) >
+template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
 {
   private:
@@ -29,9 +23,9 @@ class InterfacialVelocity
     typedef OperatorsMats<Sca_t> Mats_t;
     
   public:
-    InterfacialVelocity(SurfContainer &S_in, Interaction &inter, 
+    InterfacialVelocity(SurfContainer &S_in, const Interaction &inter, 
         Mats_t &mats, const Parameters<value_type> &params, 
-        BackgroundFlow bgFlow = &ShearFlow<Vec_t>);
+        const BgFlowBase<Vec_t> &bgFlow);
     ~InterfacialVelocity();
     
     void updatePositionExplicit(const value_type &dt);
@@ -50,8 +44,8 @@ class InterfacialVelocity
 
   private:
     SurfContainer &S_;
-    Interaction &interaction_;
-    BackgroundFlow bg_flow_;
+    const Interaction &interaction_;
+    const BgFlowBase<Vec_t> &bg_flow_;
     const Parameters<value_type> &params_;
     
     InterfacialForce<SurfContainer> Intfcl_force_;

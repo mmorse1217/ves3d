@@ -5,7 +5,7 @@ EXEC =  LoggerTest.exe        \
 	BiCGStabTest.exe      \
 	SurfaceTest.exe       \
 	EvolveSurfaceTest.exe \
-	EvolveSurfaceTestMultThread.exe #StokesTest.exe 
+#	EvolveSurfaceTestMultThread.exe #StokesTest.exe 
 
 ifeq ($(VES3D_TESTING),yes)
   EXEC+= BenchmarkInterfacialVel.exe \

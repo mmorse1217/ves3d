@@ -1,34 +1,22 @@
-#include "Parameters.h"
-#include "Vectors.h"
-#include "Surface.h"
-#include "VesInteraction.h"
-#include "OperatorsMats.h"
 #include "EvolveSurface.h"
+#include "CPUKernels.h"
 
 extern const Device<CPU> the_cpu_device(0);
 extern const Device<GPU> the_gpu_device(0);
 
 typedef double real;
-typedef double fmm_value_type;
-
-#ifndef Doxygen_skip
 
 template<enum DeviceType DT, const Device<DT> &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par)
 {
-    typedef Scalars<real, DT, DEVICE> Sca_t;
-    typedef Vectors<real, DT, DEVICE> Vec_t;
+    typedef EvolveSurface<real, DT, DEVICE> Evolve_t;
+    typedef typename Evolve_t::Vec_t Vec_t;
 
-    typedef Surface<Sca_t,Vec_t> Sur_t;
-    typedef VesInteraction<fmm_value_type> Interaction_t;
-    
-    //IO
-    DataIO myIO;
-
-    //Initializing vesicle positions from text file
+    //Initial vesicle positions 
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
     
     //reading the prototype form file
+    DataIO myIO;
     myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
         x0, 0, x0.getSubLength());
     
@@ -46,22 +34,17 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
         cntrs.size() * sizeof(real), MemcpyHostToDevice);
     Populate(x0, cntrs);
 
-    // The Interaction Class
-    Interaction_t Interaction(&StokesAlltoAll);
-
     //Reading Operators From File
     bool readFromFile = true;
-    OperatorsMats<Sca_t> Mats(readFromFile, sim_par);
+    typename Evolve_t::Mats_t Mats(readFromFile, sim_par);
 
-    //Making The Surface, And Time Stepper
-    Sur_t S(x0, Mats);
-    Monitor<Sur_t> M(sim_par);
-    Repartition<real> repart(NULL);
-    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
-   
-    Es(S, Interaction);
+    //Setting the background flow
+    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+
+    //Finally, Evolve surface
+    Evolve_t Es(sim_par, Mats, x0, &vInf, &StokesAlltoAll);
+    Es.Evolve();
 }
-#endif //Doxygen_skip
 
 int main(int argc, char **argv)
 {
@@ -98,8 +81,6 @@ int main(int argc, char **argv)
     PROFILEREPORT(SortTime);
 
 #endif //GPU_ACTIVE
-
-
 }
 
 

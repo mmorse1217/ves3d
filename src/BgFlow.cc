@@ -6,7 +6,7 @@ ShearFlow<VecContainer>::ShearFlow(value_type shear_rate) :
 
 template<typename VecContainer>
 void ShearFlow<VecContainer>::operator()(const VecContainer &pos, const value_type time,
-        VecContainer &vel_inf)
+        VecContainer &vel_inf) const
 {
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();
@@ -39,7 +39,7 @@ TaylorVortex<VecContainer>::TaylorVortex(value_type strength, value_type x_perio
 
 template<typename VecContainer>
 void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value_type time,
-    VecContainer &vel_inf)
+    VecContainer &vel_inf) const
 {
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();

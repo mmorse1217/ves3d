@@ -4,43 +4,37 @@
 #include <omp.h>
 
 /**
- * The abstract base class for the repartitioning. Derived classes
- * will act as a gateway to any external repartitioning
- * library/function available. The typedef <tt> GlobalRepart_t</tt> is
- * the expected signature of the external function.
+ * The interface class with the global repartitioning function. It
+ * gathers data from multiple threads and passed them to the external
+ * repartitioning function, which repartitions data to match the MPI
+ * load balance. After returning form the external function, this
+ * class distributes the vesicles between the available threads.
  */
 template<typename T>
-class RepartitionBase
+class Repartition
 {
   public:
+    ///The function pointer type for the external repartitioning function. 
     typedef void(*GlobalRepart_t)(size_t nv, size_t stride, 
         const T* x, const T* tension, size_t* nvr, T** xr,
         T** tensionr, void* user_ptr);
     
-    ~RepartitionBase() = 0;
-
-    template<typename Container>
-    void operator()(Container &coord, Container &tension, 
-        void* user_ptr = NULL) const;
-  
-  private:
-    RepartitionBase(RepartitionBase const &rhs);
-    RepartitionBase& operator=(const RepartitionBase &rhs);
-};
-
-
-template<typename T>
-class Repartition : public RepartitionBase<T>
-{
-  public:
-    typedef void(*GlobalRepart_t)(size_t nv, size_t stride, 
-        const T* x, const T* tension, size_t* nvr, T** xr,
-        T** tensionr, void* user_ptr);
-    
+    /** 
+     * @param fun_ptr The actual pointer to the repartitioning
+     * function, no repartitioning when <tt>NULL</tt>.
+     * @param num_threads The number of expected threads that to be handled.
+     */
     explicit Repartition(GlobalRepart_t fun_ptr = NULL, 
         int num_threads = omp_get_max_threads());
     ~Repartition();
 
+    /** 
+     * The function called from each thread.
+     * @param coord The Cartesian coordinate of the points
+     * @param tension The tension associated with each point.
+     * @param user_ptr the user-defined pointer that may be needed
+     * depending on the external repartitioning function.
+     */
     template<typename Container>
     void operator()(Container &coord, Container &tension, 
         void* user_ptr = NULL) const;
