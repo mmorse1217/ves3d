@@ -5,7 +5,7 @@
 #include "SHTrans.h"
 #include "Logger.h"
 
-#define DT CPU
+#define DT GPU
 using namespace std;
 typedef float real_t;
 typedef Device<DT> Device_t;
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     typedef SHTMats<real_t, Device_t> SHTMats_t;
     typedef SHTrans<Sca_t, SHTMats_t> SHT_t; 
 
-    int ns(1), p(16);
+    int ns(2000), p(16);
     Parameters<real_t> params;
     params.sh_order = p;
     params.n_surfs = ns;
@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
     Sca_t x(ns, p), shc(ns,p), wrk(ns,p);
     SHT_t sht(p, mats.mats_p_);
 
+    //Calling methods
     sht.forward(x, wrk, shc);
     sht.backward(shc, wrk, x);
     sht.backward_du(shc, wrk, x);
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
     sht.backward_d2v(shc, wrk, x);
     sht.backward_duv(shc, wrk, x);
     
+    //Reporting results
     PROFILEREPORT(SortFunName);
     return 0;
 }

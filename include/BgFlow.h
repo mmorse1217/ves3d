@@ -2,7 +2,7 @@
 #define _BGFLOW_H_
 
 #include "BgFlowBase.h"
-#define M_PI 3.1415926535897932
+#define BGPI 3.1415926535897932
 
 /////////////////////////////////////////////////////////////////////////////////
 template<typename VecContainer>
@@ -46,8 +46,8 @@ class TaylorVortex : public BgFlowBase<VecContainer>
     typedef typename VecContainer::value_type value_type;
 
   public:
-    explicit TaylorVortex(value_type strength = 1, value_type x_period = 2 * M_PI,
-        value_type y_period = 2 * M_PI);
+    explicit TaylorVortex(value_type strength = 1, value_type x_period = BGPI,
+        value_type y_period = BGPI);
     
     virtual void operator()(const VecContainer &pos, const value_type time,
         VecContainer &vel_inf) const;

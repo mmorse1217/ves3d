@@ -48,8 +48,8 @@ void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value
     wrk_vec1_.replicate(pos);
     wrk_vec2_.replicate(pos);
 
-    axpy( 2 * M_PI / x_period_, pos, wrk_vec1_);
-    axpy( 2 * M_PI / y_period_, pos, wrk_vec2_);
+    axpy( BGPI / x_period_, pos, wrk_vec1_);
+    axpy( BGPI / y_period_, pos, wrk_vec2_);
 
     for ( size_t ii=0;ii<pos.size(); ++ii )
     {
@@ -62,8 +62,8 @@ void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value
         for ( int ii=0;ii<stride; ++ii)
         {
             idx = ss * DIM * stride + ii;
-            vel_inf.begin()[idx          ] = - wrk_vec1_.begin()[idx] * wrk_vec2_.begin()[idx + stride];
-            vel_inf.begin()[idx + stride ] = - wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride];
+            vel_inf.begin()[idx          ] = -1 * wrk_vec1_.begin()[idx] * wrk_vec2_.begin()[idx + stride];
+            vel_inf.begin()[idx + stride ] =  wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride];
 
         }
     axpy(strength_, vel_inf, vel_inf); 

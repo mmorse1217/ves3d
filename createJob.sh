@@ -39,7 +39,7 @@ numthreads=$4
 if [ -n $openmp ]; then
     ompthreads="export OMP_NUM_THREADS=$numthreads"
     openmplabel="omp$numthreads"
-    let "nprequested=np * 8"
+    let "nprequested=np"
 fi
 
 #- label

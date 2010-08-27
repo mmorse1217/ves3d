@@ -1,6 +1,6 @@
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
-         typename Interaction, typename Repartition>
-EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::EvolveSurface(Params_t &params, Mats_t &mats, 
+         typename Interact, typename Repart>
+EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats, 
     Vec_t &x0, BgFlow_t *vInf, InteractionFun_t interaction_handle, void* user_ptr,
     GlobalRepart_t repartition_handle) :
     params_(params),
@@ -12,13 +12,13 @@ EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::EvolveSurface(Params_t &
     ownsObjOnHeap_ = true;
     S_ = new Sur_t(x0, mats_);
     monitor_ = new Monitor<EvolveSurface>(params_);
-    interaction_ = new Interaction(interaction_handle);
-    repartition_ = new Repartition(repartition_handle);
+    interaction_ = new Interaction_t(interaction_handle);
+    repartition_ = new Repartition_t(repartition_handle);
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
-         typename Interaction, typename Repartition>
-EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::EvolveSurface(Params_t &params, Mats_t &mats, 
+         typename Interact, typename Repart>
+EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats, 
     Sur_t *S, BgFlow_t *vInf, Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr) :
     params_(params),
     mats_(mats),
@@ -32,8 +32,8 @@ EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::EvolveSurface(Params_t &
 {}
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
-         typename Interaction, typename Repartition>
-EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::~EvolveSurface()
+         typename Interact, typename Repart>
+EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 {
     if ( ownsObjOnHeap_ )
     {
@@ -45,8 +45,8 @@ EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::~EvolveSurface()
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
-         typename Interaction, typename Repartition>
-void EvolveSurface<T, DT, DEVICE, Interaction, Repartition>::Evolve() 
+         typename Interact, typename Repart>
+void EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve() 
 {
     T t(0);
     T dt(params_.ts);

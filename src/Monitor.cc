@@ -50,7 +50,7 @@ bool Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             <<scientific<<setprecision(4)
             <<"\n           volume error = "<<abs(V/V0-1)<<endl);
         
-        if(save_flag_ && (t/save_stride_ == static_cast<int>(t/save_stride_)))
+        if(save_flag_ && ( (static_cast<int>(t/save_stride_ - 1e-4) + 1) == static_cast<int>(t/save_stride_)))
         {
             COUT("\n           Writing data to file."<<endl);
             IO.Append(state->S_->getPosition());
