@@ -8,7 +8,7 @@ class SHTrans
     typedef typename Container::value_type value_type;
 
   public:
-    SHTrans(int sh_order_in, Mats &mats, int filter_freq = -1);
+     SHTrans(int sh_order_in, Mats &mats, int filter_freq = -1);
     ~SHTrans();
 
     int getShOrder() const {return(p);}
@@ -19,16 +19,11 @@ class SHTrans
     void forward(const Container &in, Container &work, Container &shc) const;
     void backward(const Container &shc, Container &work, 
         Container &out) const;
-    void backward_du(const Container &shc, Container &work, 
-        Container &out) const;
-    void backward_dv (const Container &shc, Container &work, 
-        Container &out) const;
-    void backward_d2u(const Container &shc, Container &work, 
-        Container &out) const;
-    void backward_d2v(const Container &shc, Container &work, 
-        Container &out) const;
-    void backward_duv(const Container &shc, Container &work, 
-        Container &out) const;
+    void backward_du(const Container &shc, Container &work,Container &out) const;
+    void backward_dv (const Container &shc, Container &work, Container &out) const;
+    void backward_d2u(const Container &shc, Container &work, Container &out) const;
+    void backward_d2v(const Container &shc, Container &work, Container &out) const;
+    void backward_duv(const Container &shc, Container &work, Container &out) const;
 
     void lowPassFilter(const Container &in, Container &work, 
         Container &shc, Container &out) const;
