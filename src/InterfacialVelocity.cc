@@ -283,6 +283,8 @@ template<typename SurfContainer, typename Interaction>
 void InterfacialVelocity<SurfContainer, Interaction>::stokes(
     const Vec_t &force, Vec_t &velocity) const
 {
+    PROFILESTART();
+
     int imax(S_.getPosition().getGridDim().first);
     int jmax(S_.getPosition().getGridDim().second);
     int np = S_.getPosition().getStride();
@@ -316,6 +318,8 @@ void InterfacialVelocity<SurfContainer, Interaction>::stokes(
     recycle(t2);
     recycle(v1);
     recycle(v2);
+    
+    PROFILEEND("",0);
 }
 
 template<typename SurfContainer, typename Interaction>

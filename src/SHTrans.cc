@@ -52,7 +52,7 @@ void SHTrans<Container, Mats>::DLT(value_type *trans,
         inputs += num_legendre_inputs * k;
         outputs += m * num_legendre_inputs;
         if (mf) m--;
-        if (nf) n--;
+        //if (nf) n--;
         if (kf) k--;
     }
 }
