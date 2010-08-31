@@ -41,6 +41,8 @@ void SHTrans<Container, Mats>::DLT(value_type *trans,
     const value_type *inputs, value_type *outputs, 
     int m, int n , int k, int mf, int nf, int kf) const 
 {
+    PROFILESTART();
+
     for (int freq = 0; freq <= p; freq++) {
         int num_legendre_inputs = n;
         if (freq == 0 || freq == p) num_legendre_inputs = n / 2;
@@ -55,6 +57,7 @@ void SHTrans<Container, Mats>::DLT(value_type *trans,
         //if (nf) n--;
         if (kf) k--;
     }
+    PROFILEEND("",0);
 }
 
 template<typename Container, typename Mats>

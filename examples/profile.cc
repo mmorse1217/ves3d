@@ -1,8 +1,3 @@
-#include "Vectors.h"
-#include "Parameters.h"
-#include "Surface.h"
-#include "VesInteraction.h"
-#include "OperatorsMats.h"
 #include "EvolveSurface.h"
 
 typedef float real;
@@ -12,24 +7,18 @@ extern const Device<DT> the_device(0);
 template<const Device<DT> &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par)
 {
-    typedef Scalars<real, DT, DEVICE> Sca_t;
-    typedef Vectors<real, DT, DEVICE> Vec_t;
+    typedef EvolveSurface<real, DT, DEVICE> Evolve_t;
+    typedef typename Evolve_t::Vec_t Vec_t;
 
-    typedef Surface<Sca_t,Vec_t> Sur_t;
-    typedef VesInteraction<real> Interaction_t;
-    
-    //IO
-    PROFILESTART();
-    DataIO myIO;
-
-    //Initializing vesicle positions from text file
+    //Initial vesicle positions 
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
     
     //reading the prototype form file
-    char fname[300];
-    sprintf(fname, "precomputed/biconcave_ra85_%u",
-        sim_par.sh_order);
-    myIO.ReadData(fname, x0, 0, x0.getSubLength());
+    PROFILESTART();
+    DataIO myIO;
+    char fname[400];
+    sprintf(fname, "precomputed/biconcave_ra95_%u",sim_par.sh_order);
+    myIO.ReadData(fname,x0, 0, x0.getSubLength());
     
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
@@ -37,7 +26,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     for(int ii=0; ii<nVec; ++ii)
     {
         cntrs_host[DIM*ii    ] = 0;
-        cntrs_host[DIM*ii + 1] = 5*ii;
+        cntrs_host[DIM*ii + 1] = 3*ii;
         cntrs_host[DIM*ii + 2] = 0;
     }
     Array<real, DT, DEVICE> cntrs(DIM * sim_par.n_surfs);
@@ -45,22 +34,18 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
         cntrs.size() * sizeof(real), MemcpyHostToDevice);
     Populate(x0, cntrs);
 
-    // The Interaction Class
-    Interaction_t Interaction(NULL);
-
     //Reading Operators From File
     bool readFromFile = true;
-    OperatorsMats<Sca_t> Mats(readFromFile, sim_par);
+    typename Evolve_t::Mats_t Mats(readFromFile, sim_par);
 
-    //Making The Surface, And Time Stepper
-    Sur_t S(x0, Mats);
-    Monitor<Sur_t> M(sim_par);
-    RepartitionGateway<real> repart(NULL);
-    EvolveSurface<Sur_t, Interaction_t> Es(Mats, sim_par, M, repart);
- 
+    //Setting the background flow
+    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+
+    //Finally, Evolve surface
+    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
     PROFILEEND("setup_",0);
-
-    Es(S, Interaction);
+    
+    Es.Evolve();
 }
 
 int main(int argc, char **argv)
@@ -72,10 +57,9 @@ int main(int argc, char **argv)
     sim_par.n_surfs = 0;   
     sim_par.ts = .1;    
     sim_par.time_horizon = .3;
-    sim_par.bg_flow_param = 0.1;
+    sim_par.bg_flow_param = 0.01;
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
-    
     sim_par.scheme = Explicit;
     int maxexp = 9; // nmax = 512
     int p[] = {6, 12, 16, 24};
@@ -83,13 +67,13 @@ int main(int argc, char **argv)
 
     for(int ii=0;ii<plength; ++ii)
     {
-        int n0 = 1;
+        int n0 = 512;
         sim_par.sh_order = p[ii];
         sim_par.filter_freq = 2*p[ii]/3;
         sim_par.rep_up_freq = 2*p[ii];
         sim_par.rep_filter_freq = p[ii]/3;
         //rep_ts(1),
-        for(int jj = 0; jj<maxexp; ++jj)
+        //for(int jj = 0; jj<maxexp; ++jj)
         {
             PROFILECLEAR();
             PROFILESTART();

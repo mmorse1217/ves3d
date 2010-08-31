@@ -9,8 +9,8 @@ int main(int argc, char **argv)
         <<"\n ==============================\n");
     sleep(1);
     
-    int k = 1024;
-    int n = 1024;
+    int k = 1024 * 3;
+    int n = 1200;
 
     size_t sa = n*n;
     size_t sb = n*k;
@@ -30,21 +30,21 @@ int main(int argc, char **argv)
         for(int jj=0;jj<k;++jj)
             B_h[ii*k+jj] = drand48();
 
-    {// cpu
-        Device<CPU> cpu(0);
+//     {// cpu
+//         Device<CPU> cpu(0);
       
-        real *A = (real*) cpu.Malloc(sa * sizeof(real));
-        real *B = (real*) cpu.Malloc(sb * sizeof(real));
-        real *C = (real*) cpu.Malloc(sc * sizeof(real));
+//         real *A = (real*) cpu.Malloc(sa * sizeof(real));
+//         real *B = (real*) cpu.Malloc(sb * sizeof(real));
+//         real *C = (real*) cpu.Malloc(sc * sizeof(real));
       
-        cpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
-        cpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
-        cpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
+//         cpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
+//         cpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
+//         cpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
       
-        cpu.Free(A);
-        cpu.Free(B);
-        cpu.Free(C);
-    }
+//         cpu.Free(A);
+//         cpu.Free(B);
+//         cpu.Free(C);
+//     }
 
 #ifdef GPU_ACTIVE
     {

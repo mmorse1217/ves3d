@@ -4,7 +4,7 @@
 extern const Device<CPU> the_cpu_device(0);
 extern const Device<GPU> the_gpu_device(0);
 
-typedef double real;
+typedef float real;
 
 template<enum DeviceType DT, const Device<DT> &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par)
@@ -42,7 +42,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, &vInf, &StokesAlltoAll);
+    Evolve_t Es(sim_par, Mats, x0, &vInf);//&StokesAlltoAll);
     Es.Evolve();
 }
 
@@ -54,13 +54,19 @@ int main(int argc, char **argv)
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
-    sim_par.n_surfs = 2;   
+    
+    sim_par.sh_order = 24;
+    sim_par.filter_freq = 16;
+    sim_par.rep_up_freq = 48;
+    sim_par.rep_filter_freq = 8;
+ 
+    sim_par.n_surfs = 1024;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 2;
+    sim_par.time_horizon = 1;
     sim_par.scheme = Explicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
-    sim_par.save_data = true;    
+    sim_par.save_data = false;    
     sim_par.save_stride = 1;
     sim_par.save_file_name = "EvolveSurf.out";
     COUT(sim_par);
@@ -68,17 +74,17 @@ int main(int argc, char **argv)
     //Cleaning the slate
     remove(sim_par.save_file_name.c_str());
     
-    PROFILESTART();
-    COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
-    EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
-    PROFILEEND("",0);
-    PROFILEREPORT(SortFlop);    
+//     PROFILESTART();
+//     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
+//     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
+//     PROFILEEND("",0);
+//     PROFILEREPORT(SortFlopRate);    
 
 #ifdef GPU_ACTIVE
     PROFILECLEAR();
     COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
     EvolveSurfaceTest<GPU, the_gpu_device>(sim_par);
-    PROFILEREPORT(SortTime);
+    PROFILEREPORT(SortFlopRate);
 
 #endif //GPU_ACTIVE
 }
