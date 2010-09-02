@@ -43,7 +43,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
 
     //Finally, Evolve surface
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
-    PROFILEEND("setup_",0);
+    PROFILEEND("Setup_",0);
     
     Es.Evolve();
 }
