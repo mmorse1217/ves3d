@@ -55,7 +55,7 @@ class EvolveSurface
 
     ~EvolveSurface();
     
-    void Evolve();
+    MonitorReturn Evolve();
         
     Params_t &params_;
     Mats_t &mats_;

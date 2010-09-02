@@ -138,7 +138,7 @@ updatePositionImplicit(const value_type &dt)
             solver_ret == RelresIsNan )
         { 
             CERR(" The position solver did not converge with the error \""
-                <<solver_ret<<"\"",endl<<endl,exit(1));
+                <<solver_ret<<"\"",endl<<endl,sleep(0));
             
         }
     }   

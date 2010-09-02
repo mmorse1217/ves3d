@@ -18,7 +18,7 @@ Monitor<EvolveSurface>::~Monitor()
 {}
     
 template<typename EvolveSurface>
-bool Monitor<EvolveSurface>::operator()(const EvolveSurface *state, 
+MonitorReturn Monitor<EvolveSurface>::operator()(const EvolveSurface *state, 
     value_type &t, value_type &dt) 
 { 
     typename EvolveSurface::Sca_t area, vol;
@@ -58,5 +58,12 @@ bool Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
         }
         COUT(" ------------------------------------"<<endl);
     }
-    return(t<time_hor_);
+    
+    enum MonitorReturn return_val(StatusOK);
+    if ( abs(A/A0-1) > 20  || abs(V/V0-1) > 20 )
+        return_val = AreaErrorLarge;
+    if ( t > time_hor_ )
+        return_val = TimeHorizonReached;
+
+    return return_val;
 }

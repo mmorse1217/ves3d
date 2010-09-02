@@ -26,9 +26,15 @@ enum InteractionReturn {InteractionSuccess = 0,
 
 enum SingularStokesRot {Direct, ViaSpHarm};
 
+enum MonitorReturn {StatusOK = 100,
+                    TimeHorizonReached = 101,
+                    AreaErrorLarge = 102, 
+                    SolverNotConverged = 103};
+
+
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT);
 std::ostream& operator<<(std::ostream& output, const enum MemcpyKind &MK);
 std::ostream& operator<<(std::ostream& output, const enum DeviceError &err);
-std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS);
+std::ostream& operator<<(std::ostream& output, const enum MonitorReturn &MR);
 
 #endif //_ENUMS_H_

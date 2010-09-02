@@ -2,6 +2,7 @@
 #define _MONITOR_H_
 
 #include "Logger.h"
+#include "enums.h"
 
 template<typename EvolveSurface>
 class MonitorBase{
@@ -10,7 +11,7 @@ class MonitorBase{
         
   public:
     virtual ~MonitorBase();
-    virtual bool operator()(const EvolveSurface *state, value_type &t, 
+    virtual MonitorReturn operator()(const EvolveSurface *state, value_type &t, 
         value_type &dt) = 0;
 };
 
@@ -31,7 +32,7 @@ class Monitor : public MonitorBase<EvolveSurface>
     Monitor(const Parameters<value_type> &params);
     ~Monitor();
     
-    virtual bool operator()(const EvolveSurface *state, value_type &t, 
+    virtual MonitorReturn operator()(const EvolveSurface *state, value_type &t, 
         value_type &dt);
 };
 

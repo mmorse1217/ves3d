@@ -71,3 +71,21 @@ std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
     
     return output;
 }    
+
+std::ostream& operator<<(std::ostream& output, const enum MonitorReturn &MR)
+{    
+    switch (MR)
+    {
+        case StatusOK:
+            output<<"StatusOK";
+            break;
+        case TimeHorizonReached:
+            output<<"TimeHorizonReached";
+            break;
+        case AreaErrorLarge:
+            output<<"AreaErrorLarge";
+            break;
+    }
+    
+    return output;
+}    

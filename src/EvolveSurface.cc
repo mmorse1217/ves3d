@@ -46,7 +46,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
          typename Interact, typename Repart>
-void EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve() 
+MonitorReturn EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve() 
 {
     T t(0);
     T dt(params_.ts);
@@ -66,7 +66,9 @@ void EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             break;
     }
     
-    while ( (*monitor_)( this, t, dt) )
+    enum MonitorReturn monitor_status(StatusOK);
+
+    while ( monitor_status == StatusOK)
     {
         (F.*updater)(dt);       
         F.reparam();
@@ -74,5 +76,8 @@ void EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         
         //repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
         //    F.tension(), usr_ptr);
+        
+        monitor_status = (*monitor_)( this, t, dt);
     }
+    return monitor_status;
 }
