@@ -6,7 +6,7 @@
 #include "Parameters.h"
 #include "MovePole.h"
 
-#define DT CPU
+#define DT GPU
 typedef float real;
 extern const Device<DT> the_device(0);
 
@@ -16,16 +16,18 @@ int main(int , char** )
     typedef Scalars<real, DT, the_device> Sca_t;
     typedef Vectors<real, DT, the_device> Vec_t;
     typedef OperatorsMats<Sca_t> Mats_t;
-    int p(12);
+    for(int p=4;p<19; ++p)
+    {
     int nVec(1024);
     
     Parameters<real> sim_par;
+    sim_par.sh_order = 24; //Dummy
     DataIO myIO;
     Vec_t x0(nVec, p), xr(nVec, p);
     int fLen = x0.getStride();
   
-    char fname[] = "precomputed/dumbbell_cart12_single.txt";
-    myIO.ReadData(fname, x0, 0, fLen * DIM);
+    //char fname[] = "precomputed/dumbbell_cart12_single.txt";
+    //myIO.ReadData(fname, x0, 0, fLen * DIM);
     
     bool readFromFile = true;
     Mats_t mats(readFromFile, sim_par);
@@ -37,6 +39,7 @@ int main(int , char** )
     Sca_t* outputs[] = {&xr};
     
     //Profile
+    PROFILECLEAR();
     PROFILESTART();
     move_pole.setOperands(inputs, 1);
     for(int ii=0; ii<x0.getGridDim().first; ++ii)
@@ -45,4 +48,5 @@ int main(int , char** )
 
     PROFILEEND("Direct_",0);
     PROFILEREPORT(SortTime);
+    }
 }
