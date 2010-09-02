@@ -305,9 +305,7 @@ void InterfacialVelocity<SurfContainer, Interaction>::stokes(
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)
         {
-            PROFILESTART();
             move_pole(ii, jj, outputs);
-            PROFILEEND("Rotation_",0);
 
             ax(w_sph_, *t2, *t2); 
             xv(*t2, *v2, *v2);

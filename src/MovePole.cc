@@ -113,7 +113,9 @@ template<typename Container, typename Operators>
 void MovePole<Container, Operators>::operator()(int trg_i, int trg_j, 
     Container** results) const
 {
+    PROFILESTART();
     (this->*rot_handle_)(trg_i, trg_j, results);
+    PROFILEEND("MovePole_",0);
 }
 
 template<typename Container, typename Operators>
