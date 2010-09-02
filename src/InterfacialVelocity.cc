@@ -305,13 +305,18 @@ void InterfacialVelocity<SurfContainer, Interaction>::stokes(
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)
         {
+            PROFILESTART();
             move_pole(ii, jj, outputs);
+            PROFILEEND("Rotation_",0);
+
             ax(w_sph_, *t2, *t2); 
             xv(*t2, *v2, *v2);
             
+            PROFILESTART();
             S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(), 
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(), 
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
+            PROFILEEND("SelfInteraction_",0);
         }
     
     recycle(t1);

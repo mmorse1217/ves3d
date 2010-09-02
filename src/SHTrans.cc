@@ -57,7 +57,7 @@ void SHTrans<Container, Mats>::DLT(value_type *trans,
         //if (nf) n--;
         if (kf) k--;
     }
-    PROFILEEND("",0);
+    PROFILEEND("SHT_",0);
 }
 
 template<typename Container, typename Mats>
@@ -65,27 +65,39 @@ void SHTrans<Container, Mats>::back(const value_type *inputs,
     value_type *work_arr, int n_funs, value_type *outputs, 
     value_type *trans, value_type *dft) const 
 {    
+    PROFILESTART();
     int num_dft_inputs = n_funs * (p + 1);
     DLT(trans, inputs, outputs, p + 1, 2 * n_funs, p + 1, 0, 0, 1);
     
     device_.Transpose(outputs, dft_size, num_dft_inputs, work_arr);
+    
+    PROFILESTART();
     device_.gemm("T", "N", &dft_size, &num_dft_inputs, 
         &dft_size, &alpha_, dft, &dft_size,
         work_arr, &dft_size, &beta_, outputs, &dft_size);
+    PROFILEEND("SHT_DFT_",0);
+
+    PROFILEEND("SHT_",0);
 }
 
 template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::forward(const Container &in, Container &work,
     Container &shc) const
 {
+    PROFILESTART();
     int n_funs = in.getNumSubs();
     int num_dft_inputs = n_funs * (p + 1);
     
+    PROFILESTART();
     device_.gemm("N", "N", &dft_size, &num_dft_inputs, &dft_size, 
         &alpha_, mats_.dft_, &dft_size,in.begin(), &dft_size, &beta_, 
         shc.begin(), &dft_size);
+    PROFILEEND("SHT_DFT_",0);
+
     device_.Transpose(shc.begin(), num_dft_inputs, dft_size, work.begin());
     DLT(mats_.dlt_, work.begin(), shc.begin(), p + 1, 2 * n_funs, p + 1, 1, 0, 0);
+    
+    PROFILEEND("SHT_",0);
 }
 
 
