@@ -10,7 +10,6 @@
 typedef float real;
 extern const Device<DT> the_device(0);
 
-
 int main(int , char** )
 {
     typedef Scalars<real, DT, the_device> Sca_t;
@@ -29,7 +28,7 @@ int main(int , char** )
     
     bool readFromFile = true;
     Mats_t mats(readFromFile, sim_par);
-
+  
     SHTrans<Sca_t, SHTMats<real, Device<DT> > > sht(p, mats.mats_p_);
     MovePole<Sca_t, Mats_t> move_pole(mats);
         
