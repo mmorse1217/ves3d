@@ -1,86 +1,123 @@
-#include <iostream>
+#include "Logger.h"
+#include "Device.h"
 
-// #include "DataIO.h"
-// #include "Scalars.h"
-// #include "Vectors.h"
-// #include "OperatorsMats.h"
-// #include "Parameters.h"
-// #include "MovePole.h"
+#define real_t float
+#define DT CPU
 
-typedef float real_t;
-
-
-
-void CircShift(const real_t x_in, int n_sub, int sub_length, 
-    int shift, real_t x_out)
+void fillRand(real_t* x, int size, const Device<DT> &device)
 {
+    real_t* y = ( DT == CPU ) ? x : (real_t*) malloc( size * sizeof(real_t));
     
+    for(int idx=0;idx<size; ++idx)   
+        y[idx] = static_cast<real_t>(drand48());
+    
+    if ( DT != CPU )
+    {
+        device.Memcpy(x, y, size * sizeof(real_t), MemcpyHostToDevice);
+        free(y);
+    }
 }
 
-// template<typename ScalarContainer>
-// inline void CircShift(const typename ScalarContainer::value_type *x_in,
-//     int shift, ScalarContainer &x_out)
-// {
-//     int vec_length = x_out.getStride();
-//     int n_vecs = x_out.getNumSubs();
-//     shift = shift % vec_length;
-//     shift += (shift < 0) ?  vec_length : 0;
+/** 
+ * Circular shift of a collection of arrays. The length of x_in is
+ * n_sub * sub_length.
+ * 
+ * @param device A reference to the device on which the arrays reside
+ * @param x_in The collection of arrays, stored one after each other
+ * @param n_sub Total number of arrays in the memory
+ * @param sub_length The length of each array
+ * @param shift The shift (of each array)
+ * @param x_out The output
+ */
+void CircShift(const Device<DT> &device, const real_t *x_in, int n_sub, 
+    int sub_length, int shift, real_t *x_out)
+{
+    PROFILESTART();
 
-//     int base_in, base_out;
-//     for (int ii = 0; ii < n_vecs; ii++) {
-//         base_out = ii * vec_length;
-//         base_in = base_out + vec_length - shift;
-//         x_out.getDevice().Memcpy((typename ScalarContainer::value_type*) 
-//             x_out.begin() + base_out, 
-//             x_in + base_in, sizeof(typename ScalarContainer::value_type) * shift, 
-//             MemcpyDeviceToDevice);
-//         base_in = base_out;
-//         base_out += shift;
-//         x_out.getDevice().Memcpy((typename ScalarContainer::value_type*) 
-//             x_out.begin() + base_out, x_in + base_in, 
-//             sizeof(typename ScalarContainer::value_type) * (vec_length - shift),
-//             MemcpyDeviceToDevice);
-//     }
-// }
-/////
+    shift = shift % sub_length;
+    shift += (shift < 0) ?  sub_length : 0;
+
+    int in_idx, out_idx;
+    for (int ii = 0; ii < n_sub; ii++) {
+        out_idx = ii * sub_length;
+        in_idx = out_idx + sub_length - shift;
+        device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * shift, 
+            MemcpyDeviceToDevice);
+        
+        in_idx = out_idx;
+        out_idx += shift;
+
+        device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * (sub_length - shift),
+            MemcpyDeviceToDevice);
+    }
+    PROFILEEND("",0);
+}
+
+void CircShiftTrans(const Device<DT> &device, const real_t *x_in, int n_sub, 
+    int sub_length, int shift, real_t *x_out)
+{
+    PROFILESTART();
+
+    shift = shift % sub_length;
+    shift += (shift < 0) ?  sub_length : 0;
+
+    device.Transpose(x_in, n_sub, sub_length, x_out);
+    real_t* wrk = (real_t*) device.Malloc(n_sub * sub_length * sizeof(real_t));
+
+    int offset = n_sub * (sub_length - shift);
+    int allshift = shift * n_sub;
+
+    device.Memcpy(wrk           , x_out + offset, sizeof(real_t) * allshift, MemcpyDeviceToDevice);
+    device.Memcpy(wrk + allshift, x_out         , sizeof(real_t) * offset  , MemcpyDeviceToDevice);
+    
+    device.Transpose(wrk, sub_length, n_sub, x_out);
+    PROFILEEND("",0);
+}
 
 int main(int , char** )
 {
-//     typedef Scalars<real, DT, the_device> Sca_t;
-//     typedef Vectors<real, DT, the_device> Vec_t;
-//     typedef OperatorsMats<Sca_t> Mats_t;
+    Device<DT> device(0);     //the device with id = 0, DT is either GPU or CPU
 
-//     int nVec(1024), pMax(20);
-//     Parameters<real> sim_par;
-//     sim_par.sh_order = 24; //Dummy, anything larger than pMax
+    int p(12);               //problem size parameter
+    int m(2 * p * (p + 1));  //size of the arrays corresponding to the problem size
+    int n(1024);
+    int k(m);
     
-//     bool readFromFile = true;
-//     Mats_t mats(readFromFile, sim_par);
-
-//     for(int p=4;p<pMax; ++p)
-//     {
-//         Vec_t x0(nVec, p), xr(nVec, p);
-//         int fLen = x0.getStride();
-        
-//         //DataIO myIO;
-//         //char fname[] = "precomputed/dumbbell_cart12_single.txt";
-//         //myIO.ReadData(fname, x0, 0, fLen * DIM);
+    //Derived sizes
+    int a_size(m * k);
+    int b_size(k * n);
+    int c_size(k * n);
+    int all_mats_size((p + 1) * a_size);
+ 
+    //Allocating memory
+    real_t *all_mats = (real_t*) device.Malloc(all_mats_size * sizeof(real_t));
+    real_t *A        = (real_t*) device.Malloc(a_size        * sizeof(real_t));
+    real_t *B        = (real_t*) device.Malloc(b_size        * sizeof(real_t));
+    real_t *C        = (real_t*) device.Malloc(c_size        * sizeof(real_t));
     
-//         SHTrans<Sca_t, SHTMats<real, Device<DT> > > sht(p, mats.mats_p_);
-//         MovePole<Sca_t, Mats_t> move_pole(mats);
-        
-//         const Sca_t* inputs[] = {&x0};
-//         Sca_t* outputs[] = {&xr};
+    //Filling with random numbers
+    fillRand(all_mats, all_mats_size, device);
+    fillRand(B       , b_size       , device);
     
-//         //Profile
-//         PROFILECLEAR();
-//         PROFILESTART();
-//         move_pole.setOperands(inputs, 1);
-//         for(int ii=0; ii<x0.getGridDim().first; ++ii)
-//             for(int jj=0; jj<x0.getGridDim().second; ++jj)
-//                 move_pole(ii, jj, outputs);
-
-//         PROFILEEND("Direct_",0);
-//         PROFILEREPORT(SortTime);
-//     }
+    //Example of the operation 
+    real_t alpha(1), beta(0);
+    PROFILECLEAR();
+    PROFILESTART();
+    for ( int ii=0; ii<p+1; ++ii )
+        for ( int jj=0; jj< 2 * p; ++jj)
+        {
+            //Permuting the matrix A_i, for the jth entry
+            CircShift(device, all_mats + ii * a_size, p + 1, 2 * p * k, jj * k, A); 
+            
+            device.gemm("N", "N", &m, &n, &k, &alpha, A, &k, B, &k, &beta, C, &k);
+        }
+    
+    PROFILEEND("",0);
+    PROFILEREPORT(SortTime);
+    
+    //Freeing memory
+    device.Free(all_mats);
+    device.Free(A);
+    device.Free(B);
+    device.Free(C);
 }

@@ -127,7 +127,7 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
     int nv = (*arr_)->getNumSubs();
     //int rot_chunck = 2 * p * np;
     
-    CircShift(all_rot_mats_.begin() + trg_i * np * np, trg_j * np, rot_mat_);
+    CircShift(all_rot_mats_.begin() + trg_i * np * np, trg_j * np, rot_mat_); 
     
     for(int ii=0; ii<num_; ++ii)
     {
