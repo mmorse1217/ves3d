@@ -47,12 +47,13 @@ void CircShift(const Device<DT> &device, const real_t *x_in, int n_sub,
     in_idx = out_idx;
     out_idx += shift;
 
-    device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * (sub_length - shift),
-		  MemcpyDeviceToDevice);
+    device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) *
+        (sub_length - shift), MemcpyDeviceToDevice);
   }
   PROFILEEND("",0);
 }
 
+///The same as above but using transpose
 void CircShiftTrans(const Device<DT> &device, const real_t *x_in, int n_sub, 
 		    int sub_length, int shift, real_t *x_out)
 {
@@ -67,8 +68,10 @@ void CircShiftTrans(const Device<DT> &device, const real_t *x_in, int n_sub,
   int offset = n_sub * (sub_length - shift);
   int allshift = shift * n_sub;
 
-  device.Memcpy(wrk           , x_out + offset, sizeof(real_t) * allshift, MemcpyDeviceToDevice);
-  device.Memcpy(wrk + allshift, x_out         , sizeof(real_t) * offset  , MemcpyDeviceToDevice);
+  device.Memcpy(wrk           , x_out + offset, sizeof(real_t) * allshift, 
+      MemcpyDeviceToDevice);
+  device.Memcpy(wrk + allshift, x_out         , sizeof(real_t) * offset  , 
+      MemcpyDeviceToDevice);
     
   device.Transpose(wrk, sub_length, n_sub, x_out);
   PROFILEEND("",0);
@@ -78,10 +81,12 @@ int main(int , char** )
 {
   Device<DT> device(0);     //the device with id = 0, DT is either GPU or CPU
 
-  for(int p(6); p<20;++p)
-    {//int p(6);               //problem size parameter
-      int m(2 * p * (p + 1));  //size of the arrays corresponding to the problem size
-      int n(1024);
+  for ( int p(6); p<24; ++p )   //problem size parameter, 
+  {
+      cout<<"  Size :"<<p<<endl;
+      //Size of the matrices -- blas convention
+      int m(2 * p * (p + 1));  
+      int n(1024);             //varies between 800~4000
       int k(m);
     
       //Derived sizes
@@ -107,9 +112,9 @@ int main(int , char** )
       for ( int ii=0; ii<p+1; ++ii )
         for ( int jj=0; jj< 2 * p; ++jj)
 	  {
-            //Permuting the matrix A_i, for the jth entry.Another
+            //Permuting the matrix A_i, for the jth entry. Another
             //option is using the transpose based function
-            //(CircShiftTrans), but it is much slower
+            //(CircShiftTrans), but it is msize of the arrays corresponding to the problem sizeuch slower
             CircShift(device, all_mats + ii * a_size, p + 1, 2 * p * k, jj * k, A); 
             device.gemm("N", "N", &m, &n, &k, &alpha, A, &k, B, &k, &beta, C, &k);
 	  }
