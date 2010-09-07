@@ -2,19 +2,19 @@
 #include "Device.h"
 
 #define real_t float
-#define DT CPU
+#define DT GPU
 
 void fillRand(real_t* x, int size, const Device<DT> &device)
 {
-    real_t* y = ( DT == CPU ) ? x : (real_t*) malloc( size * sizeof(real_t));
+  real_t* y = ( DT == CPU ) ? x : (real_t*) malloc( size * sizeof(real_t));
     
-    for(int idx=0;idx<size; ++idx)   
-        y[idx] = static_cast<real_t>(drand48());
+  for(int idx=0;idx<size; ++idx)   
+    y[idx] = static_cast<real_t>(drand48());
     
-    if ( DT != CPU )
+  if ( DT != CPU )
     {
-        device.Memcpy(x, y, size * sizeof(real_t), MemcpyHostToDevice);
-        free(y);
+      device.Memcpy(x, y, size * sizeof(real_t), MemcpyHostToDevice);
+      free(y);
     }
 }
 
@@ -30,94 +30,97 @@ void fillRand(real_t* x, int size, const Device<DT> &device)
  * @param x_out The output
  */
 void CircShift(const Device<DT> &device, const real_t *x_in, int n_sub, 
-    int sub_length, int shift, real_t *x_out)
+	       int sub_length, int shift, real_t *x_out)
 {
-    PROFILESTART();
+  PROFILESTART();
 
-    shift = shift % sub_length;
-    shift += (shift < 0) ?  sub_length : 0;
+  shift = shift % sub_length;
+  shift += (shift < 0) ?  sub_length : 0;
 
-    int in_idx, out_idx;
-    for (int ii = 0; ii < n_sub; ii++) {
-        out_idx = ii * sub_length;
-        in_idx = out_idx + sub_length - shift;
-        device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * shift, 
-            MemcpyDeviceToDevice);
+  int in_idx, out_idx;
+  for (int ii = 0; ii < n_sub; ii++) {
+    out_idx = ii * sub_length;
+    in_idx = out_idx + sub_length - shift;
+    device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * shift, 
+		  MemcpyDeviceToDevice);
         
-        in_idx = out_idx;
-        out_idx += shift;
+    in_idx = out_idx;
+    out_idx += shift;
 
-        device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * (sub_length - shift),
-            MemcpyDeviceToDevice);
-    }
-    PROFILEEND("",0);
+    device.Memcpy(x_out + out_idx, x_in + in_idx, sizeof(real_t) * (sub_length - shift),
+		  MemcpyDeviceToDevice);
+  }
+  PROFILEEND("",0);
 }
 
 void CircShiftTrans(const Device<DT> &device, const real_t *x_in, int n_sub, 
-    int sub_length, int shift, real_t *x_out)
+		    int sub_length, int shift, real_t *x_out)
 {
-    PROFILESTART();
+  PROFILESTART();
 
-    shift = shift % sub_length;
-    shift += (shift < 0) ?  sub_length : 0;
+  shift = shift % sub_length;
+  shift += (shift < 0) ?  sub_length : 0;
 
-    device.Transpose(x_in, n_sub, sub_length, x_out);
-    real_t* wrk = (real_t*) device.Malloc(n_sub * sub_length * sizeof(real_t));
+  device.Transpose(x_in, n_sub, sub_length, x_out);
+  real_t* wrk = (real_t*) device.Malloc(n_sub * sub_length * sizeof(real_t));
 
-    int offset = n_sub * (sub_length - shift);
-    int allshift = shift * n_sub;
+  int offset = n_sub * (sub_length - shift);
+  int allshift = shift * n_sub;
 
-    device.Memcpy(wrk           , x_out + offset, sizeof(real_t) * allshift, MemcpyDeviceToDevice);
-    device.Memcpy(wrk + allshift, x_out         , sizeof(real_t) * offset  , MemcpyDeviceToDevice);
+  device.Memcpy(wrk           , x_out + offset, sizeof(real_t) * allshift, MemcpyDeviceToDevice);
+  device.Memcpy(wrk + allshift, x_out         , sizeof(real_t) * offset  , MemcpyDeviceToDevice);
     
-    device.Transpose(wrk, sub_length, n_sub, x_out);
-    PROFILEEND("",0);
+  device.Transpose(wrk, sub_length, n_sub, x_out);
+  PROFILEEND("",0);
 }
 
 int main(int , char** )
 {
-    Device<DT> device(0);     //the device with id = 0, DT is either GPU or CPU
+  Device<DT> device(0);     //the device with id = 0, DT is either GPU or CPU
 
-    int p(12);               //problem size parameter
-    int m(2 * p * (p + 1));  //size of the arrays corresponding to the problem size
-    int n(1024);
-    int k(m);
+  for(int p(6); p<20;++p)
+    {//int p(6);               //problem size parameter
+      int m(2 * p * (p + 1));  //size of the arrays corresponding to the problem size
+      int n(1024);
+      int k(m);
     
-    //Derived sizes
-    int a_size(m * k);
-    int b_size(k * n);
-    int c_size(k * n);
-    int all_mats_size((p + 1) * a_size);
+      //Derived sizes
+      int a_size(m * k);
+      int b_size(k * n);
+      int c_size(k * n);
+      int all_mats_size((p + 1) * a_size);
  
-    //Allocating memory
-    real_t *all_mats = (real_t*) device.Malloc(all_mats_size * sizeof(real_t));
-    real_t *A        = (real_t*) device.Malloc(a_size        * sizeof(real_t));
-    real_t *B        = (real_t*) device.Malloc(b_size        * sizeof(real_t));
-    real_t *C        = (real_t*) device.Malloc(c_size        * sizeof(real_t));
+      //Allocating memory
+      real_t *all_mats = (real_t*) device.Malloc(all_mats_size * sizeof(real_t));
+      real_t *A        = (real_t*) device.Malloc(a_size        * sizeof(real_t));
+      real_t *B        = (real_t*) device.Malloc(b_size        * sizeof(real_t));
+      real_t *C        = (real_t*) device.Malloc(c_size        * sizeof(real_t));
     
-    //Filling with random numbers
-    fillRand(all_mats, all_mats_size, device);
-    fillRand(B       , b_size       , device);
+      //Filling with random numbers
+      fillRand(all_mats, all_mats_size, device);
+      fillRand(B       , b_size       , device);
     
-    //Example of the operation 
-    real_t alpha(1), beta(0);
-    PROFILECLEAR();
-    PROFILESTART();
-    for ( int ii=0; ii<p+1; ++ii )
+      //Example of the operation 
+      real_t alpha(1), beta(0);
+      PROFILECLEAR();
+      PROFILESTART();
+      for ( int ii=0; ii<p+1; ++ii )
         for ( int jj=0; jj< 2 * p; ++jj)
-        {
-            //Permuting the matrix A_i, for the jth entry
+	  {
+            //Permuting the matrix A_i, for the jth entry.Another
+            //option is using the transpose based function
+            //(CircShiftTrans), but it is much slower
             CircShift(device, all_mats + ii * a_size, p + 1, 2 * p * k, jj * k, A); 
-            
             device.gemm("N", "N", &m, &n, &k, &alpha, A, &k, B, &k, &beta, C, &k);
-        }
+	  }
     
-    PROFILEEND("",0);
-    PROFILEREPORT(SortTime);
+      PROFILEEND("",0);
+      PROFILEREPORT(SortTime);
     
-    //Freeing memory
-    device.Free(all_mats);
-    device.Free(A);
-    device.Free(B);
-    device.Free(C);
+      //Freeing memory
+      device.Free(all_mats);
+      device.Free(A);
+      device.Free(B);
+      device.Free(C);
+    }
 }
