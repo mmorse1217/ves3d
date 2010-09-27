@@ -17,8 +17,9 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     
     //reading the prototype form file
     DataIO myIO;
-    myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-        x0, 0, x0.getSubLength());
+    char filename[300];
+    sprintf(filename, "precomputed/biconcave_ra85_%u",sim_par.sh_order);
+    myIO.ReadData(filename, x0, 0, x0.getSubLength());
     
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
@@ -43,7 +44,8 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
 
     //Finally, Evolve surface
     Evolve_t Es(sim_par, Mats, x0, &vInf);//&StokesAlltoAll);
-    Es.Evolve();
+
+    QC ( Es.Evolve() );
 }
 
 int main(int argc, char **argv)
@@ -55,14 +57,14 @@ int main(int argc, char **argv)
     // Setting the parameters
     Par_t sim_par;
     
-    sim_par.sh_order = 24;
-    sim_par.filter_freq = 16;
-    sim_par.rep_up_freq = 48;
-    sim_par.rep_filter_freq = 8;
+    sim_par.sh_order = 12;
+    sim_par.filter_freq = 8;
+    sim_par.rep_up_freq = 24;
+    sim_par.rep_filter_freq = 4;
  
-    sim_par.n_surfs = 1024;   
+    sim_par.n_surfs = 2;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 1;
+    sim_par.time_horizon = 2;
     sim_par.scheme = Explicit;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
@@ -74,16 +76,20 @@ int main(int argc, char **argv)
     //Cleaning the slate
     remove(sim_par.save_file_name.c_str());
     
-//     PROFILESTART();
-//     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
-//     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
-//     PROFILEEND("",0);
-//     PROFILEREPORT(SortFlopRate);    
-
+    CLEARERRORHIST();
+    PROFILESTART();
+    COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
+    EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
+    PROFILEEND("",0);
+    PRINTERRORLOG();
+    PROFILEREPORT(SortFlopRate);    
+    
 #ifdef GPU_ACTIVE
+    CLEARERRORHIST();
     PROFILECLEAR();
     COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
     EvolveSurfaceTest<GPU, the_gpu_device>(sim_par);
+    PRINTERRORLOG();
     PROFILEREPORT(SortFlopRate);
 
 #endif //GPU_ACTIVE

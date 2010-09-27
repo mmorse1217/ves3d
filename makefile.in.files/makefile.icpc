@@ -3,7 +3,7 @@ ARFLAGS  = -r
 CXXFLAGS+= -openmp -fPIC -DVERBOSE  -early-template-check -sox -fno-exceptions  #-Wall 
 
 ifeq ($(VES3D_TESTING),yes)
-  CXXFLAGS+= -g -O0 -fp-model precise -mp1 -debug full -fno-inline -DNDEBUG
+  CXXFLAGS+= -g -O0 -fp-model precise -mp1 -debug full -fno-inline -DPROFILING #-DNDEBUG
 else
   CXXFLAGS+= -O3 -finline -DPROFILING -unroll-agressive -msse3 -malign-double -DNDEBUG
 endif

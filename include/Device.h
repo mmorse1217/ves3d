@@ -61,7 +61,7 @@ class Device
     ///The constructor of the class. device_id is a user-specified ID
     ///and err is the return error type corresponding to the
     ///instantiation action. Both of these parameter are optional.
-    explicit Device(int device_id = 0, enum DeviceError *err = NULL);
+    explicit Device(int device_id = 0, Error_t *err = NULL);
 
     ///Destructor
     ~Device();

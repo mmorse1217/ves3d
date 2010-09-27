@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     int nstep = 200;
     real ts = 1024;
     
-    bool doIterate = true;
+    bool doIterate = false;
     while ( doIterate )
     {
         ts /= 2;

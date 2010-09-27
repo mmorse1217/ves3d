@@ -42,9 +42,8 @@ class VesInteraction
      * @return Enum type defined in enums.h indicating the outcome of interaction.
      */
     template<typename VecContainer>
-    InteractionReturn operator()(const VecContainer &position, 
-        VecContainer &density, VecContainer &potential,
-        void* usr_ptr = NULL) const;
+    Error_t operator()(const VecContainer &position, VecContainer &density, 
+        VecContainer &potential, void* usr_ptr = NULL) const;
 
   private:
     InteractionFun_t interaction_handle_;

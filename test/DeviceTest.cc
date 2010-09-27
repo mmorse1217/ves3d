@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     {
         cout<<sep<<"\n  CPU -- float\n"<<sep<<endl;
         int id = 0;
-        enum DeviceError err;
+        Error_t err;
         Device<CPU> cpu(id, &err);
         cout<<" * Initialization: "<<err<<" *"<<endl;
         DeviceTest<CPU,float> dvt_f(&cpu);
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
         {
             cout<<sep<<"\n  GPU -- float\n"<<sep<<endl;
             int id = 0;
-            enum DeviceError err;
+            Error_t err;
             Device<GPU> gpu(id, &err);
             cout<<" * Initialization: "<<err<<" *"<<endl;
             DeviceTest<GPU,float> dvt_gf(&gpu);
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
         {
             cout<<sep<<"\n  GPU -- double\n"<<sep<<endl;
             int id = 0;
-            enum DeviceError err;
+            Error_t err;
             Device<GPU> gpu(id, &err);
             cout<<" * Initialization: "<<err<<" *"<<endl;
             DeviceTest<GPU,double> dvt_gf(&gpu);

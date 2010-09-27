@@ -206,8 +206,7 @@ updateInteraction() const
     u3->setPointOrder(PointMajor);
 
     //Far interactions
-    InteractionReturn status;
-    status = interaction_(*u1, *u2, *u3, usr_ptr_);
+    Error_t status = interaction_(*u1, *u2, *u3, usr_ptr_);
     
     //Shuffling to the original order
     ShufflePoints(*u3, *u2);
@@ -215,7 +214,7 @@ updateInteraction() const
     u3->setPointOrder(AxisMajor);
 
     //Subtracting the self-interaction
-    if(status)
+    if ( status == Success )
         axpy(static_cast<value_type>(0), velocity_, velocity_);
     else
         axpy(static_cast<value_type>(-1), velocity_, *u2, velocity_);

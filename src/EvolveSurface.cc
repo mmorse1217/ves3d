@@ -50,6 +50,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
     T t(0);
     T dt(params_.ts);
+    T time_horizon(params_.time_horizon);
+
     IntVel_t F(*S_, *interaction_, mats_, params_, *vInf_);
     F.usr_ptr_ = user_ptr_;
      
@@ -66,10 +68,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             break;
     }
     
-    enum MonitorReturn monitor_status(StatusOK);
-    Error_t ret_val(Success);
-
-    while ( monitor_status == StatusOK && ERRORSTATUS() )
+    int counter(0);
+    while ( ERRORSTATUS() && t < time_horizon )
     {
         QC( (F.*updater)(dt) );       
         F.reparam();
@@ -78,11 +78,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         //repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
         //    F.tension(), usr_ptr);
         
-        monitor_status = (*monitor_)( this, t, dt);
+        QC( (*monitor_)( this, t, dt) );
     }
-    
-    if ( monitor_status != TimeHorizonReached)
-        ret_val = UnknownError;
-    
-    return ret_val;
+
+    return Success;
 }

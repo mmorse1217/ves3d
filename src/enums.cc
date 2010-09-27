@@ -72,24 +72,6 @@ std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
     return output;
 }    
 
-std::ostream& operator<<(std::ostream& output, const enum MonitorReturn &MR)
-{    
-    switch (MR)
-    {
-        case StatusOK:
-            output<<"StatusOK";
-            break;
-        case TimeHorizonReached:
-            output<<"TimeHorizonReached";
-            break;
-        case AreaErrorLarge:
-            output<<"AreaErrorLarge";
-            break;
-    }
-    
-    return output;
-}
-
 std::ostream& operator<<(std::ostream& output, const enum Ves3DErrors &err)
 {    
     switch (err)
@@ -100,11 +82,17 @@ std::ostream& operator<<(std::ostream& output, const enum Ves3DErrors &err)
         case UnknownError:
             output<<"UnkownError";
             break;
-        case DeviceError:
-            output<<"DeviceError";
+        case InvalidDevice:
+            output<<"InvalidDevice";
+            break;
+        case SetOnActiveDevice:
+            output<<"SetOnActiveDevice";
             break;
         case SolverDiverged:
             output<<"SolverDiverged";
+            break;
+        case NoInteraction:
+            output<<"NoInteraction";
             break;
         case InteractionFailed:
             output<<"InteractionFailed";
@@ -115,6 +103,8 @@ std::ostream& operator<<(std::ostream& output, const enum Ves3DErrors &err)
         case AccuracyError:
             output<<"AccuracyError";
             break;
+        default:
+            output<<err<<" [The string for the given enum type is not known, update the insertion operator]";
     }
     
     return output;
@@ -135,6 +125,8 @@ std::ostream& operator<<(std::ostream& output, const ErrorEvent &ee)
           <<"\n       Function name : "<<ee.funname_
           <<"\n       File name     : "<<ee.filename_
           <<"\n       Line number   : "<<ee.linenumber_<<"\n";
+    
+    return output;
 }
 
 stack<ErrorEvent> ErrorHandler::ErrorStack_;
@@ -222,4 +214,6 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee, ErrorHandler::ErrorCallBac
     {
         cerr<<"\n  An Error was encountered during the function invocation in:\n"<<ee<<endl;
     }
+    
+    return UnknownError;
 }

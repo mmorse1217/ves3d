@@ -11,7 +11,7 @@ class MonitorBase{
         
   public:
     virtual ~MonitorBase();
-    virtual MonitorReturn operator()(const EvolveSurface *state, value_type &t, 
+    virtual Error_t operator()(const EvolveSurface *state, const value_type &t, 
         value_type &dt) = 0;
 };
 
@@ -22,17 +22,18 @@ class Monitor : public MonitorBase<EvolveSurface>
   private:
     typedef typename EvolveSurface::value_type value_type;
 
-    value_type time_hor_;
     bool save_flag_;
     value_type save_stride_;
     DataIO IO;
     mutable value_type A0, V0;
-    
+    typename EvolveSurface::Sca_t area, vol;
+    int last_save;
+
   public:
     Monitor(const Parameters<value_type> &params);
     ~Monitor();
     
-    virtual MonitorReturn operator()(const EvolveSurface *state, value_type &t, 
+    virtual Error_t operator()(const EvolveSurface *state, const value_type &t, 
         value_type &dt);
 };
 

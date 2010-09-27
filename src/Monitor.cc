@@ -5,12 +5,12 @@ MonitorBase<EvolveSurface>::~MonitorBase()
 /////////////////////////////////////////////////////////////////////////////////////
 template<typename EvolveSurface>
 Monitor<EvolveSurface>::Monitor(const Parameters<value_type> &params) : 
-    time_hor_(params.time_horizon),
     save_flag_(params.save_data),
     save_stride_(params.save_stride),
     IO(params.save_file_name),
     A0(-1),
-    V0(-1)
+    V0(-1),
+    last_save(-1)
 {}
 
 template<typename EvolveSurface>
@@ -18,11 +18,9 @@ Monitor<EvolveSurface>::~Monitor()
 {}
     
 template<typename EvolveSurface>
-MonitorReturn Monitor<EvolveSurface>::operator()(const EvolveSurface *state, 
-    value_type &t, value_type &dt) 
-{ 
-    typename EvolveSurface::Sca_t area, vol;
-
+Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state, 
+    const value_type &t, value_type &dt) 
+{
     area.replicate(state->S_->getPosition());
     vol.replicate(state->S_->getPosition());
     state->S_->area(area);
@@ -50,20 +48,20 @@ MonitorReturn Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             <<scientific<<setprecision(4)
             <<"\n           volume error = "<<abs(V/V0-1)<<endl);
         
-        if(save_flag_ && ( (static_cast<int>(t/save_stride_ - 1e-4) + 1) == static_cast<int>(t/save_stride_)))
+        bool save_now = static_cast<int>(t/save_stride_) > last_save;
+
+        if ( save_flag_ && save_now)
         {
             COUT("\n           Writing data to file."<<endl);
             IO.Append(state->S_->getPosition());
-            
+            last_save++;
         }
         COUT(" ------------------------------------"<<endl);
     }
     
-    enum MonitorReturn return_val(StatusOK);
+    Error_t return_val(Success);
     if ( abs(A/A0-1) > 20  || abs(V/V0-1) > 20 )
-        return_val = AreaErrorLarge;
-    if ( t > time_hor_ )
-        return_val = TimeHorizonReached;
+        return_val = AccuracyError;
 
     return return_val;
 }

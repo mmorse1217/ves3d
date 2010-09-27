@@ -1,11 +1,22 @@
 template<>
-Device<GPU>::Device(int device_id, enum DeviceError *err)
+Device<GPU>::Device(int device_id, Error_t *err)
 {
     if(err != NULL)
-        *err = static_cast<DeviceError>(cudaSetDevice(device_id));
+        switch ( cudaSetDevice(device_id) )
+        {
+            case cudaSuccess:
+                *err = Success;
+                break;
+            case cudaErrorInvalidDevice:
+                *err = InvalidDevice;
+                break;
+            case cudaErrorSetOnActiveProcess:
+                *err = SetOnActiveDevice;
+                break;
+        }
     else
         cudaSetDevice(device_id);
-
+    
     cublasInit();
 }
 

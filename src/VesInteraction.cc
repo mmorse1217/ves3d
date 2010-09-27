@@ -28,7 +28,7 @@ VesInteraction<T>::~VesInteraction()
 
 template<typename T>
 template<typename VecContainer>
-InteractionReturn VesInteraction<T>::operator()(
+Error_t VesInteraction<T>::operator()(
     const VecContainer &position, VecContainer &density, 
     VecContainer &potential, void* usr_ptr) const
 {
@@ -99,7 +99,7 @@ InteractionReturn VesInteraction<T>::operator()(
         delete[] buffer;
     }
     
-    return InteractionSuccess;
+    return Success;
 }
 
 template<typename T>

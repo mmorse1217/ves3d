@@ -14,29 +14,24 @@ enum DeviceType {CPU, GPU};
 enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice, 
                  MemcpyDeviceToHost, MemcpyDeviceToDevice};
 
-///The enum types for the device related errors, the insertion
-///operator << is overloaded for this type.
-enum DeviceError {DeviceSuccess, InvalidDevice, SetOnActiveDevice};
-
 ///The enum type for the reordering of the points
 enum CoordinateOrder {PointMajor, AxisMajor};
 
 enum SolverScheme {Explicit, SemiImplicit};
 
-enum InteractionReturn {InteractionSuccess, NoInteraction};
-
 enum SingularStokesRot {Direct, ViaSpHarm};
 
-enum MonitorReturn {StatusOK, TimeHorizonReached, AreaErrorLarge, SolverNotConverged};
+///The enum types for the errors in the Ves3D set of function, the
+///insertion operator << is overloaded for this type.
 
 ///Errors in the Ves3D code
-enum Ves3DErrors {Success = 0, 
-                  UnknownError = 1,
-                  DeviceError = -1, 
-                  SolverDiverged = 2, 
-                  InteractionFailed = -2, 
-                  RepartitioningFailed = 4,
-                  AccuracyError = -4};
+enum Ves3DErrors {Success,
+                  UnknownError,
+                  InvalidDevice, SetOnActiveDevice, 
+                  SolverDiverged, 
+                  NoInteraction, InteractionFailed, 
+                  RepartitioningFailed,
+                  AccuracyError};
 
 typedef enum Ves3DErrors Error_t;
 
