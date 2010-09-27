@@ -627,8 +627,8 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
     float inv_r = rsqrtf(dis_reg[0] * dis_reg[0] + dis_reg[1] * dis_reg[1]
                           + dis_reg[2] * dis_reg[2]);
 
-    inv_r = inv_r + (inv_r-inv_r);
-    inv_r = fmaxf(inv_r,(float)0.0F);
+    inv_r = inv_r + (inv_r-inv_r); // if inv_r is inf then subtraction is NaN and then addition is NaN
+    inv_r = (inv_r > 0.0F) ? inv_r : 0.0F; //inv_r should be positive, and comparison with NaN is always false
     
     float tmp_scal = (dis_reg[0] * pot_reg[0] + dis_reg[1] * pot_reg[1]
                        + dis_reg[2] * pot_reg[2]) * inv_r * inv_r;

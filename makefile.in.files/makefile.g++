@@ -6,7 +6,7 @@ ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS+= -gstabs+ -O0  #-pedantic #-msse3
 else
   CXXFLAGS+= -O3 -finline-functions -funroll-loops -w  			\
-    -funsafe-loop-optimizations -DNDEBUG #-msse3 #-malign-double
+  	    -g -funsafe-loop-optimizations -DNDEBUG #-msse3 #-malign-double
 endif
 
 

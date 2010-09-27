@@ -62,7 +62,7 @@ InterfacialVelocity<SurfContainer, Interaction>::
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updatePositionExplicit(const value_type &dt)
 {
     this->dt_ = dt;
@@ -73,41 +73,43 @@ updatePositionExplicit(const value_type &dt)
     auto_ptr<Vec_t> u2 = checkoutVec();
     
     Intfcl_force_.bendingForce(S_, *u1);
-    stokes(*u1, *u2);   
+    QC(stokes(*u1, *u2));   
     axpy(static_cast<value_type>(1), *u2, velocity_, velocity_);
    
     //Tension
-    getTension(velocity_, tension_);
+    QC(getTension(velocity_, tension_));
     Intfcl_force_.tensileForce(S_, tension_, *u1);
-    stokes(*u1, *u2);
+    QC(stokes(*u1, *u2));
     axpy(static_cast<value_type>(1), *u2, velocity_, velocity_);
 
     axpy(dt_, velocity_, S_.getPosition(), S_.getPositionModifiable());
     
     recycle(u1);
     recycle(u2);
+    
+    return Success;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updatePositionImplicit(const value_type &dt)
 {
     this->dt_ = dt;
     this->updateInteraction();
-
+    
     auto_ptr<Vec_t> u1 = checkoutVec();
     auto_ptr<Vec_t> u2 = checkoutVec();
     auto_ptr<Vec_t> u3 = checkoutVec();
     
     //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, *u1);
-    stokes(*u1, *u2);   
+    QC(stokes(*u1, *u2));   
     axpy(static_cast<value_type>(1), *u2, velocity_, *u1);
   
     //Tension
-    getTension(*u1, tension_);
+    QC(getTension(*u1, tension_));
     Intfcl_force_.tensileForce(S_, tension_, *u1);
-    stokes(*u1, *u2);
+    QC(stokes(*u1, *u2));
     axpy(static_cast<value_type>(1), *u2, velocity_, *u1);
     
     axpy(dt_, *u1, S_.getPosition(), *u1);
@@ -118,11 +120,12 @@ updatePositionImplicit(const value_type &dt)
     int max_iter(params_.outer_solver_maxit);
     value_type tol(params_.outer_solver_tol);
     enum BiCGSReturn solver_ret;
+    Error_t ret_val(Success);
 
     int mIter;
     value_type tt;
     int ii, imax(2);
-
+    
     COUT("  Position solve\n ------------------------------------\n");
     for ( ii=0; ii<imax; ++ii )
     {
@@ -134,38 +137,35 @@ updatePositionImplicit(const value_type &dt)
         if ( solver_ret == BiCGSSuccess )
             break;
         
-        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || 
-            solver_ret == RelresIsNan )
-        { 
-            CERR(" The position solver did not converge with the error \""
-                <<solver_ret<<"\"",endl<<endl,sleep(0));
-            
-        }
+        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
+            ret_val = SolverDiverged;
     }   
-
+    
     COUTDEBUG(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<< ii * max_iter + mIter
         <<"\n                 Relres = "<<tt<<endl);
-
+    
     COUTDEBUG("            True relres = "<<
         ((*this)(*u2, *u3),
             axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
             tt = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
          )<<endl);
-
+    
     COUT(" ------------------------------------"<<endl);
-
-
+    
+    
     u2->getDevice().Memcpy(S_.getPositionModifiable().begin(), u2->begin(), 
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
-
+    
     recycle(u1);
     recycle(u2);
     recycle(u3);
+
+    return ret_val;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateInteraction() const
 {
     //Interfacial forces
@@ -228,10 +228,12 @@ updateInteraction() const
     recycle(u1);
     recycle(u2);
     recycle(u3);
+    
+    return Success;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::getTension(
+Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
 {
     auto_ptr<Sca_t> rhs = checkoutSca();
@@ -244,7 +246,9 @@ void InterfacialVelocity<SurfContainer, Interaction>::getTension(
     int max_iter(params_.inner_solver_maxit);
     value_type tol(params_.inner_solver_tol);
     enum BiCGSReturn solver_ret;
-    ///@todo add the restart option to the Parameters
+    Error_t ret_val(Success);
+
+   ///@todo add the restart option to the Parameters
     
     int mIter;
     value_type tt;
@@ -259,11 +263,8 @@ void InterfacialVelocity<SurfContainer, Interaction>::getTension(
         if ( solver_ret == BiCGSSuccess )
             break;
         
-        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) 
-            || solver_ret == RelresIsNan )
-            
-            CERR(" The tension solver did not converge with the error \""
-                <<solver_ret<<"\"",endl<<endl,exit(1));
+        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
+            ret_val = SolverDiverged;
     }
     COUTDEBUG(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<< ii * max_iter + mIter
@@ -273,14 +274,16 @@ void InterfacialVelocity<SurfContainer, Interaction>::getTension(
             axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
             tt = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))
          )<<endl);
-
+    
     COUT(" ------------------------------------"<<endl);
     recycle(wrk);
     recycle(rhs);
+    
+    return ret_val;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::stokes(
+Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     const Vec_t &force, Vec_t &velocity) const
 {
     PROFILESTART();
@@ -323,37 +326,42 @@ void InterfacialVelocity<SurfContainer, Interaction>::stokes(
     recycle(v2);
     
     PROFILEEND("",0);
+    return Success;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
     auto_ptr<Vec_t> fb = checkoutVec();
 
     Intfcl_force_.linearBendingForce(S_, x_new, *fb);
-    stokes(*fb, time_mat_vec);
+    QC(stokes(*fb, time_mat_vec));
     axpy(-dt_, time_mat_vec, x_new, time_mat_vec);
     recycle(fb);
+
+    return Success;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::operator()(
+Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     const Sca_t &tension, Sca_t &div_stokes_fs) const
 {
     auto_ptr<Vec_t> fs = checkoutVec();
     auto_ptr<Vec_t> u = checkoutVec();
     
     Intfcl_force_.tensileForce(S_, tension, *fs);
-    stokes(*fs, *u);
+    QC(stokes(*fs, *u));
     S_.div(*u, div_stokes_fs);
 
     recycle(fs);
     recycle(u);
+    
+    return Success;
 }
 
 template<typename SurfContainer, typename Interaction>
-void InterfacialVelocity<SurfContainer, Interaction>::reparam()
+Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
     value_type ts(params_.rep_ts);
     value_type vel;
@@ -396,6 +404,8 @@ void InterfacialVelocity<SurfContainer, Interaction>::reparam()
     recycle(u1);
     recycle(u2);
     recycle(wrk);
+    
+    return Success;
 }
 
 template<typename SurfContainer, typename Interaction>

@@ -10,6 +10,9 @@ include $(MAKEIN)
 %.exe: %.o $(ARFILES) $(MAKEIN)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
 
+%.o: %.cc $(ARFILES) $(MAKEIN)
+	$(CXX) $(CPPFLAGS) -c -o $@ $<
+
 .PHONY: clean
 
 clean: 

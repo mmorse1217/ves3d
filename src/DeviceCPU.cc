@@ -14,7 +14,7 @@ inline pair<int, int> gridDimOf(int sh_order)
 template<enum DeviceType DT>
 Device<DT>::Device(int device_id, enum DeviceError *err)
 {
-    if(err!=0) *err = Success;
+    if(err!=0) *err = DeviceSuccess;
 }
 
 template<enum DeviceType DT>

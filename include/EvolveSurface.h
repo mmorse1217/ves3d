@@ -44,7 +44,7 @@ class EvolveSurface
     typedef typename Repart::GlobalRepart_t GlobalRepart_t;
 
     typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
-    typedef void (IntVel_t::*Scheme_t)(const value_type &);
+    typedef Error_t (IntVel_t::*Scheme_t)(const value_type &);
 
     EvolveSurface(Params_t &params, Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  
         InteractionFun_t interaction_handle = NULL, void* user_ptr = NULL, 
@@ -55,7 +55,7 @@ class EvolveSurface
 
     ~EvolveSurface();
     
-    MonitorReturn Evolve();
+    Error_t Evolve();
         
     Params_t &params_;
     Mats_t &mats_;

@@ -28,16 +28,16 @@ class InterfacialVelocity
         const BgFlowBase<Vec_t> &bgFlow);
     ~InterfacialVelocity();
     
-    void updatePositionExplicit(const value_type &dt);
-    void updatePositionImplicit(const value_type &dt);
-    void reparam();
+    Error_t updatePositionExplicit(const value_type &dt);
+    Error_t updatePositionImplicit(const value_type &dt);
+    Error_t reparam();
 
-    void getTension(const Vec_t &vel_in, Sca_t &tension) const;
-    void stokes(const Vec_t &force, Vec_t &vel) const;
-    void updateInteraction() const;
+    Error_t getTension(const Vec_t &vel_in, Sca_t &tension) const;
+    Error_t stokes(const Vec_t &force, Vec_t &vel) const;
+    Error_t updateInteraction() const;
     
-    void operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const; 
-    void operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
+    Error_t operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const; 
+    Error_t operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
     
     void* usr_ptr_;
     Sca_t& tension(){ return tension_;}
