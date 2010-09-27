@@ -38,8 +38,6 @@ typedef enum Ves3DErrors Error_t;
 ///Overloaded insertion operators
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT);
 std::ostream& operator<<(std::ostream& output, const enum MemcpyKind &MK);
-std::ostream& operator<<(std::ostream& output, const enum DeviceError &err);
-std::ostream& operator<<(std::ostream& output, const enum MonitorReturn &MR);
 std::ostream& operator<<(std::ostream& output, const enum SolverScheme &MR);
 std::ostream& operator<<(std::ostream& output, const enum Ves3DErrors &err);
 

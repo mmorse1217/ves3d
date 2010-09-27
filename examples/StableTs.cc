@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     sim_par.save_data = false;    
 
     sim_par.scheme = Explicit;
-    sim_par.bg_flow_param = 0.1;
+    sim_par.bg_flow_param = 0;
 
     //Initial vesicle positions 
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     int nstep = 200;
     real ts = 1024;
     
-    bool doIterate = false;
+    bool doIterate(true);
     while ( doIterate )
     {
         ts /= 2;
@@ -64,7 +64,13 @@ int main(int argc, char **argv)
         doIterate = !ERRORSTATUS();
         PRINTERRORLOG();
     }
-    
+
+    if ( !doIterate )
+        COUT("  The stable time step for the following parameters is "
+            << ts <<endl<<sim_par);
+    else
+        COUT("  The stable time step has not reached.");
+
     PROFILEREPORT(SortFlop);
 }
 

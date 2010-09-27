@@ -39,24 +39,6 @@ std::ostream& operator<<(std::ostream& output, const enum MemcpyKind &MK)
     return output;
 }    
 
-std::ostream& operator<<(std::ostream& output, const enum DeviceError &err)
-{
-    switch (err)
-    {
-        case Success:
-            output<<"DeviceError: Success";
-            break;
-        case InvalidDevice:
-            output<<"DeviceError: InvalidDevice";
-            break;
-        case SetOnActiveDevice:
-            output<<"DeviceError: SetOnActiveDevice";
-            break;
-    }
-    
-    return output;
-}    
-
 std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
 {    
     switch (SS)
@@ -181,11 +163,11 @@ void ErrorHandler::printErrorLog()
 {
     stack<ErrorEvent> tmp_stack;
     
-    COUT(" ===================================="<<endl);
+    COUT(" ==========================================================================================="<<endl);
     if ( ErrorStack_.empty() ) 
         COUT("  Error log is clean."<<endl);
     else
-        COUT("   Error Log\n ------------------------------------"<<endl);
+        COUT("   Error Log\n -------------------------------------------------------------------------------------------"<<endl);
 
     while ( !ErrorStack_.empty() )
     {
@@ -197,11 +179,11 @@ void ErrorHandler::printErrorLog()
     { 
         ErrorStack_.push(tmp_stack.top());
         COUT(ErrorStack_.top()<<endl);
-        COUT(" ------------------------------------"<<endl);
+        COUT(" -------------------------------------------------------------------------------------------"<<endl);
         tmp_stack.pop();
     }
 
-    COUT(" ===================================="<<endl);
+    COUT(" ==========================================================================================="<<endl);
 }
 
 Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee, ErrorHandler::ErrorCallBack cb)
