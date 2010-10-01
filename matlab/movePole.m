@@ -1,10 +1,4 @@
 function shcRot = movePole(shc,thetaTarg,lambdaTarg) 
-% [cc shcNew]= movePole(f,thetaTarg,lambdaTarg) move the pole of the
-%parameters to the target point with coordinate thetaTarg (elevation
-%[-pi/2,pi/2]) and lambdaTarg (azimuth [0,2pi)).  MOVEPOLE returns the
-%Cartesian coordinates of the points with now parametrization (fRot) and
-%their corresponding spherical harmonic coefficients (shcRot).
-
   
   if(nargin==0), testMovePole(); return;end
   N = size(shc,1)-1;
@@ -21,9 +15,9 @@ function shcRot = movePole(shc,thetaTarg,lambdaTarg)
   phiR = (0:2*N+1)*2*pi/(2*N+2)+pi/(2*N+2);
 % Finding the corresponding material point
   [phi theta] = cart2sph(cos(beta)*cos(phiR),sin(phiR),-sin(beta)*cos(phiR));
-
+  
   alphap = pi/3;   
-%   phi = phi + pi;
+% phi = phi + pi;
 % Mapping phi to [0,2pi) 
   phi = mod(phi,2*pi);
 
