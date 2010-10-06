@@ -113,15 +113,15 @@ template<typename Container, typename Operators>
 void MovePole<Container, Operators>::operator()(int trg_i, int trg_j, 
     Container** results) const
 {
-    PROFILESTART();
+
     (this->*rot_handle_)(trg_i, trg_j, results);
-    PROFILEEND("MovePole_",0);
 }
 
 template<typename Container, typename Operators>
 void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j, 
     Container** results) const
 {
+    PROFILESTART();
     int p  = (*arr_)->getShOrder();
     int np = (*arr_)->getStride();
     int nv = (*arr_)->getNumSubs();
@@ -136,12 +136,14 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
             &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
             &np, &beta, results[ii]->begin(), &np);
     }
+    PROFILEEND("",0);
 }
 
 template<typename Container, typename Operators>
 void MovePole<Container, Operators>::movePoleViaSpHarm(int trg_i, int trg_j, 
     Container** results) const
-{       
+{   
+    PROFILESTART();
     alignMeridian(trg_j, results);
     
     const value_type* rotmat(NULL);
@@ -174,12 +176,14 @@ void MovePole<Container, Operators>::movePoleViaSpHarm(int trg_i, int trg_j,
         sht_.collectSameFreq(wrk_, shc_out);
         sht_.backward(shc_out, wrk_, *(results[ii]));
     }
+    PROFILEEND("",0);
 }
 
 template<typename Container, typename Operators>
 void MovePole<Container, Operators>::alignMeridian(int trg_j, 
     Container** results) const
 {       
+    PROFILESTART();
     ///@todo the sparse matrix matrix multiplier is the cpu
     ///version. coomm should be added to the device.
     assert( typeid(Container::getDevice()) == typeid(Device<CPU>));
@@ -204,13 +208,14 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
         {
             matsize = 2*jj + 1 - (jj/p_); 
             nnz = 4*jj + 1 - 3*(jj/p_);
-            
-//             coomm("N", &matsize, &nsub, &matsize, &lalpha, matdescra, 
-//                 rotmat, row_idx, col_idx, &nnz, srcPtr, &matsize, &lbeta, 
-//                 resPtr, &matsize);
+             
+            coomm("N", &matsize, &nsub, &matsize, &lalpha, matdescra, 
+                rotmat, row_idx, col_idx, &nnz, srcPtr, &matsize, &lbeta, 
+                resPtr, &matsize);
             
             srcPtr += matsize * nsub;
             resPtr += matsize * nsub;
         }
     }
+    PROFILEEND("",0);
 }
