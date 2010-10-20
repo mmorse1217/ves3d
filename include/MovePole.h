@@ -35,7 +35,9 @@ class MovePole
 
     //scheme pointer
     rotPtr_t rot_handle_;
+
     //operands
+    enum SingularStokesRot last_rot_;
     const Container** arr_;
     int num_;
     value_type alpha, beta;

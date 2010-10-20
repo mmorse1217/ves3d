@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
 
-    sim_par.scheme = Explicit;
+    sim_par.scheme = SemiImplicit;
     sim_par.bg_flow_param = 0;
 
     ///////////////
@@ -50,11 +50,11 @@ int main(int argc, char **argv)
     int nstep = 200;
     real ts = 1024;
     
-    bool doIterate(false);
+    bool doIterate(true);
     while ( doIterate )
     {
         ts /= 2;
-        if ( ts < 1e-2 )
+        if ( ts < 1e-6 )
             break;
         
         sim_par.ts = ts;    

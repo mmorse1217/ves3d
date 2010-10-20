@@ -60,25 +60,22 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     phat.replicate(x);
     
     typename Container::value_type normb = Norm(b);
-
+    normb = (normb == 0.0) ? 1.0 : normb;
+    
     A(x, r);
     axpy((typename Container::value_type) -1.0, r, b, r);
     axpy((typename Container::value_type)  0.0, r, r, rtilde);
 
-    normb = (normb == 0.0) ? 1.0 : normb;
-  
     if ((resid = Norm(r) / normb) <= tol) {
-        tol = resid;
-        max_iter = 0;
-        return BiCGSSuccess;
-    }
-    for (int i = 1; i <= max_iter; i++) {
+            tol = resid;
+            max_iter = 0;
+            return BiCGSSuccess;
+        }
         
-        if ( resid != resid )
-            return RelresIsNan;
-
-        COUTDEBUG("\n  BiCGStab:   Iteration = "<<i-1
-            <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
+        for (int i = 1; i <= max_iter; i++) {
+        
+            if ( resid != resid )
+                return RelresIsNan;
 
         rho_1 = AlgebraicDot(rtilde, r);
         if (rho_1 == 0)
@@ -142,11 +139,14 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
 
 template<typename Container, typename MatVec, typename Precond>
 enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &A, 
-    Container &x, const Container &b, int &max_iter, typename Container::value_type &tol) const   
+    Container &x, const Container &b, int &num_restart, int &iter_per_restart,
+    typename Container::value_type &tol) const   
 {
-    typename Container::value_type resid, beta, rho_1;
-    typename Container::value_type rho_2(1), alpha(1), omega(1);
-    
+    const int restart_bound(num_restart);
+    const int iter_bound(iter_per_restart);
+    iter_per_restart = 0;
+    const typename Container::value_type tol_in(tol);
+
     p.replicate(x);
     s.replicate(x);
     t.replicate(x);
@@ -155,80 +155,73 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
     rtilde.replicate(x);
         
     typename Container::value_type normb = Norm(b);
-    A(x, r); 
-
-    axpy((typename Container::value_type) -1.0, r, b, r);
-    axpy((typename Container::value_type)  0.0, r, r, rtilde);
-
     normb = (normb == 0.0) ? 1.0 : normb;
-    
-    if ((resid = Norm(r) / normb) <= tol) {
-        tol = resid;
-        max_iter = 0;
-        return BiCGSSuccess;
-    }
-    
-    for (int i = 1; i <= max_iter; i++) {
+
+    for (num_restart=0; num_restart<=restart_bound; ++num_restart)
+    {
+        typename Container::value_type beta, rho_1;
+        typename Container::value_type rho_2(1), alpha(1), omega(1);
+        A(x, r); 
+
+        axpy((typename Container::value_type) -1.0, r, b, r);
+        axpy((typename Container::value_type)  0.0, r, r, rtilde);
         
-        if ( resid != resid )
-            return RelresIsNan;
+        if ((tol = Norm(r) / normb) <= tol_in) 
+            return BiCGSSuccess;
         
-        COUTDEBUG("\n  BiCGStab:   Iteration = "<<i-1
-            <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
-        
-        rho_1 = AlgebraicDot(rtilde, r);
-        if (rho_1 == 0)
+        for (int ii = 0; ii < iter_bound; ++ii) 
         {
-            tol = Norm(r) / normb;
-            max_iter = i;
-            return BreakDownRhoZero;
-        }
+            ++iter_per_restart;
 
-        if (i == 1)
-            axpy((typename Container::value_type) 0.0, r, r, p);
-        else {
-            beta = (rho_1/rho_2) * (alpha/omega);
+            if ( tol != tol )
+                return RelresIsNan;
+
+            rho_1 = AlgebraicDot(rtilde, r);
             
-            axpy(-omega, v, p, p);
-            axpy(beta, p, r, p);
-        }
-        
-        A(p, v);
-        alpha = rho_1 / AlgebraicDot(rtilde, v);
-        axpy(-alpha, v, r, s);
+            if (rho_1 == 0)
+            {
+                tol = Norm(r) / normb;
+                return BreakDownRhoZero;
+            }
 
-        if ((resid = Norm(s)/normb) < tol) {
-            axpy(alpha, p, x , x);
-            tol = resid;
-            max_iter = i;
-            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
-                <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
-            return BiCGSSuccess;
-        }
+            if (ii == 0)
+                axpy((typename Container::value_type) 0.0, r, r, p);
+            else {
+                beta = (rho_1/rho_2) * (alpha/omega);
+            
+                axpy(-omega, v, p, p);
+                axpy(beta, p, r, p);
+            }
         
-        A(s, t);
-        omega = AlgebraicDot(t,s) / AlgebraicDot(t,t);
-        axpy(alpha, p, x, x);
-        axpy(omega, s, x, x);
-        
-        axpy(-omega, t, s, r);
+            A(p, v);
+            alpha = rho_1 / AlgebraicDot(rtilde, v);
+            axpy(-alpha, v, r, s);
 
-        rho_2 = rho_1;
-        if ((resid = Norm(r) / normb) < tol) {
-            tol = resid;
-            max_iter = i;
-            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
-                <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
-            return BiCGSSuccess;
-        }
-    
-        if (omega == 0) {
-            tol = resid;
-            max_iter = i;
-            return BreakDownOmegaZero;
+            if ((tol = Norm(s)/normb) < tol_in) {
+                axpy(alpha, p, x , x);
+                COUTDEBUG("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
+                    <<"\n                 Relres = "<<scientific<<setprecision(4)<<tol<<endl);
+                return BiCGSSuccess;
+            }
+        
+            A(s, t);
+            omega = AlgebraicDot(t,s) / AlgebraicDot(t,t);
+            axpy(alpha, p, x, x);
+            axpy(omega, s, x, x);
+        
+            axpy(-omega, t, s, r);
+
+            rho_2 = rho_1;
+            
+            COUTDEBUG("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
+                    <<"\n                 Relres = "<<scientific<<setprecision(4)<<tol<<endl);
+            
+            if ((tol = Norm(r) / normb) < tol_in)
+                return BiCGSSuccess;
+            
+            if (omega == 0) 
+                return BreakDownOmegaZero;
         }
     }
-    
-    tol = resid;
     return MaxIterReached;
 }

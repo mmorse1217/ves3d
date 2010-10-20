@@ -1,0 +1,18 @@
+
+To build:
+> make
+
+To run:
+> ./SyntheticRotation.exe
+
+The results profile certain functions and report timings, flops, and
+flop rates. 
+
+In the output, "size" characterized the number of frequencies used in
+spherical harmonics. The higher, the larger the matrices. We're
+interested in obtaining good flop rates for all values of "size" in
+the experiment.
+
+See RotationDoc.pdf for a brief explanation of the kernel.
+
+

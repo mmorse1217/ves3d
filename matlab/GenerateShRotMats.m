@@ -7,29 +7,43 @@ function [Rall Rcell]= GenerateShRotMats(p)
   Rcell = cell(p+1,1);
   R = cell(p+1,1);
   
+  u = parDomain(p);
   for trgIdx = 1:p+1 
-    u = parDomain(p);
-    theta = u(trgIdx);
+    theta = u(trgIdx)-pi;
     
     for n=0:p-1
       R{n+1} = zeros(2*n+1);
     end
     R{p+1} = zeros(2*p);
 
-    for n=0:p
-      lim = 2*n+1;
-      if(n==p), lim = 2*n; end;
-      for m=1:lim        
-        shcIn = zeros(p+1, 2*p);     
-        shcIn(n+1,m) = 1;             
-        f = shSynReal(shcIn(:));
-        
-        fRot = movePole(f,theta,0);
-        shcOut = reshape(shAnaReal(fRot(:)),p+1,2*p);
-        
+    for m=1:2*p
+      shcIn = zeros(p+1,2*p);
+      shcIn(floor(m/2)+1:p+1,m) =1;
+      f = shSynReal(shcIn(:));
+
+      fRot = movePole(f,theta,0);
+      shcOut = reshape(shAnaReal(fRot(:)),p+1,2*p);
+      
+      for n=floor(m/2):p
+        lim = 2*n +1;
+        if(n==p), lim = 2*p;end
         R{n+1}(:,m) = shcOut(n+1,1:lim)';
       end
     end
+    % for n=0:p
+%       lim = 2*n+1;
+%       if(n==p), lim = 2*n; end;
+%       for m=1:lim        
+%         shcIn = zeros(p+1,2*p);     
+%         shcIn(n+1,m) = 1;             
+%         f = shSynReal(shcIn(:));
+        
+%         fRot = movePole(f,theta,0);
+%         shcOut = reshape(shAnaReal(fRot(:)),p+1,2*p);
+        
+%         R{n+1}(:,m) = shcOut(n+1,1:lim)';
+%       end
+%     end
     
     if ( nargout == 0 )
       X = boundary(p,'dumbbell');

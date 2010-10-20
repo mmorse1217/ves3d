@@ -29,8 +29,8 @@ struct OperatorsMats
     OperatorsMats(bool readFromFile, 
         const Parameters<value_type> &params);
        
-    size_t getDataLength() const;
-    //const Device& getDevice() const;
+    size_t getDataLength(const Parameters<value_type> 
+        &params) const;
 
   private:
     OperatorsMats(const OperatorsMats& mat_in);

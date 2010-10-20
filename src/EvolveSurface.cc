@@ -10,7 +10,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, 
     ownsObjOnHeap_(false)
 {
     ownsObjOnHeap_ = true;
-    S_ = new Sur_t(x0, mats_);
+    S_ = new Sur_t(x0, mats_, params_.rep_up_freq, params_.rep_filter_freq);
     monitor_ = new Monitor<EvolveSurface>(params_);
     interaction_ = new Interaction_t(interaction_handle);
     repartition_ = new Repartition_t(repartition_handle);

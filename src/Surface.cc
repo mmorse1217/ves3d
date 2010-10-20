@@ -7,9 +7,10 @@
  */
 template <typename ScalarContainer, typename VectorContainer>  
 Surface<ScalarContainer, VectorContainer>::Surface(
-    const Vec_t& x_in, OperatorsMats<Sca_t> &mats) :
-    upsample_freq_(2 * x_in.getShOrder()),///@bug upsample_freq should match the options
-    rep_filter_freq_(x_in.getShOrder()/3),///@bug filter_freq should match the options 
+    const Vec_t& x_in, OperatorsMats<Sca_t> &mats,
+    int upsample, int filter) :
+    upsample_freq_((upsample == -1) ? x_in.getShOrder() : upsample),
+    rep_filter_freq_((filter == -1) ? x_in.getShOrder()/3 : filter),
     sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
     sht_rep_filter_(x_in.getShOrder(), mats.mats_p_, rep_filter_freq_),
     sht_rep_upsample_(upsample_freq_, mats.mats_p_up_),
@@ -117,7 +118,7 @@ mapToTangentSpace(Vec_t &vec_fld) const
 
     //up-sampling
     int usf(sht_rep_upsample_.getShOrder());
-
+   
     scp->resize(scp->getNumSubs(), usf);
     wrk->resize(wrk->getNumSubs(), usf);
     shc->resize(shc->getNumSubs(), usf);

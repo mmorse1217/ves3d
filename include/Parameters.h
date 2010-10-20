@@ -20,16 +20,19 @@ struct Parameters
     T bending_modulus;
     
     //Solver parameters
-    int outer_solver_maxit;
-    int inner_solver_maxit;
-    T outer_solver_tol;
-    T inner_solver_tol;
+    int position_solver_iter;
+    int tension_solver_iter;
+    int position_solver_restart;
+    int tension_solver_restart;
+    T position_solver_tol;
+    T tension_solver_tol;
 
     //Time stepper
     int n_steps;
     T time_horizon;
     T ts;
-    SolverScheme scheme;
+    enum SolverScheme scheme;
+    enum SingularStokesRot singular_stokes;
 
     //Reparametrization
     int rep_maxit;

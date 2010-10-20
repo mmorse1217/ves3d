@@ -1,5 +1,7 @@
-function [F IDFT ILT]= shSynReal(SHC)
+function [F IDFTout ILTout]= shSynReal(SHC)
   
+  persistent IDFT ILT
+
   if(nargin == 0) testThis();return; end;
   
   %-- Extracting the size
@@ -9,11 +11,18 @@ function [F IDFT ILT]= shSynReal(SHC)
     error(['The input should be defined on a Gauss-Legendre--uniform'...
            ' grid. Check the size of input.']);
   end
-  
+
+  if (size(IDFT,2) ~= 2*p)
+    IDFT = [];
+    ILT = [];
+  end
+
   %-- Transform
-  ILT = getInvLegMat(p);
-  IDFT = getIDFT(p);
-    
+  if (isempty(IDFT))
+    ILT = getInvLegMat(p);
+    IDFT = getIDFT(p);
+  end
+
   for sur=1:d2
     f = zeros(p+1,2*p);
     shc = reshape(SHC(:,sur),p+1,2*p);
@@ -31,6 +40,11 @@ function [F IDFT ILT]= shSynReal(SHC)
     f = IDFT * f;
     f = f';
     F(:,sur) = f(:);
+  end
+
+  if(nargout >1 )
+    IDFTout = IDFT;
+    ILTout = ILT;
   end
 
 function LT = getInvLegMat(p)
@@ -70,7 +84,7 @@ function testThis()
   p = 12;
   
   for ii=1:p+1
-    for jj=1:2*p
+    for jj=1:2*(ii-1)
       shc = zeros(p+1,2*p);     
             
       shc(ii,jj) = 1;             

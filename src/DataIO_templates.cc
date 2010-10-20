@@ -4,8 +4,10 @@ bool DataIO::ReadData(const string &file_name, size_t size, T* data) const
     ifstream data_file(file_name.c_str(), ios::in);
     
     if(!data_file.good())
-        CERR("\n Could not read the data from the file."
-            <<"\n\n File name : "<<file_name<<".\n",endl, exit(1));
+        CERR("\n  Could not read the data from the file."
+            <<"\n\n    File name : "<<file_name<<".\n",endl, exit(1));
+
+    COUT("\n  Reading file:\n    "<<file_name<<endl<<endl);
     
     size_t idx=0;
     while (idx<size )
@@ -23,8 +25,8 @@ bool DataIO::WriteData(const string &file_name, size_t size, const T* data,
     {    
         ofstream data_file(file_name.c_str(), mode);
         if(!data_file)
-            CERR(" Could not write the data to the file." 
-                <<"\n\n File name : "<< file_name, endl, exit(1));
+            CERR("  Could not write the data to the file." 
+                <<"\n\n    File name : "<< file_name, endl, exit(1));
         
         size_t idx=0;
         while  (idx <size )
