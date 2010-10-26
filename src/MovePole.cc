@@ -209,9 +209,9 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
             matsize = 2*jj + 1 - (jj/p_); 
             nnz = 4*jj + 1 - 3*(jj/p_);
              
-            coomm("N", &matsize, &nsub, &matsize, &lalpha, matdescra, 
-                rotmat, row_idx, col_idx, &nnz, srcPtr, &matsize, &lbeta, 
-                resPtr, &matsize);
+             // coomm("N", &matsize, &nsub, &matsize, &lalpha, matdescra, 
+//                 rotmat, row_idx, col_idx, &nnz, srcPtr, &matsize, &lbeta, 
+//                 resPtr, &matsize);
             
             srcPtr += matsize * nsub;
             resPtr += matsize * nsub;
