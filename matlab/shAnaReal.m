@@ -1,15 +1,22 @@
-function [SHC DFT LT]= shAnaReal(F)
+function [SHC DFTout DLTout]= shAnaReal(F)
   
-%-- Extracting the size
+  persistent DFT DLT
+  %-- Extracting the size
   [d1 d2] = size(F);
   p = (sqrt(2*d1+1)-1)/2;
   if(p~=fix(p))
     error(['The input should be defined on a Gauss-Legendre--uniform'...
            ' grid. Check the size of input.']);
   end
-  
-  DFT = getDFT(p);
-  LT = getLegMat(p);
+  if(size(DFT,1) ~= 2 * p)
+    DFT = [];
+    DLT = [];
+  end
+
+  if (isempty(DFT))   
+    DFT = getDFT(p);
+    DLT = getLegMat(p);
+  end
   
   for sur=1:d2
     shc = zeros(p+1,2*p);
@@ -22,11 +29,15 @@ function [SHC DFT LT]= shAnaReal(F)
       if(m == 0), ind = 1;end
       if(m == p), ind = 2*p;end
       
-      shc(:,ind) = LT{m+1} * f(:,ind);
+      shc(:,ind) = DLT{m+1} * f(:,ind);
     end
     SHC(:,sur) = shc(:);
   end
-  
+  if(nargout>1)
+    DFTout = DFT;
+    DLTout = DLT;
+  end
+
 function LT = getLegMat(p)
 
   [el wt]=grule(p+1); 
@@ -57,5 +68,3 @@ function MAT = getDFT(p)
   end
   MAT(:,end) = MAT(:,end)/2;
   MAT = MAT' * grid(2)/pi;
-
-  

@@ -9,8 +9,8 @@ int main(int argc, char **argv)
         <<"\n ==============================\n");
     sleep(1);
     
-    int k = 16;
-    int n = 16;
+    int k = 16*2048;
+    int n = 4*2048;
 
     size_t sa = n*n;
     size_t sb = n*k;

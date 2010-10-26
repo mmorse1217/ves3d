@@ -15,12 +15,13 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     //Initial vesicle positions 
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
     
-    //reading the prototype form file
-    DataIO myIO;
-    char filename[300];
-    sprintf(filename, "precomputed/biconcave_ra85_%u",sim_par.sh_order);
-    myIO.ReadData(filename, x0, 0, x0.getSubLength());
-    
+    //reading the prototype form file  
+    DataIO myIO(sim_par.save_file_name);
+    char fname[300];
+    string prec = (typeid(real) == typeid(float)) ? "float" : "double"; 
+    sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
+    myIO.ReadData(fname, x0, 0, x0.getSubLength());
+
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
     real* cntrs_host =  new real[nVec * DIM];
@@ -43,9 +44,10 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, &vInf);//&StokesAlltoAll);
-
+    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
+    
     QC ( Es.Evolve() );
+    myIO.Append(Es.S_->getPosition());
 }
 
 int main(int argc, char **argv)
@@ -64,8 +66,9 @@ int main(int argc, char **argv)
  
     sim_par.n_surfs = 2;   
     sim_par.ts = 1;    
-    sim_par.time_horizon = 2;
+    sim_par.time_horizon = 4;
     sim_par.scheme = Explicit;
+    sim_par.singular_stokes = Direct;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
@@ -94,5 +97,3 @@ int main(int argc, char **argv)
 
 #endif //GPU_ACTIVE
 }
-
-

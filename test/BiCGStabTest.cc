@@ -59,7 +59,8 @@ int main(int argc, char **argv)
     int nfuns(1);
     ScaCPU_t x_ref(nfuns,p), b_ref(nfuns,p);
     MatVec<ScaCPU_t> Ax(nfuns, p);
-    const int max_iter = 2000;
+    const int iter = 100;
+    const int restart = 10;
     const real tol = 1e-6;
 
     for(int ii(0);ii<x_ref.size();++ii)
@@ -67,24 +68,26 @@ int main(int argc, char **argv)
     Ax(x_ref, b_ref);
     
     char cpu_out[300], gpu_out[300];
-    
+
     {
         ScaCPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
             b.size() * sizeof(real), MemcpyHostToDevice);
         
         BiCGStab<ScaCPU_t, MatVec<ScaCPU_t> > Solver;
-        int miter(max_iter);
+        int iter_in(iter);
+        int rsrt(restart);
         real tt(tol);
     
-        enum BiCGSReturn ret = Solver(Ax, x, b, miter, tt);
+        enum BiCGSReturn ret = Solver(Ax, x, b, rsrt, iter_in, tt);
        
         Ax(x,b);
         axpy((real) -1.0, b_ref, b, b);
         
-        string formatstr ="\n CPU data :\n   Residual     : %2.4e\n";
-        formatstr +="   Iter         : %d\n   True relres  : %2.4e\n";
-        sprintf(cpu_out, formatstr.c_str(), tt, miter, 
+        cout<<"\n  The solver returned with: "<<ret<<endl;
+        string formatstr ="\n  CPU data :\n    Residual     : %2.4e\n";
+        formatstr +="    Iter         : %d\n    True relres  : %2.4e\n";
+        sprintf(cpu_out, formatstr.c_str(), tt, iter_in, 
             sqrt(AlgebraicDot(b,b)/AlgebraicDot(b_ref,b_ref)));
     }
     
@@ -100,10 +103,11 @@ int main(int argc, char **argv)
         axpy(0, x, x);
 
         BiCGStab<ScaGPU_t, MatVec<ScaGPU_t> > Solver;
-        int miter(max_iter);
+        int iter_in(iter);
+        int rsrt(restart);
         real tt(tol);
         
-        enum BiCGSReturn ret = Solver(AxGPU, x, b, miter, tt);
+        enum BiCGSReturn ret = Solver(AxGPU, x, b, rsrt, iter_in, tt);
         
         AxGPU(x,b);
         
@@ -115,7 +119,7 @@ int main(int argc, char **argv)
         
         string formatstr ="\n GPU data :\n   Residual     : %2.4e\n";
         formatstr +="   Iter         : %d\n   True relres  : %2.4e\n";
-        sprintf(gpu_out, formatstr.c_str(), tt, miter, 
+        sprintf(gpu_out, formatstr.c_str(), tt, iter_in, 
             sqrt(AlgebraicDot(b_cpu,b_cpu)/AlgebraicDot(b_ref,b_ref)));
     }
 #endif //GPU_ACTIVE

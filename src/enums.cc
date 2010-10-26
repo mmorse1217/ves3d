@@ -54,6 +54,21 @@ std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
     return output;
 }    
 
+std::ostream& operator<<(std::ostream& output, const enum SingularStokesRot &SS)
+{    
+    switch (SS)
+    {
+        case Direct:
+            output<<"Direct";
+            break;
+        case ViaSpHarm:
+            output<<"ViaSpHarm";
+            break;
+    }
+    
+    return output;
+}    
+
 std::ostream& operator<<(std::ostream& output, const enum Ves3DErrors &err)
 {    
     switch (err)

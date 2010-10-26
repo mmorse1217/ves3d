@@ -21,9 +21,16 @@ int main(int argc, char **argv)
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
 
-    sim_par.scheme = Explicit;
+    sim_par.scheme = SemiImplicit;
     sim_par.bg_flow_param = 0;
 
+    ///////////////
+    sim_par.sh_order = 12;
+    sim_par.filter_freq = 8;
+    sim_par.rep_up_freq = 24;
+    sim_par.rep_filter_freq = 4;
+    ///////////////
+    
     //Initial vesicle positions 
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
     
@@ -47,7 +54,7 @@ int main(int argc, char **argv)
     while ( doIterate )
     {
         ts /= 2;
-        if ( ts < 1e-2 )
+        if ( ts < 1e-6 )
             break;
         
         sim_par.ts = ts;    

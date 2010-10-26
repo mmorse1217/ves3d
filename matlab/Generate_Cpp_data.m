@@ -1,16 +1,110 @@
-function Generate_Cpp_data(p, precision)
+function Generate_Cpp_data(p, precision, varargin)
   
-  R = GenerateShRotMats(p);
-  fileName = ['SpHarmRotMats_p' num2str(p) '_' precision];
-  saveData([fileName '.bin'], R, precision);  
-  save([fileName '.txt'],'R','-ascii'); 
+  addpath ../../Ves3DMat/src/
+  addpath ../../Ves3DMat/util/
 
-% Script to make the Legendre and inverse Legendre transforms.
+  for ii = 1:length(varargin)
+    
+    switch varargin{ii}
+     case 'SpHarmRot'
+      R = GenerateShRotMats(p);
+      fileName = ['SpHarmRotMats_p' num2str(p) '_' precision];
+      saveData([fileName '.bin'], R, precision);  
+      save([fileName '.txt'],'R','-ascii'); 
+      
+     case 'LegendreTransform'
+      [u w] = grule(p+1); u = u(:); u = acos(u);
+      v = zeros(size(u));
 
-  %clear all;clc
-  %addpath ../src/
-  
-% for p = [12 16 24 32 48 6]
+      L  = cell(p+1,1);
+      LS = cell(p+1,1);
+      HS = cell(p+1,1);
+      WS = cell(p+1,1);
+
+      for n = 0:p
+        [Yn Hn Wn] = Ynm(n, [], u, v);
+        Yn = Yn*sqrt(2*pi);
+        Hn = Hn*sqrt(2*pi);
+        Wn = Wn*sqrt(2*pi);
+        
+        for m = 0:n
+          L{1+m}(n+1,:) = w.*Yn(:,n+1+m).';
+          LS{1+m}(:,n+1) = Yn(:,n+1+m);
+          HS{1+m}(:,n+1) = Hn(:,n+1+m);
+          WS{1+m}(:,n+1) = Wn(:,n+1+m);
+        end
+      end
+
+      Lmat = []; LImat = []; Hmat = []; Wmat = [];
+      for m=0:p
+        Lmat  = [Lmat ; reshape(L{m+1}(m+1:p+1,:),[],1)];
+        LImat = [LImat; reshape(LS{m+1}(:,m+1:p+1),[],1)];
+        Hmat  = [Hmat ; reshape(HS{m+1}(:,m+1:p+1),[],1)];
+        Wmat  = [Wmat ; reshape(WS{m+1}(:,m+1:p+1),[],1)];
+      end
+
+      
+      fileName = ['legTrans' num2str(p)  '_' precision '.txt'];
+      save(fileName,'Lmat','-ascii'); 
+
+      fileName = ['legTransInv' num2str(p)  '_' precision '.txt'];
+      save(fileName,'LImat','-ascii'); 
+
+      fileName = ['d1legTrans' num2str(p)  '_' precision '.txt'];
+      save(fileName,'Hmat','-ascii'); 
+
+      fileName = ['d2legTrans' num2str(p)  '_' precision '.txt'];
+      save(fileName,'Wmat','-ascii'); 
+
+
+     case 'DumbbellShape'
+      S = boundary(p,'dumbbell');
+      S.resample(p);
+      S.plot;
+      x = reshape(S.cart.x,p+1,[])';
+      y = reshape(S.cart.y,p+1,[])';
+      z = reshape(S.cart.z,p+1,[])';
+
+      X = [x(:); y(:); z(:)];
+      fileName = ['dumbbell_' num2str(p) '_' precision '.txt'];
+      save(fileName,'X','-ascii'); 
+
+     case 'DirectRotation'
+      R = GenerateDirectRotMat(p);
+      fileName = ['all_rot_mats_' num2str(p)  '_' precision '.txt'];
+      save(fileName,'R','-ascii'); 
+
+     case 'SingularIntegralWeights'
+      sqw = SingularWeights(p);
+      sqw = reshape(sqw,p+1,[]);
+      sqw = flipud(sqw);
+      sqw = sqw';
+      sqw = sqw(:);
+      fileName = ['sing_quad_weights_' num2str(p)  '_' precision '.txt'];
+      save(fileName,'sqw','-ascii'); 
+
+     case 'IntegrationWeights'
+      [trash qw] = grule(p+1);
+      qw = repmat(qw(:)',2*p,1);
+      qw = qw(:)*pi/p;
+      u = parDomain(p);
+      u = reshape(u,p+1,[])';
+      qw = qw./sin(u(:));
+      fileName = ['quad_weights_' num2str(p)  '_' precision '.txt'];
+      save(fileName,'qw','-ascii'); 
+
+     case 'WSpherical'
+      u = parDomain(p);
+      u = reshape(u,p+1,[])';
+      w_sph = sin(u(:));
+
+      fileName = ['w_sph_' num2str(p)  '_' precision '.txt'];
+      save(fileName,'w_sph','-ascii'); 
+
+    end      
+  end
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % shape = 'two_ellipse_';
 % 
 % [u,v] = parDomain(p); 
@@ -35,107 +129,7 @@ function Generate_Cpp_data(p, precision)
 % fileName = [shape num2str(p)];
 % save(fileName,'X','-ascii'); 
 
-
-% %S = boundary(p,shape);
-% S.resample(p)
-% S.plot;
-% x = reshape(S.cart.x,p+1,[])';
-% y = reshape(S.cart.y,p+1,[])';
-% z = reshape(S.cart.z,p+1,[])';
-% 
-% X = [x(:); y(:); z(:)];
-% fileName = [shape num2str(p)];
-% save(fileName,'X','-ascii'); 
-
-  %% Legendre transforms
-% [u w] = grule(p+1); u = u(:); u = acos(u);
-% v = zeros(size(u));
-% 
-% L  = cell(p+1,1);
-% LS = cell(p+1,1);
-% HS = cell(p+1,1);
-% WS = cell(p+1,1);
-% 
-% for n = 0:p
-%   [Yn Hn Wn] = Ynm(n, [], u, v);
-%   Yn = Yn*sqrt(2*pi);
-%   Hn = Hn*sqrt(2*pi);
-%   Wn = Wn*sqrt(2*pi);
-%   
-%   for m = 0:n
-%     L{1+m}(n+1,:) = w.*Yn(:,n+1+m).';
-%     LS{1+m}(:,n+1) = Yn(:,n+1+m);
-%     HS{1+m}(:,n+1) = Hn(:,n+1+m);
-%     WS{1+m}(:,n+1) = Wn(:,n+1+m);
-%   end
-% end
-% 
-% Lmat = []; LImat = []; Hmat = []; Wmat = [];
-% for m=0:p
-%   Lmat  = [Lmat ; reshape(L{m+1}(m+1:p+1,:),[],1)];
-%   LImat = [LImat; reshape(LS{m+1}(:,m+1:p+1),[],1)];
-%   Hmat  = [Hmat ; reshape(HS{m+1}(:,m+1:p+1),[],1)];
-%   Wmat  = [Wmat ; reshape(WS{m+1}(:,m+1:p+1),[],1)];
-% end
-% 
-% fileName = ['legTrans' num2str(p) '_single.txt'];
-% save(fileName,'Lmat','-ascii'); 
-% 
-% fileName = ['legTransInv' num2str(p) '_single.txt'];
-% save(fileName,'LImat','-ascii'); 
-% 
-% fileName = ['d1legTrans' num2str(p) '_single.txt'];
-% save(fileName,'Hmat','-ascii'); 
-% 
-% fileName = ['d2legTrans' num2str(p) '_single.txt'];
-% save(fileName,'Wmat','-ascii'); 
-% 
-% %% Quadrature weights
-% [trash qw] = grule(p+1);
-% qw = repmat(qw(:)',2*p,1);
-% qw = qw(:)*pi/p;
-% u = parDomain(p);
-% u = reshape(u,p+1,[])';
-% qw = qw./sin(u(:));
-% fileName = ['quad_weights_' num2str(p) '_single.txt'];
-% save(fileName,'qw','-ascii'); 
-% 
-% %% Singular quadrature weights
-% sqw = SingularWeights(p);
-% sqw = reshape(sqw,p+1,[]);
-% sqw = flipud(sqw);
-% sqw = sqw';
-% sqw = sqw(:);
-% fileName = ['sing_quad_weights_' num2str(p) '_single.txt'];
-% save(fileName,'sqw','-ascii'); 
-% 
-% %% Rotation matrices
-% np = 2*p*(p+1);
-% ind = reshape(1:np,p+1,[])';
-% ind = ind(:);
-% f = eye(np);
-% f = f(:,ind);
-% u = parDomain(p);
-% R = [];
-% for ii=1:p+1
-%   Ru = movePole(f,u(ii)-pi,0);
-%   Ru = Ru(ind,:);
-%   R = [R Ru];
-% end
-% R = R(:);
-% fileName = ['all_rot_mats_' num2str(p) '_single.txt'];
-% save(fileName,'R','-ascii'); 
-% 
-% %% W_sph
-% u = parDomain(p);
-% u = reshape(u,p+1,[])';
-% w_sph = sin(u(:));
-% 
-% fileName = ['w_sph_' num2str(p) '_single.txt'];
-% save(fileName,'w_sph','-ascii'); 
-%end
-
-  %%% 
+    %%% 
 
 % NV = 600;
 % zMax = 80;
@@ -188,7 +182,7 @@ function Generate_Cpp_data(p, precision)
 % while size(centers,1)<NV
 %   xx = rand(1,3)*side;
 %   xx(1) = xx(1)/side;
-  
+    
 %   d = centers - repmat(xx,size(centers,1),1);
 %   d = sqrt(min(dot(d,d,2)));
 %   if(d>minDist)
@@ -197,7 +191,7 @@ function Generate_Cpp_data(p, precision)
 %     cc(end).y = S.cart.y + xx(2);
 %     cc(end).z = S.cart.z + xx(3);    
 %   end
-  
+    
 %   disp(size(centers,1));
 % end
 % PlotShape(cc,12)

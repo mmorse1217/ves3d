@@ -9,20 +9,21 @@ clear all;clc
 
 % streamslice(x,y,uu,vv,5);
 
-fileName = '../scratch/TaylorVortex.out';
+% fileName = '../examples/EvolveSurf.out';
+fileName = '../test/EvolveSurf.out';
 
 p = 12;
-nv = 36;
+nv = 2;
 np = 2 * p * (p + 1);
 fid = fopen(fileName,'r');
-XX = fread(fid,'double');
+XX = fread(fid,'single');
 fclose(fid);
 XX = reshape(XX,3*np*nv,[]);
 
 clf;
 for ii=1:size(XX,2)
-  %disp(ii);
-  %PlotShape(reshape(XX(:,ii),[],nv),p);
-  %axis on;
-  %pause(1);
+  disp(ii);
+  PlotShape(reshape(XX(:,ii),[],nv),p);
+  axis on;
+  pause(1);
 end

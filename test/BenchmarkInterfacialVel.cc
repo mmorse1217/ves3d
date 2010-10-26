@@ -8,6 +8,7 @@
 #include "VesInteraction.h"
 #include "OperatorsMats.h"
 #include "InterfacialVelocity.h"
+#include "BgFlow.h"
 
 typedef double real;
 #define DT CPU
@@ -64,10 +65,13 @@ int main(int argc, char** argv)
 
     //Making The Surface, And Time Stepper
     Sur_t S(x, Mats);
-    
+
     {
-        Interaction_t Interaction(NULL);
-        IntVel_t F(S, Interaction, Mats, sim_par);   
+        //Setting the background flow
+        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+
+        Interaction_t interaction(NULL);
+        IntVel_t F(S, interaction, Mats, sim_par, vInf);   
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
     }
@@ -83,8 +87,11 @@ int main(int argc, char** argv)
     S.setPosition(x);
     
     {
+        //Setting the background flow
+        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    
         Interaction_t Interaction(NULL);
-        IntVel_t F(S, Interaction, Mats, sim_par);   
+        IntVel_t F(S, Interaction, Mats, sim_par,vInf);   
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
     }
@@ -107,8 +114,11 @@ int main(int argc, char** argv)
     
     S.setPosition(x);
     {
+        //Setting the background flow
+        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+
         Interaction_t Interaction(StokesAlltoAll);
-        IntVel_t F(S, Interaction, Mats, sim_par);   
+        IntVel_t F(S, Interaction, Mats, sim_par,vInf);   
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
     }
@@ -121,8 +131,11 @@ int main(int argc, char** argv)
     
     S.setPosition(x);
     {
+        //Setting the background flow
+        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+        
         Interaction_t Interaction(StokesAlltoAll);
-        IntVel_t F(S, Interaction, Mats, sim_par);   
+        IntVel_t F(S, Interaction, Mats, sim_par,vInf);   
         // b-marking
         F.benchmarkImplicit(tension, vel, xnew, tol);
     }

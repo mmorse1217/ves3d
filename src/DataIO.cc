@@ -47,7 +47,9 @@ bool DataIO::ReadData(const string &file_name, size_t size, char* data) const
     if(!data_file.good())
         CERR("\n Could not read the data from the file."
             <<"\n\n File name : "<<file_name<<".\n",endl, exit(1));
-    
+
+    COUT("\n  Reading file:\n    "<<file_name<<endl<<endl);
+
     data_file.read(data, size); 
     data_file.close();
     return(true);

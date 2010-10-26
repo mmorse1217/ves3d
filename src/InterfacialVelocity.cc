@@ -25,12 +25,6 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
 
     int p = S_.getPosition().getShOrder();
     int np = S_.getPosition().getStride();
-
-    //Rot mats
-    rot_mat_.resize(p + 1, 1, make_pair(2 * p,np));//to match the rot_chunck
-    all_rot_mats_.resize(p + 1, 1, make_pair(np,np));
-    all_rot_mats_.getDevice().Memcpy(all_rot_mats_.begin(), mats.all_rot_mats_,
-        all_rot_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //W_spherical
     w_sph_.resize(1, p);
@@ -117,42 +111,27 @@ updatePositionImplicit(const value_type &dt)
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //Update position
-    int max_iter(params_.outer_solver_maxit);
-    value_type tol(params_.outer_solver_tol);
+    int iter(params_.position_solver_iter);
+    int rsrt(params_.position_solver_restart);
+    value_type tol(params_.position_solver_tol);
     enum BiCGSReturn solver_ret;
     Error_t ret_val(Success);
 
-    int mIter;
-    value_type tt;
-    int ii, imax(2);
-    
     COUT("  Position solve\n ------------------------------------\n");
-    for ( ii=0; ii<imax; ++ii )
-    {
-        mIter = max_iter;
-        tt = tol;
-        
-        solver_ret = linear_solver_vec_(*this, *u2, *u1, mIter, tt);
-        
-        if ( solver_ret == BiCGSSuccess )
-            break;
-        
-        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
-            ret_val = SolverDiverged;
-    }   
-    
+    solver_ret = linear_solver_vec_(*this, *u2, *u1, rsrt, iter, tol);
+    if ( solver_ret  != BiCGSSuccess )
+        ret_val = SolverDiverged;    
     COUTDEBUG(" ------------------------------------"<<endl);
-    COUT("       Total iterations = "<< ii * max_iter + mIter
-        <<"\n                 Relres = "<<tt<<endl);
+    COUT("       Total iterations = "<< iter
+        <<"\n                 Relres = "<<tol<<endl);
     
     COUTDEBUG("            True relres = "<<
         ((*this)(*u2, *u3),
             axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
-            tt = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
+            tol = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
          )<<endl);
     
     COUT(" ------------------------------------"<<endl);
-    
     
     u2->getDevice().Memcpy(S_.getPositionModifiable().begin(), u2->begin(), 
         S_.getPosition().size() * sizeof(value_type), MemcpyDeviceToDevice);
@@ -242,39 +221,26 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     
     axpy(static_cast<value_type>(-1), *rhs, *rhs);
     
-    int max_iter(params_.inner_solver_maxit);
-    value_type tol(params_.inner_solver_tol);
+    int iter(params_.tension_solver_iter);
+    int rsrt(params_.tension_solver_restart);
+    value_type tol(params_.tension_solver_tol);
     enum BiCGSReturn solver_ret;
     Error_t ret_val(Success);
-
-   ///@todo add the restart option to the Parameters
     
-    int mIter;
-    value_type tt;
-    int ii, imax(4);
     COUT("  Tension solve\n ------------------------------------\n");
-    for ( ii=0; ii<imax; ++ii )
-    {
-        mIter = max_iter;
-        tt = tol;
-        
-        solver_ret = linear_solver_(*this, tension, *rhs, mIter, tt);
-        if ( solver_ret == BiCGSSuccess )
-            break;
-        
-        if ( (solver_ret  != BiCGSSuccess && ii==imax-1) || solver_ret == RelresIsNan )
-            ret_val = SolverDiverged;
-    }
+    solver_ret = linear_solver_(*this, tension, *rhs, rsrt, iter, tol);
+    if ( solver_ret  != BiCGSSuccess )
+        ret_val = SolverDiverged;
     COUTDEBUG(" ------------------------------------"<<endl);
-    COUT("       Total iterations = "<< ii * max_iter + mIter
-        <<"\n                 Relres = "<<tt<<endl);
+    COUT("       Total iterations = "<< iter
+        <<"\n                 Relres = "<<tol<<endl);
     COUTDEBUG("            True relres = "<<
         ((*this)(tension, *wrk),
             axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
-            tt = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))
+            tol = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))
          )<<endl);
-    
     COUT(" ------------------------------------"<<endl);
+    
     recycle(wrk);
     recycle(rhs);
     
@@ -302,7 +268,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     int numinputs = 3;
     const Sca_t* inputs[] = {&S_.getPosition(), &force, t1.get()};
     Sca_t* outputs[] = {v1.get(), v2.get(), t2.get()};
-    move_pole.setOperands(inputs, numinputs, Direct);
+    move_pole.setOperands(inputs, numinputs, params_.singular_stokes);
 
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)

@@ -10,6 +10,7 @@ MovePole<Container, Operators>::MovePole(Operators &mats) :
     col_idx((int*) Container::getDevice().Malloc((4*p_ - 2) * sizeof(int))),
     sht_(p_, mats.mats_p_),
     rot_handle_(NULL),
+    last_rot_(Direct),
     arr_(NULL),
     num_(0),
     alpha(1.0),
@@ -17,11 +18,17 @@ MovePole<Container, Operators>::MovePole(Operators &mats) :
     rot_mat_(gridDimOf(p_).first, 1, make_pair(gridDimOf(p_).second, np_)),
     shc_(NULL)
 {
-    Container::getDevice().Memcpy(all_rot_mats_.begin(), mats.all_rot_mats_,
-        all_rot_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
+    if ( mats.all_rot_mats_ == NULL )
+        all_rot_mats_.resize(0);
+    else
+        Container::getDevice().Memcpy(all_rot_mats_.begin(), mats.all_rot_mats_,
+            all_rot_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
 
-    Container::getDevice().Memcpy(sp_harm_mats_.begin(), mats.sh_rot_mats_,
-        sp_harm_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
+    if (mats.sh_rot_mats_ == NULL )
+        sp_harm_mats_.resize(0);
+    else 
+        Container::getDevice().Memcpy(sp_harm_mats_.begin(), mats.sh_rot_mats_,
+            sp_harm_mats_.size() * sizeof(value_type), MemcpyDeviceToDevice);
     
     //Generating the longitudinal rotation matrices stored in the
     //coordinate format
@@ -91,7 +98,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
     else
     {
         rot_handle_ = &MovePole::movePoleViaSpHarm;
-        if ( num != num_ )
+        if ( num != num_ || rot_scheme != last_rot_)
         {
             delete[] shc_;
             
@@ -106,6 +113,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
             sht_.collectSameOrder(wrk_, shc_[ii]);
         }
     }
+    last_rot_ = rot_scheme;
     num_ = num;
 }
 
@@ -121,6 +129,8 @@ template<typename Container, typename Operators>
 void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j, 
     Container** results) const
 {
+    ///@bug the code is broken except for p=12, single 
+
     PROFILESTART();
     int p  = (*arr_)->getShOrder();
     int np = (*arr_)->getStride();

@@ -4,14 +4,17 @@ Parameters<T>::Parameters() :
     sh_order(12),
     filter_freq(8),
     bending_modulus(1e-2),
-    outer_solver_maxit(15),
-    inner_solver_maxit(15),
-    outer_solver_tol((typeid(T) == typeid(float)) ? 1e-4: 1e-8),
-    inner_solver_tol((typeid(T) == typeid(float)) ? 5e-6: 1e-10),
+    position_solver_iter(15),
+    tension_solver_iter(15),
+    position_solver_restart(1),
+    tension_solver_restart(1),
+    position_solver_tol((typeid(T) == typeid(float)) ? 1e-4: 1e-8),
+    tension_solver_tol((typeid(T) == typeid(float)) ? 5e-4: 1e-8),
     n_steps(1),
     time_horizon(1),
     ts(1),
     scheme(Explicit),
+    singular_stokes(ViaSpHarm),
     rep_maxit(10),
     rep_up_freq(24),
     rep_filter_freq(4),
@@ -39,16 +42,20 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"    Bending modulus          : "<<par.bending_modulus<<std::endl;
     output<<" ------------------------------------"<<std::endl;
     output<<"  Solver:"<<std::endl;
-    output<<"    Outer solver maxit       : "<<par.outer_solver_maxit<<std::endl;
-    output<<"    Inner solver maxit       : "<<par.inner_solver_maxit<<std::endl;
-    output<<"    Outer solver tol         : "<<par.outer_solver_tol<<std::endl;
-    output<<"    Inner solver tol         : "<<par.inner_solver_tol<<std::endl;
+    output<<"    Position solver iter     : "<<par.position_solver_iter<<std::endl;
+    output<<"    tension solver iter      : "<<par.tension_solver_iter<<std::endl;
+    output<<"    Position solver restart  : "<<par.position_solver_restart<<std::endl;
+    output<<"    Tension solver restart   : "<<par.position_solver_restart<<std::endl;
+    output<<"    Position solver tol      : "<<par.position_solver_tol<<std::endl;
+    output<<"    Tension solver tol       : "<<par.tension_solver_tol<<std::endl;
+
     output<<" ------------------------------------"<<std::endl;
     output<<"  Time stepper:"<<std::endl;
     output<<"    Number of time steps     : "<<par.n_steps<<std::endl;
     output<<"    Time horizon             : "<<par.time_horizon<<std::endl;
     output<<"    Step size                : "<<par.ts<<std::endl;
     output<<"    Scheme                   : "<<par.scheme<<std::endl;
+    output<<"    Singular Stokes          : "<<par.singular_stokes<<std::endl;
     output<<" ------------------------------------"<<std::endl;
     output<<"  Reparametrization:"<<std::endl;
     output<<"    Rep maxit                : "<<par.rep_maxit<<std::endl;
