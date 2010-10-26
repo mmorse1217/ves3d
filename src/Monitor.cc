@@ -10,7 +10,8 @@ Monitor<EvolveSurface>::Monitor(const Parameters<value_type> &params) :
     IO(params.save_file_name),
     A0(-1),
     V0(-1),
-    last_save(-1)
+    last_save(-1),
+    params_(params)
 {}
 
 template<typename EvolveSurface>
@@ -60,7 +61,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
     }
     
     Error_t return_val(Success);
-    if ( abs(A/A0-1) > 20  || abs(V/V0-1) > 20 )
+    if ( abs(A/A0-1) > params_.error_factor  || abs(V/V0-1) > params_.error_factor )
         return_val = AccuracyError;
 
     return return_val;

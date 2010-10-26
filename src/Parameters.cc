@@ -22,7 +22,8 @@ Parameters<T>::Parameters() :
     rep_tol((typeid(T) == typeid(float)) ? 1e-3 : 1e-4),
     bg_flow_param(1e-1),
     save_data(false),
-    save_stride(-1)
+    save_stride(-1),
+    error_factor(1)
 {}
 
 template<typename T>
@@ -67,6 +68,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"  Saving:"<<std::endl;
     output<<"    Save data                : "<<std::boolalpha<<par.save_data<<std::endl;
     output<<"    Save stride              : "<<par.save_stride<<std::endl;
+    output<<"    Error Factor             : "<<par.error_factor<<std::endl;
     output<<" ------------------------------------"<<std::endl;
     output<<"  Background flow:"<<std::endl;
     output<<"    Background flow parameter: "<<par.bg_flow_param<<std::endl;

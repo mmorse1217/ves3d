@@ -9,14 +9,14 @@ clear all;clc
 
 % streamslice(x,y,uu,vv,5);
 
-% fileName = '../examples/EvolveSurf.out';
-fileName = '../test/EvolveSurf.out';
+fileName = '../examples/EvolveSurf.out';
+%fileName = '../test/EvolveSurf.out';
 
-p = 12;
-nv = 2;
+p = 48;
+nv = 1;
 np = 2 * p * (p + 1);
 fid = fopen(fileName,'r');
-XX = fread(fid,'single');
+XX = fread(fid,'double');
 fclose(fid);
 XX = reshape(XX,3*np*nv,[]);
 

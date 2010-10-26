@@ -9,6 +9,7 @@ function [Rall Rcell]= GenerateShRotMats(p)
   
   u = parDomain(p);
   for trgIdx = 1:p+1 
+    disp(['Generating idx =' num2str(trgIdx)]);
     theta = u(trgIdx)-pi;
     
     for n=0:p-1
@@ -30,22 +31,10 @@ function [Rall Rcell]= GenerateShRotMats(p)
         R{n+1}(:,m) = shcOut(n+1,1:lim)';
       end
     end
-    % for n=0:p
-%       lim = 2*n+1;
-%       if(n==p), lim = 2*n; end;
-%       for m=1:lim        
-%         shcIn = zeros(p+1,2*p);     
-%         shcIn(n+1,m) = 1;             
-%         f = shSynReal(shcIn(:));
-        
-%         fRot = movePole(f,theta,0);
-%         shcOut = reshape(shAnaReal(fRot(:)),p+1,2*p);
-        
-%         R{n+1}(:,m) = shcOut(n+1,1:lim)';
-%       end
-%     end
-    
+
     if ( nargout == 0 )
+      fprintf('\n Testing:\n');
+      
       X = boundary(p,'dumbbell');
       X = reshape(X.cart.vecForm(),[],3);
       shc = shAnaReal(X);

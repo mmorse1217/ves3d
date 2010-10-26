@@ -28,6 +28,7 @@ class Monitor : public MonitorBase<EvolveSurface>
     mutable value_type A0, V0;
     typename EvolveSurface::Sca_t area, vol;
     int last_save;
+    const Parameters<value_type>& params_;
 
   public:
     Monitor(const Parameters<value_type> &params);

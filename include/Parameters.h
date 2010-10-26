@@ -48,6 +48,7 @@ struct Parameters
     bool save_data;
     T save_stride;
     std::string save_file_name;
+    T error_factor;
 
   private:
     Parameters(Parameters<T> &rhs);
