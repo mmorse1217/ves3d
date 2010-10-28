@@ -640,3 +640,4 @@ inline bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs)
 {
     return((void*) &lhs == (void*) &rhs);
 }
+
