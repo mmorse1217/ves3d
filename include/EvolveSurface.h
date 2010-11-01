@@ -1,4 +1,4 @@
-#ifndef _EVOLVESURFACE_H_       // 
+#ifndef _EVOLVESURFACE_H_       
 #define _EVOLVESURFACE_H_
 
 #include "Logger.h"

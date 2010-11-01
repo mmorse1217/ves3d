@@ -1,4 +1,9 @@
 template<typename SurfContainer>
+InterfacialForce<SurfContainer>::InterfacialForce(value_type bending_modulus) :
+    bending_modulus_(bending_modulus)
+{}
+
+template<typename SurfContainer>
 InterfacialForce<SurfContainer>::InterfacialForce(const Parameters<value_type> &params) :
     bending_modulus_(params.bending_modulus)
 {}

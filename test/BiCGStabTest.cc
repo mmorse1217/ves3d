@@ -3,6 +3,7 @@
 #include "HelperFuns.h"
 #include "BiCGStab.h"
 #include <stdlib.h>
+#include <sstream>
 
 typedef float real;
 
@@ -67,8 +68,9 @@ int main(int argc, char **argv)
         *(x_ref.begin() + ii) = drand48();
     Ax(x_ref, b_ref);
     
-    char cpu_out[300], gpu_out[300];
-
+    ostringstream cpu_o(stringstream::out);
+    ostringstream gpu_o(stringstream::out);
+    
     {
         ScaCPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
@@ -83,12 +85,12 @@ int main(int argc, char **argv)
        
         Ax(x,b);
         axpy((real) -1.0, b_ref, b, b);
-        
-        cout<<"\n  The solver returned with: "<<ret<<endl;
-        string formatstr ="\n  CPU data :\n    Residual     : %2.4e\n";
-        formatstr +="    Iter         : %d\n    True relres  : %2.4e\n";
-        sprintf(cpu_out, formatstr.c_str(), tt, iter_in, 
-            sqrt(AlgebraicDot(b,b)/AlgebraicDot(b_ref,b_ref)));
+
+        cpu_o<<"\n  The solver returned with: ";
+        cpu_o<<"\n  CPU data :";
+        cpu_o<<"\n    Residual     : "<<tt;
+        cpu_o<<"\n    Iter         : "<<iter_in;
+        cpu_o<<"\n    True relres  : "<<sqrt(AlgebraicDot(b,b)/AlgebraicDot(b_ref,b_ref));
     }
     
 #ifdef GPU_ACTIVE
@@ -116,17 +118,18 @@ int main(int argc, char **argv)
             b.size() * sizeof(real), MemcpyDeviceToHost);
 
         axpy((real) -1.0, b_ref, b_cpu, b_cpu);
-        
-        string formatstr ="\n GPU data :\n   Residual     : %2.4e\n";
-        formatstr +="   Iter         : %d\n   True relres  : %2.4e\n";
-        sprintf(gpu_out, formatstr.c_str(), tt, iter_in, 
-            sqrt(AlgebraicDot(b_cpu,b_cpu)/AlgebraicDot(b_ref,b_ref)));
+               
+        gpu_o<<"\n\n  The solver returned with: ";
+        gpu_o<<"\n  GPU data :";
+        gpu_o<<"\n    Residual     : "<<tt;
+        gpu_o<<"\n    Iter         : "<<iter_in;
+        gpu_o<<"\n    True relres  : "<<sqrt(AlgebraicDot(b_cpu,b_cpu)/AlgebraicDot(b_ref,b_ref));
     }
 #endif //GPU_ACTIVE
     
-    cout<<cpu_out;
+    cout<<cpu_o.str();
 #ifdef GPU_ACTIVE
-    cout<<gpu_out;
+    cout<<gpu_o.str();
 #endif //GPU_ACTIVE
     cout<<endl;
     sleep(.5);

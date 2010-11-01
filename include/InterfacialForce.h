@@ -18,6 +18,7 @@ class InterfacialForce
     mutable Vec_t v1;
 
   public:
+    InterfacialForce(value_type bending_modulus);
     InterfacialForce(const Parameters<value_type> &params);
     ~InterfacialForce();
 
