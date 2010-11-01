@@ -5,6 +5,8 @@
 #include "BgFlow.h"
 #include "CPUKernels.h"
 
+#include "Surface.h"
+
 #define DT CPU
 extern const Device<DT> the_device(0);
 typedef float real;
@@ -21,18 +23,19 @@ int main(int argc, char** argv)
 
     //Parameters
     int n_surfs(1), sh_order(12), n_eval(10 * 10 * 10);
-    real bending_modulus(1e-1);
+    real bending_modulus(0);
     Par_t sim_par;
     
     sim_par.sh_order = sh_order;
     sim_par.n_surfs = n_surfs;   
     sim_par.bending_modulus = bending_modulus;
-    sim_par.bg_flow_param = 1;
+    sim_par.bg_flow_param = 100;
 
     COUT(sim_par<<endl);
 
     //Building containers
     Vec_t x0(n_surfs, sh_order);
+    Sca_t tension(n_surfs, sh_order);
     Vec_t x_eval(1, 1, make_pair(n_eval,1));
     Vec_t vel(1, 1, make_pair(n_eval,1));
 
@@ -52,8 +55,10 @@ int main(int argc, char** argv)
     Mats_t mats(true, sim_par);
 
     //Getting the velocity field
+    axpy(0,tension,tension);
+
     Eval_t EV(&StokesAlltoAll, vInf, mats, bending_modulus);
-    EV(x0, x_eval, vel);
+    QC( EV(x0, tension, x_eval, vel) );
     
     //Writing to file
     myIO.WriteData("../matlab/Surfaces.out", x0);

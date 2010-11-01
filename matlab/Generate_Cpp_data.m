@@ -8,6 +8,7 @@ function Generate_Cpp_data(p, precision, varargin)
     switch varargin{ii}
      case 'SpHarmRot'
       R = GenerateShRotMats(p);
+      R = R(:);
       fileName = ['SpHarmRotMats_p' num2str(p) '_' precision];
       saveData([fileName '.bin'], R, precision);  
       save([fileName '.txt'],'R','-ascii'); 
@@ -43,7 +44,6 @@ function Generate_Cpp_data(p, precision, varargin)
         Wmat  = [Wmat ; reshape(WS{m+1}(:,m+1:p+1),[],1)];
       end
 
-      
       fileName = ['legTrans' num2str(p)  '_' precision '.txt'];
       save(fileName,'Lmat','-ascii'); 
 
@@ -71,6 +71,7 @@ function Generate_Cpp_data(p, precision, varargin)
 
      case 'DirectRotation'
       R = GenerateDirectRotMat(p);
+      R = R(:);
       fileName = ['all_rot_mats_' num2str(p)  '_' precision '.txt'];
       save(fileName,'R','-ascii'); 
 

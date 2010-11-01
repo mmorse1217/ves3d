@@ -46,6 +46,8 @@ class MovePole
     Container rot_mat_;
     Container* shc_;
     mutable Container wrk_, shc_out;
+    Container* eager_results_;
+    mutable int eager_last_latitude_;
 
     void movePoleDirectly(int trg_i, int trg_j,
         Container** results) const;
@@ -54,6 +56,7 @@ class MovePole
         Container** results) const;
 
     void alignMeridian(int trg_j, Container** results) const;
+    void updateEagerResults(int trg_i) const;
 };
 
 #include "MovePole.cc"

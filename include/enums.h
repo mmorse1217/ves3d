@@ -19,7 +19,9 @@ enum CoordinateOrder {PointMajor, AxisMajor};
 
 enum SolverScheme {Explicit, SemiImplicit};
 
-enum SingularStokesRot {Direct, ViaSpHarm};
+///DirectEagerEval gives the rotation code the freedom to precompute
+///and cache some of the expected results
+enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval}; 
 
 ///The enum types for the errors in the Ves3D set of function, the
 ///insertion operator << is overloaded for this type.

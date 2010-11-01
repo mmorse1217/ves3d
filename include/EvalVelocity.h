@@ -4,7 +4,7 @@
 #include "enums.h"
 #include "Surface.h"
 #include "InterfacialForce.h"
-#include  "BgFlowBase.h"
+#include "BgFlowBase.h"
 
 template<typename Scalar,
          typename Vector,
@@ -19,12 +19,9 @@ class EvalVelocity
   public:
     EvalVelocity(const StokesEvaluator &stokes, 
         const BgFlowBase<Vector> &vInf,
-        const OperatorsMats<Scalar> &mats,
+        OperatorsMats<Scalar> &mats,
         value_type bending_modulus);
     ~EvalVelocity();
-
-    Error_t operator()(const Vector &x_src, 
-        const Vector &x_eval, Vector &vel);
 
     Error_t operator()(const Vector &x_src,
         const Scalar &tension, const Vector &x_eval, 
@@ -33,12 +30,15 @@ class EvalVelocity
   private:
     const StokesEvaluator &stokes_;
     const BgFlowBase<Vector> &vInf_;
-    const OperatorsMats<Scalar> &mats_;
-
+    OperatorsMats<Scalar> &mats_;
     Sur_t *S_ptr_; //pointer, to avoid construction of the surface in
                    //the constructor
-    Vector Fb, Fs;
     InterfacialForce<Sur_t> Force_;
+    Scalar quad_weights_;
+
+    //Work space
+    Vector Fb, Fs;
+    Vector all_src, all_den, all_pot;
 };
 
 #include "EvalVelocity.cc"

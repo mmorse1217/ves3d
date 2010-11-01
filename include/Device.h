@@ -148,7 +148,7 @@ class Device
         const int *n, const int *k, const T *alpha, const T *A, 
         const int *lda, const T *B, const int *ldb, const T *beta, 
         T *C, const int *ldc) const;
-    
+
     ///Direct stokes integration.
     template<typename T>
     void DirectStokes(const T *src, const T *den, const T *qw, 
@@ -171,7 +171,11 @@ class Device
 
     template<typename T>
     bool isNan(const T* x, size_t length) const;
-    
+
+    template<typename T>
+    void AggregateRotation(int sh_order, int n_vec, int* n_sub, 
+        const T* mat, const T** vec, T** res);
+
     //The comparison operator 
     template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         
     friend bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs);

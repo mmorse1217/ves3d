@@ -16,7 +16,9 @@ MovePole<Container, Operators>::MovePole(Operators &mats) :
     alpha(1.0),
     beta(0.0),
     rot_mat_(gridDimOf(p_).first, 1, make_pair(gridDimOf(p_).second, np_)),
-    shc_(NULL)
+    shc_(NULL),
+    eager_results_(NULL),
+    eager_last_latitude_(-1)
 {
     if ( mats.all_rot_mats_ == NULL )
         all_rot_mats_.resize(0);
@@ -85,6 +87,7 @@ MovePole<Container, Operators>::~MovePole()
     Container::getDevice().Free(row_idx);
     Container::getDevice().Free(col_idx);
     delete[] shc_;
+    delete[] eager_results_;
 }
 
 template<typename Container, typename Operators>
@@ -93,25 +96,38 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
 {
     arr_ = arr;
         
-    if ( rot_scheme == Direct )
-        rot_handle_ = &MovePole::movePoleDirectly;
-    else
+    switch (rot_scheme)
     {
-        rot_handle_ = &MovePole::movePoleViaSpHarm;
-        if ( num != num_ || rot_scheme != last_rot_)
-        {
-            delete[] shc_;
-            
-            shc_ = new Container[num];
-        }
+        case Direct:
+            rot_handle_ = &MovePole::movePoleDirectly;
+            break;
+
+        case ViaSpHarm:
+            rot_handle_ = &MovePole::movePoleViaSpHarm;
+            if ( num != num_ || rot_scheme != last_rot_)
+            {
+                delete[] shc_;
+                shc_ = new Container[num];
+            }
         
-        for(int ii=0; ii<num; ++ii)
-        {
-            shc_[ii].replicate(*(arr_[ii]));
-            wrk_.replicate(*(arr_[ii]));
-            sht_.forward(*(arr_[ii]), shc_[ii], wrk_);
-            sht_.collectSameOrder(wrk_, shc_[ii]);
-        }
+            for(int ii=0; ii<num; ++ii)
+            {
+                shc_[ii].replicate(*(arr_[ii]));
+                wrk_.replicate(*(arr_[ii]));
+                sht_.forward(*(arr_[ii]), shc_[ii], wrk_);
+                sht_.collectSameOrder(wrk_, shc_[ii]);
+            }
+            
+            break;
+        
+        case DirectEagerEval:
+            rot_handle_ = &MovePole::movePoleDirectly;
+            eager_results_ = new Container[num * gridDimOf(p_).second];
+            for(int ii=0; ii<gridDimOf(p_).second; ++ii)
+                for(int jj=0; jj<num; ++jj)
+                    eager_results_[ii * num + jj].replicate(*(arr_[jj]));
+
+            break;
     }
     last_rot_ = rot_scheme;
     num_ = num;
@@ -121,7 +137,6 @@ template<typename Container, typename Operators>
 void MovePole<Container, Operators>::operator()(int trg_i, int trg_j, 
     Container** results) const
 {
-
     (this->*rot_handle_)(trg_i, trg_j, results);
 }
 
@@ -129,23 +144,34 @@ template<typename Container, typename Operators>
 void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j, 
     Container** results) const
 {
-    ///@bug the code is broken except for p=12, single 
-
     PROFILESTART();
-    int p  = (*arr_)->getShOrder();
-    int np = (*arr_)->getStride();
-    int nv = (*arr_)->getNumSubs();
-    //int rot_chunck = 2 * p * np;
     
-    CircShift(all_rot_mats_.begin() + trg_i * np * np, trg_j * np, rot_mat_); 
+    if ( last_rot_ == Direct )  
+    {    
+        int np = (*arr_)->getStride();
+        int nv = (*arr_)->getNumSubs();
+
+        CircShift(all_rot_mats_.begin() + trg_i * np * np, trg_j * np, rot_mat_); 
     
-    for(int ii=0; ii<num_; ++ii)
-    {
-        int nsub(arr_[ii]->getNumSubs());
-        Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
-            &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
-            &np, &beta, results[ii]->begin(), &np);
+        for(int ii=0; ii<num_; ++ii)
+        {
+            int nsub(arr_[ii]->getNumSubs());
+            Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
+                &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
+                &np, &beta, results[ii]->begin(), &np);
+        }
     }
+    else
+    {
+        if ( trg_i != eager_last_latitude_ )
+            updateEagerResults(eager_last_latitude_ = trg_i);
+        
+        for(int ii=0; ii<num_; ++ii)
+            Container::getDevice().Memcpy(results[ii]->begin(),
+                eager_results_[num_ * trg_j + ii].begin(),
+                arr_[ii]->size() * sizeof(value_type), MemcpyDeviceToDevice);
+    }
+
     PROFILEEND("",0);
 }
 
@@ -219,13 +245,32 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
             matsize = 2*jj + 1 - (jj/p_); 
             nnz = 4*jj + 1 - 3*(jj/p_);
              
-             // coomm("N", &matsize, &nsub, &matsize, &lalpha, matdescra, 
-//                 rotmat, row_idx, col_idx, &nnz, srcPtr, &matsize, &lbeta, 
-//                 resPtr, &matsize);
+            coomm("N", &matsize, &nsub, &matsize, &lalpha, matdescra, 
+                rotmat, row_idx, col_idx, &nnz, srcPtr, &matsize, &lbeta, 
+                resPtr, &matsize);
             
             srcPtr += matsize * nsub;
             resPtr += matsize * nsub;
         }
     }
     PROFILEEND("",0);
+}
+
+template<typename Container, typename Operators>
+void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
+{       
+    int np = (*arr_)->getStride();
+    int nv = (*arr_)->getNumSubs();
+
+    for(int jj=0;jj<gridDimOf(p_).second;++jj)
+    {
+        CircShift(all_rot_mats_.begin() + trg_i * np * np, jj * np, rot_mat_); 
+        for(int ii=0; ii<num_; ++ii)
+        {
+            int nsub(arr_[ii]->getNumSubs());
+            Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
+                &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
+                &np, &beta, eager_results_[num_ * jj + ii].begin(), &np);
+        }
+    }
 }

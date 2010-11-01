@@ -64,6 +64,9 @@ std::ostream& operator<<(std::ostream& output, const enum SingularStokesRot &SS)
         case ViaSpHarm:
             output<<"ViaSpHarm";
             break;
+        case DirectEagerEval:
+            output<<"DirectEagerEval";
+            break;
     }
     
     return output;

@@ -627,6 +627,27 @@ bool Device<CPU>::isNan(const T* x, size_t length) const
 
 template<>
 template<typename T>
+void Device<CPU>::AggregateRotation(int sh_order, int n_vec,
+    int* n_sub, const T* mat, const T** vec, T** res)
+{
+    int nlat = gridDimOf(sh_order).first;
+    int nlong = gridDimOf(sh_order).second;
+    int np = nlat * nlong;
+    
+    for(int jj=0; jj<nlong; ++jj)
+    {//CircShift(all_rot_mats_.begin() + trg_i * np * np, jj * np, rot_mat_); 
+//         for(int ii=0; ii<num_; ++ii)
+//         {
+//             int nsub(arr_[ii]->getNumSubs());
+//             Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
+//                 &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
+//                 &np, &beta, eager_results_[num_ * jj + ii].begin(), &np);
+//         }
+    }
+}
+
+template<>
+template<typename T>
 void Device<CPU>::fillRand(T* x, size_t length) const
 {
     PROFILESTART();

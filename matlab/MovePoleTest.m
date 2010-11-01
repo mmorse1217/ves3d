@@ -21,9 +21,10 @@ function [] = MovePoleTest(p, task,precision)
     XX = reshape(XX,3*np*nv,[]);
     for jj=1:size(XX,2)
       clf;
+      disp(jj);
       PlotShape(reshape(XX(:,jj),[],nv),p);
       drawnow;
-      pause(.01);
+      pause(.1);
     end
 
    case 'CheckOperators'
@@ -32,7 +33,7 @@ function [] = MovePoleTest(p, task,precision)
     
     np = 2 * p * ( p + 1);
     ind = reshape(1:np,p+1,[])';
-    X = boundary(p,'eightHump');
+    X = boundary(p,'dumbbell');
     X = reshape(X.cart.vecForm(),[],3);
     shc = shAnaReal(X);
     X_rowmajor = X(ind,:);

@@ -8,7 +8,7 @@
 
 #define DT CPU
 typedef double real;
-extern const Device<DT> the_cpu_device(0);
+extern const Device<DT> the_device(0);
 
 
 int main(int argc, char** argv)
@@ -16,10 +16,10 @@ int main(int argc, char** argv)
     bool check_correct = (argc > 1) ? atoi(argv[1]) : true;
     bool profile = (argc > 2) ? atoi(argv[2]) : true;
     
-    typedef Scalars<real, DT, the_cpu_device> Sca_t;
-    typedef Vectors<real, DT, the_cpu_device> Vec_t;
+    typedef Scalars<real, DT, the_device> Sca_t;
+    typedef Vectors<real, DT, the_device> Vec_t;
     typedef OperatorsMats<Sca_t> Mats_t;
-    int p(64);
+    int p(8);
     int nVec(1);
     
     Parameters<real> sim_par;
@@ -35,14 +35,13 @@ int main(int argc, char** argv)
     myIO.ReadData(fname, x0, 0, fLen * DIM);
     
     bool readFromFile = true;
- //    sim_par.singular_stokes = Direct;
-//     Mats_t mats_direct(readFromFile, sim_par);
+    sim_par.singular_stokes = Direct;
+    Mats_t mats_direct(readFromFile, sim_par);
     
     sim_par.singular_stokes = ViaSpHarm;
     Mats_t mats_spHarm(readFromFile, sim_par);
 
-    SHTrans<Sca_t, SHTMats<real, Device<DT> > > sht(p, mats_spHarm.mats_p_);
-    //MovePole<Sca_t, Mats_t> move_pole_direct(mats_direct);
+    MovePole<Sca_t, Mats_t> move_pole_direct(mats_direct);
     MovePole<Sca_t, Mats_t> move_pole_spHarm(mats_spHarm);
       
     const Sca_t* inputs[] = {&x0};
@@ -53,19 +52,19 @@ int main(int argc, char** argv)
         Vec_t xr_direct(nVec, p), xr_spHarm(nVec, p);
         myIO.Append(x0);
         real err = 0;
+        move_pole_direct.setOperands(inputs, 1, DirectEagerEval);
+        move_pole_spHarm.setOperands(inputs, 1, ViaSpHarm);
+        
         for(int ii=0; ii<x0.getGridDim().first; ++ii)
-            for(int jj=0; jj<1; ++jj) //jj<x0.getGridDim().second; ++jj) 
+            for(int jj=0; jj<x0.getGridDim().second; ++jj) 
             {
-                // {
-//                     move_pole_direct.setOperands(inputs, 1, Direct);
-//                     Sca_t* output[] = {&xr_direct};
-//                     move_pole_direct(ii, jj, output);
-//                     myIO.Append(xr_direct);
-//                 }
-                
+                {
+                    Sca_t* output[] = {&xr_direct};
+                    move_pole_direct(ii, jj, output);
+                    myIO.Append(xr_direct);
+                }
                 
                 {
-                    move_pole_spHarm.setOperands(inputs, 1, ViaSpHarm);
                     Sca_t* output[] = {&xr_spHarm};
                     move_pole_spHarm(ii, jj, output);
                     myIO.Append(xr_spHarm);
@@ -76,6 +75,8 @@ int main(int argc, char** argv)
         COUT("    The difference between the two methods : "<<err<<endl<<endl);
     }
     
+
+//SHTrans<Sca_t, SHTMats<real, Device<DT> > > sht(p, mats_spHarm.mats_p_);
 //     //Profile
 //     if ( profile )
 //     {
