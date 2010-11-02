@@ -126,6 +126,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
             for(int ii=0; ii<gridDimOf(p_).second; ++ii)
                 for(int jj=0; jj<num; ++jj)
                     eager_results_[ii * num + jj].replicate(*(arr_[jj]));
+            eager_wrk_.resize(gridDimOf(p_).second,1,make_pair(np_,np_));
 
             break;
     }
@@ -148,15 +149,14 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
     
     if ( last_rot_ == Direct )  
     {    
-        int np = (*arr_)->getStride();
-        CircShift(all_rot_mats_.begin() + trg_i * np * np, trg_j * np, rot_mat_); 
+        CircShift(all_rot_mats_.begin() + trg_i * np_ * np_, trg_j * np_, rot_mat_); 
     
         for(int ii=0; ii<num_; ++ii)
         {
             int nsub(arr_[ii]->getNumSubs());
-            Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
-                &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
-                &np, &beta, results[ii]->begin(), &np);
+            Container::getDevice().gemm("N", "N", &np_, &nsub, &np_, 
+                &alpha, rot_mat_.begin(), &np_, arr_[ii]->begin(), 
+                &np_, &beta, results[ii]->begin(), &np_);
         }
     }
     else
@@ -257,8 +257,6 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
 template<typename Container, typename Operators>
 void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
 {    
-    int np = (*arr_)->getStride();
-
     int *n_sub = new int[num_];
     const value_type** src = new const value_type*[num_];
     
@@ -268,15 +266,21 @@ void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
         src[ii] = arr_[ii]->begin();
     }
     
-    int n_res =  num_ * gridDimOf(p_).second;
+    int n_long = gridDimOf(p_).second;
+    int n_res =  num_ * n_long;
     value_type **res = new value_type*[n_res];
     for(int ii=0; ii<n_res; ++ii)
         res[ii] = eager_results_[ii].begin();
 
+    value_type** wrk = new value_type*[n_long];
+    for (int jj = 0; jj < n_long; ++jj)
+        wrk[jj] = eager_wrk_.getSubN(jj);
+
     Container::getDevice().AggregateRotation(p_, num_, n_sub, 
-        all_rot_mats_.begin() + trg_i * np * np, src, res);
+        all_rot_mats_.begin() + trg_i * np_ * np_, src, wrk, res);
     
     delete[] n_sub;
     delete[] src;
     delete[] res;
+    delete[] wrk;
 }

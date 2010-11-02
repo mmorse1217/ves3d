@@ -296,7 +296,8 @@ Device<GPU>::~Device()
 template<>
 template<typename T>
 void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
-    const int* n_sub, const T* mat, const T** vec, T** res) const
+    const int* n_sub, const T* mat, const T** vec, T** wrk,
+    T** res) const
 {
     PROFILESTART();
     
@@ -305,34 +306,28 @@ void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
     int np = nlat * nlong;
     
     T alpha(1), beta(0);
-        
-    cudaStream_t *stream = new cudaStream_t[nlong];
-    T** rot_mat = new T*[nlong];
-    
-    for (int jj = 0; jj < nlong; ++jj) 
-    {
-        cudaStreamCreate(&stream[jj]);
-        rot_mat[jj] = (T*) this->Malloc(np * np * sizeof(T));
-    }
 
+    cudaStream_t *stream = new cudaStream_t[nlong];
+    for (int jj = 0; jj < nlong; ++jj)
+        cudaStreamCreate(&stream[jj]);
+    
     for (int jj=0; jj< nlong; ++jj)
     {
-        PermuteGpu(mat, sh_order, jj, rot_mat[jj], stream[jj]);
+        PermuteGpu(mat, sh_order, jj, wrk[jj], stream[jj]);
         cublasSetKernelStream(stream[jj]);
         for(int ii=0; ii<n_vec; ++ii)
         {
             int nsub(n_sub[ii]);
-            this->gemm("N", "N", &np, &nsub, &np, &alpha, rot_mat[jj], &np, 
+            this->gemm("N", "N", &np, &nsub, &np, &alpha, wrk[jj], &np,
                 vec[ii], &np, &beta, res[n_vec * jj + ii], &np);
         }
     }
     cudaThreadSynchronize();
-    
-    for (int jj = 0; jj < nlong; ++jj) 
-        this->Free(rot_mat[jj]);
-    
-    delete[] stream;
-    delete[] rot_mat;
 
+    cublasSetKernelStream(NULL);
+    for (int jj = 0; jj < nlong; ++jj)
+        cudaStreamDestroy(stream[jj]);
+
+    delete[] stream;
     PROFILEEND("",0);
 }

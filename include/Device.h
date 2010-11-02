@@ -174,7 +174,7 @@ class Device
 
     template<typename T>
     void AggregateRotation(int sh_order, int n_vec, const int* n_sub, 
-        const T* mat, const T** vec, T** res) const;
+        const T* mat, const T** vec, T** wrk, T** res) const;
 
     //The comparison operator 
     template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         

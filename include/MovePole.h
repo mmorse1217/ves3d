@@ -48,6 +48,7 @@ class MovePole
     mutable Container wrk_, shc_out;
     Container* eager_results_;
     mutable int eager_last_latitude_;
+    mutable Container eager_wrk_;
 
     void movePoleDirectly(int trg_i, int trg_j,
         Container** results) const;

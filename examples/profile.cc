@@ -16,10 +16,10 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     //reading the prototype form file
     PROFILESTART();
     DataIO myIO;
-    char fname[400];
-    sprintf(fname, "precomputed/biconcave_ra95_%u",sim_par.sh_order);
-    myIO.ReadData(fname,x0, 0, x0.getSubLength());
-    
+    char fname[300];
+    sprintf(fname,"precomputed/biconcave_ra95_%u",sim_par.sh_order);
+    myIO.ReadData(fname, x0, 0, x0.getSubLength());
+
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
     real* cntrs_host =  new real[nVec * DIM];
@@ -42,14 +42,17 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
+    Evolve_t Es(sim_par, Mats, x0, &vInf);
     PROFILEEND("Setup_",0);
     
-    Es.Evolve();
+    QC ( Es.Evolve() );
 }
 
 int main(int argc, char **argv)
 {
+    COUT("\n\n ========================\n  Profiling: "
+        <<"\n ========================"<<endl);
+
     typedef Parameters<real> Par_t;
  
     // Setting the parameters
@@ -61,34 +64,33 @@ int main(int argc, char **argv)
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
     sim_par.scheme = Explicit;
-    int maxexp = 9; // nmax = 512
+    sim_par.singular_stokes = DirectEagerEval;
+    COUT(sim_par);
+    
+    //Different p's
     int p[] = {6, 12, 16, 24};
     int plength = 4;
-
-    for(int ii=0;ii<plength; ++ii)
+    int n = 512;
+    
+    sim_par.n_surfs = n; 
+    for(int ii=0; ii<plength; ++ii)
     {
-        int n0 = 512;
         sim_par.sh_order = p[ii];
         sim_par.filter_freq = 2*p[ii]/3;
         sim_par.rep_up_freq = 2*p[ii];
         sim_par.rep_filter_freq = p[ii]/3;
-        //rep_ts(1),
-        //for(int jj = 0; jj<maxexp; ++jj)
-        {
-            PROFILECLEAR();
-            PROFILESTART();
-            n0 *= 2;
-            sim_par.n_surfs = n0; 
-            
-            COUT("\n --- n = " << n0 <<" p = "
-                <<p[ii]<<"----------------------------------------"
-                <<"-----------------------------------------------------"<<endl);
-            COUT(sim_par);
-            
-            EvolveSurfaceTest<the_device>(sim_par);
-            PROFILEEND("",0);
-            PROFILEREPORT(SortTime);
-        }
+ 
+        COUT("\n --- n = " << n <<" p = "
+            <<p[ii]<<"----------------------------------------"
+            <<"-----------------------------------------------------"<<endl);
+        COUT(sim_par);
+        CLEARERRORHIST();
+        PROFILESTART();
+        
+        EvolveSurfaceTest<the_device>(sim_par);
+        PROFILEEND("",0);
+        PRINTERRORLOG();
+        PROFILEREPORT(SortFlopRate);
     }
 }
 
