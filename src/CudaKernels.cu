@@ -2093,4 +2093,34 @@ void apxGpu(const double *a_in, const double *x_in,
   cudaThreadSynchronize();
 }
 
+
+__global__ 
+void PermuteGpuKernel(const float *Ai, int p, int j, float *Aij)
+{
+  int jj = blockIdx.x;
+
+  int ii = threadIdx.x;
+
+  int dim = 2 * p * (p + 1);
+  int stride = 2 * p;
+
+  int original_jj = jj%stride - j;
+  original_jj += (original_jj < 0) ? stride : 0;
+  original_jj += jj/stride * stride;
+
+  while (ii < dim) {
+    Aij[jj*dim + ii] = Ai[original_jj*dim + ii];
+    ii += blockDim.x;
+  }
+}
+
+void PermuteGpu(const float *Ai, int p, int j, float *Aij, cudaStream_t stream)
+{
+  int dim = 2 * p * (p + 1);
+  dim3 grid(dim);
+
+  PermuteGpuKernel<<<grid, BLOCK_HEIGHT, 0, stream>>>(Ai, p, j, Aij);
+  //cudaThreadSynchronize();
+}
+
 #include "transpose_kernel.cu"

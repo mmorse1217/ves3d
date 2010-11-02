@@ -628,22 +628,43 @@ bool Device<CPU>::isNan(const T* x, size_t length) const
 template<>
 template<typename T>
 void Device<CPU>::AggregateRotation(int sh_order, int n_vec,
-    int* n_sub, const T* mat, const T** vec, T** res)
+    const int* n_sub, const T* mat, const T** vec, T** res) const
 {
+    PROFILESTART();
     int nlat = gridDimOf(sh_order).first;
     int nlong = gridDimOf(sh_order).second;
     int np = nlat * nlong;
     
+    T alpha(1), beta(0);
+    T* rot_mat = new T[np * np];
+    
     for(int jj=0; jj<nlong; ++jj)
-    {//CircShift(all_rot_mats_.begin() + trg_i * np * np, jj * np, rot_mat_); 
-//         for(int ii=0; ii<num_; ++ii)
-//         {
-//             int nsub(arr_[ii]->getNumSubs());
-//             Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
-//                 &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
-//                 &np, &beta, eager_results_[num_ * jj + ii].begin(), &np);
-//         }
+    {
+        {//Equivalent to CircShift
+            int length = nlong * np;
+            int shift = jj * np;
+            int base_in, base_out;
+            for (int ii = 0; ii < nlat; ii++) {
+                base_out = ii * length;
+                base_in = base_out + length - shift;
+                this->Memcpy(rot_mat + base_out, mat + base_in, sizeof(T) * shift, 
+                    MemcpyDeviceToDevice);
+                base_in = base_out;
+                base_out += shift;
+                this->Memcpy(rot_mat + base_out, mat + base_in, sizeof(T) * (length - shift),
+                    MemcpyDeviceToDevice);
+            }
+        }
+        
+        for(int ii=0; ii<n_vec; ++ii)
+        {
+            int nsub(n_sub[ii]);
+            this->gemm("N", "N", &np, &nsub, &np, &alpha, rot_mat, &np, 
+                vec[ii], &np, &beta, res[n_vec * jj + ii], &np);
+        }
     }
+    delete[] rot_mat;
+    PROFILEEND("",0);
 }
 
 template<>

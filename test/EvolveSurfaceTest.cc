@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     sim_par.ts = 1;    
     sim_par.time_horizon = 4;
     sim_par.scheme = Explicit;
-    sim_par.singular_stokes = Direct;
+    sim_par.singular_stokes = DirectEagerEval;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
@@ -79,13 +79,13 @@ int main(int argc, char **argv)
     //Cleaning the slate
     remove(sim_par.save_file_name.c_str());
     
-    CLEARERRORHIST();
-    PROFILESTART();
-    COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
-    EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
-    PROFILEEND("",0);
-    PRINTERRORLOG();
-    PROFILEREPORT(SortFlopRate);    
+//     CLEARERRORHIST();
+//     PROFILESTART();
+//     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
+//     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
+//     PROFILEEND("",0);
+//     PRINTERRORLOG();
+//     PROFILEREPORT(SortFlopRate);    
     
 #ifdef GPU_ACTIVE
     CLEARERRORHIST();
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
     EvolveSurfaceTest<GPU, the_gpu_device>(sim_par);
     PRINTERRORLOG();
-    PROFILEREPORT(SortFlopRate);
+    //    PROFILEREPORT(SortFlopRate);
 
 #endif //GPU_ACTIVE
 }

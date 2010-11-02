@@ -45,5 +45,6 @@ double maxGpu(double *in, int n);
 double AlgebraicDotGpu(const double *x, const double *y, size_t length);
 void axGpu(const double* a, const double* x, size_t stride, size_t n_vecs, double* ax_out);
 void apxGpu(const double *a_in, const double *x_in, int stride, int n_subs, double *apx_out);
+void PermuteGpu(const float *Ai, int p, int j, float *Aij, cudaStream_t stream);
 
 #include "transpose_kernel.h"

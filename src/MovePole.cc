@@ -149,8 +149,6 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
     if ( last_rot_ == Direct )  
     {    
         int np = (*arr_)->getStride();
-        int nv = (*arr_)->getNumSubs();
-
         CircShift(all_rot_mats_.begin() + trg_i * np * np, trg_j * np, rot_mat_); 
     
         for(int ii=0; ii<num_; ++ii)
@@ -258,19 +256,27 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
 
 template<typename Container, typename Operators>
 void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
-{       
+{    
     int np = (*arr_)->getStride();
-    int nv = (*arr_)->getNumSubs();
 
-    for(int jj=0;jj<gridDimOf(p_).second;++jj)
+    int *n_sub = new int[num_];
+    const value_type** src = new const value_type*[num_];
+    
+    for(int ii=0; ii<num_; ++ii)
     {
-        CircShift(all_rot_mats_.begin() + trg_i * np * np, jj * np, rot_mat_); 
-        for(int ii=0; ii<num_; ++ii)
-        {
-            int nsub(arr_[ii]->getNumSubs());
-            Container::getDevice().gemm("N", "N", &np, &nsub, &np, 
-                &alpha, rot_mat_.begin(), &np, arr_[ii]->begin(), 
-                &np, &beta, eager_results_[num_ * jj + ii].begin(), &np);
-        }
+        n_sub[ii] = arr_[ii]->getNumSubs();
+        src[ii] = arr_[ii]->begin();
     }
+    
+    int n_res =  num_ * gridDimOf(p_).second;
+    value_type **res = new value_type*[n_res];
+    for(int ii=0; ii<n_res; ++ii)
+        res[ii] = eager_results_[ii].begin();
+
+    Container::getDevice().AggregateRotation(p_, num_, n_sub, 
+        all_rot_mats_.begin() + trg_i * np * np, src, res);
+    
+    delete[] n_sub;
+    delete[] src;
+    delete[] res;
 }

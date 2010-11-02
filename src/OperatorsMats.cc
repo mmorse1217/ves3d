@@ -11,7 +11,7 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     int np = 2 * p_ * ( p_ + 1);   
     int rot_mat_size =  0;
     int spharm_rot_size = 0;
-    
+
     if (params.singular_stokes == Direct || params.singular_stokes == DirectEagerEval)
         rot_mat_size =  np * np * (p_ + 1);
     else
@@ -30,7 +30,7 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
         all_rot_mats_ = NULL;
     else
         sh_rot_mats_ = NULL;
-    
+
     DataIO fileIO;
 
     if(readFromFile)
@@ -107,7 +107,7 @@ size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type>
     int rot_mat_size = 0;
     int spharm_rot_size = 0;
 
-    if (params.singular_stokes == Direct )
+    if (params.singular_stokes == Direct || params.singular_stokes == DirectEagerEval)
         rot_mat_size =  np * np * (p_ + 1);
     else
         spharm_rot_size = (p_ + 1) * (p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);

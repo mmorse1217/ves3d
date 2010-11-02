@@ -173,8 +173,8 @@ class Device
     bool isNan(const T* x, size_t length) const;
 
     template<typename T>
-    void AggregateRotation(int sh_order, int n_vec, int* n_sub, 
-        const T* mat, const T** vec, T** res);
+    void AggregateRotation(int sh_order, int n_vec, const int* n_sub, 
+        const T* mat, const T** vec, T** res) const;
 
     //The comparison operator 
     template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         

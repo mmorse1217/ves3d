@@ -213,8 +213,8 @@ int main(int , char** )
                 //Here we would do some processing on C
             }
 	    cudaThreadSynchronize();
-	}
-	time[p-p_min] = timer.GetET();
+        }
+        time[p-p_min] = timer.GetET();
         
         PROFILEEND("",0);
         PROFILEREPORT(SortTime);

@@ -19,7 +19,7 @@ int main(int argc, char** argv)
     typedef Scalars<real, DT, the_device> Sca_t;
     typedef Vectors<real, DT, the_device> Vec_t;
     typedef OperatorsMats<Sca_t> Mats_t;
-    int p(8);
+    int p(12);
     int nVec(1);
     
     Parameters<real> sim_par;
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
         Vec_t xr_direct(nVec, p), xr_spHarm(nVec, p);
         myIO.Append(x0);
         real err = 0;
-        move_pole_direct.setOperands(inputs, 1, DirectEagerEval);
+        move_pole_direct.setOperands(inputs, 1, Direct);//EagerEval);
         move_pole_spHarm.setOperands(inputs, 1, ViaSpHarm);
         
         for(int ii=0; ii<x0.getGridDim().first; ++ii)
