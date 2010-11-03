@@ -238,7 +238,7 @@ T* Device<GPU>::gemm(const char *transA, const char *transB,
     PROFILESTART();
     cugemm(transA, transB, m, n, k, alpha, A, lda, B, 
         ldb, beta, C, ldc); 
-    cudaThreadSynchronize();
+    //cudaThreadSynchronize();
     PROFILEEND("GPU",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
     return C;
 }
@@ -306,15 +306,20 @@ void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
     int np = nlat * nlong;
     
     T alpha(1), beta(0);
+    int n_stream = 2;
+    ///@bug memory leak, streams are not destroyed
+    static cudaStream_t *stream(NULL);
+    if (stream == NULL)
+    {
+        stream = (cudaStream_t*) malloc( n_stream * sizeof(cudaStream_t));
+        for (int jj = 0; jj < n_stream; ++jj)
+            cudaStreamCreate(&stream[jj]);
+    }
 
-    cudaStream_t *stream = new cudaStream_t[nlong];
-    for (int jj = 0; jj < nlong; ++jj)
-        cudaStreamCreate(&stream[jj]);
-    
     for (int jj=0; jj< nlong; ++jj)
     {
-        PermuteGpu(mat, sh_order, jj, wrk[jj], stream[jj]);
-        cublasSetKernelStream(stream[jj]);
+        PermuteGpu(mat, sh_order, jj, wrk[jj], stream[jj%n_stream]);
+        cublasSetKernelStream(stream[jj%n_stream]);
         for(int ii=0; ii<n_vec; ++ii)
         {
             int nsub(n_sub[ii]);
@@ -322,12 +327,12 @@ void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
                 vec[ii], &np, &beta, res[n_vec * jj + ii], &np);
         }
     }
-    cudaThreadSynchronize();
-
-    cublasSetKernelStream(NULL);
-    for (int jj = 0; jj < nlong; ++jj)
-        cudaStreamDestroy(stream[jj]);
-
-    delete[] stream;
+    
+    for(int jj=0; jj< n_stream; ++jj)
+        cudaStreamSynchronize(stream[jj]);
+    //for (int jj = 0; jj < n_stream; ++jj)
+    //    cudaStreamDestroy(stream[jj]);
+    //free(stream);
+    //cublasSetKernelStream(NULL);
     PROFILEEND("",0);
 }

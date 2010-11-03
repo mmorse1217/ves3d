@@ -44,8 +44,10 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     //Finally, Evolve surface
     Evolve_t Es(sim_par, Mats, x0, &vInf);
     PROFILEEND("Setup_",0);
-    
+
+    PROFILESTART();
     QC ( Es.Evolve() );
+    PROFILEEND("Run_",0);
 }
 
 int main(int argc, char **argv)
@@ -68,9 +70,9 @@ int main(int argc, char **argv)
     COUT(sim_par);
     
     //Different p's
-    int p[] = {6, 12, 16, 24};
+    int p[] = {6,12,16,24};
     int plength = 4;
-    int n = 512;
+    int n = 1024;
     
     sim_par.n_surfs = n; 
     for(int ii=0; ii<plength; ++ii)
@@ -90,8 +92,6 @@ int main(int argc, char **argv)
         EvolveSurfaceTest<the_device>(sim_par);
         PROFILEEND("",0);
         PRINTERRORLOG();
-        PROFILEREPORT(SortFlopRate);
+        PROFILEREPORT(SortTime);
     }
 }
-
-

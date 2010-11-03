@@ -122,12 +122,17 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
         
         case DirectEagerEval:
             rot_handle_ = &MovePole::movePoleDirectly;
-            eager_results_ = new Container[num * gridDimOf(p_).second];
+            eager_last_latitude_ = -1;
+            if ( eager_results_ == NULL || num_ != num )
+            {
+                delete[] eager_results_;
+                eager_results_ = new Container[num * gridDimOf(p_).second];
+            }
+
             for(int ii=0; ii<gridDimOf(p_).second; ++ii)
                 for(int jj=0; jj<num; ++jj)
                     eager_results_[ii * num + jj].replicate(*(arr_[jj]));
             eager_wrk_.resize(gridDimOf(p_).second,1,make_pair(np_,np_));
-
             break;
     }
     last_rot_ = rot_scheme;
@@ -169,7 +174,6 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
                 eager_results_[num_ * trg_j + ii].begin(),
                 arr_[ii]->size() * sizeof(value_type), MemcpyDeviceToDevice);
     }
-
     PROFILEEND("",0);
 }
 
@@ -278,7 +282,7 @@ void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
 
     Container::getDevice().AggregateRotation(p_, num_, n_sub, 
         all_rot_mats_.begin() + trg_i * np_ * np_, src, wrk, res);
-    
+
     delete[] n_sub;
     delete[] src;
     delete[] res;
