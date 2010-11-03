@@ -15,6 +15,7 @@ MovePole<Container, Operators>::MovePole(Operators &mats) :
     num_(0),
     alpha(1.0),
     beta(0.0),
+    eager_n_stream_(4),
     rot_mat_(gridDimOf(p_).first, 1, make_pair(gridDimOf(p_).second, np_)),
     shc_(NULL),
     eager_results_(NULL),
@@ -132,7 +133,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
             for(int ii=0; ii<gridDimOf(p_).second; ++ii)
                 for(int jj=0; jj<num; ++jj)
                     eager_results_[ii * num + jj].replicate(*(arr_[jj]));
-            eager_wrk_.resize(gridDimOf(p_).second,1,make_pair(np_,np_));
+            eager_wrk_.resize(eager_n_stream_,1,make_pair(np_,np_));
             break;
     }
     last_rot_ = rot_scheme;
@@ -276,12 +277,13 @@ void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
     for(int ii=0; ii<n_res; ++ii)
         res[ii] = eager_results_[ii].begin();
 
-    value_type** wrk = new value_type*[n_long];
-    for (int jj = 0; jj < n_long; ++jj)
+    value_type** wrk = new value_type*[eager_n_stream_];
+    for (int jj = 0; jj < eager_n_stream_; ++jj)
         wrk[jj] = eager_wrk_.getSubN(jj);
 
     Container::getDevice().AggregateRotation(p_, num_, n_sub, 
-        all_rot_mats_.begin() + trg_i * np_ * np_, src, wrk, res);
+        all_rot_mats_.begin() + trg_i * np_ * np_, src, wrk, 
+        res, eager_n_stream_);
 
     delete[] n_sub;
     delete[] src;

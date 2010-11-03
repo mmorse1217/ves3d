@@ -629,7 +629,7 @@ template<>
 template<typename T>
 void Device<CPU>::AggregateRotation(int sh_order, int n_vec,
     const int* n_sub, const T* mat, const T** vec, T** wrk, 
-    T** res) const
+    T** res, int ) const
 {
     PROFILESTART();
     int nlat = gridDimOf(sh_order).first;

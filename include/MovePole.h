@@ -41,7 +41,8 @@ class MovePole
     const Container** arr_;
     int num_;
     value_type alpha, beta;
-    
+    int eager_n_stream_;
+
     //Work space
     Container rot_mat_;
     Container* shc_;

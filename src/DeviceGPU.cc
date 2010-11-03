@@ -236,8 +236,10 @@ T* Device<GPU>::gemm(const char *transA, const char *transB,
     const T *beta, T *C, const int *ldc) const
 {
     PROFILESTART();
+    cublasSetKernelStream(CudaApiGlobals::ThisStream());
     cugemm(transA, transB, m, n, k, alpha, A, lda, B, 
         ldb, beta, C, ldc); 
+    
     //cudaThreadSynchronize();
     PROFILEEND("GPU",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
     return C;
@@ -291,13 +293,14 @@ template<>
 Device<GPU>::~Device()
 {
     cublasShutdown();
+    CudaApiGlobals::ClearAll();
 }
 
 template<>
 template<typename T>
 void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
     const int* n_sub, const T* mat, const T** vec, T** wrk,
-    T** res) const
+    T** res, int n_stream) const
 {
     PROFILESTART();
     
@@ -306,33 +309,21 @@ void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
     int np = nlat * nlong;
     
     T alpha(1), beta(0);
-    int n_stream = 2;
-    ///@bug memory leak, streams are not destroyed
-    static cudaStream_t *stream(NULL);
-    if (stream == NULL)
-    {
-        stream = (cudaStream_t*) malloc( n_stream * sizeof(cudaStream_t));
-        for (int jj = 0; jj < n_stream; ++jj)
-            cudaStreamCreate(&stream[jj]);
-    }
+
+    CudaApiGlobals::NumStreams(n_stream);
 
     for (int jj=0; jj< nlong; ++jj)
     {
-        PermuteGpu(mat, sh_order, jj, wrk[jj], stream[jj%n_stream]);
-        cublasSetKernelStream(stream[jj%n_stream]);
+        PermuteGpu(mat, sh_order, jj, wrk[jj%n_stream], 
+            CudaApiGlobals::NextStream());
         for(int ii=0; ii<n_vec; ++ii)
         {
             int nsub(n_sub[ii]);
-            this->gemm("N", "N", &np, &nsub, &np, &alpha, wrk[jj], &np,
-                vec[ii], &np, &beta, res[n_vec * jj + ii], &np);
+            this->gemm("N", "N", &np, &nsub, &np, &alpha, wrk[jj%n_stream], 
+                &np, vec[ii], &np, &beta, res[n_vec * jj + ii], &np);
         }
     }
     
-    for(int jj=0; jj< n_stream; ++jj)
-        cudaStreamSynchronize(stream[jj]);
-    //for (int jj = 0; jj < n_stream; ++jj)
-    //    cudaStreamDestroy(stream[jj]);
-    //free(stream);
-    //cublasSetKernelStream(NULL);
+    CudaApiGlobals::SyncStream();
     PROFILEEND("",0);
 }
