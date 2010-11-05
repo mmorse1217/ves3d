@@ -47,7 +47,6 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
     
     QC ( Es.Evolve() );
-    myIO.Append(Es.S_->getPosition());
 }
 
 int main(int argc, char **argv)
@@ -63,7 +62,7 @@ int main(int argc, char **argv)
     sim_par.filter_freq = 8;
     sim_par.rep_up_freq = 24;
     sim_par.rep_filter_freq = 4;
- 
+    
     sim_par.n_surfs = 2;   
     sim_par.ts = 1;    
     sim_par.time_horizon = 4;
@@ -71,7 +70,7 @@ int main(int argc, char **argv)
     sim_par.singular_stokes = DirectEagerEval;
     sim_par.bg_flow_param = 0.1;
     sim_par.rep_maxit = 20;
-    sim_par.save_data = false;    
+    sim_par.save_data = true;    
     sim_par.save_stride = 1;
     sim_par.save_file_name = "EvolveSurf.out";
     COUT(sim_par);

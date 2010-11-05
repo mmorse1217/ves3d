@@ -1,9 +1,9 @@
 clear all;clc
 
-fileName = '../examples/ParabolicFlow.txt';
+fileName = '../examples/ParabolicFlow2.txt';
 
 p = 12;
-nv = 17 * 1;
+nv = 1;
 np = 2 * p * (p + 1);
 XX = ReadAscii(fileName);
 

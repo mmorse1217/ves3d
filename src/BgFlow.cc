@@ -24,6 +24,72 @@ void ShearFlow<VecContainer>::operator()(const VecContainer &pos, const value_ty
     axpy(shear_rate_, vel_inf, vel_inf);
 }
 
+// Parabolic flow ///////////////////////////////////////////////////////////////
+template<typename ScalarContainer, typename VecContainer>
+ParabolicFlow<ScalarContainer, VecContainer>::ParabolicFlow(value_type radius, 
+    value_type center_vel, value_type flow_dir_x, value_type flow_dir_y, 
+        value_type flow_dir_z) :
+    inv_radius2_( - 1.0 / radius / radius),
+    center_vel_(center_vel),
+    flow_dir_x_(flow_dir_x),
+    flow_dir_y_(flow_dir_y),
+    flow_dir_z_(flow_dir_z)
+{
+    //Normalizing the flow direction unit vector
+    value_type norm(flow_dir_x_ * flow_dir_x_ +
+        flow_dir_y_ * flow_dir_y_ + flow_dir_z_ * flow_dir_z_);
+    norm = sqrt(norm);
+    flow_dir_x_ /= norm;
+    flow_dir_y_ /= norm;
+    flow_dir_z_ /= norm;
+}
+ 
+template<typename ScalarContainer, typename VecContainer>
+void ParabolicFlow<ScalarContainer, VecContainer>::CheckContainers(
+    const VecContainer &ref) const
+{
+    int ns = flow_direction_.getNumSubs();
+    flow_direction_.replicate(ref);
+    s_wrk_.replicate(ref);
+
+    if (ns == 0 && flow_direction_.getSubLength() > 0)
+    {
+        int ll = flow_direction_.getStride();
+        value_type* buffer = new value_type[ll * DIM];
+        
+        for(int jj=0; jj< ll; ++jj)
+        {
+            buffer[       jj] = flow_dir_x_;
+            buffer[  ll + jj] = flow_dir_y_;
+            buffer[2*ll + jj] = flow_dir_z_;
+        } 
+
+        VecContainer::getDevice().Memcpy(flow_direction_.begin(),
+            buffer, DIM *ll * sizeof(value_type), MemcpyHostToDevice);
+        delete[] buffer;
+    }   
+
+    for(int ii=ns; ii<flow_direction_.getNumSubs(); ++ii)
+        VecContainer::getDevice().Memcpy(flow_direction_.getSubN(ii),
+            flow_direction_.begin(), flow_direction_.getSubLength() * 
+            sizeof(value_type), MemcpyDeviceToDevice);
+}
+
+template<typename ScalarContainer, typename VecContainer>
+void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const 
+    VecContainer &pos, const value_type time, VecContainer &vel_inf) const
+{
+    this->CheckContainers(pos);
+
+    GeometricDot(pos, flow_direction_, s_wrk_);
+    xv(s_wrk_, flow_direction_, vel_inf);
+    axpy(static_cast<value_type>(-1), vel_inf, pos, vel_inf);
+    GeometricDot(vel_inf, vel_inf, s_wrk_);
+    axpy(inv_radius2_, s_wrk_, s_wrk_);
+    xvpw(s_wrk_, flow_direction_, flow_direction_, vel_inf);
+    axpy(center_vel_, vel_inf, vel_inf);
+};
+
 // Taylor vortex ////////////////////////////////////////////////////////////////
 /**
  * @bug The data is manipulated directly that causes segmentation

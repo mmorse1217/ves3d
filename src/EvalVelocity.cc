@@ -35,7 +35,7 @@ Error_t EvalVelocity<Scalar, Vector, StokesEvaluator>::operator()(
     
     Force_.bendingForce(*S_ptr_, Fb);
     Force_.tensileForce(*S_ptr_, tension, Fs);
-    axpy(static_cast<value_type>(1.0), Fb, Fs, Fb);
+    axpy(static_cast<value_type>(1), Fb, Fs, Fb);
 
     //Incorporating the quadrature weights into the density
     xv(S_ptr_->getAreaElement(), Fb, Fb);
@@ -48,27 +48,27 @@ Error_t EvalVelocity<Scalar, Vector, StokesEvaluator>::operator()(
 
     all_src.resize(1,-1, make_pair(1,all_size));
     all_den.replicate(all_src);
-    all_pot.replicate(all_den);
+    all_pot.replicate(all_src);
 
     axpy(static_cast<value_type>(0), all_den, all_den);
-
+    
     ShufflePoints(x_src, Fs);
-    all_src.getDevice().Memcpy(all_src.begin(), Fs.begin(), 
+    Scalar::getDevice().Memcpy(all_src.begin(), Fs.begin(), 
         src_size * sizeof(value_type), MemcpyDeviceToDevice);
 
     ShufflePoints(x_eval, all_den);
-    all_src.getDevice().Memcpy(all_src.begin() + src_size, 
+    Scalar::getDevice().Memcpy(all_src.begin() + src_size, 
         all_den.begin(), eval_size * sizeof(value_type), 
         MemcpyDeviceToDevice);
     
     ShufflePoints(Fb, Fs);
-    all_src.getDevice().Memcpy(all_den.begin(), Fs.begin(), 
+    Scalar::getDevice().Memcpy(all_den.begin(), Fs.begin(), 
         src_size * sizeof(value_type), MemcpyDeviceToDevice);
 
     stokes_(all_src.begin(), all_den.begin(), all_size, 
         all_pot.begin(), NULL);
     
-    all_pot.getDevice().Memcpy(vel.begin(), all_pot.begin() 
+    Scalar::getDevice().Memcpy(vel.begin(), all_pot.begin() 
         + src_size, eval_size * sizeof(value_type),
         MemcpyDeviceToDevice);
 
@@ -77,7 +77,6 @@ Error_t EvalVelocity<Scalar, Vector, StokesEvaluator>::operator()(
     vel.setPointOrder(AxisMajor);
     
     //The background flow
-    ///@bug the time should be passed to the background flow
     vInf_(x_eval, 0, vel);
     axpy(static_cast<value_type>(1), vel, all_den, vel);
     

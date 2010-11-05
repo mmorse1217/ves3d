@@ -22,20 +22,27 @@ class ShearFlow : public BgFlowBase<VecContainer>
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-template<typename VecContainer>
+template<typename ScalarContainer, typename VecContainer>
 class ParabolicFlow : public BgFlowBase<VecContainer>
 {
   private:
     typedef typename VecContainer::value_type value_type;
 
   public:
-    ParabolicFlow(value_type flow_curvature);
+    ParabolicFlow(value_type radius, value_type center_vel,
+        value_type flow_dir_x = 1, value_type flow_dir_y = 0, 
+        value_type flow_dir_z = 0);
     
     virtual void operator()(const VecContainer &pos, const value_type time, 
         VecContainer &vel_inf) const;
     
   private:
-    value_type flow_curvature_;
+    void CheckContainers(const VecContainer &ref) const;
+
+    value_type inv_radius2_, center_vel_;
+    value_type flow_dir_x_, flow_dir_y_, flow_dir_z_;
+    mutable VecContainer flow_direction_;
+    mutable ScalarContainer s_wrk_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

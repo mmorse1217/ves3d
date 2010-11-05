@@ -1,7 +1,7 @@
 clear all;clc
 
 p = 12;
-nv = 1;
+nv = 2;
 np = 2 * p * (p + 1);
 ntotal = nv * np;
 
@@ -13,7 +13,7 @@ velname  = '../test/VelocityField.out';
 xv = ReadAscii(xname);
 
 %- Generating the grid points
-gridsize = {10,10,10};
+gridsize = {4,4,4};
 gridlim  = [-2 2;-2 2;-2 2];
 gridSpec = {linspace(gridlim(1,1),gridlim(1,2),gridsize{1}),
             linspace(gridlim(2,1),gridlim(2,2),gridsize{2}),

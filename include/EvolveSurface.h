@@ -66,6 +66,7 @@ class EvolveSurface
     Interaction_t *interaction_;
     Repartition_t *repartition_;
     void *user_ptr_;
+    IntVel_t *F_;
 
     bool ownsObjOnHeap_;
 };

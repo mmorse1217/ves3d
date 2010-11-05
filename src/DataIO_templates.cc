@@ -1,4 +1,4 @@
-template<typename T>
+template<typename T>            
 bool DataIO::ReadData(const string &file_name, size_t size, T* data) const
 {
     ifstream data_file(file_name.c_str(), ios::in);
@@ -21,6 +21,9 @@ template<typename T>
 bool DataIO::WriteData(const string &file_name, size_t size, const T* data, 
     ios_base::openmode mode) const
 {
+    COUT("\n  DataIO::"<<__FUNCTION__<<":\n"
+        <<"              size : "<<size<<endl);
+    
 #pragma omp ordered //critical writeData
     {    
         ofstream data_file(file_name.c_str(), mode);
@@ -31,8 +34,10 @@ bool DataIO::WriteData(const string &file_name, size_t size, const T* data,
         size_t idx=0;
         while  (idx <size )
             data_file<<data[idx++]<<endl;
-        
         data_file.close();
+                
+        COUTDEBUG("           written : "<<idx<<endl);
+
     }
     return(true);
 }
@@ -73,19 +78,20 @@ bool DataIO::Append(const Container &data) const
     length *= sizeof(typename Container::value_type);
 
 #pragma omp critical (IOAppend)
-    {
+    {        
+        if(length > out_size_)
+            ResizeOutBuffer(length);
+        
+        if(length > (out_size_ - out_used_))
+            this->FlushBuffer<typename Container::value_type>();
+     
+        
         COUTDEBUG("\n  DataIO::Append():"
             <<"\n              Size      = "<<length
             <<"\n              Total     = "<<out_size_
             <<"\n              Used      = "<<out_used_
             <<"\n              Available = "<<out_size_-out_used_<<endl);
-        
-        if(length > out_size_)
-            ResizeOutBuffer(length);
-        
-        if(length > (out_size_ - out_used_))
-            FlushBuffer();
-        
+
         Container::getDevice().Memcpy(out_buffer_ + out_used_, data.begin(), 
             length, MemcpyDeviceToHost);
         
@@ -94,4 +100,19 @@ bool DataIO::Append(const Container &data) const
     return(true);
 }
 
-
+template<typename T>
+bool DataIO::FlushBuffer() const
+{
+    COUTDEBUG("\n  DataIO::FlushBuffer() [typed] to:\n"
+        <<"              "<<out_file_ <<endl);
+    
+    bool res(true);
+    if(out_buffer_ !=0 && out_used_ > 0)
+    {
+        res = this->WriteData(out_file_, out_used_ /sizeof(T), 
+            reinterpret_cast<T*>(out_buffer_), ios::app);
+        out_used_ = 0;
+    }
+    
+    return(res);
+}

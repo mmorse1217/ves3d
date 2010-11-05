@@ -42,6 +42,12 @@ class DataIO
     template<typename Container>
     bool Append(const Container &data) const; 
 
+    bool ResizeOutBuffer(size_t buffer_size) const;
+    bool FlushBuffer() const;
+    
+    template<typename T>
+    bool FlushBuffer() const;
+
   private:
     // Basic type IO
     template<typename T>
@@ -56,16 +62,11 @@ class DataIO
     bool WriteData(const string &file_name, size_t size, const char* data, 
         ios_base::openmode mode) const;
 
-    
-  private:
     string out_file_;
     mutable size_t out_size_;
     mutable size_t out_used_;
     mutable char* out_buffer_; 
     int resize_factor_;
-   
-    bool ResizeOutBuffer(size_t buffer_size) const;
-    bool FlushBuffer() const;
 };
 
 #include "DataIO_templates.cc"

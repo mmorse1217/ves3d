@@ -7,7 +7,9 @@ template<typename EvolveSurface>
 Monitor<EvolveSurface>::Monitor(const Parameters<value_type> &params) : 
     save_flag_(params.save_data),
     save_stride_(params.save_stride),
-    IO(params.save_file_name),
+    IO(params.save_file_name, 5 * (DIM + 1) * /* position + tension */ 
+        gridDimOf(params.sh_order).first * 
+        gridDimOf(params.sh_order).second * sizeof(value_type)),
     A0(-1),
     V0(-1),
     last_save(-1),
@@ -16,7 +18,10 @@ Monitor<EvolveSurface>::Monitor(const Parameters<value_type> &params) :
 
 template<typename EvolveSurface>
 Monitor<EvolveSurface>::~Monitor()
-{}
+{
+    //Due to a bug'ish in the DataIO class
+    IO.FlushBuffer<value_type>();
+}
     
 template<typename EvolveSurface>
 Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state, 
@@ -51,10 +56,11 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
         
         bool save_now = static_cast<int>(t/save_stride_) > last_save;
 
-        if ( save_flag_ && save_now)
+        if ( save_flag_ && save_now )
         {
             COUT("\n           Writing data to file."<<endl);
             IO.Append(state->S_->getPosition());
+            IO.Append(state->F_->tension());
             last_save++;
         }
         COUT(" ------------------------------------"<<endl);

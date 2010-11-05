@@ -36,7 +36,8 @@ inline void axpy(typename ScalarContainer::value_type a_in,
     const ScalarContainer &x_in, ScalarContainer &axpy_out);
 
 template<typename ScalarContainer>
-inline typename ScalarContainer::value_type Max(const ScalarContainer &x_in);
+inline typename ScalarContainer::value_type Max(
+    const ScalarContainer &x_in);
 
 template<typename ScalarContainer, typename VectorContainer>
 inline void GeometricDot(const VectorContainer &u_in, 
@@ -62,7 +63,7 @@ inline void xvpw(const ScalarContainer &x_in,
 
 template<typename ScalarContainer, typename VectorContainer>
 inline void xv(const ScalarContainer &x_in, 
-    const VectorContainer &v_in, VectorContainer &xvpw_out);
+    const VectorContainer &v_in, VectorContainer &xv_out);
 
 template<typename Container>
 inline void ax(const Container& a, const Container& x, Container& ax_out);

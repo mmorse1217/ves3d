@@ -7,6 +7,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, 
     mats_(mats),
     vInf_(vInf),
     user_ptr_(user_ptr),
+    F_(NULL),
     ownsObjOnHeap_(false)
 {
     ownsObjOnHeap_ = true;
@@ -28,6 +29,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, 
     interaction_(I),
     repartition_(R),
     user_ptr_(user_ptr),
+    F_(NULL),
     ownsObjOnHeap_(false)
 {}
 
@@ -42,6 +44,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
         delete interaction_;
         delete repartition_;
     }
+    delete F_;
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
@@ -52,8 +55,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     T dt(params_.ts);
     T time_horizon(params_.time_horizon);
 
-    IntVel_t F(*S_, *interaction_, mats_, params_, *vInf_);
-    F.usr_ptr_ = user_ptr_;
+    delete F_;
+    F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_);
+    F_->usr_ptr_ = user_ptr_;
      
     //Deciding on the updater type
     Scheme_t updater;
@@ -67,12 +71,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             updater = &IntVel_t::updatePositionImplicit; 
             break;
     }
-    
-    int counter(0);
+
     while ( ERRORSTATUS() && t < time_horizon )
     {
-        QC( (F.*updater)(dt) );       
-        F.reparam();
+        QC( (F_->*updater)(dt) );       
+        F_->reparam();
         t += dt;
         
         //repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
