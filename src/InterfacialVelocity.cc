@@ -194,9 +194,9 @@ updateInteraction() const
 
     //Subtracting the self-interaction
     if ( status == Success )
-        axpy(static_cast<value_type>(0), velocity_, velocity_);
+        axpy(static_cast<value_type>(-1), velocity_, *u2, velocity_); 
     else
-        axpy(static_cast<value_type>(-1), velocity_, *u2, velocity_);
+        axpy(static_cast<value_type>(0), velocity_, velocity_);
     
     //Background flow
     ///@bug the time should be passed to the BgFlow handle.

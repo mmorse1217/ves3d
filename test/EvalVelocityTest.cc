@@ -22,14 +22,14 @@ int main(int argc, char** argv)
     typedef EvalVelocity<Sca_t, Vec_t, StokesEval_t> Eval_t;
 
     //Parameters
-    int n_surfs(2), sh_order(12), n_eval(4 * 4 * 4);
+    int n_surfs(2), sh_order(12), n_eval(10 * 10 * 10);
     real bending_modulus(.01);
     Par_t sim_par;
     
     sim_par.sh_order = sh_order;
     sim_par.n_surfs = n_surfs;   
     sim_par.bending_modulus = bending_modulus;
-    sim_par.bg_flow_param = 1;
+    sim_par.bg_flow_param = 0;
 
     COUT(sim_par<<endl);
 
@@ -43,33 +43,32 @@ int main(int argc, char** argv)
     //Reading the prototype form file  
     DataIO myIO;
     char fname[] = "../matlab/StreamlineData.out";
-    myIO.ReadData(fname, saved_data, aved_data.size());
+    myIO.ReadData(fname, saved_data, 0, saved_data.size());
 
-    cout<<ShowEntries<Sca_t>(saved_data)<<endl;
     //Copying position and tension to their containers
     Sca_t::getDevice().Memcpy(x0.begin(), saved_data.begin(),
         x0.size() * sizeof(real), MemcpyDeviceToDevice);
 
-    Sca_t::getDevice().Memcpy(tension.begin(), saved_data.getSubN(DIM),
+    Sca_t::getDevice().Memcpy(tension.begin(), 
+        saved_data.getSubN(sim_par.n_surfs * DIM),
         tension.size() * sizeof(real), MemcpyDeviceToDevice);
 
-//     //The evaluation points
-//     sprintf(fname,"../matlab/EvaluationPoints.out");
-//     myIO.ReadData(fname, x_eval, 0, x_eval.size());
+    //The evaluation points
+    sprintf(fname,"../matlab/EvaluationPoints.out");
+    myIO.ReadData(fname, x_eval, 0, x_eval.size());
 
-//     //Setting the background flow
-//     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    //Setting the background flow
+    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
-//     //Reading Operators From File
-//     Mats_t mats(true, sim_par);
+    //Reading Operators From File
+    Mats_t mats(true, sim_par);
 
-//     //Getting the velocity field
-//     Eval_t EV(&StokesAlltoAll, vInf, mats, bending_modulus);
-//     QC( EV(x0, tension, x_eval, vel) );
+    //Getting the velocity field
+    Eval_t EV(&StokesAlltoAll, vInf, mats, bending_modulus);
+    QC( EV(x0, tension, x_eval, vel) );
     
     //Writing to file
     myIO.WriteData("../matlab/Surfaces.out", x0);
-    myIO.WriteData("../matlab/EvaluationPoints.out", x_eval);
     myIO.WriteData("VelocityField.out", vel);
 
     return 0;

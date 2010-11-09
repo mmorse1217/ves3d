@@ -1,9 +1,9 @@
 clear all;clc
 
-fileName = '../examples/ShearFlow.txt';
+fileName = '../scratch/ShearFlow_tanktreading.txt';
 
 p = 12;
-nv = 2;
+nv = 1;
 np = 2 * p * (p + 1);
 XX = ReadAscii(fileName);
 
@@ -16,6 +16,7 @@ for ii=1:size(XX,2)
   disp(ii);
   PlotShape(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
   axis on;
+  axis tight;
   pause(.1);
 end
 

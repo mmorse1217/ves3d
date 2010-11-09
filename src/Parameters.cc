@@ -67,6 +67,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" ------------------------------------"<<std::endl;
     output<<"  Saving:"<<std::endl;
     output<<"    Save data                : "<<std::boolalpha<<par.save_data<<std::endl;
+    output<<"    Save file name           : "<<par.save_file_name<<std::endl;
     output<<"    Save stride              : "<<par.save_stride<<std::endl;
     output<<"    Error Factor             : "<<par.error_factor<<std::endl;
     output<<" ------------------------------------"<<std::endl;

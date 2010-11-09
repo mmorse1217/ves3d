@@ -15,9 +15,6 @@
 ######################################################################
 
 #--- general options -------------------------------------------------
-useremail="rahimian@gatech.edu"
-grantnumber=""
-
 machine=$(hostname)
 walltime=$3
 : ${walltime:=30} #min
@@ -80,11 +77,20 @@ if [ ! -d $scratchdir/precomputed ]; then
     echo `ln -s $VES3D_DIR/precomputed/ $scratchdir/precomputed`
 fi
 
+#- Moving the executable to the scratch directory
+echo `cp $srcdir/$execpath/$executable.exe $scratchdir/$targetexecutable`
+
 ######################################################################
-#  Copy one of the following
+#  Copy and uncomment one of the following
 ######################################################################
                                                                      
-# #--- generating the job file ---------------------------------------
+# #!/bin/bash
+#
+# useremail="rahimian@gatech.edu"
+# grantnumber=""
+#
+# source createJob.sh
+#
 # echo "#PBS -M $useremail" 
 # if [ $grantnumber ]; then
 #     echo "#PBS -A $grantnumber"
@@ -94,9 +100,11 @@ fi
 # echo "#PBS -N $targetexecutable"
 # echo "#PBS -m a"
 # echo
-# echo "cp $srcdir/$execpath/$executable.exe $scratchdir/$targetexecutable"
 # echo "$ompthreads"
 # echo 
 # echo "cd $scratchdir"
 # echo "./$targetexecutable > $outfile"
 # echo "mv $outfile $srcdir/results/"
+#
+######################################################################
+

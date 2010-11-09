@@ -1,6 +1,6 @@
 clear all;clc
 
-fileName = '../examples/ParabolicFlow2.txt';
+fileName = '../scratch/ParabolicFlowCenter0005.txt';
 
 p = 12;
 nv = 1;

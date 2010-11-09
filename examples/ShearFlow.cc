@@ -18,14 +18,14 @@ int main(int argc, char **argv)
 
     // Setting the parameters
     Par_t sim_par;
-    sim_par.n_surfs = 2;
-    sim_par.ts = .05;    
-    sim_par.time_horizon = 100;
+    sim_par.n_surfs = 1;
+    sim_par.ts = .005;    
+    sim_par.time_horizon = 1000;
     sim_par.bending_modulus = 1e-2;
     sim_par.rep_maxit = 20;
     sim_par.save_data = true;    
-    sim_par.save_stride = .5;
-    sim_par.save_file_name = "ShearFlow.txt";
+    sim_par.save_stride = 2;
+    sim_par.save_file_name = "ShearFlow_tt.txt";
     
     sim_par.scheme = SemiImplicit;
     sim_par.singular_stokes = Direct;
@@ -48,22 +48,22 @@ int main(int argc, char **argv)
     //reading the prototype form file  
     DataIO myIO(sim_par.save_file_name);
     char fname[300];
-    sprintf(fname,"precomputed/biconcave_ra65_%u",sim_par.sh_order);
+    sprintf(fname,"precomputed/biconcave_ra85_%u",sim_par.sh_order);
     myIO.ReadData(fname, x0, 0, x0.getSubLength());
 
     //Reading the Centers and populating
-    real cntrs_host[] = {1.2, 0, -.4, -1.2, 0, .4};
-    Array<real, DT, the_device> cntrs(DIM * sim_par.n_surfs);
-    cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host, cntrs.size()
-        * sizeof(real), MemcpyHostToDevice);
-    Populate(x0, cntrs);
+//     real cntrs_host[] = {1.2, 0, -.4, -1.2, 0, .4};
+//     Array<real, DT, the_device> cntrs(DIM * sim_par.n_surfs);
+//      cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host, cntrs.size()
+//      * sizeof(real), MemcpyHostToDevice);
+//     Populate(x0, cntrs);
 
     //Reading Operators From File
     bool readFromFile = true;
     Evolve_t::Mats_t Mats(readFromFile, sim_par);
 
     //Setting the background flow
-    real shear_rate(.1);
+    real shear_rate(.05);
     ShearFlow<Vec_t> vInf(shear_rate);
                 
     Evolve_t Es(sim_par, Mats, x0, &vInf, &StokesAlltoAll);
