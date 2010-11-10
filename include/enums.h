@@ -28,6 +28,7 @@ enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 
 ///Errors in the Ves3D code
 enum Ves3DErrors {Success,
+		  InvalidParameter,
                   UnknownError,
                   InvalidDevice, SetOnActiveDevice, 
                   SolverDiverged, 
@@ -36,6 +37,10 @@ enum Ves3DErrors {Success,
                   AccuracyError};
 
 typedef enum Ves3DErrors Error_t;
+
+///String to enums
+enum SolverScheme EnumifyScheme(const char * name);
+enum SingularStokesRot EnumifyStokesRot(const char * name);
 
 ///Overloaded insertion operators
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT);

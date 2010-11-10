@@ -1,5 +1,26 @@
 #include "enums.h"
+//
+enum SolverScheme EnumifyScheme(const char * name)
+{
+  string ns(name);
+  
+  if ( ns.compare(0,8,"Explicit") == 0 )
+    return Explicit;
+  else
+    return SemiImplicit;
+}
+enum SingularStokesRot EnumifyStokesRot(const char * name)
+{
+  string ns(name);
+  if ( ns.compare(0,9,"ViaSpHarm") == 0 )
+    return ViaSpHarm;
+  else if ( ns.compare(0,15,"DirectEagerEval") )
+    return DirectEagerEval;
+  else
+    return Direct;
+}
 
+//
 std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT)
 {    
     switch (DT)
@@ -79,6 +100,9 @@ std::ostream& operator<<(std::ostream& output, const enum Ves3DErrors &err)
         case Success:
             output<<"Success";
             break;
+        case InvalidParameter:
+            output<<"InvalidParameter";
+	    break;
         case UnknownError:
             output<<"UnkownError";
             break;
