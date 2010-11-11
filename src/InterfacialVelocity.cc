@@ -125,7 +125,7 @@ updatePositionImplicit(const value_type &dt)
     COUT("       Total iterations = "<< iter
         <<"\n                 Relres = "<<tol<<endl);
     
-    COUT("            True relres = "<<
+    COUTDEBUG("            True relres = "<<
         ((*this)(*u2, *u3),
             axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
             tol = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
@@ -234,7 +234,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     COUT(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<< iter
         <<"\n                 Relres = "<<tol<<endl);
-    COUT("            True relres = "<<
+    COUTDEBUG("            True relres = "<<
         ((*this)(tension, *wrk),
             axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
             tol = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))

@@ -119,7 +119,13 @@ class Logger
                                                                         )
 
 #ifndef NDEBUG
+//
+#ifdef VERBOSE
 #define COUTDEBUG(str) (std::cout<<str)
+#else
+#define COUTDEBUG(str)
+#endif //VERBOSE
+//
 #else
 #define COUTDEBUG(str)
 #endif //NDEBUG
