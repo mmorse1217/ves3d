@@ -173,3 +173,8 @@ void Logger::Log(const char *event)
     
     fl.close();
 }
+
+double Logger::GetFlops()
+{
+  return(Logger::FlopStack.top());
+}
