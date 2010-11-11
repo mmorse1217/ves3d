@@ -22,14 +22,14 @@ int main(int argc, char** argv)
     typedef EvalVelocity<Sca_t, Vec_t, StokesEval_t> Eval_t;
 
     //Parameters
-    int n_surfs(2), sh_order(12), n_eval(10 * 10 * 10);
+    int n_surfs(1), sh_order(12), n_eval(50 * 6 * 6);
     real bending_modulus(.01);
     Par_t sim_par;
     
     sim_par.sh_order = sh_order;
     sim_par.n_surfs = n_surfs;   
     sim_par.bending_modulus = bending_modulus;
-    sim_par.bg_flow_param = 0;
+    sim_par.bg_flow_param = 0.1;
 
     COUT(sim_par<<endl);
 

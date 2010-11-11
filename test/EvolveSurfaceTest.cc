@@ -84,8 +84,8 @@ int main(int argc, char **argv)
     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
     PROFILEEND("",0);
     PRINTERRORLOG();
-    PROFILEREPORT(SortFlopRate);    
-    
+    PROFILEREPORT(SortFlopRate);   
+
 #ifdef GPU_ACTIVE
     CLEARERRORHIST();
     PROFILECLEAR();

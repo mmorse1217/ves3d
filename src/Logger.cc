@@ -33,6 +33,10 @@ double Logger::Tic()
 {
     double now = Logger::Now();
     Logger::TicStack.push(now);
+
+    if ( Logger::FlopStack.empty() )
+        Logger::FlopStack.push(0); //in order to have the total number of flops
+
     Logger::FlopStack.push(0);
     return(now);
 }
@@ -176,5 +180,8 @@ void Logger::Log(const char *event)
 
 double Logger::GetFlops()
 {
-  return(Logger::FlopStack.top());
+    if ( !Logger::FlopStack.empty() )
+        return(Logger::FlopStack.top());
+    else
+        return(0);
 }

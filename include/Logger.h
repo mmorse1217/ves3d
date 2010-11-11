@@ -67,6 +67,7 @@ class Logger
     static void PurgeProfileHistory();
 
     static double GetFlops();
+
   private:
     ///The constructor, since the class is a singleton class, the
     ///constructor is set private to avoid instantiation of the
