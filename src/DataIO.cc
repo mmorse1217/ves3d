@@ -27,7 +27,7 @@ bool DataIO::ResizeOutBuffer(size_t buffer_size) const
 
 bool DataIO::FlushBuffer() const
 {
-    COUTDEBUG("\n  DataIO::FlushBuffer() to:\n"
+    COUT("\n  DataIO::FlushBuffer() to:\n"
         <<"              "<<out_file_ <<endl);
     
     bool res(true);

@@ -104,7 +104,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             axpy(alpha, phat, x , x);
             tol = resid;
             max_iter = i;
-            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
+            COUT("\n  BiCGStab:   Iteration = "<<i
                 <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
             return BiCGSSuccess;
         }
@@ -122,7 +122,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         if ((resid = Norm(r) / normb) < tol) {
             tol = resid;
             max_iter = i;
-            COUTDEBUG("\n  BiCGStab:   Iteration = "<<i
+            COUT("\n  BiCGStab:   Iteration = "<<i
                 <<"\n                 Relres = "<<scientific<<setprecision(4)<<resid<<endl);
             return BiCGSSuccess;
         }
