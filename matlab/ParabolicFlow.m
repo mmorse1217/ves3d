@@ -1,6 +1,6 @@
 clear all;clc
 
-fileName = '../examples/ParabolicFlow.out';
+fileName = '../scratch/ParabolicFlowII.out';
 %fileName = '../scratch/ParabolicFlowOffset_u01_ts05.txt';
 
 p = 12;

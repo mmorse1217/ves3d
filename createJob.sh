@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # commandline option:
-#   executablename [jobfile_suffix] [walltime (min)] [OMP_NUM_THREADS] [label]
+#   executablename optionfile [jobfile_suffix] [walltime (min)] [OMP_NUM_THREADS] [label]
 
 ######################################################################
 ######################################################################
@@ -16,11 +16,11 @@
 
 #--- general options -------------------------------------------------
 machine=$(hostname)
-walltime=$3
+walltime=$4
 : ${walltime:=30} #min
 codeversion="VES3D_$(git tag)"
 srcdir=$VES3D_DIR
-jobfile=$2
+jobfile=$3
 
 #- converting the time to the desired format
 let "wth=$walltime/60"
@@ -30,7 +30,7 @@ walltime=$wth:$wtm:00
 #- openmp
 np=1
 openmp=y
-numthreads=$4
+numthreads=$5
 : ${numthreads:=1}
 
 if [ -n $openmp ]; then
@@ -41,7 +41,7 @@ fi
 
 #- label
 usetimelabel=y
-label=$5
+label=$6
 
 mon=`date +%b`
 day=`date +%d`
@@ -62,9 +62,14 @@ execpath=`dirname $executable`
 executable=${executable##*/}
 executable=${executable%.*}
 
+optfile=$2
+optpath=`dirname $optfile`
+optfile=${optfile##*/}
+
 scratchdir=$SCRATCH
 
 targetexecutable=$label.$executable.exe
+targetoptfile=$label.$optfile
 outfile=$label.$executable.out
 
 #- checking the output format
@@ -79,6 +84,7 @@ fi
 
 #- Moving the executable to the scratch directory
 echo `cp $srcdir/$execpath/$executable.exe $scratchdir/$targetexecutable`
+echo `cp $srcdir/$optpath/$optfile $scratchdir/$targetoptfile`
 
 ######################################################################
 #  Copy and uncomment one of the following

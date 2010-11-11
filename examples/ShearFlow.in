@@ -1,0 +1,26 @@
+# ShearFlow
+
+saveData
+initFile : precomputed/biconcave_ra85_12
+outFile  : ShearFlow.out
+centFile : ShearFlow.cntrs.in
+
+bendingModulus  : 1e-2
+bgFlowParam     : 1e-1
+errorFactor     : 1
+nSurfs          : 2
+positionIterMax : 24
+positionRestart : 1
+positionTol     : 1e-6
+repMaxIter      : 200
+repTimeStep     : 1e-1
+repTol          : 1e-5
+saveStride      : 2
+scheme          : SemiImplicit
+shOrder         : 12
+singularStokes  : Direct
+tensionIterMax  : 24
+tensionRestart  : 1
+tensionTol      : 1e-6
+timeHorizon     : 1e3
+timeStep        : 1e-2
