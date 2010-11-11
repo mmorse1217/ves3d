@@ -199,7 +199,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
 
             if ((tol = Norm(s)/normb) < tol_in) {
                 axpy(alpha, p, x , x);
-                COUTDEBUG("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
+                COUT("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
                     <<"\n                 Relres = "<<scientific<<setprecision(4)<<tol<<endl);
                 return BiCGSSuccess;
             }
@@ -213,7 +213,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
 
             rho_2 = rho_1;
             
-            COUTDEBUG("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
+            COUT("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
                     <<"\n                 Relres = "<<scientific<<setprecision(4)<<tol<<endl);
             
             if ((tol = Norm(r) / normb) < tol_in)
