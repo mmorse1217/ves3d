@@ -1,9 +1,9 @@
 clear all;clc
 
-fileName = '../scratch/ShearFlow_tanktreading.txt';
+fileName = '../scratch/ShearFlow_twoVes.txt';
 
 p = 12;
-nv = 1;
+nv = 2;
 np = 2 * p * (p + 1);
 XX = ReadAscii(fileName);
 

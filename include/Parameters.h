@@ -31,7 +31,6 @@ public:
   T tension_solver_tol;
 
   //Time stepper
-  int n_steps;
   T time_horizon;
   T ts;
   enum SolverScheme scheme;

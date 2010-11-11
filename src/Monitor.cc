@@ -3,6 +3,7 @@ MonitorBase<EvolveSurface>::~MonitorBase()
 {}
 
 /////////////////////////////////////////////////////////////////////////////////////
+///@todo move the buffer size to the parameters
 template<typename EvolveSurface>
 Monitor<EvolveSurface>::Monitor(const Parameters<value_type> &params) : 
     save_flag_(params.save_data),

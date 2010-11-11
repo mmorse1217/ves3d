@@ -1,12 +1,13 @@
 # parsingTest input file
 
-saveData
+#saveData
 initFile : initfile.in
 outFile  : outfile.out
 centFile : cntrsfile.in
 
 bendingModulus  : 2e2
 bgFlowParam     : 199
+errorFactor     : 180
 filterFreq      : 198
 nSurfs          : 197
 positionIterMax : 196

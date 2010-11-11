@@ -10,7 +10,6 @@ Parameters<T>::Parameters() :
     tension_solver_restart(1),
     position_solver_tol((typeid(T) == typeid(float)) ? 1e-4: 1e-8),
     tension_solver_tol((typeid(T) == typeid(float)) ? 5e-4: 1e-8),
-    n_steps(-1),
     time_horizon(1),
     ts(1),
     scheme(Explicit),
@@ -63,13 +62,16 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
   opt.processCommandArgs( argc, argv );
 
   //print usage if no options
-  if( ! opt.hasOptions() ) { 
-    opt.printUsage();
-    return InvalidParameter;
+  if( ! opt.hasOptions() ) {
+      cout<<"\n You need to define the simulation options"<<endl;  
+      opt.printUsage();
+      return InvalidParameter;
   }
 
   // 6. GET THE VALUES 
   this->getOptionValues(&opt);
+
+  COUT(*this<<endl);
 
   return Success;
 }
@@ -86,7 +88,7 @@ template<typename T>
 void Parameters<T>::setUsage(AnyOption *opt)
 {
   opt->addUsage( "" );
-  opt->addUsage( " Usage: " );
+  opt->addUsage( " Options list: " );
   opt->addUsage( "" );
   opt->addUsage( "  -f  --optFile              The name of the options file to be parsed.");
   opt->addUsage( "  -h  --help                 Prints this help " );
@@ -96,7 +98,8 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "" );
   opt->addUsage( "      --bendingModulus       The bending modulus of the interfaces" );
   opt->addUsage( "      --bgFlowParam          Single parameter passed to the background flow class" );
-  opt->addUsage( "      --centFile             The file containing the initial center points *NOT IMPEMENTED*");
+  opt->addUsage( "      --centFile             The file containing the initial center points");
+  opt->addUsage( "      --errorFactor          The permissible increase factor in area and volume error");
   opt->addUsage( "      --filterFreq           The differentiation filter frequency" );
   opt->addUsage( "      --nSurfs               The number of surfaces" );
   opt->addUsage( "      --positionIterMax      Maximum number of iterations for the position solver" );
@@ -137,6 +140,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "bendingModulus" );
   opt->setOption( "bgFlowParam" );
   opt->setOption( "centFile");
+  opt->setOption( "errorFactor" );
   opt->setOption( "filterFreq" );
   opt->setOption( "nSurfs" );
   opt->setOption( "positionIterMax" );
@@ -201,6 +205,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "filterFreq" ) != NULL  )
     this->filter_freq =  atoi(opt->getValue( "filterFreq" ));
+
+  if( opt->getValue( "errorFactor" ) != NULL  )
+    this->error_factor =  atof(opt->getValue( "errorFactor" ));
 
   if( opt->getValue( "nSurfs" ) != NULL  )
     this->n_surfs =  atoi(opt->getValue( "nSurfs" ));
@@ -278,7 +285,6 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
 
     output<<" ------------------------------------"<<std::endl;
     output<<"  Time stepper:"<<std::endl;
-    output<<"    Number of time steps     : "<<par.n_steps<<std::endl;
     output<<"    Time horizon             : "<<par.time_horizon<<std::endl;
     output<<"    Step size                : "<<par.ts<<std::endl;
     output<<"    Scheme                   : "<<par.scheme<<std::endl;

@@ -82,7 +82,6 @@ int main(int argc, char **argv)
     PROFILESTART();
     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
-    cout<<"FLOPS"<<Logger::GetFlops()<<
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortFlopRate);    

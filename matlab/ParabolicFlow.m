@@ -1,6 +1,7 @@
 clear all;clc
 
-fileName = '../scratch/ParabolicFlowCenter0005.txt';
+fileName = '../examples/ParabolicFlow.out';
+%fileName = '../scratch/ParabolicFlowOffset_u01_ts05.txt';
 
 p = 12;
 nv = 1;
@@ -13,7 +14,10 @@ XX = XX(1:3*np*nv,:);
 
 for ii=1:size(XX,2)
   cla;
-  disp(ii);
+  x = reshape(XX(:,ii),[],3);
+  x = x(:,1);
+  rr(ii,:) = [min(x) max(x) max(x)-min(x)];
+  disp([ii min(x) max(x) max(x)-min(x)]);
   PlotShape(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
   axis on;
   pause(.1);
