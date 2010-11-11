@@ -36,7 +36,7 @@ bool DataIO::WriteData(const string &file_name, size_t size, const T* data,
             data_file<<data[idx++]<<endl;
         data_file.close();
                 
-        COUTDEBUG("           written : "<<idx<<endl);
+        COUT("           written : "<<idx<<endl);
 
     }
     return(true);
@@ -86,7 +86,7 @@ bool DataIO::Append(const Container &data) const
             this->FlushBuffer<typename Container::value_type>();
      
         
-        COUTDEBUG("\n  DataIO::Append():"
+        COUT("\n  DataIO::Append():"
             <<"\n              Size      = "<<length
             <<"\n              Total     = "<<out_size_
             <<"\n              Used      = "<<out_used_
@@ -103,7 +103,7 @@ bool DataIO::Append(const Container &data) const
 template<typename T>
 bool DataIO::FlushBuffer() const
 {
-    COUTDEBUG("\n  DataIO::FlushBuffer() [typed] to:\n"
+    COUT("\n  DataIO::FlushBuffer() [typed] to:\n"
         <<"              "<<out_file_ <<endl);
     
     bool res(true);

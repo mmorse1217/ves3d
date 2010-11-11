@@ -121,11 +121,11 @@ updatePositionImplicit(const value_type &dt)
     solver_ret = linear_solver_vec_(*this, *u2, *u1, rsrt, iter, tol);
     if ( solver_ret  != BiCGSSuccess )
         ret_val = SolverDiverged;    
-    COUTDEBUG(" ------------------------------------"<<endl);
+    COUT(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<< iter
         <<"\n                 Relres = "<<tol<<endl);
     
-    COUTDEBUG("            True relres = "<<
+    COUT("            True relres = "<<
         ((*this)(*u2, *u3),
             axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
             tol = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
@@ -231,10 +231,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     solver_ret = linear_solver_(*this, tension, *rhs, rsrt, iter, tol);
     if ( solver_ret  != BiCGSSuccess )
         ret_val = SolverDiverged;
-    COUTDEBUG(" ------------------------------------"<<endl);
+    COUT(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<< iter
         <<"\n                 Relres = "<<tol<<endl);
-    COUTDEBUG("            True relres = "<<
+    COUT("            True relres = "<<
         ((*this)(tension, *wrk),
             axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
             tol = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))
@@ -354,14 +354,14 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         
         vel = MaxAbs(*u1);
              
-        COUTDEBUG("\n              Iteration = "<<ii
+        COUT("\n              Iteration = "<<ii
             <<"\n                  |vel| = "<<vel<<endl);
         
         if(vel < params_.rep_tol )
             break;
 
     }
-    COUTDEBUG(" ------------------------------------"<<endl);
+    COUT(" ------------------------------------"<<endl);
     COUT("       Total iterations = "<<ii
         <<"\n                  |vel| = "<<vel
         <<"\n ------------------------------------"<<endl);
@@ -458,7 +458,7 @@ benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel, Sca_t &tension,
         benchmarkTension(vel, tension, tol)              &&
         benchmarkNewPostitionExplicit(xnew, tol);
     
-    COUTDEBUG("\n\n -------------------------------"
+    COUT("\n\n -------------------------------"
         <<" Explicit stepper benchmark with " 
         << S_.getPosition().getNumSubs() << " surface(s) "
         <<((res) ? "*Passed*" : "*Failed*" )
@@ -476,7 +476,7 @@ benchmarkImplicit(Sca_t &tension, Vec_t &matvec, Vec_t &xnew, value_type tol)
         benchmarkNewPostitionImplicit(xnew, tol);
 
         
-    COUTDEBUG("\n\n -------------------------------"
+    COUT("\n\n -------------------------------"
         <<" Implicit stepper benchmark with " 
         << S_.getPosition().getNumSubs() << " surface(s) "
         <<((res) ? "*Passed*" : "*Failed*" )
