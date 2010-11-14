@@ -170,8 +170,8 @@ updateInteraction() const
         velocity_.getStride(), velocity_.begin());
 
     //upsample
-//     int usf(sht_upsample_.getShOrder());
-//     u1->resize(u1->getNumSubs(), usf);
+    // int usf(sht_upsample_.getShOrder());
+    //     u1->resize(u1->getNumSubs(), usf);
 //     u2->resize(u2->getNumSubs(), usf);
 //     shc->resize(shc->getNumSubs(), usf);
 //     wrk->resize(wrk->getNumSubs(), usf);
