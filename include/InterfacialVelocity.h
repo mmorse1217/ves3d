@@ -57,7 +57,7 @@ class InterfacialVelocity
     Sca_t w_sph_, w_sph_inv_;
     Sca_t sing_quad_weights_;
     Sca_t quad_weights_;
-
+    Sca_t quad_weights_up_;
     
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_;
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_upsample_;

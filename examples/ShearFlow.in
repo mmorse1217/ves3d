@@ -1,6 +1,8 @@
 # ShearFlow
 
 saveData
+upsampleInteraction
+
 initFile : precomputed/biconcave_ra85_12
 outFile  : ShearFlow.out
 centFile : ShearFlow.cntrs.in
@@ -15,7 +17,7 @@ positionTol     : 1e-6
 repMaxIter      : 200
 repTimeStep     : 1e-1
 repTol          : 1e-5
-saveStride      : 2
+saveStride      : 1e-2
 scheme          : SemiImplicit
 shOrder         : 12
 singularStokes  : Direct

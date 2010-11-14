@@ -180,10 +180,14 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     opt->printUsage();
   
   if( opt->getFlag( "saveData" ) || opt->getFlag( 's' ) )
-    this->save_data = true;
+      this->save_data = true;
+  else
+      this->save_data = false;
 
   if( opt->getFlag( "upsampleInteraction" ) )
-    this->upsample_interaction = true;
+      this->upsample_interaction = true;
+  else
+      this->upsample_interaction = false;
 
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "initFile" ) != NULL || opt->getValue( 'i' ) !=NULL )

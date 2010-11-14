@@ -21,6 +21,7 @@ struct OperatorsMats
     SHTMats<value_type,device_type> mats_p_up_;
     
     value_type *quad_weights_;
+    value_type *quad_weights_p_up_;
     value_type *sing_quad_weights_;
     value_type *w_sph_;
     value_type *all_rot_mats_;  

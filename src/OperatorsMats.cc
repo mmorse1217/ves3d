@@ -9,6 +9,8 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
         SHTMats<value_type, device_type>::getDataLength(p_), readFromFile)
 {
     int np = 2 * p_ * ( p_ + 1);   
+    int np_up = 2 * p_up_ * (p_up_ + 1);
+
     int rot_mat_size =  0;
     int spharm_rot_size = 0;
 
@@ -20,8 +22,9 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     quad_weights_       = data_.begin() + 
         SHTMats<value_type,device_type>::getDataLength(p_) + 
         SHTMats<value_type,device_type>::getDataLength(p_up_);
-    
-    sing_quad_weights_  = quad_weights_       + np;
+
+    quad_weights_p_up_  = quad_weights_       + np;
+    sing_quad_weights_  = quad_weights_p_up_  + np_up;
     w_sph_              = sing_quad_weights_  + np;
     all_rot_mats_       = w_sph_              + np;   
     sh_rot_mats_        = all_rot_mats_       + rot_mat_size;
@@ -81,6 +84,9 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
             mats_p_.getDLTLength());
         
         //p_up
+        sprintf(fname,"precomputed/quad_weights_%u_%s.txt",p_up_,tname.c_str());
+        fileIO.ReadData(fname, data_,quad_weights_p_up_ - data_.begin(), np_up);
+
         sprintf(fname,"precomputed/legTrans%u_%s.txt",p_up_,tname.c_str());
         fileIO.ReadData(fname, data_, mats_p_up_.dlt_- data_.begin(), 
             mats_p_up_.getDLTLength());
@@ -104,6 +110,7 @@ size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type>
     &params) const
 {
     int np = 2 * p_ * ( p_ + 1);
+    int np_up = 2 * p_up_ * ( p_up_ + 1);
     int rot_mat_size = 0;
     int spharm_rot_size = 0;
 
@@ -112,7 +119,7 @@ size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type>
     else
         spharm_rot_size = (p_ + 1) * (p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
     
-    return(3*np + rot_mat_size +  spharm_rot_size + 
+    return(3*np + np_up + rot_mat_size +  spharm_rot_size + 
         SHTMats<value_type, device_type>::getDataLength(p_)      + 
         SHTMats<value_type, device_type>::getDataLength(p_up_));
 }

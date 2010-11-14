@@ -1,6 +1,6 @@
 clear all;clc
 
-fileName = '../scratch/ShearFlow_twoVes.txt';
+fileName = '../examples/ShearFlow.out';
 
 p = 12;
 nv = 2;
@@ -17,7 +17,7 @@ for ii=1:size(XX,2)
   PlotShape_Row(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
   axis on;
   axis tight;
-  pause(.1);
+  pause
 end
 
 % fileName = '../test/EvolveSurf.out';

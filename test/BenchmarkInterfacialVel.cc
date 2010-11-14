@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     sim_par.ts = 1;
     sim_par.bg_flow_param = 1e-1;
     sim_par.singular_stokes = Direct;
-    sim_par.upsample_interaction = true;
+    sim_par.upsample_interaction = false;//Make sure this is false
 
     DataIO myIO;
     Vec_t x(nvec, p), Fb(nvec, p), SFb(nvec, p), vel(nvec, p), xnew(nvec, p);

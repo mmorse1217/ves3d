@@ -43,6 +43,12 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     quad_weights_.resize(1,p);
     quad_weights_.getDevice().Memcpy(quad_weights_.begin(), mats.quad_weights_,
         quad_weights_.size() * sizeof(value_type), MemcpyDeviceToDevice);
+
+    int p_up = sht_upsample_.getShOrder();
+    quad_weights_up_.resize(1, p_up);
+    quad_weights_up_.getDevice().Memcpy(quad_weights_up_.begin(), mats.quad_weights_p_up_,
+        quad_weights_up_.size() * sizeof(value_type), MemcpyDeviceToDevice);
+
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -147,29 +153,25 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateInteraction() const
 {
-    //Interfacial forces
+    velocity_.replicate(S_.getPosition());
     auto_ptr<Vec_t> u1 = checkoutVec();
     auto_ptr<Vec_t> u2 = checkoutVec();
     auto_ptr<Vec_t> u3 = checkoutVec();
-    velocity_.replicate(S_.getPosition());
     auto_ptr<Vec_t> shc = checkoutVec();
     auto_ptr<Vec_t> wrk = checkoutVec();
 
+    //Interfacial forces
     Intfcl_force_.bendingForce(S_, *u1);
     Intfcl_force_.tensileForce(S_, tension_, *u3);
     axpy(static_cast<value_type>(1), *u1, *u3, *u3);
     xv(S_.getAreaElement(), *u3, *u3);
-    
-    //Incorporating the quadrature weights into the density
-    ax<Sca_t>(quad_weights_,*u3, *u3);
 
     //Self-interaction, to be subtracted
     velocity_.getDevice().DirectStokes(S_.getPosition().begin(), u3->begin(), 
-        static_cast<const value_type*>(NULL), velocity_.getStride(), 
+        quad_weights_.begin(), velocity_.getStride(), 
         velocity_.getNumSubs(), S_.getPosition().begin(), 0, 
         velocity_.getStride(), velocity_.begin());
-
-    ///@todo add the flag to parameters
+   
     if ( params_.upsample_interaction )
     {
         //upsampling
@@ -180,6 +182,11 @@ updateInteraction() const
         wrk->resize(wrk->getNumSubs(), usf);
     
         Resample(*u3, sht_, sht_upsample_, *shc, *wrk, *u1);
+        
+        //Incorporating the quadrature weights into the density
+        ax<Sca_t>(quad_weights_up_,*u1, *u1);
+
+        //Shuffling
         ShufflePoints(*u1, *u2);
 
         u3->resize(u3->getNumSubs(), usf);
@@ -189,12 +196,15 @@ updateInteraction() const
     }
     else
     {
+        //Incorporating the quadrature weights into the density
+        ax<Sca_t>(quad_weights_,*u3, *u3);
+        
         //Shuffling points and densities
         ShufflePoints(S_.getPosition(), *u1);
         ShufflePoints(*u3, *u2);
         u3->setPointOrder(PointMajor);
-        //u2->setPointOrder(PointMajor);
     }
+    
     //Far interactions
     Error_t status = interaction_(*u1, *u2, *u3, usr_ptr_);
 
@@ -213,7 +223,7 @@ updateInteraction() const
         u3->resize(u3->getNumSubs(), dsf);
         shc->resize(shc->getNumSubs(), dsf);
         wrk->resize(wrk->getNumSubs(), dsf);
-        
+
         sht_.lowPassFilter(*u1, *wrk, *shc, *u2);
     }
 

@@ -14,7 +14,7 @@ enum SingularStokesRot EnumifyStokesRot(const char * name)
   string ns(name);
   if ( ns.compare(0,9,"ViaSpHarm") == 0 )
     return ViaSpHarm;
-  else if ( ns.compare(0,15,"DirectEagerEval") )
+  else if ( ns.compare(0,15,"DirectEagerEval") == 0 )
     return DirectEagerEval;
   else
     return Direct;
