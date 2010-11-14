@@ -10,7 +10,7 @@
 #include "InterfacialVelocity.h"
 #include "BgFlow.h"
 
-typedef double real;
+typedef float real;
 #define DT CPU
 
 extern const Device<DT> the_device(0);
@@ -43,10 +43,12 @@ int main(int argc, char** argv)
     sim_par.sh_order = p;
     sim_par.filter_freq = 8;
     sim_par.bending_modulus = 1e-2;
-    sim_par.inner_solver_tol = 1e-1 * tol;
-    sim_par.outer_solver_tol = 1e-1 * tol;
+    sim_par.position_solver_tol = 1e-1 * tol;
+    sim_par.tension_solver_tol = 1e-1 * tol;
     sim_par.ts = 1;
     sim_par.bg_flow_param = 1e-1;
+    sim_par.singular_stokes = Direct;
+    sim_par.upsample_interaction = true;
 
     DataIO myIO;
     Vec_t x(nvec, p), Fb(nvec, p), SFb(nvec, p), vel(nvec, p), xnew(nvec, p);

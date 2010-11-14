@@ -45,6 +45,7 @@ public:
 
   //Background flow
   T bg_flow_param;
+  bool upsample_interaction;
 
   //Startup and Monitoring
   bool save_data;

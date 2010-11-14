@@ -20,6 +20,7 @@ Parameters<T>::Parameters() :
     rep_ts(1),
     rep_tol((typeid(T) == typeid(float)) ? 1e-3 : 1e-4),
     bg_flow_param(1e-1),
+    upsample_interaction(false),
     save_data(false),
     save_stride(-1),
     error_factor(1)
@@ -119,6 +120,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "      --tensionTol           The tolerence for the tension solver" );
   opt->addUsage( "      --timeHorizon          The time horizon of the simulation" );
   opt->addUsage( "      --timeStep             The time step size" );
+  opt->addUsage( "      --upsampleInteraction  Flag to whether upsample (and filter) the interaction force" );
 }
 
 template<typename T>
@@ -130,6 +132,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   // a flag (takes no argument), supporting long and short forms
   opt->setFlag( "help", 'h' );   
   opt->setFlag( "saveData", 's' );   
+  opt->setFlag( "upsampleInteraction");
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "optFile", 'f');
@@ -178,6 +181,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   
   if( opt->getFlag( "saveData" ) || opt->getFlag( 's' ) )
     this->save_data = true;
+
+  if( opt->getFlag( "upsampleInteraction" ) )
+    this->upsample_interaction = true;
 
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "initFile" ) != NULL || opt->getValue( 'i' ) !=NULL )
@@ -309,6 +315,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" ------------------------------------"<<std::endl;
     output<<"  Background flow:"<<std::endl;
     output<<"    Background flow parameter: "<<par.bg_flow_param<<std::endl;
+    output<<"    Upsample Interaction     : "<<std::boolalpha<<par.upsample_interaction<<std::endl;
     output<<" ===================================="<<std::endl<<std::endl;
 
     return output;

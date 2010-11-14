@@ -30,3 +30,18 @@ extern "C"{
 #ifdef __cplusplus
 }
 #endif
+
+
+void coomm(char *transa, int *m, int *n, int *k, float *alpha, 
+    char *matdescra, float *val, int *rowind, int *colind, 
+    int *nnz, float *b, int *ldb, float *beta, float *c, int *ldc)
+{
+    printf("The spare matrix multiplier is not available on this device");
+}
+
+void coomm(char *transa, int *m, int *n, int *k, double *alpha,
+    char *matdescra, double *val, int *rowind, int *colind,
+    int *nnz, double *b, int *ldb, double *beta, double *c, int *ldc)
+{
+    printf("The spare matrix multiplier is not available on this device");
+}

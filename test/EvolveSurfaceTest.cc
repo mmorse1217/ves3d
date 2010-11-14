@@ -44,7 +44,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
+    Evolve_t Es(sim_par, Mats, x0, &vInf, &StokesAlltoAll);
     
     QC ( Es.Evolve() );
 }
@@ -67,8 +67,9 @@ int main(int argc, char **argv)
     sim_par.ts = 1;    
     sim_par.time_horizon = 2;
     sim_par.scheme = Explicit;
-    sim_par.singular_stokes = DirectEagerEval;
+    sim_par.singular_stokes = Direct;
     sim_par.bg_flow_param = 0;
+    sim_par.upsample_interaction = true;
     sim_par.rep_maxit = 20;
     sim_par.save_data = true;    
     sim_par.save_stride = 1;

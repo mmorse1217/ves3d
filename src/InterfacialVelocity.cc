@@ -152,8 +152,8 @@ updateInteraction() const
     auto_ptr<Vec_t> u2 = checkoutVec();
     auto_ptr<Vec_t> u3 = checkoutVec();
     velocity_.replicate(S_.getPosition());
-//     auto_ptr<Vec_t> shc = checkoutVec();
-//     auto_ptr<Vec_t> wrk = checkoutVec();
+    auto_ptr<Vec_t> shc = checkoutVec();
+    auto_ptr<Vec_t> wrk = checkoutVec();
 
     Intfcl_force_.bendingForce(S_, *u1);
     Intfcl_force_.tensileForce(S_, tension_, *u3);
@@ -169,28 +169,53 @@ updateInteraction() const
         velocity_.getNumSubs(), S_.getPosition().begin(), 0, 
         velocity_.getStride(), velocity_.begin());
 
-    //upsample
-    // int usf(sht_upsample_.getShOrder());
-    //     u1->resize(u1->getNumSubs(), usf);
-//     u2->resize(u2->getNumSubs(), usf);
-//     shc->resize(shc->getNumSubs(), usf);
-//     wrk->resize(wrk->getNumSubs(), usf);
+    ///@todo add the flag to parameters
+    if ( params_.upsample_interaction )
+    {
+        //upsampling
+        int usf(sht_upsample_.getShOrder());
+        u1->resize(u1->getNumSubs(), usf);
+        u2->resize(u2->getNumSubs(), usf);
+        shc->resize(shc->getNumSubs(), usf);
+        wrk->resize(wrk->getNumSubs(), usf);
     
-//     Resample(S_.getPosition(), sht_, sht_upsample_, *shc, *wrk, *u2);
-//     Resample(*u3             , sht_, sht_upsample_, *shc, *wrk, *u2);
+        Resample(*u3, sht_, sht_upsample_, *shc, *wrk, *u1);
+        ShufflePoints(*u1, *u2);
 
-    //Shuffling points and densities
-    ShufflePoints(S_.getPosition(), *u1);
-    ShufflePoints(*u3, *u2);
-    u3->setPointOrder(PointMajor);
-
+        u3->resize(u3->getNumSubs(), usf);
+        Resample(S_.getPosition(), sht_, sht_upsample_, *shc, *wrk, *u3);
+        ShufflePoints(*u3, *u1);
+        u3->setPointOrder(PointMajor); 
+    }
+    else
+    {
+        //Shuffling points and densities
+        ShufflePoints(S_.getPosition(), *u1);
+        ShufflePoints(*u3, *u2);
+        u3->setPointOrder(PointMajor);
+        //u2->setPointOrder(PointMajor);
+    }
     //Far interactions
     Error_t status = interaction_(*u1, *u2, *u3, usr_ptr_);
-    
+
     //Shuffling to the original order
     ShufflePoints(*u3, *u2);
     u1->setPointOrder(AxisMajor);
     u3->setPointOrder(AxisMajor);
+
+    if ( params_.upsample_interaction )
+    {
+        Resample(*u2, sht_upsample_, sht_, *shc, *wrk, *u1);
+
+        int dsf(sht_.getShOrder());
+        u1->resize(u1->getNumSubs(), dsf);
+        u2->resize(u2->getNumSubs(), dsf);
+        u3->resize(u3->getNumSubs(), dsf);
+        shc->resize(shc->getNumSubs(), dsf);
+        wrk->resize(wrk->getNumSubs(), dsf);
+        
+        sht_.lowPassFilter(*u1, *wrk, *shc, *u2);
+    }
 
     //Subtracting the self-interaction
     if ( status == Success )
@@ -206,7 +231,9 @@ updateInteraction() const
     recycle(u1);
     recycle(u2);
     recycle(u3);
-    
+    recycle(shc);
+    recycle(wrk);
+
     return Success;
 }
 
