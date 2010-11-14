@@ -88,7 +88,7 @@ void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
     axpy(inv_radius2_, s_wrk_, s_wrk_);
     xvpw(s_wrk_, flow_direction_, flow_direction_, vel_inf);
     axpy(center_vel_, vel_inf, vel_inf);
-    cout<<"Max Vel :"<<MaxAbs(vel_inf)<<" "<<center_vel_<<endl;
+		//  cout<<"Max Vel :"<<MaxAbs(vel_inf)<<" "<<center_vel_<<endl;
 };
 
 // Taylor vortex ////////////////////////////////////////////////////////////////
