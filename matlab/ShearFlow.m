@@ -1,6 +1,6 @@
 clear all;clc
 
-fileName = '../scratch/ShearFlow_twoVes2.txt';
+fileName = '../scratch/ShearFlow_twoVes.txt';
 
 p = 12;
 nv = 2;
@@ -14,7 +14,7 @@ XX = XX(1:3*np*nv,:);
 for ii=1:size(XX,2)
   cla;
   disp(ii);
-  PlotShape(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
+  PlotShape_Row(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
   axis on;
   axis tight;
   pause(.1);
