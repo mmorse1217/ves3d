@@ -20,7 +20,8 @@ test:
 	$(MAKE) -C  ${VES3D_DIR}/test/ all
 
 clean: 
-	-$(RM) -rf *.o ./src/*.o  ./docs/latex ./docs/html TAGS \
-	./test/*.exe ./test/*.o ./examples/*.exe ./examples/*.o
-
+	$(MAKE) -C ${VES3D_DIR}/lib clean
+	$(MAKE) -C ${VES3D_DIR}/test clean
+	$(MAKE) -C ${VES3D_DIR}/examples clean
+	-$(RM) -rf *.o ./src/*.o  ./docs/latex ./docs/html TAGS 
 

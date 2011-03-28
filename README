@@ -23,7 +23,7 @@ To build:
  . make a softlink to the directory precomputed/ in the test/ directory.
  . call "make check" in the test/
 
- . Code-specific compiler options are: VERBOSE, and PROFILING, VES3D_TESTING
+ . Code-specific compiler options are: VERBOSE, PROFILING, VES3D_TESTING
 
 if you want the GPU code compiled set "USE_GPU=yes" in makefile.in
 

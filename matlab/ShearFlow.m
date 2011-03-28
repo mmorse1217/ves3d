@@ -1,6 +1,6 @@
 clear all;clc
 
-fileName = '../examples/ShearFlow.out';
+fileName = '../scratch/ShearFlow.out';
 
 p = 12;
 nv = 2;
@@ -11,14 +11,14 @@ XX = reshape(XX,4*np*nv,[]);
 tension = XX(3*np*nv+1:end,:);
 XX = XX(1:3*np*nv,:);
 
-for ii=1:size(XX,2)
-  cla;
-  disp(ii);
-  PlotShape_Row(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
-  axis on;
-  axis tight;
-  pause
-end
+% for ii=1:size(XX,2)
+%   cla;
+%   disp(ii);
+%   PlotShape_Row(reshape(XX(:,ii),[],nv),p, reshape(tension(:,ii),[],nv));
+%   axis on;
+%   axis tight;
+%   pause
+% end
 
 % fileName = '../test/EvolveSurf.out';
 

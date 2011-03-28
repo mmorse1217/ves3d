@@ -33,7 +33,7 @@ void testSurface(const Device<DT> &dev)
     int fLen = x0.getStride();
         
     char fname[400];
-    sprintf(fname, "precomputed/dumbbell_cart%u_float.txt",p);
+    sprintf(fname, "precomputed/dumbbell_%u_float.txt",p);
     myIO.ReadData(fname, x0, 0, fLen * DIM);
     
     for(int ii=1;ii<nVec; ++ii)
