@@ -488,3 +488,17 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
     recycle(dif);
     recycle(scw);
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+template <typename S, typename V> 
+std::ostream& operator<<(std::ostream& output, const Surface<S, V> &sur)
+{
+    output<<" =====================================================\n"
+          <<"  Number of surfaces     : "<<sur.getNumberOfSurfaces()<<"\n"
+          <<"  SH order               : "<<sur.getShOrder()<<"\n"
+          <<"  Up-sample freq         : "<<sur.upsample_freq_<<"\n"
+          <<"  Reparametrization freq : "<<sur.rep_filter_freq_<<"\n"
+          <<" =====================================================\n";
+
+    return(output);
+}

@@ -91,3 +91,18 @@ void Array<T, DT, DEVICE>::fillRand()
 {
     return(DEVICE.fillRand(data_, this->size()));
 }
+
+//////////////////////////////////////////////////////////////////////
+template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
+std::ostream& operator<<(std::ostream& output, const Array<T, DT, DEVICE> &arr)
+{
+    typedef typename Array<T, DT, DEVICE>::value_type T;
+    T *buffer(new T[arr.size()]);
+    DEVICE.Memcpy(buffer, arr.begin(), arr.size() * sizeof(T), MemcpyDeviceToHost);
+    
+    for(size_t ii=0; ii<arr.size(); ++ii)
+        output<<buffer[ii]<<" ";
+        
+    delete[] buffer;
+    return(output);
+}

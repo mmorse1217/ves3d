@@ -1,19 +1,28 @@
-#include "Vectors.h"
-#include "Parameters.h"
-#include "Surface.h"
-#include "VesInteraction.h"
 #include "EvolveSurface.h"
 
-//CPU
 extern const Device<CPU> dev0(0);
-
-//GPU
 extern const Device<GPU> dev1(0);
-extern const Device<GPU> dev2(1);
 
 typedef float real;
 typedef VesInteraction<real> Interaction_t;
-typedef RepartitionGateway<real> Repart_t;
+typedef Repartition<real> Repart_t;
+
+void MyRepart(size_t nv, size_t stride, const real* x, 
+    const real* tension, size_t* nvr, 
+    real** xr, real** tensionr, void*)
+{
+    int expRate(1);
+    *nvr = expRate*nv;
+    *xr = new real[*nvr * stride * DIM];
+    *tensionr = new real[*nvr * stride];
+        
+    int ll(nv * stride);
+    for(int ii=0; ii<expRate; ++ii)
+    {
+        memcpy(*xr       + ii * ll * DIM, x       , DIM * ll * sizeof(real));
+        memcpy(*tensionr + ii * ll      , tension ,       ll * sizeof(real));
+    }
+}
 
 template<enum DeviceType DT, const Device<DT> &dev>
 void setupES(Parameters<real> &sim_par, 
@@ -27,10 +36,10 @@ void setupES(Parameters<real> &sim_par,
     
     //IO
     DataIO myIO;
-
-    myIO.ReadData("precomputed/dumbbell_cart12_single.txt",
-        x0, 0, x0.getSubLength());
-    
+    char fname[300];
+    string prec = (typeid(real) == typeid(float)) ? "float" : "double"; 
+    sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
+    myIO.ReadData(fname, x0, 0, x0.getSubLength());
     
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
@@ -52,36 +61,40 @@ void setupES(Parameters<real> &sim_par,
     bool readFromFile = true;
     OperatorsMats<Sca_t> Mats(readFromFile, sim_par);
     
-    //Making The Surface, And Time Stepper
-    Sur_t S(x0, Mats);
-    Monitor<Sur_t> M(sim_par);
-    EvolveSurface<Sur_t, Interaction_t, Monitor<Sur_t>, Repart_t> Es(Mats, sim_par, M, repart);
-    Es(S, interaction);
+
+    //Setting the background flow
+    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+
+    //Finally, Evolve surface
+    EvolveSurface<real, DT, dev, Interaction_t, Repart_t> Es(sim_par, Mats, 
+        x0, &vInf, NULL, &interaction, &repart);
+    
+    QC ( Es.Evolve() );
 }
     
 int main(int argc, char **argv)
 {
     typedef Parameters<real> Par_t;
     
-    int nThreads = 3;
-    Interaction_t interaction(&StokesAlltoAll, nThreads);
-    Repart_t repart(NULL, nThreads);
+    int nThreads = 2;
+    Interaction_t interaction(&StokesAlltoAll);
+    Repart_t repart(&MyRepart);
     
     // Making multiple threads
 #pragma omp parallel num_threads(nThreads)
     {
         // Setting the parameters
         Par_t sim_par;
-        sim_par.n_surfs = 128; 
+        sim_par.n_surfs = 10; 
         sim_par.ts = .1;    
-        sim_par.time_horizon = 3;
+        sim_par.time_horizon = .3;
         sim_par.scheme = Explicit;
         sim_par.bg_flow_param = 0.1;
         sim_par.rep_maxit = 20;
         sim_par.save_data = false;
         sim_par.save_stride = 1;
         sim_par.save_file_name = "";
-        //COUT(sim_par);
+        sim_par.singular_stokes = Direct;
                 
         DataIO myIO;
       
@@ -93,10 +106,6 @@ int main(int argc, char **argv)
 
             case 1:
                 setupES<GPU, dev1>(sim_par, interaction, repart);
-                break;
-
-            case 2:
-                setupES<GPU, dev2>(sim_par, interaction, repart);
                 break;
         }
     }

@@ -43,8 +43,9 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
+    typename Evolve_t::Interaction_t interaction(&StokesAlltoAll);
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, &vInf, &StokesAlltoAll);
+    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &interaction);
     
     QC ( Es.Evolve() );
 }

@@ -29,7 +29,7 @@ class EvolveSurface
     typedef T value_type;   
     typedef Scalars<T, DT, DEVICE> Sca_t;
     typedef Vectors<T, DT, DEVICE> Vec_t;
-    typedef Surface<Sca_t,Vec_t> Sur_t;
+    typedef Surface<Sca_t, Vec_t> Sur_t;
     
     typedef BgFlowBase<Vec_t> BgFlow_t;
     typedef MonitorBase<EvolveSurface> Monitor_t;
@@ -47,11 +47,8 @@ class EvolveSurface
     typedef Error_t (IntVel_t::*Scheme_t)(const value_type &);
 
     EvolveSurface(Params_t &params, Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  
-        InteractionFun_t interaction_handle = NULL, void* user_ptr = NULL, 
-        GlobalRepart_t repartition_handle = NULL);
-
-    EvolveSurface(Params_t &params, Mats_t &mats, Sur_t *S, BgFlow_t *vInf,
-        Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr);
+        Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,
+        void* user_ptr = NULL);
 
     ~EvolveSurface();
     
@@ -68,7 +65,7 @@ class EvolveSurface
     void *user_ptr_;
     IntVel_t *F_;
 
-    bool ownsObjOnHeap_;
+    bool objsOnHeap_[3];//for monitor, interaction, and repartition
 };
 
 #include "EvolveSurface.cc"

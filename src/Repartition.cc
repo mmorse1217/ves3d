@@ -29,14 +29,20 @@ Repartition<T>::~Repartition()
 
     
 template<typename T>
-template<typename Container>
-void Repartition<T>::operator()(Container &coord, 
-    Container &tension, void* user_ptr) const
+template<typename VecContainer, typename ScaContainer>
+Error_t Repartition<T>::operator()(VecContainer &coord, 
+    ScaContainer &tension, void* user_ptr) const
 {  
-    assert( typeid(T) == typeid(typename Container::value_type) );
+    assert( typeid(T) == typeid(typename VecContainer::value_type) );
+    assert( typeid(T) == typeid(typename ScaContainer::value_type) );
+    assert( coord.getNumSubs() == tension.getNumSubs() );
 
     if ( g_repart_handle_ == NULL ) 
-        return;
+    {
+        COUT("  No repartitioning."
+            <<"\n ------------------------------------"<<endl);
+        return(NoRepartition);
+    }
 
     //Getting the sizes
     size_t nv(tension.getNumSubs());
@@ -49,10 +55,10 @@ void Repartition<T>::operator()(Container &coord,
     }
     
     //Copying to the host 
-    Container::getDevice().Memcpy(all_pos_ + DIM * idx, coord.begin(),
-        coord.size() * sizeof(T), MemcpyDeviceToHost);
+    VecContainer::getDevice().Memcpy(all_pos_ + VecContainer::getTheDim() * idx, 
+        coord.begin(), coord.size() * sizeof(T), MemcpyDeviceToHost);
     
-    Container::getDevice().Memcpy(all_tension_ + idx, tension.begin(),
+    ScaContainer::getDevice().Memcpy(all_tension_ + idx, tension.begin(),
         tension.size() * sizeof(T), MemcpyDeviceToHost);
 
     // call user interaction routine
@@ -71,10 +77,10 @@ void Repartition<T>::operator()(Container &coord,
     tension.resize(nv);
     
     //Copying back the new values to the device(s)
-    Container::getDevice().Memcpy(coord.begin(), posr_ + DIM * idx, 
+    VecContainer::getDevice().Memcpy(coord.begin(), posr_ + VecContainer::getTheDim() * idx, 
         coord.size() * sizeof(T), MemcpyHostToDevice);
     
-    Container::getDevice().Memcpy(tension.begin(), tensionr_ + idx, 
+    ScaContainer::getDevice().Memcpy(tension.begin(), tensionr_ + idx, 
         tension.size() * sizeof(T), MemcpyHostToDevice);
 
 #pragma omp master
@@ -86,13 +92,15 @@ void Repartition<T>::operator()(Container &coord,
 
 #pragma omp critical (reparamPrint)
     {
-        COUT("\n  Repartitioning :\n"
+        COUT("  Repartitioning :\n"
             <<"\n                thread = "<<omp_get_thread_num()
             <<"/"<<omp_get_num_threads()
             <<"\n      initial surfaces = "<<oldnv
             <<"\n          new surfaces = "<<nv
             <<"\n ------------------------------------"<<endl);
     }
+    
+    return(Success);
 }
 
 template<typename T>
@@ -101,14 +109,14 @@ size_t Repartition<T>::getCpyIdx(size_t this_thread_nv,
 {
     int threadNum = omp_get_thread_num();
     each_thread_nv_[threadNum] = this_thread_nv;
-    
+    int runtimeNumThreads = omp_get_num_threads();
 #pragma omp barrier
     {
         if ( threadNum == 0 )
         {
             nv_ = 0;
                         
-            for(int ii=1; ii<=num_threads_; ++ii)
+            for(int ii=1; ii<=runtimeNumThreads; ++ii)
             {
                 nv_ += each_thread_nv_[ii-1];
                 each_thread_idx_[ii] = each_thread_idx_[ii-1] + 
@@ -125,10 +133,11 @@ size_t Repartition<T>::getCpyIdx(size_t this_thread_nv,
 template<typename T>
 size_t Repartition<T>::getNvShare() const
 {
-    size_t nv(nvr_/num_threads_);
+    int runtimeNumThreads = omp_get_num_threads();
+    size_t nv(nvr_/runtimeNumThreads);
     
     if ( omp_get_thread_num() == 0 )
-        nv = nvr_ - (num_threads_ - 1) * nv;
+        nv = nvr_ - (runtimeNumThreads - 1) * nv;
     
     return nv;
 }

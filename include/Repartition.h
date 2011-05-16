@@ -2,6 +2,8 @@
 #define _REPARTIONGATEWAY_H_
 
 #include <omp.h>
+#include <cassert>
+#include "enums.h"
 
 /**
  * The interface class with the global repartitioning function. It
@@ -35,8 +37,8 @@ class Repartition
      * @param user_ptr the user-defined pointer that may be needed
      * depending on the external repartitioning function.
      */
-    template<typename Container>
-    void operator()(Container &coord, Container &tension, 
+    template<typename VecContainer, typename ScaContainer>
+    Error_t operator()(VecContainer &coord, ScaContainer &tension, 
         void* user_ptr = NULL) const;
     
   private:

@@ -1,4 +1,4 @@
-#ifndef _ARRAY_H_
+ #ifndef _ARRAY_H_
 #define _ARRAY_H_
 
 #include "Device.h"

@@ -152,9 +152,9 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
     Container** results) const
 {
     PROFILESTART();
-    
+
     if ( last_rot_ == Direct )  
-    {    
+    {            
         CircShift(all_rot_mats_.begin() + trg_i * np_ * np_, trg_j * np_, rot_mat_); 
     
         for(int ii=0; ii<num_; ++ii)

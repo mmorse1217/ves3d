@@ -38,6 +38,9 @@ Error_t VesInteraction<T>::operator()(
     {
         potential.getDevice().Memset(potential.begin(), 
             0, potential.size() * sizeof(value_type));
+        
+        COUT("  No interaction."
+            <<"\n ------------------------------------"<<endl);
         return NoInteraction;
     }
      
@@ -98,7 +101,9 @@ Error_t VesInteraction<T>::operator()(
         
         delete[] buffer;
     }
-    
+
+    COUT("  Interaction resolved."
+        <<"\n ------------------------------------"<<endl);
     return Success;
 }
 
@@ -106,6 +111,7 @@ template<typename T>
 size_t VesInteraction<T>::getCpyDestIdx(size_t this_thread_np) const
 {   
     int threadNum = omp_get_thread_num();
+    int runtimeNumThreads = omp_get_num_threads();
     each_thread_np_[threadNum] = this_thread_np;
     
 #pragma omp barrier
@@ -115,7 +121,7 @@ size_t VesInteraction<T>::getCpyDestIdx(size_t this_thread_np) const
             np_ = 0;
             int the_dim = 3;
             
-            for(int ii=1; ii<=num_threads_; ++ii)
+            for(int ii=1; ii<=runtimeNumThreads; ++ii)
             {
                 np_ += each_thread_np_[ii-1];
                 each_thread_idx_[ii] = each_thread_idx_[ii-1] + 
@@ -135,9 +141,10 @@ size_t VesInteraction<T>::getCpyDestIdx(size_t this_thread_np) const
 template<typename T>
 void VesInteraction<T>::checkContainersSize() const
 {
+    int runtimeNumThreads = omp_get_num_threads();
 #pragma omp master
     {
-        size_t new_capacity(each_thread_idx_[num_threads_]); 
+        size_t new_capacity(each_thread_idx_[runtimeNumThreads]); 
 
         if ( containers_capacity_ < new_capacity )
         {

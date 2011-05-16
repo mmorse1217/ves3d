@@ -25,7 +25,6 @@
 
 ///
 #define EMPTY_GRID make_pair(-1,-1)
-#define DIM 3
 
 // Forward declaration
 template<enum DeviceType DT> class Device;

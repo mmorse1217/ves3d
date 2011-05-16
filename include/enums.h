@@ -5,6 +5,8 @@
 #include <stack>
 #include "Logger.h"
 
+#define DIM 3
+
 ///The enum types for the types of device, the insertion operator <<
 ///is overloaded for this type.
 enum DeviceType {CPU, GPU};
@@ -33,7 +35,7 @@ enum Ves3DErrors {Success,
                   InvalidDevice, SetOnActiveDevice, 
                   SolverDiverged, 
                   NoInteraction, InteractionFailed, 
-                  RepartitioningFailed,
+                  NoRepartition, RepartitioningFailed,
                   AccuracyError};
 
 typedef enum Ves3DErrors Error_t;

@@ -1,8 +1,8 @@
 #include "EvolveSurface.h"
 #include "CPUKernels.h"
 
-#define DT CPU 
-typedef double real;
+#define DT GPU 
+typedef float real;
 extern const Device<DT> the_device(0);
 
 int main(int argc, char **argv)
@@ -28,12 +28,12 @@ int main(int argc, char **argv)
     sim_par.scheme = SemiImplicit;
     sim_par.bg_flow_param = 0;
 
-    int p = 48;
+    int p = 12;
     sim_par.sh_order = p;
     sim_par.filter_freq = 2*p/3;
     sim_par.rep_up_freq = 2*p;
     sim_par.rep_filter_freq = p/3;
-    sim_par.singular_stokes = ViaSpHarm;
+    sim_par.singular_stokes = Direct;
 
     sim_par.position_solver_iter = 2*p;
     sim_par.tension_solver_iter = 2*p;
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
                 
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL);
+    Evolve_t Es(sim_par, Mats, x0, &vInf);
         
     CLEARERRORHIST();
     PROFILESTART(); 

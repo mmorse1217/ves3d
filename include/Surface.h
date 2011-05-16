@@ -31,8 +31,8 @@ class Surface
     ~Surface();
 
     void setPosition(const Vec_t& x_in);
-    int getNumberOfSurfaces() { return(getPosition().getNumSubs()); }
-    int getShOrder() { return(getPosition().getShOrder()); }
+    int getNumberOfSurfaces() const { return(getPosition().getNumSubs()); }
+    int getShOrder() const { return(getPosition().getShOrder()); }
     
     Vec_t& getPositionModifiable();
     const Vec_t& getPosition() const;
@@ -97,6 +97,8 @@ class Surface
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;
+
+    friend std::ostream& operator<< <>(std::ostream& output, const Surface &sur);
 };
 
 #include "Surface.cc"

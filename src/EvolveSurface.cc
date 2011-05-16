@@ -1,50 +1,65 @@
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
          typename Interact, typename Repart>
-EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats, 
-    Vec_t &x0, BgFlow_t *vInf, InteractionFun_t interaction_handle, void* user_ptr,
-    GlobalRepart_t repartition_handle) :
+EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, 
+    Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M, 
+    Interaction_t *I, Repartition_t *R, void* user_ptr):
     params_(params),
     mats_(mats),
-    vInf_(vInf),
-    user_ptr_(user_ptr),
-    F_(NULL),
-    ownsObjOnHeap_(false)
-{
-    ownsObjOnHeap_ = true;
-    S_ = new Sur_t(x0, mats_, params_.rep_up_freq, params_.rep_filter_freq);
-    monitor_ = new Monitor<EvolveSurface>(params_);
-    interaction_ = new Interaction_t(interaction_handle);
-    repartition_ = new Repartition_t(repartition_handle);
-}
-
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
-         typename Interact, typename Repart>
-EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats, 
-    Sur_t *S, BgFlow_t *vInf, Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr) :
-    params_(params),
-    mats_(mats),
-    S_(S),
     vInf_(vInf),
     monitor_(M),
     interaction_(I),
     repartition_(R),
     user_ptr_(user_ptr),
-    F_(NULL),
-    ownsObjOnHeap_(false)
-{}
+    F_(NULL)
+{
+    objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
+    S_ = new Sur_t(x0, mats_, params_.rep_up_freq, params_.rep_filter_freq);
+    if ( monitor_ == NULL)
+    {
+        monitor_ = new Monitor<EvolveSurface>(params_);
+        objsOnHeap_[0] = true;
+    }
+
+    if ( interaction_ == NULL)
+    {
+        interaction_ = new Interaction_t();
+        objsOnHeap_[1] = true;
+    }
+
+    if ( repartition_ == NULL)
+    {
+        repartition_ = new Repartition_t();
+        objsOnHeap_[2] = true;
+    }  
+}
+
+// template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
+//          typename Interact, typename Repart>
+// EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats, 
+//     Sur_t *S, BgFlow_t *vInf, Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr) :
+//     params_(params),
+//     mats_(mats),
+//     S_(S),
+//     vInf_(vInf),
+//     monitor_(M),
+//     interaction_(I),
+//     repartition_(R),
+//     user_ptr_(user_ptr),
+//     F_(NULL),
+//     ownsObjOnHeap_(false)
+// {}
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 {
-    if ( ownsObjOnHeap_ )
-    {
-        delete S_;
-        delete monitor_;
-        delete interaction_;
-        delete repartition_;
-    }
+    delete S_;
     delete F_;
+        
+    if ( objsOnHeap_[0] ) delete monitor_;
+    if ( objsOnHeap_[1] ) delete interaction_;
+    if ( objsOnHeap_[2] ) delete repartition_;
+    
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
@@ -78,9 +93,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         F_->reparam();
         t += dt;
         
-        //repartition_.operator()<Container::Sca_t>(S.getPositionModifiable(), 
-        //    F.tension(), usr_ptr);
-        
+        (*repartition_)(S_->getPositionModifiable(), F_->tension(), user_ptr_);
         QC( (*monitor_)( this, t, dt) );
     }
 

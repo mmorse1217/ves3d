@@ -15,7 +15,7 @@ void CudaApiGlobals::NumStreams(int n)
         return;
 
     COUTDEBUG(" ------------------------------------\n"
-        <<"   Creating "<<n<<" CUDA Streams.\n"
+        <<"  Creating "<<n<<" CUDA Streams.\n"
         <<" ------------------------------------"<<endl);
 
     CudaApiGlobals::ClearAll();
@@ -33,9 +33,9 @@ const cudaStream_t& CudaApiGlobals::ThisStream()
     if( CudaApiGlobals::num_streams_ == 0 )
         CudaApiGlobals::NumStreams(1);
 
-    COUTDEBUG(" ------------------------------------\n"
-        <<"   Current Stream "<<CudaApiGlobals::this_stream_<<".\n"
-        <<" ------------------------------------"<<endl);
+//     COUTDEBUG(" ------------------------------------\n"
+//         <<"   Current Stream "<<CudaApiGlobals::this_stream_<<".\n"
+//         <<" ------------------------------------"<<endl);
 
     
     return(CudaApiGlobals::streams_[CudaApiGlobals::this_stream_]);

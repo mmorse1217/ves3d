@@ -206,7 +206,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::collectSameOrder(const Container &in, 
     Container &out) const
 {
-    ///@todo this code need to be moved to the device
+    ///@bug this code need to be moved to the device
     const typename Container::value_type *inPtr(NULL);
     typename Container::value_type *outPtr(NULL), *head(out.begin());
 
@@ -238,7 +238,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::collectSameFreq(const Container &in, 
     Container &out) const
 {
-    ///@todo this code need to be moved to the device
+    ///@bug this code need to be moved to the device
     const typename Container::value_type *inPtr(NULL), *head(in.begin());
     typename Container::value_type *outPtr(NULL);
 
