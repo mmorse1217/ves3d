@@ -96,9 +96,9 @@ void Array<T, DT, DEVICE>::fillRand()
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE>
 std::ostream& operator<<(std::ostream& output, const Array<T, DT, DEVICE> &arr)
 {
-    typedef typename Array<T, DT, DEVICE>::value_type T;
-    T *buffer(new T[arr.size()]);
-    DEVICE.Memcpy(buffer, arr.begin(), arr.size() * sizeof(T), MemcpyDeviceToHost);
+    typedef typename Array<T, DT, DEVICE>::value_type E;
+    E *buffer(new E[arr.size()]);
+    DEVICE.Memcpy(buffer, arr.begin(), arr.size() * sizeof(E), MemcpyDeviceToHost);
     
     for(size_t ii=0; ii<arr.size(); ++ii)
         output<<buffer[ii]<<" ";

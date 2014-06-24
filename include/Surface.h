@@ -17,6 +17,12 @@
 #include <memory>
 
 template <typename ScalarContainer, typename VectorContainer> 
+class Surface;
+
+template <typename S, typename V> 
+std::ostream& operator<<(std::ostream& output, const Surface<S, V> &sur);
+
+template <typename ScalarContainer, typename VectorContainer> 
 class Surface
 {
   public:
@@ -98,7 +104,7 @@ class Surface
 
     void purgeTheWorkSpace() const;
 
-    friend std::ostream& operator<< <>(std::ostream& output, const Surface &sur);
+    friend std::ostream& operator<< <Sca_t,Vec_t>(std::ostream& output, const Surface &sur);
 };
 
 #include "Surface.cc"
