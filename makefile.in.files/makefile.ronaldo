@@ -1,0 +1,20 @@
+# includes and libraries
+VES3D_TEMPLATES = -I$(VES3D_DIR)/src
+VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
+VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
+
+ifeq ($(CXX),icpc)
+ BLASPKG         = HAS_MKL
+ BLAS_LIBS      = -L ${ICES_MKL_LIB} -Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread		\
+	-lmkl_core -Wl,--end-group
+ BLAS_INCLUDE   = -I ${ICES_MKL_INC}
+else
+ 
+ BLASPKG        = HAS_BLAS
+ BLAS_LIBS      = -L/usr/lib64/ /usr/lib64/liblapack.so.3.0.3 -lblas
+ BLAS_INCLUDE   = 
+endif
+
+CXXFLAGS       += -D$(BLASPKG)
+ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
+LDFLAGS         = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
