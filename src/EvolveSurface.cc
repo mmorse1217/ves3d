@@ -1,7 +1,7 @@
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
          typename Interact, typename Repart>
-EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, 
-    Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M, 
+EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
+    Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M,
     Interaction_t *I, Repartition_t *R, void* user_ptr):
     params_(params),
     mats_(mats),
@@ -30,12 +30,12 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     {
         repartition_ = new Repartition_t();
         objsOnHeap_[2] = true;
-    }  
+    }
 }
 
 // template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
 //          typename Interact, typename Repart>
-// EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats, 
+// EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats,
 //     Sur_t *S, BgFlow_t *vInf, Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr) :
 //     params_(params),
 //     mats_(mats),
@@ -55,16 +55,16 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 {
     delete S_;
     delete F_;
-        
+
     if ( objsOnHeap_[0] ) delete monitor_;
     if ( objsOnHeap_[1] ) delete interaction_;
     if ( objsOnHeap_[2] ) delete repartition_;
-    
+
 }
 
 template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
          typename Interact, typename Repart>
-Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve() 
+Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
     T t(0);
     T dt(params_.ts);
@@ -73,26 +73,26 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     delete F_;
     F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_);
     F_->usr_ptr_ = user_ptr_;
-     
+
     //Deciding on the updater type
     Scheme_t updater;
     switch ( params_.scheme )
     {
         case Explicit:
-            updater = &IntVel_t::updatePositionExplicit; 
+            updater = &IntVel_t::updatePositionExplicit;
             break;
 
-        case SemiImplicit:
-            updater = &IntVel_t::updatePositionImplicit; 
+        case BlockImplicit:
+            updater = &IntVel_t::updatePositionImplicit;
             break;
     }
 
     while ( ERRORSTATUS() && t < time_horizon )
     {
-        QC( (F_->*updater)(dt) );       
+        QC( (F_->*updater)(dt) );
         F_->reparam();
         t += dt;
-        
+
         (*repartition_)(S_->getPositionModifiable(), F_->tension(), user_ptr_);
         QC( (*monitor_)( this, t, dt) );
     }

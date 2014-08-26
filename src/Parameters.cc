@@ -1,6 +1,6 @@
 template<typename T>
 Parameters<T>::Parameters() :
-    n_surfs(1),   
+    n_surfs(1),
     sh_order(12),
     filter_freq(8),
     bending_modulus(1e-2),
@@ -45,31 +45,31 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
   // 2. SET PREFERENCES
   // opt.noPOSIX(); // do not check for POSIX style character options
   opt.setVerbose(); // print warnings about unknown options
-  opt.autoUsagePrint(true); // print usage for bad options 
+  opt.autoUsagePrint(true); // print usage for bad options
 
-  // 3. SET THE USAGE/HELP   
+  // 3. SET THE USAGE/HELP
   this->setUsage(&opt);
-     
+
   // 4. SET THE OPTIONS
   this->setOptions(&opt);
- 
+
   // 5. PROCESS THE COMMANDLINE AND RESOURCE FILE, COMMAND LINE
   // OPTIONS OVERRIDE THE FILE
   opt.processCommandArgs( argc, argv );
 
   if( opt.getValue( 'f' ) != NULL  || opt.getValue( "optFile" ) )
-    opt.processFile( opt.getValue('f') );  
-  
+    opt.processFile( opt.getValue('f') );
+
   opt.processCommandArgs( argc, argv );
 
   //print usage if no options
   if( ! opt.hasOptions() ) {
-      cout<<"\n You need to define the simulation options"<<endl;  
+      cout<<"\n You need to define the simulation options"<<endl;
       opt.printUsage();
       return InvalidParameter;
   }
 
-  // 6. GET THE VALUES 
+  // 6. GET THE VALUES
   this->getOptionValues(&opt);
 
   COUT(*this<<endl);
@@ -112,7 +112,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "      --repTol               The absolute value tol on the velocity of reparametrization" );
   opt->addUsage( "      --repUpFreq            The upsampling frequency for the reparametrization" );
   opt->addUsage( "      --saveStride           The frequency of saving to file (in time scale)" );
-  opt->addUsage( "      --scheme               The time stepping scheme {Explicit | SemiImplicit}" );
+  opt->addUsage( "      --scheme               The time stepping scheme {Explicit | BlockImplicit}" );
   opt->addUsage( "      --shOrder              The spherical harmonics order" );
   opt->addUsage( "      --singularStokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "      --tensionIterMax       Maximum number of iterations for the tension solver" );
@@ -130,15 +130,15 @@ void Parameters<T>::setOptions(AnyOption *opt)
   // from option/resource file
 
   // a flag (takes no argument), supporting long and short forms
-  opt->setFlag( "help", 'h' );   
-  opt->setFlag( "saveData", 's' );   
+  opt->setFlag( "help", 'h' );
+  opt->setFlag( "saveData", 's' );
   opt->setFlag( "upsampleInteraction");
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "optFile", 'f');
   opt->setOption( "initFile", 'i');
   opt->setOption( "outFile", 'o');
-  
+
   //an option (takes an argument), supporting only long form
   opt->setOption( "bendingModulus" );
   opt->setOption( "bgFlowParam" );
@@ -165,20 +165,20 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "timeStep" );
 
   //for options that will be checked only on the command and line not
-  //in option/resource file 
-  //opt.setCommandFlag( ... ); 
+  //in option/resource file
+  //opt.setCommandFlag( ... );
 
   // for options that will be checked only from the option/resource
   // file
-  //opt.setFileOption(  ... ); 
+  //opt.setFileOption(  ... );
 }
 
 template<typename T>
 void Parameters<T>::getOptionValues(AnyOption *opt)
 {
-  if( opt->getFlag( "help" ) || opt->getFlag( 'h' ) ) 
+  if( opt->getFlag( "help" ) || opt->getFlag( 'h' ) )
     opt->printUsage();
-  
+
   if( opt->getFlag( "saveData" ) || opt->getFlag( 's' ) )
       this->save_data = true;
   else
@@ -192,11 +192,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "initFile" ) != NULL || opt->getValue( 'i' ) !=NULL )
     this->init_file_name = opt->getValue( 'i' );
-  
+
   if( opt->getValue( 'o' ) !=NULL || opt->getValue( "outFile") !=NULL )
     this->save_file_name = opt->getValue( 'o' );
-  
-  
+
+
   //shOrder set first so that the adjusted frequencies can be overridden
   if( opt->getValue( "shOrder" ) != NULL  )
   {
@@ -224,7 +224,7 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "positionIterMax" ) != NULL  )
     this->position_solver_iter =  atoi(opt->getValue( "positionIterMax" ));
-  
+
   if( opt->getValue( "positionRestart" ) != NULL  )
     this->position_solver_restart =  atoi(opt->getValue( "positionRestart" ));
 
@@ -260,7 +260,7 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "tensionRestart" ) != NULL  )
     this->tension_solver_restart =  atoi(opt->getValue( "tensionRestart" ));
-  
+
   if( opt->getValue( "tensionTol" ) != NULL  )
     this->tension_solver_tol =  atof(opt->getValue( "tensionTol" ));
 

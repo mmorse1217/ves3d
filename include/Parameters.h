@@ -4,11 +4,11 @@
 #include <typeinfo>
 #include <iostream>
 #include <string>
-#include "enums.h"
+#include "Enums.h"
 #include "anyoption.h"
 
 template <typename T>
-struct Parameters 
+struct Parameters
 {
 public:
   Parameters();
@@ -17,11 +17,11 @@ public:
   ~Parameters();
 
   //Surface
-  int n_surfs;   
+  int n_surfs;
   int sh_order;
   int filter_freq;
   T bending_modulus;
-    
+
   //Solver parameters
   int position_solver_iter;
   int tension_solver_iter;
@@ -41,7 +41,7 @@ public:
   int rep_up_freq;
   int rep_filter_freq;
   T rep_ts;
-  T rep_tol;  
+  T rep_tol;
 
   //Background flow
   T bg_flow_param;

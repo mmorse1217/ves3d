@@ -2,7 +2,7 @@
 #define _VESINTERACTION_H_
 
 #include <typeinfo>
-#include "enums.h"
+#include "Enums.h"
 #include <omp.h>
 /**
  * The gateway function between the local code and FMM code. This
@@ -17,9 +17,9 @@ class VesInteraction
 {
   public:
     ///The pointer-type to the external FMM function handle.
-    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void*);    
- 
-    /** 
+    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void*);
+
+    /**
      * @param interaction_handle The function pointer to the FMM
      * code. When set to <tt>NULL</tt>, no interaction is performed.
      * @param num_threads The expected number of threads this class
@@ -29,20 +29,20 @@ class VesInteraction
         int num_threads = omp_get_max_threads());
     ~VesInteraction();
 
-    /** 
+    /**
      * The function called inside the local code to perform
      * interaction. Each thread called this method to perform
      * interaction with other threads and/or other MPI processes.
      *
      * @param position The Cartesian coordinate of the points.
      * @param density The density at each point.
-     * @param potential (return value) The calculated potential on the points. 
+     * @param potential (return value) The calculated potential on the points.
      * @param usr_ptr The used defined pointer, that may be required by the FMM code.
      *
      * @return Enum type defined in enums.h indicating the outcome of interaction.
      */
     template<typename VecContainer>
-    Error_t operator()(const VecContainer &position, VecContainer &density, 
+    Error_t operator()(const VecContainer &position, VecContainer &density,
         VecContainer &potential, void* usr_ptr = NULL) const;
 
   private:
@@ -57,7 +57,7 @@ class VesInteraction
     mutable T* all_pos_;
     mutable T* all_den_;
     mutable T* all_pot_;
-    
+
     size_t getCpyDestIdx(size_t this_thread_np) const;
     void checkContainersSize() const;
 };

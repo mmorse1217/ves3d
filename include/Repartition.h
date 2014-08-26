@@ -3,7 +3,7 @@
 
 #include <omp.h>
 #include <cassert>
-#include "enums.h"
+#include "Enums.h"
 
 /**
  * The interface class with the global repartitioning function. It
@@ -16,21 +16,21 @@ template<typename T>
 class Repartition
 {
   public:
-    ///The function pointer type for the external repartitioning function. 
-    typedef void(*GlobalRepart_t)(size_t nv, size_t stride, 
+    ///The function pointer type for the external repartitioning function.
+    typedef void(*GlobalRepart_t)(size_t nv, size_t stride,
         const T* x, const T* tension, size_t* nvr, T** xr,
         T** tensionr, void* user_ptr);
-    
-    /** 
+
+    /**
      * @param fun_ptr The actual pointer to the repartitioning
      * function, no repartitioning when <tt>NULL</tt>.
      * @param num_threads The number of expected threads that to be handled.
      */
-    explicit Repartition(GlobalRepart_t fun_ptr = NULL, 
+    explicit Repartition(GlobalRepart_t fun_ptr = NULL,
         int num_threads = omp_get_max_threads());
     ~Repartition();
 
-    /** 
+    /**
      * The function called from each thread.
      * @param coord The Cartesian coordinate of the points
      * @param tension The tension associated with each point.
@@ -38,9 +38,9 @@ class Repartition
      * depending on the external repartitioning function.
      */
     template<typename VecContainer, typename ScaContainer>
-    Error_t operator()(VecContainer &coord, ScaContainer &tension, 
+    Error_t operator()(VecContainer &coord, ScaContainer &tension,
         void* user_ptr = NULL) const;
-    
+
   private:
     GlobalRepart_t g_repart_handle_;
     int num_threads_;
@@ -49,10 +49,10 @@ class Repartition
 
     mutable size_t nv_;
     mutable size_t capacity_;
-    
+
     mutable T* all_pos_;
     mutable T* all_tension_;
-    
+
     mutable T* posr_;
     mutable T* tensionr_;
     mutable size_t nvr_;

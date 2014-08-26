@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     sim_par.save_stride = 0;
     sim_par.save_file_name = "EvolveSurf.out";
     
-    sim_par.scheme = SemiImplicit;
+    sim_par.scheme = BlockImplicit;
     sim_par.bg_flow_param = 0;
 
     int p = 12;

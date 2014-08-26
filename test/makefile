@@ -2,6 +2,7 @@ EXEC = 	BenchmarkInterfacialVel.exe	\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
 	DeviceTest.exe			\
+	EnumsTest.exe			\
 	EvalVelocityTest.exe		\
 	EvolveSurfaceTest.exe		\
 	EvolveSurfaceTestMultThread.exe \

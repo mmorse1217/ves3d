@@ -9,13 +9,13 @@
 
 #include <cstring> //for the memcpy and memset
 #include <cassert>
-#include <iostream> 
+#include <iostream>
 #include <cmath>
 #include <omp.h>
 #include "VesBlas.h"
 #include "Logger.h"
 #include "CPUKernels.h"
-#include "enums.h"
+#include "Enums.h"
 
 #ifdef GPU_ACTIVE
 #include "cuda_runtime.h"
@@ -29,8 +29,8 @@
 // Forward declaration
 template<enum DeviceType DT> class Device;
 
-/// The comparison operator for the device class 
-template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         
+/// The comparison operator for the device class
+template<enum DeviceType DTlhs, enum DeviceType DTrhs>
 inline bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs);
 
 ///
@@ -69,7 +69,7 @@ class Device
     ///Memory allocation.
     void* Malloc(size_t length) const;
 
-    ///Freeing memory. 
+    ///Freeing memory.
     void Free(void* ptr) const;
 
     ///Memory allocation and zero initialization for an array in
@@ -80,20 +80,20 @@ class Device
     ///kind of copy is from the enum type MemcpyKind that includes
     ///<code> MemcpyHostToHost, MemcpyHostToDevice,
     ///MemcpyDeviceToHost, or MemcpyDeviceToDevice</code>.
-    void* Memcpy(void* destination, const void* source, 
+    void* Memcpy(void* destination, const void* source,
         size_t num, enum MemcpyKind kind) const;
-    
+
     ///Setting the memory location specified by ptr to the given value
     void* Memset(void *ptr, int value, size_t num) const;
-    
-    ///Geometric dot product of two (Cartesian) vectors. 
+
+    ///Geometric dot product of two (Cartesian) vectors.
     template<typename T>
-    T* DotProduct(const T* u_in, const T* v_in, size_t stride, 
+    T* DotProduct(const T* u_in, const T* v_in, size_t stride,
         size_t n_vecs, T* x_out) const;
 
     ///Geometric cross product of two (Cartesian) vectors.
     template<typename T>
-    T* CrossProduct(const T* u_in, const T* v_in, size_t stride, 
+    T* CrossProduct(const T* u_in, const T* v_in, size_t stride,
         size_t n_vecs, T* w_out) const;
 
     ///Square root operator.
@@ -109,50 +109,50 @@ class Device
 
     ///Element-wise division of scalar fields.
     template<typename T>
-    T* xyInv(const T* x_in, const T* y_in, size_t length, 
+    T* xyInv(const T* x_in, const T* y_in, size_t length,
         T* xyInv_out) const;
 
     ///Element-wise scaling of a vector field by a scalar fields.
     template<typename T>
-    T* uyInv(const T* u_in, const T* y_in, size_t stride, size_t n_vecs, 
+    T* uyInv(const T* u_in, const T* y_in, size_t stride, size_t n_vecs,
         T* uyInv_out) const;
-    
+
     ///Scaling and addition of an scalar field to another field.
     template<typename T>
-    T* axpy(T a_in, const T* x_in, const T* y_in, size_t length, 
+    T* axpy(T a_in, const T* x_in, const T* y_in, size_t length,
         T* axpy_out) const;
-    
+
     template<typename T>
-    T* apx(const T* a_in, const T* x_in, size_t stride, 
+    T* apx(const T* a_in, const T* x_in, size_t stride,
         size_t n_subs, T* axpy_out) const;
-    
+
     ///Element-wise scaling and addition.
     template<typename T>
-    T* avpw(const T* a_in, const T* v_in, const T* w_in, 
+    T* avpw(const T* a_in, const T* v_in, const T* w_in,
         size_t stride, size_t n_vecs, T*  avpw_out) const;
- 
+
     ///Element-wise scaling and addition.
     template<typename T>
-    T* xvpw(const T* x_in, const T*  v_in, const T*  w_in, 
+    T* xvpw(const T* x_in, const T*  v_in, const T*  w_in,
         size_t stride, size_t n_vecs, T*  xvpw_out) const;
 
     ///Smooth integral (reduction) for multidimensional fields.
     template<typename T>
-    T* Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in, 
+    T* Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in,
         const size_t stride, const size_t ns, T *x_dw) const;
-    
+
     ///General matrix-matrix multiplication. consult BLAS
     ///documentation for the detail of the syntax.
     template<typename T>
-    T* gemm(const char *transA, const char *transB, const int *m, 
-        const int *n, const int *k, const T *alpha, const T *A, 
-        const int *lda, const T *B, const int *ldb, const T *beta, 
+    T* gemm(const char *transA, const char *transB, const int *m,
+        const int *n, const int *k, const T *alpha, const T *A,
+        const int *lda, const T *B, const int *ldb, const T *beta,
         T *C, const int *ldc) const;
 
     ///Direct stokes integration.
     template<typename T>
-    void DirectStokes(const T *src, const T *den, const T *qw, 
-        size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head, 
+    void DirectStokes(const T *src, const T *den, const T *qw,
+        size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
         size_t trg_idx_tail, T *pot) const;
 
     ///The max of an array.
@@ -173,18 +173,18 @@ class Device
     bool isNan(const T* x, size_t length) const;
 
     template<typename T>
-    void AggregateRotation(int sh_order, int n_vec, const int* n_sub, 
+    void AggregateRotation(int sh_order, int n_vec, const int* n_sub,
         const T* mat, const T** vec, T** wrk, T** res, int n_stream = 1) const;
 
-    //The comparison operator 
-    template<enum DeviceType DTlhs, enum DeviceType DTrhs>                         
+    //The comparison operator
+    template<enum DeviceType DTlhs, enum DeviceType DTrhs>
     friend bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs);
 
   private:
     ///The declaration of copy constructor. It is private to avoid
     ///pass by value. There is no implementation for this method.
     Device(const Device<DT> &device_in);
-    
+
     /* The declaration of the assignment operator, it is declared as
      * private so as to disallow any passing by value to
      * functions. There will be no implementation for this method.

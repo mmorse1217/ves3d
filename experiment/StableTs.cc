@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     sim_par.rep_maxit = 20;
     sim_par.save_data = false;    
 
-    sim_par.scheme = SemiImplicit;
+    sim_par.scheme = BlockImplicit;
     sim_par.bg_flow_param = 0;
 
     ///////////////

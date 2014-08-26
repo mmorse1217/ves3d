@@ -1,7 +1,7 @@
 #ifndef _EVALVELOCITY_H_
 #define _EVALVELOCITY_H_
 
-#include "enums.h"
+#include "Enums.h"
 #include "Surface.h"
 #include "InterfacialForce.h"
 #include "BgFlowBase.h"
@@ -17,14 +17,14 @@ class EvalVelocity
 
 
   public:
-    EvalVelocity(const StokesEvaluator &stokes, 
+    EvalVelocity(const StokesEvaluator &stokes,
         const BgFlowBase<Vector> &vInf,
         OperatorsMats<Scalar> &mats,
         value_type bending_modulus);
     ~EvalVelocity();
 
     Error_t operator()(const Vector &x_src,
-        const Scalar &tension, const Vector &x_eval, 
+        const Scalar &tension, const Vector &x_eval,
         Vector &vel);
 
   private:

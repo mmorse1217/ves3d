@@ -32,7 +32,7 @@ echo $centFile
 # repTimeStep     : 1e-1
 # repTol          : 1e-5
 # saveStride      : .5
-# scheme          : SemiImplicit
+# scheme          : BlockImplicit
 # shOrder         : 12
 # singularStokes  : Direct
 # tensionIterMax  : 24

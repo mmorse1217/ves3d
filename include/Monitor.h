@@ -2,16 +2,16 @@
 #define _MONITOR_H_
 
 #include "Logger.h"
-#include "enums.h"
+#include "Enums.h"
 
 template<typename EvolveSurface>
 class MonitorBase{
   private:
     typedef typename EvolveSurface::value_type value_type;
-        
+
   public:
     virtual ~MonitorBase();
-    virtual Error_t operator()(const EvolveSurface *state, const value_type &t, 
+    virtual Error_t operator()(const EvolveSurface *state, const value_type &t,
         value_type &dt) = 0;
 };
 
@@ -33,8 +33,8 @@ class Monitor : public MonitorBase<EvolveSurface>
   public:
     Monitor(const Parameters<value_type> &params);
     ~Monitor();
-    
-    virtual Error_t operator()(const EvolveSurface *state, const value_type &t, 
+
+    virtual Error_t operator()(const EvolveSurface *state, const value_type &t,
         value_type &dt);
 };
 
