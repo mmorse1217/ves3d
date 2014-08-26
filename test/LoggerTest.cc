@@ -8,7 +8,7 @@ using namespace std;
 void Wait(int sec)
 {
     PROFILESTART();
-    LOG("iWait");
+    LOG("Wait (integer arg)");
     sleep(sec);
     PROFILEEND("i",0);
 }
@@ -16,9 +16,9 @@ void Wait(int sec)
 void Wait(double sec)
 {
     PROFILESTART();
-    LOG("dWait");
+    LOG("Wait (double arg)");
     sleep((unsigned int) sec);
-    PROFILEEND("d",0);
+    PROFILEEND("d",1000);
 }
 
 int Dummy(int ii)
@@ -49,21 +49,22 @@ int main(int argc, char** argv)
     for(int ii=0;ii<imax;++ii)
         Dummy(ii);
     cout<<" "<<imax<<" calls to Dummy : "<<Logger::Toc()<<endl;
-   
+
     Logger::Tic();
     Wait(1);
     Logger::Tic();
     sleep(1);
     cout<<" Inner Tic/Toc : "<<Logger::Toc()<<endl;
     cout<<" Outer Tic/Toc : "<<Logger::Toc()<<endl;
-        
+
     Wait((double) 1.0);
     PROFILEEND("",0);
     PROFILEREPORT(SortTime);
-    
+
     //printing the log file
-    COUT("\n\n  The content of the log file: \n ==============================\n");
-    
+    COUT("\n\n  Content of the log file: \n"
+        <<" ==============================\n");
+
     ifstream file(log_file.c_str());
     string line;
     while ( getline ( file, line ) )

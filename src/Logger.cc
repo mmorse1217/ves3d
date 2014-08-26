@@ -19,7 +19,7 @@ void PrintLogEvent(const pair<T, LogEvent> &ev)
         "%-10u \t %-4.3e \t  %-4.3e  \t %-4.3e\n";
 
 #ifdef VERBOSE
-    printf(printstr.c_str(), ev.second.num_calls, ev.second.time, 
+    printf(printstr.c_str(), ev.second.num_calls, ev.second.time,
         ev.second.flop/1e9, ev.second.flop_rate);
 #endif
 }
@@ -55,7 +55,7 @@ double Logger::Toc()
     return(toc);
 }
 
-void Logger::Record(string fun_name, string prefix, 
+void Logger::Record(string fun_name, string prefix,
     double time, double flop)
 {
 #pragma omp critical (loggerRecord)
@@ -65,7 +65,7 @@ void Logger::Record(string fun_name, string prefix,
         Logger::FlopStack.pop();
         if ( !Logger::FlopStack.empty() )
             Logger::FlopStack.top() += flop;
-        
+
         if(Logger::PrflMap.count(fun_name))
         {
             Logger::PrflMap[fun_name].num_calls++;
@@ -75,10 +75,10 @@ void Logger::Record(string fun_name, string prefix,
         else
         {
             LogEvent ev;
-            ev.fun_name = fun_name;
+            ev.fun_name  = fun_name;
             ev.num_calls = 1;
-            ev.time = time;
-            ev.flop = flop;
+            ev.time      = time;
+            ev.flop      = flop;
             Logger::PrflMap.insert(make_pair(fun_name, ev));
         }
     }
@@ -87,15 +87,15 @@ void Logger::Record(string fun_name, string prefix,
 void Logger::PurgeProfileHistory()
 {
     Logger::PrflMap.clear();
-    
+
     while ( !Logger::TicStack.empty() )
         Logger::TicStack.pop();
 
     while ( !Logger::FlopStack.empty() )
         Logger::FlopStack.pop();
 }
-    
-void Logger::Report(enum ReportFormat rf) 
+
+void Logger::Report(enum ReportFormat rf)
 {
     multimap<double, LogEvent> ReportMap;
     map<string, LogEvent>::iterator it;
@@ -129,7 +129,7 @@ void Logger::Report(enum ReportFormat rf)
                 ReportMap.insert(make_pair(it->second.time, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
-            
+
         case SortFlop:
             COUT("\n ==========================================================================================="<<endl
                 <<"    Function name               Calls            Total time        >GFlop        GFlop/sec"
@@ -147,10 +147,10 @@ void Logger::Report(enum ReportFormat rf)
                 ReportMap.insert(make_pair(it->second.flop_rate, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
-            
+
     }
     COUT(" ==========================================================================================="<<endl);
-    
+
     if(TicStack.size())
         CERR("\n There may be unbalanced Tic() and Toc() calls.",endl,sleep(0));
 }
@@ -159,9 +159,9 @@ void Logger::SetLogFile(string file_name)
 {
     log_file = file_name;
 }
-    
+
 void Logger::Log(const char *event)
-{ 
+{
     ofstream fl(log_file.c_str(), ios::app);
 
     if(!fl)
@@ -174,7 +174,7 @@ void Logger::Log(const char *event)
     {
         fl<<event<<endl;
     }
-    
+
     fl.close();
 }
 
