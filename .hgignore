@@ -12,8 +12,9 @@ precomputed
 docs/html/
 docs/latex/
 TAGS
-makefile.in
+makefile.in.*
 my_*
+
 
 syntax: regexp
 \.[oa]
