@@ -5,10 +5,10 @@
 
 ######################################################################
 ######################################################################
-#                                                                    # 
-#    This is the base for the job generating script. Try not to      #         
+#                                                                    #
+#    This is the base for the job generating script. Try not to      #
 #    edit this file. Copy and presonalize the last portion of        #
-#    this file to another (local) file and source this file          # 
+#    this file to another (local) file and source this file          #
 #    there.                                                          #
 #                                                                    #
 ######################################################################
@@ -18,7 +18,7 @@
 machine=$(hostname)
 walltime=$4
 : ${walltime:=30} #min
-codeversion="VES3D_$(git tag)"
+codeversion="VES3D_$(hg id -n)"
 srcdir=$VES3D_DIR
 jobfile=$3
 
@@ -77,7 +77,7 @@ if [ $jobfile ]; then
     jobfile=$label.$executable.$jobfile
     exec > $jobfile  #redirecting stdout to the file
 fi
-  
+
 if [ ! -d $scratchdir/precomputed ]; then
     echo `ln -s $VES3D_DIR/precomputed/ $scratchdir/precomputed`
 fi
@@ -89,7 +89,7 @@ echo `cp $srcdir/$optpath/$optfile $scratchdir/$targetoptfile`
 ######################################################################
 #  Copy and uncomment one of the following
 ######################################################################
-                                                                     
+
 # #!/bin/bash
 #
 # useremail="rahimian@gatech.edu"
@@ -97,7 +97,7 @@ echo `cp $srcdir/$optpath/$optfile $scratchdir/$targetoptfile`
 #
 # source createJob.sh
 #
-# echo "#PBS -M $useremail" 
+# echo "#PBS -M $useremail"
 # if [ $grantnumber ]; then
 #     echo "#PBS -A $grantnumber"
 # fi
@@ -107,10 +107,9 @@ echo `cp $srcdir/$optpath/$optfile $scratchdir/$targetoptfile`
 # echo "#PBS -m a"
 # echo
 # echo "$ompthreads"
-# echo 
+# echo
 # echo "cd $scratchdir"
 # echo "./$targetexecutable > $outfile"
 # echo "mv $outfile $srcdir/results/"
 #
 ######################################################################
-

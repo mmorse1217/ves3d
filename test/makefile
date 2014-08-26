@@ -1,21 +1,24 @@
-EXEC =  LoggerTest.exe        \
-	DeviceTest.exe        \
-	BlasToyTest.exe       \
-	ScalarsTest.exe       \
-	BiCGStabTest.exe      \
-	SurfaceTest.exe       \
-	EvolveSurfaceTest.exe \
+EXEC = 	BenchmarkInterfacialVel.exe	\
+	BiCGStabTest.exe		\
+	BlasToyTest.exe			\
+	DeviceTest.exe			\
+	EvalVelocityTest.exe		\
+	EvolveSurfaceTest.exe		\
+	EvolveSurfaceTestMultThread.exe \
+	LoggerTest.exe			\
+	MovePoleTest.exe		\
+	ParsingTest.exe			\
+	RepartitionTest.exe		\
+	SHTransTest.exe			\
+	ScalarsTest.exe			\
+	StokesTest.exe			\
+        SurfaceTest.exe			\
 
-ifeq ($(VES3D_TESTING),yes)
-  EXEC+= BenchmarkInterfacialVel.exe \
-	MovePoleTest.exe \
-	EvolveSurfaceTestMultThread.exe #StokesTest.exe
-endif
 
 ARFILES = $(VES3D_DIR)/lib/libves3d.a
 
 ifeq ($(USE_GPU),yes)
-  ARFILES += $(VES3D_DIR)/lib/libves3dgpu.a 
+  ARFILES += $(VES3D_DIR)/lib/libves3dgpu.a
 endif
 
 MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
@@ -31,10 +34,10 @@ all: $(EXEC)
 
 .PHONY: clean check
 
-clean: 
+clean:
 	-$(RM) *.o *.exe *.out *.d
 
 check:  $(EXEC)
-	@for exec in *.exe; do ./$$exec; done
+	@for exec in *.exe; do echo "\n\nRunning " $$exec; ./$$exec; done
 
 -include $(EXEC:.exe=.d)

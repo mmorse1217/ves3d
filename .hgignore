@@ -13,6 +13,7 @@ docs/html/
 docs/latex/
 TAGS
 makefile.in
+my_*
 
 syntax: regexp
 \.[oa]

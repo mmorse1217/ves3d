@@ -8,9 +8,9 @@ int main(int argc, char **argv)
         <<"  Blas Test:"
         <<"\n ==============================\n");
     sleep(1);
-    
-    int k = 4*2048;
-    int n = 4*2048;
+
+    int k = 2*2048;
+    int n = 2*2048;
 
     size_t sa = n*n;
     size_t sb = n*k;
@@ -32,15 +32,15 @@ int main(int argc, char **argv)
 
     {// cpu
         Device<CPU> cpu(0);
-      
+
         real *A = (real*) cpu.Malloc(sa * sizeof(real));
         real *B = (real*) cpu.Malloc(sb * sizeof(real));
         real *C = (real*) cpu.Malloc(sc * sizeof(real));
-      
+
         cpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
         cpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
         cpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
-      
+
         cpu.Free(A);
         cpu.Free(B);
         cpu.Free(C);
@@ -53,11 +53,11 @@ int main(int argc, char **argv)
         real *A = (real*) gpu.Malloc(sa * sizeof(real));
         real *B = (real*) gpu.Malloc(sb * sizeof(real));
         real *C = (real*) gpu.Malloc(sc * sizeof(real));
-      
+
         gpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
         gpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
         gpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
-      
+
         gpu.Free(A);
         gpu.Free(B);
         gpu.Free(C);

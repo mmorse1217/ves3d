@@ -16,45 +16,47 @@ extern Device<CPU> the_cpu_dev(0);
 
 int main(int argc, char *argv[])
 {
-    typedef typename containers::Scalars<real,CPU,the_cpu_dev> Sca_t;
-    typedef typename containers::Vectors<real,CPU,the_cpu_dev> Vec_t;
-    
-    int nVec(1), p(12), q(2*p);
+    typedef Scalars<real,CPU,the_cpu_dev> Sca_t;
+    typedef Vectors<real,CPU,the_cpu_dev> Vec_t;
+    typedef OperatorsMats<Sca_t> Mats_t;
+    typedef SHTrans<Sca_t,Mats_t> Sh_t;
+
+    int nVec(1), p(6), q(2*p);
     Parameters<real> params;
     params.sh_order = p;
     params.rep_up_freq = q;
     cout<<params<<endl;
 
     //reading mats
+    DataIO IO;
 
-    DataIO<float, CPU> IO(the_cpu_dev);
-    bool readFromFile(true);
-    OperatorsMats<real, DataIO<float, CPU> > mats(IO, readFromFile, params);
-    
     //Initializing vesicle positions from text file
-    Vec x(nVec, p);
+    Vec_t x(nVec, p);
     char fname[200];
     sprintf(fname, "precomputed/biconcave_ra65_%d",p);
-    IO.ReadData(fname, x.size(), x.begin());
+    IO.ReadData(fname, x);
 
     //Operators
-    SHTrans<Sca> sht_p(p, mats.mats_p_, 1);
-    SHTrans<Sca> sht_q(q, mats.mats_p_up_);
-    
+    bool readFromFile(true);
+    Mats_t M(readFromFile, params);
+
     //Work vectors
     int mx = (p > q)? p : q;
-    Vec shc(nVec, mx), wrk(nVec, mx);
-    
-    //resampling
-    Vec xr(nVec, q);
-    Resample(x, sht_p, sht_q, shc, wrk, xr);
-    IO.WriteData("ShtResampling.out", xr.size(), xr.begin(), ios::out);
-    
-    //Filtering
-    IO.WriteData("ShtFiltering.out", x.size(), x.begin(), ios::out);
-    sht_p.lowPassFilter(x, wrk, shc, x);
-    IO.WriteData("ShtFiltering.out", x.size(), x.begin(), ios::app);
+    Vec_t shc(nVec, mx), wrk(nVec, mx);
 
+    //resampling
+    Vec_t xr(nVec, q);
+    Sh_t SH_p(params.sh_order,M);
+    Sh_t SH_q(params.rep_up_freq,M);
+    assert(false); //outdated test
+    //Resample(x, SH_p, SH_q, shc, wrk, xr);
+    IO.WriteData("ShtResampling.out", xr, ios::out);
+
+    // //Filtering
+
+    // IO.WriteData("ShtFiltering.out", x, ios::out);
+    // SH.lowPassFilter(x, wrk, shc, x);
+    // IO.WriteData("ShtFiltering.out", x, ios::app);
 
     return 0;
 }
