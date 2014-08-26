@@ -1,0 +1,54 @@
+\documentclass[11pt]{article}
+
+\usepackage[fleqn,reqno]{amsmath}
+\usepackage{amsfonts, amssymb, stmaryrd, xifthen}
+
+\def\defeq{\mathrel{\mathop :}=}
+\def\R{\mathbb{R}}
+
+\usepackage{algorithmic,algorithm}
+%% \newlength\commLen
+%% \newlength\textLen
+%% \newlength\resLen
+%% \renewcommand{\algorithmiccomment}[1]{
+%%         \settowidth\textLen{\footnotesize\tt// #1}
+%%         \setlength\resLen{\the\commLen}
+%%         \addtolength\resLen{-\the\textLen}
+%%         \hfill{\footnotesize\tt// #1}\hspace{\the\resLen}}
+
+\begin{document}
+
+In our red blood cell simulation, at any time step there is a
+computation stage involving a series of matrix-matrix multiplications.
+Let $p$ denote the independent size variable, $N$ the number of RBC's,
+and let $A^i (i=0, \dots, p), B$, and $C$ denote the matrices
+involved.  Matrices $A^i$ are fixed, while the matrix $B$ is the
+position of RBC's that changes between time steps. Letting $M \defeq
+2p(p+1)$, then we have $A^i \in \R^{M\times M}$, $B, C \in \R^{M\times
+ N}$. The pseudocode for that portion of the code would be
+
+\begin{algorithm}[!hbt]
+  \begin{algorithmic}
+    \FOR{$i=0$ to $p$}
+      \FOR{$j=0$ to $2p-1$}
+
+      \STATE $A^{i.j} \leftarrow$ permute $A^i$
+      \COMMENT{The permutation formula is given below}
+
+      \STATE $C\leftarrow A^{i,j} B$
+
+      \STATE {\footnotesize \tt{//Perform some processing on C}}
+
+      \ENDFOR
+    \ENDFOR
+  \end{algorithmic}
+\end{algorithm}
+
+The permutation step mentioned in the pseudocode involves exchanging
+columns of $A^i$. For any fixed $j\;(j=0,\dots,2p-1)$ it is defined as
+\[A^{i,j}(n,m) = A^i\left(n, \left\lfloor \frac{m}{2p} \right\rfloor +
+  m\mod 2p - j \right),\] where we used Matlab's notation for
+indexing. It is understood that $m\mod 2p - j$ is to be positive and
+between $0$ and $2p-1$. When negative it is shifted by $2p$.
+
+\end{document}
