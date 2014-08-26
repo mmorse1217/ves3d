@@ -1,5 +1,12 @@
 #include "Logger.h"
 
+#include <algorithm> //to get for_each()
+#include <fstream>   //ofstream type
+// #include <iomanip>
+// #include <ios>
+#include <unistd.h>  //to get sleep()
+
+
 stack<double> Logger::TicStack;
 stack<double> Logger::FlopStack;
 map<string, LogEvent> Logger::PrflMap;

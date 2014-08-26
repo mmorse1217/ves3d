@@ -34,16 +34,11 @@
 #define _LOGGER_H_
 
 #include <iostream>
-#include <ios>
-#include <iomanip>
-#include <fstream>
-#include <sys/time.h>
-#include <unistd.h>
 #include <map>
-#include <stack>
-#include <algorithm>
-#include <string>
 #include <omp.h>
+#include <stack>
+#include <string>
+// #include <sys/time.h>
 
 using namespace std;
 
