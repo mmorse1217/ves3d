@@ -1,6 +1,12 @@
 List of files organized based on their functionality {#filelist}
 ====================================================
 
+Prefix keys:
+------------
+- [AR]: Abtin Rahimian
+- [DM]: Dhairya Malhotra
+- [R] : Reviewed
+
 Device:
 -------
 - CPUKernels.cc
@@ -78,6 +84,10 @@ Core:
 - Parameters.cc
 - Parameters.h
 - - -
+- [DM] Repartition.h       //repartition based on FMM box, random handling of cut vesicles, could be the same class as interaction(). make abstract and subclass
+- [DM] Repartition.cc
+- [DM] RepartitionTest.cc
+- - -
 - Surface.cc
 - Surface.h
 - - -
@@ -86,6 +96,9 @@ Core:
 - SurfaceTest.cc
 - - -
 - TimeStepperMult.h
+- - -
+- [DM] VesInteraction.h    //add single and double layer interface;imporve interface. Rename it to InteractionInterface() (abstract?) and subclass this for pvfmm
+- [DM] VesInteraction.cc
 
 Util:
 -----
@@ -125,14 +138,6 @@ Util:
 - ParserLite.h
 - ParsingTest.cc
 - ParsingTestInput.in
-- - -
-- [DM] Repartition.h       //repartition based on FMM box, random handling of cut vesicles, could be the same class as interaction(). make abstract and subclass
-- [DM] Repartition.cc
-- [DM] RepartitionTest.cc
-- - -
-- [DM] VesInteraction.h    //add single and double layer interface;imporve interface. Rename it to InteractionInterface() (abstract?) and subclass this for pvfmm
-- [DM] VesInteraction.cc
-
 - - -
 - anyoption.cc
 - anyoption.h
