@@ -155,9 +155,9 @@ class Logger
 #define PRINTFRMT scientific<<setprecision(4)
 #define CERR(str,endline,action) (                                      \
         std::cerr<<endl<<str                                            \
-        <<"\n         File     : "<< __FILE__                           \
-        <<"\n         Line     : "<< __LINE__                           \
-        <<"\n         Function : "<< __FUNCTION__<<endline,             \
+        <<"\n        File     : "<< __FILE__                            \
+        <<"\n        Line     : "<< __LINE__                            \
+        <<"\n        Function : "<< __FUNCTION__<<endline,              \
         action                                                          \
                                                                         )
 

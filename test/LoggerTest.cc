@@ -74,5 +74,9 @@ int main(int argc, char** argv)
     file.close();
 
     remove(log_file.c_str());
+
+    COUT("\n\nSending some text to cout"<<endl);
+    CERR("Some text to cerr",endl,NULL);
+
     sleep(1);
 }
