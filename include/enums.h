@@ -67,7 +67,7 @@ enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 ///insertion operator << is overloaded for this type.
 
 ///Errors in the Ves3D code
-enum Ves3DErrors {Success,
+enum Ves3DErrors {Success=0,
                   InvalidParameter,
                   UnknownError,
                   InvalidDevice, SetOnActiveDevice,    //Device error
