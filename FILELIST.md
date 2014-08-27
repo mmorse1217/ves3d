@@ -1,0 +1,143 @@
+List of files organized based on their functionality {#filelist}
+====================================================
+
+Device:
+-------
+- CPUKernels.cc
+- CPUKernels.h
+- StokesTest.cc
+- CudaApiGlobals.cc
+- CudaApiGlobals.h
+- CudaKernels.cu
+- CudaKernels.h
+- - -
+- [AR] Device.h
+- DeviceCPU.cc
+- DeviceGPU.cc
+- [AR] DeviceTest.cc
+- [AR] DeviceTest.h
+- - -
+- transpose_kernel.cu
+- transpose_kernel.h
+- transpose_wrapper.cu
+
+Basic:
+------
+- [R] Enums.cc
+- [R] Enums.h
+- [R] EnumsTest.cc
+- - -
+- [R] Error.cc
+- [R] Error.h
+- [R] ErrorTest.cc
+- - -
+- [R] Logger.cc
+- [R] Logger.h
+- [R] LoggerTest.cc
+- - -
+- [AR] Array.cc
+- [AR] Array.h
+- - -
+- [AR] ScalarContainerTest.h
+- [AR] Scalars.cc
+- [AR] Scalars.h
+- [AR] ScalarsTest.cc
+- - -
+- [AR] Vectors.cc
+- [AR] Vectors.h
+- - -
+- [AR] OperatorsMats.cc
+- [AR] OperatorsMats.h
+- - -
+- [AR] SHTMats.cc
+- [AR] SHTMats.h
+- [AR] SHTrans.cc
+- [AR] SHTrans.h
+- [AR] SHTransTest.cc
+
+Core:
+-----
+- EvalVelocity.cc
+- EvalVelocity.h
+- EvalVelocityTest.cc
+- - -
+- EvolveSurface.cc
+- EvolveSurface.h
+- EvolveSurfaceTest.cc
+- EvolveSurfaceTestMultThread.cc
+- - -
+- InterfacialForce.cc
+- InterfacialForce.h
+- InterfacialVelocity.cc
+- InterfacialVelocity.h
+- - -
+- MovePole.cc
+- MovePole.h
+- MovePoleTest.cc
+- - -
+- Parameters.cc
+- Parameters.h
+- - -
+- Surface.cc
+- Surface.h
+- - -
+- SurfaceParams.cc
+- SurfaceParams.h
+- SurfaceTest.cc
+- - -
+- TimeStepperMult.h
+
+Util:
+-----
+- BenchmarkInterfacialVel.cc
+- - -
+- BgFlow.cc
+- BgFlow.h
+- BgFlowBase.h
+- - -
+- BiCGStab.cc
+- BiCGStab.h
+- BiCGStabTest.cc
+- - -
+- BlasToyTest.cc
+- HasAtlas.h
+- HasBlas.h
+- HasMkl.h
+- VesBlas.h
+- vesblas_cygwin.h
+- - -
+- CurvatureFlow.h
+- - -
+- DataIO.cc
+- DataIO.h
+- DataIO_templates.cc
+- - -
+- GLIntegrator.cc
+- GLIntegrator.h
+- - -
+- HelperFuns.cc
+- HelperFuns.h
+- - -
+- Monitor.cc
+- Monitor.h
+- - -
+- ParserLite.cc
+- ParserLite.h
+- ParsingTest.cc
+- ParsingTestInput.in
+- - -
+- [DM] Repartition.h       //repartition based on FMM box, random handling of cut vesicles, could be the same class as interaction(). make abstract and subclass
+- [DM] Repartition.cc
+- [DM] RepartitionTest.cc
+- - -
+- [DM] VesInteraction.h    //add single and double layer interface;imporve interface. Rename it to InteractionInterface() (abstract?) and subclass this for pvfmm
+- [DM] VesInteraction.cc
+-
+- - -
+- anyoption.cc
+- anyoption.h
+
+Comments
+--------
+1. Should we have one MPI per device? I think Yes.
+1. For both Repartition and VesInteraction add dummy and direct evaluation classes
