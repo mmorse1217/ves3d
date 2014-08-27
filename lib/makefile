@@ -3,6 +3,7 @@ include $(VES3D_DIR)/makefile.in.files/makefile.in
 LIB_SRC = $(VES3D_DIR)/src/CPUKernels.cc \
 	  $(VES3D_DIR)/src/Logger.cc	 \
 	  $(VES3D_DIR)/src/Enums.cc      \
+	  $(VES3D_DIR)/src/Error.cc      \
 	  $(VES3D_DIR)/src/DataIO.cc	 \
 	  $(VES3D_DIR)/src/anyoption.cc
 
