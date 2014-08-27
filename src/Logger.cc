@@ -2,7 +2,6 @@
 
 #include <algorithm> //to get for_each()
 #include <fstream>   //ofstream type
-// #include <iomanip>
 // #include <ios>
 #include <unistd.h>  //to get sleep()
 

@@ -1,3 +1,4 @@
+#include <unistd.h>  //for sleep()
 #include "Device.h"
 
 typedef float real;

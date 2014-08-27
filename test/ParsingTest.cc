@@ -1,4 +1,5 @@
 #include "Parameters.h"
+#include "Logger.h"
 
 typedef double real;
 

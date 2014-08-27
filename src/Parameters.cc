@@ -72,7 +72,7 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
   // 6. GET THE VALUES
   this->getOptionValues(&opt);
 
-  COUT(*this<<endl);
+  //COUT(*this<<endl);
 
   return Success;
 }

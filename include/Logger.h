@@ -34,6 +34,7 @@
 #define _LOGGER_H_
 
 #include <iostream>
+#include <iomanip>  //for setpercision
 #include <map>
 #include <omp.h>
 #include <stack>
@@ -152,7 +153,7 @@ class Logger
 /*
  * Printing macro
  */
-#define PRINTFRMT scientific<<setprecision(4)
+#define SCI_PRINT_FRMT scientific<<setprecision(4)
 #define CERR(str,endline,action) (                                      \
         std::cerr<<endl<<str                                            \
         <<"\n        File     : "<< __FILE__                            \

@@ -1,3 +1,4 @@
+#include <unistd.h>  //for sleep()
 #include "DeviceTest.h"
 
 int main(int argc, char** argv)
@@ -58,10 +59,10 @@ int main(int argc, char** argv)
 
     string res_print = res ? "works fine." : "is broken!";
     cout<<sep<<"\n  The device class " + res_print<<endl<<sep<<endl;
-   
+
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);
-    
+
     sleep(1);
     return 0;
 }

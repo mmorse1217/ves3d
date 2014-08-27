@@ -1,10 +1,13 @@
 #ifndef _INTERFACIALVELOCITY_H_
 #define _INTERFACIALVELOCITY_H_
 
+#include "Logger.h"
+#include "Enums.h"
+#include "Error.h"
+
 #include "InterfacialForce.h"
 #include "BiCGStab.h"
 #include "SHTrans.h"
-#include "Logger.h"
 #include "Device.h"
 #include <queue>
 #include <memory>

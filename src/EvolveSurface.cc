@@ -89,12 +89,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
     while ( ERRORSTATUS() && t < time_horizon )
     {
-        QC( (F_->*updater)(dt) );
+        CHK( (F_->*updater)(dt) );
         F_->reparam();
         t += dt;
 
         (*repartition_)(S_->getPositionModifiable(), F_->tension(), user_ptr_);
-        QC( (*monitor_)( this, t, dt) );
+        CHK( (*monitor_)( this, t, dt) );
     }
 
     return Success;

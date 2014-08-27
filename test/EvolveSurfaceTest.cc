@@ -1,4 +1,5 @@
 #include "EvolveSurface.h"
+#include "Error.h"
 #include "CPUKernels.h"
 
 extern const Device<CPU> the_cpu_device(0);
@@ -12,13 +13,13 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     typedef EvolveSurface<real, DT, DEVICE> Evolve_t;
     typedef typename Evolve_t::Vec_t Vec_t;
 
-    //Initial vesicle positions 
+    //Initial vesicle positions
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
-    
-    //reading the prototype form file  
+
+    //reading the prototype form file
     DataIO myIO(sim_par.save_file_name);
     char fname[300];
-    string prec = (typeid(real) == typeid(float)) ? "float" : "double"; 
+    string prec = (typeid(real) == typeid(float)) ? "float" : "double";
     sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
     myIO.ReadData(fname, x0, 0, x0.getSubLength());
 
@@ -46,8 +47,8 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     typename Evolve_t::Interaction_t interaction(&StokesAlltoAll);
     //Finally, Evolve surface
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &interaction);
-    
-    QC ( Es.Evolve() );
+
+    CHK ( Es.Evolve() );
 }
 
 int main(int argc, char **argv)
@@ -58,35 +59,35 @@ int main(int argc, char **argv)
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
-    
+
     sim_par.sh_order = 12;
     sim_par.filter_freq = 8;
     sim_par.rep_up_freq = 24;
     sim_par.rep_filter_freq = 4;
-    
-    sim_par.n_surfs = 2;   
-    sim_par.ts = 1;    
+
+    sim_par.n_surfs = 2;
+    sim_par.ts = 1;
     sim_par.time_horizon = 2;
     sim_par.scheme = Explicit;
     sim_par.singular_stokes = Direct;
     sim_par.bg_flow_param = 0;
     sim_par.upsample_interaction = true;
     sim_par.rep_maxit = 20;
-    sim_par.save_data = true;    
+    sim_par.save_data = true;
     sim_par.save_stride = 1;
     sim_par.save_file_name = "EvolveSurf.out";
     COUT(sim_par);
-    
+
     //Cleaning the slate
     remove(sim_par.save_file_name.c_str());
-    
+
     CLEARERRORHIST();
     PROFILESTART();
     COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
     EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
     PROFILEEND("",0);
     PRINTERRORLOG();
-    PROFILEREPORT(SortFlopRate);   
+    PROFILEREPORT(SortFlopRate);
 
 #ifdef GPU_ACTIVE
     CLEARERRORHIST();

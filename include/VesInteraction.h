@@ -37,7 +37,7 @@ class VesInteraction
      * @param position The Cartesian coordinate of the points.
      * @param density The density at each point.
      * @param potential (return value) The calculated potential on the points.
-     * @param usr_ptr The used defined pointer, that may be required by the FMM code.
+     * @param usr_ptr The user defined pointer, that may be required by the FMM code.
      *
      * @return Enum type defined in enums.h indicating the outcome of interaction.
      */

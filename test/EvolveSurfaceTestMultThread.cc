@@ -1,4 +1,5 @@
 #include "EvolveSurface.h"
+#include "Error.h"
 
 extern const Device<CPU> device(0);
 
@@ -64,7 +65,7 @@ void EvolveSurfaceTestMT(Parameters<real> &sim_par, int nsurfs,
     //Finally, Evolve surface
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, interaction, repartition);
 
-    QC ( Es.Evolve() );
+    CHK ( Es.Evolve() );
 
     //checking that everything is still identical
     assert(interaction == NULL);

@@ -11,6 +11,7 @@
 #include "Scalars.h"
 #include "cstring"
 #include <typeinfo>
+#include <unistd.h>  //for sleep()
 
 using namespace std;
 
@@ -37,11 +38,11 @@ bool ScalarsTest<Container>::PerformAll()
     COUT(" Replicating :"<<endl);
     sc_cpy.replicate(sc);
     COUT(sc_cpy);
-   
+
     typedef typename Container::value_type T;
     size_t sz = sc.size();
     T* buffer = new T[sc.size()];
-    
+
     for(size_t ii=0; ii<sz; ++ii)
         buffer[ii] = ii;
 
@@ -49,7 +50,7 @@ bool ScalarsTest<Container>::PerformAll()
         MemcpyHostToDevice);
 
     memset(buffer, 0, sz * sizeof(T));
-    
+
     sc.getDevice().Memcpy(buffer, sc.begin(), sz * sizeof(T),
         MemcpyDeviceToHost);
 
@@ -59,7 +60,7 @@ bool ScalarsTest<Container>::PerformAll()
     bool res(err==0);
 
     delete[] buffer;
-    
+
     COUT(" Copying form to and from the container: "<<((res) ? "Pass" : "Fail")<<endl);
 
     if(res)
@@ -70,6 +71,3 @@ bool ScalarsTest<Container>::PerformAll()
     sleep(.5);
     return res;
 }
-    
-
-

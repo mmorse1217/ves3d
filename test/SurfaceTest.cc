@@ -5,6 +5,7 @@
 #include "OperatorsMats.h"
 #include "Surface.h"
 #include "Parameters.h"
+#include <unistd.h>  //for sleep()
 
 extern const Device<CPU> the_cpu_device(0);
 #ifdef GPU_ACTIVE

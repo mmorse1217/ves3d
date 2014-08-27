@@ -1,5 +1,6 @@
 #include "ScalarContainerTest.h"
 #include "Scalars.h"
+#include <unistd.h>  //for sleep()
 
 extern const Device<CPU> cpu_dev(0);
 #ifdef GPU_ACTIVE
@@ -23,9 +24,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
-
-
-    
-
-
