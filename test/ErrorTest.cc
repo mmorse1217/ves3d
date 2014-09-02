@@ -1,12 +1,15 @@
 #include "Error.h"
 #include "Logger.h"
 
+#include <sstream>
+#include <cassert>
+
 using namespace std;
 
 #ifndef Doxygen_skip
 
 Error_t local_cb_a(const Error_t &err)
-{ 
+{
     COUT("CB_A: Received "<<err<<endl);
     return err;
 }
@@ -24,12 +27,12 @@ int main(int argc, char** argv)
         <<"  Error Test:"
         <<"\n ==============================\n");
 
-    CHK(Success);
-    CHK(InvalidParameter);
+    CHK(ErrorEvent::Success);
+    CHK(ErrorEvent::InvalidParameter);
 
     SET_ERR_CALLBACK(&local_cb_a);
-    CHK(InvalidDevice);
-    CHK_CB(SetOnActiveDevice,&local_cb_b);
+    CHK(ErrorEvent::InvalidDevice);
+    CHK_CB(ErrorEvent::SetOnActiveDevice,&local_cb_b);
 
     if (ERRORSTATUS())
         COUT("There was some error"<<endl);
@@ -40,11 +43,19 @@ int main(int argc, char** argv)
     int i;
     for(i=0;i<10;++i){
         if(i==3)
-            CHK(SolverDiverged);
+            CHK(ErrorEvent::SolverDiverged);
 	COUT(i<<endl);
         BREAKONERROR();
     }
     COUT("Stopped at i="<<i<<endl);
+
+    {
+        ostringstream stream;
+        string str;
+        stream<<ErrorEvent::Success;
+        COUT("Overloaded streaming operator"<<stream.str()<<endl);
+        assert(stream.str()=="Success");
+    }
 
     PRINTERRORLOG();
 }

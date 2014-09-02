@@ -14,6 +14,7 @@
 #include <omp.h>
 #include "VesBlas.h"
 #include "Logger.h"
+#include "Error.h"
 #include "CPUKernels.h"
 #include "Enums.h"
 

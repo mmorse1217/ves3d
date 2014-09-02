@@ -108,12 +108,4 @@ int main(int argc, char** argv)
         int sc = EnumifyScheme("GloballyImplicit");
         assert(sc==GloballyImplicit);
     }
-
-    {
-        stm stream;
-        str str;
-        stream<<Success;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="Success");
-    }
 }

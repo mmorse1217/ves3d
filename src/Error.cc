@@ -22,6 +22,49 @@ std::ostream& operator<<(std::ostream& output, const ErrorEvent &ee)
     return output;
 }
 
+std::ostream& operator<<(std::ostream& output, const Error_t &err_t)
+{
+    switch (err_t)
+    {
+        case ErrorEvent::Success:
+            output<<"Success";
+            break;
+        case ErrorEvent::InvalidParameter:
+            output<<"InvalidParameter";
+	    break;
+        case ErrorEvent::UnknownError:
+            output<<"UnkownError";
+            break;
+        case ErrorEvent::InvalidDevice:
+            output<<"InvalidDevice";
+            break;
+        case ErrorEvent::SetOnActiveDevice:
+            output<<"SetOnActiveDevice";
+            break;
+        case ErrorEvent::SolverDiverged:
+            output<<"SolverDiverged";
+            break;
+        case ErrorEvent::NoInteraction:
+            output<<"NoInteraction";
+            break;
+        case ErrorEvent::InteractionFailed:
+            output<<"InteractionFailed";
+            break;
+        case ErrorEvent::RepartitioningFailed:
+            output<<"RepartitioningFailed";
+            break;
+        case ErrorEvent::AccuracyError:
+            output<<"AccuracyError";
+            break;
+        default:
+            output<<err_t
+                  <<" [The string for the given enum type is not known"
+                  <<", update the insertion operator]";
+    }
+
+    return output;
+}
+
 /*
  * Error handler
  */
@@ -39,7 +82,7 @@ ErrorHandler::ErrorCallBack ErrorHandler::setErrorCallBack(
 ErrorEvent ErrorHandler::submitError(ErrorEvent ee,
     ErrorCallBack call_back_in)
 {
-    if (ee.err_ != Success )
+    if (ee.err_ != ErrorEvent::Success )
     {
         ErrorHandler::ErrorStack_.push(ee);
         ErrorHandler::ringTheCallBack(ee, call_back_in);
@@ -118,5 +161,5 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
         cerr<<"\n  No callback is set to handle:"<<ee<<endl;
     }
 
-    return UnknownError;
+    return ErrorEvent::UnknownError;
 }

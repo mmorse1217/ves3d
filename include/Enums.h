@@ -63,21 +63,6 @@ enum SolverScheme {Explicit, BlockImplicit, GloballyImplicit};
 ///and cache some of the expected results
 enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 
-///The enum types for the errors in the Ves3D set of function, the
-///insertion operator << is overloaded for this type.
-
-///Errors in the Ves3D code
-enum Ves3DErrors {Success=0,
-                  InvalidParameter,
-                  UnknownError,
-                  InvalidDevice, SetOnActiveDevice,    //Device error
-                  SolverDiverged,
-                  NoInteraction, InteractionFailed,
-                  NoRepartition, RepartitioningFailed,
-                  AccuracyError};
-
-typedef enum Ves3DErrors Error_t;
-
 ///String to enums functions
 enum SolverScheme EnumifyScheme(const char * name);
 enum SingularStokesRot EnumifyStokesRot(const char * name);
@@ -102,9 +87,5 @@ std::ostream& operator<<(
 std::ostream& operator<<(
     std::ostream& output,
     const enum SingularStokesRot &SS);
-
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum Ves3DErrors &err);
 
 #endif //_ENUMS_H_

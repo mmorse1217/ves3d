@@ -18,8 +18,8 @@ Device:
 - CudaKernels.h
 - - -
 - [AR] Device.h
-- DeviceCPU.cc
-- DeviceGPU.cc
+- [AR] DeviceCPU.cc
+- [AR] DeviceGPU.cc
 - [AR] DeviceTest.cc
 - [AR] DeviceTest.h
 - - -
@@ -41,8 +41,9 @@ Basic:
 - [R] Logger.h
 - [R] LoggerTest.cc
 - - -
-- [AR] Array.cc
-- [AR] Array.h
+- [R] Array.cc
+- [R] Array.h
+- [R] ArrayTest.cc
 - - -
 - [AR] ScalarContainerTest.h
 - [AR] Scalars.cc
