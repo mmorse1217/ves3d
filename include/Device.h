@@ -58,6 +58,11 @@ template<enum DeviceType DT = CPU>
 class Device
 {
   public:
+    enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice,
+                     MemcpyDeviceToHost, MemcpyDeviceToDevice};
+
+    static DeviceType type(){return(DT);}
+
     ///The constructor of the class. device_id is a user-specified ID
     ///and err is the return error type corresponding to the
     ///instantiation action. Both of these parameter are optional.
