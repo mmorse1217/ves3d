@@ -5,13 +5,13 @@ Device<GPU>::Device(int device_id, Error_t *err)
         switch ( cudaSetDevice(device_id) )
         {
             case cudaSuccess:
-                *err = Success;
+	      *err = ErrorEvent::Success;
                 break;
             case cudaErrorInvalidDevice:
-                *err = InvalidDevice;
+	      *err = ErrorEvent::InvalidDevice;
                 break;
             case cudaErrorSetOnActiveProcess:
-                *err = SetOnActiveDevice;
+	      *err = ErrorEvent::SetOnActiveDevice;
                 break;
         }
     else
