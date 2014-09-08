@@ -17,7 +17,7 @@ class VesInteraction
 {
   public:
     ///The pointer-type to the external FMM function handle.
-    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void*);
+    typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void**);
 
     /**
      * @param interaction_handle The function pointer to the FMM
@@ -57,6 +57,7 @@ class VesInteraction
     mutable T* all_pos_;
     mutable T* all_den_;
     mutable T* all_pot_;
+    mutable void* usr_ptr_;
 
     size_t getCpyDestIdx(size_t this_thread_np) const;
     void checkContainersSize() const;

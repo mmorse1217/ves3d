@@ -1,4 +1,5 @@
 # User variables
+USE_PVFMM     ?= no
 USE_GPU       ?= yes
 VES3D_TESTING ?= no
 PLATFORM      ?= $(shell hostname)
@@ -16,6 +17,19 @@ TAGS    = etags
 include $(VES3D_DIR)/makefile.in.files/makefile.$(CXX)
 -include $(VES3D_DIR)/makefile.in.files/makefile.$(PLATFORM)
 CXXFLAGS+= $(ALL_INCLUDE)
+
+# PVFMM
+ifeq ($(USE_PVFMM),yes)
+  -include $(PVFMM_DIR)/MakeVariables
+  ifdef CXXFLAGS_PVFMM
+    CXXFLAGS+=$(CXXFLAGS_PVFMM) -DHAVE_PVFMM
+    LDFLAGS:=$(LDFLAGS_PVFMM) $(LDFLAGS)
+    #LDFLAGS+=$(LDFLAGS_PVFMM)
+    CXX=$(CXX_PVFMM)
+  else
+    $(warning WARNING: File not found: $$(PVFMM_DIR)/MakeVariables. Not supporting PVFMM.)
+  endif
+endif
 
 # GPU	
 ifeq ($(USE_GPU),yes)

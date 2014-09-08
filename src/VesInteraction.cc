@@ -9,7 +9,8 @@ VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
     containers_capacity_(0),
     all_pos_(NULL),
     all_den_(NULL),
-    all_pot_(NULL)
+    all_pot_(NULL),
+    usr_ptr_(NULL)
 {
     for(int ii=0; ii<num_threads_; ++ii)
         each_thread_idx_[ii] = each_thread_np_[ii] = 0;
@@ -80,7 +81,8 @@ Error_t VesInteraction<T>::operator()(
     // call user interaction routine
 #pragma omp barrier
 #pragma omp master
-    interaction_handle_(all_pos_, all_den_, np_, all_pot_, usr_ptr);
+    if(!usr_ptr) usr_ptr_=usr_ptr;
+    interaction_handle_(all_pos_, all_den_, np_, all_pot_, &usr_ptr_);
 #pragma omp barrier
 
     //Copying back the potential to the device(s)

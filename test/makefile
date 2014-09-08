@@ -1,3 +1,4 @@
+
 EXEC = 	BenchmarkInterfacialVel.exe	\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
@@ -9,6 +10,7 @@ EXEC = 	BenchmarkInterfacialVel.exe	\
 	LoggerTest.exe			\
 	MovePoleTest.exe		\
 	ParsingTest.exe			\
+	PVFMMInterfaceTest.exe		\
 	RepartitionTest.exe		\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
