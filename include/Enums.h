@@ -38,18 +38,7 @@
 #include <stack>
 #include <string>
 
-using namespace std;
-
 #define DIM 3
-
-///The enum types for the types of device, the insertion operator <<
-///is overloaded for this type.
-enum DeviceType {CPU, GPU};
-
-///The enum types for the memory copying action, the insertion
-///operator << is overloaded for this type.
-enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice,
-                 MemcpyDeviceToHost, MemcpyDeviceToDevice};
 
 ///The enum type for the reordering of the points
 ///PointMajor means [x_1,y_1,z_1,...] ordering
@@ -66,15 +55,6 @@ enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 ///String to enums functions
 enum SolverScheme EnumifyScheme(const char * name);
 enum SingularStokesRot EnumifyStokesRot(const char * name);
-
-///Overloaded insertion operators
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum DeviceType &DT);
-
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum MemcpyKind &MK);
 
 std::ostream& operator<<(
     std::ostream& output,

@@ -18,54 +18,6 @@ int main(int argc, char** argv)
     {
         stm stream;
         str str;
-        stream<<CPU;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="CPU");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<GPU;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="GPU");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyHostToHost;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyHostToHost");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyHostToDevice;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyHostToDevice");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyDeviceToHost;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyDeviceToHost");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyDeviceToDevice;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyDeviceToDevice");
-    }
-
-    {
-        stm stream;
-        str str;
         stream<<PointMajor;
         COUT(stream.str()<<endl);
         assert(stream.str()=="PointMajor");
