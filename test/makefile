@@ -27,13 +27,14 @@ include $(MAKEIN)
 
 all: $(EXEC)
 
-%.exe: %.o $(ARFILES) %.d $(MAKEIN)
+#build the dependencies for next time. We can have a rule for
+#dependency files (%.d: %.cc) but that builds the dependency everytime
+%.exe: %.o $(ARFILES) $(MAKEIN)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
-
-%.d: %.cc
-	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@
+	$(CXX) -MM $(CPPFLAGS) $*.cc -o $*.d
 
 .PHONY: clean check
+.SECONDARY:
 
 clean:
 	-$(RM) *.o *.exe *.out *.d
