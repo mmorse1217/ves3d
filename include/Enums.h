@@ -35,7 +35,6 @@
 #define _ENUMS_H_
 
 #include <iostream>
-#include <stack>
 #include <string>
 
 #define DIM 3

@@ -6,11 +6,6 @@
  * @brief  The implementation of the Device class.
  */
 
-inline pair<int, int> gridDimOf(int sh_order)
-{
-    return((sh_order >= 0) ? make_pair(sh_order + 1, 2 * sh_order) : make_pair(1,1));
-}
-
 template<enum DeviceType DT>
 Device<DT>::Device(int device_id, Error_t *err)
 {
@@ -627,15 +622,13 @@ bool Device<CPU>::isNan(const T* x, size_t length) const
 
 template<>
 template<typename T>
-void Device<CPU>::AggregateRotation(int sh_order, int n_vec,
-    const int* n_sub, const T* mat, const T** vec, T** wrk,
+void Device<CPU>::AggregateRotation(int sh_order,
+    int nlat, int nlong, int n_vec, const int* n_sub,
+    const T* mat, const T** vec, T** wrk,
     T** res, int ) const
 {
     PROFILESTART();
-    int nlat = gridDimOf(sh_order).first;
-    int nlong = gridDimOf(sh_order).second;
     int np = nlat * nlong;
-
     T alpha(1), beta(0);
 
     for(int jj=0; jj<nlong; ++jj)
@@ -680,4 +673,48 @@ template<enum DeviceType DTlhs, enum DeviceType DTrhs>
 inline bool operator==(const Device<DTlhs> &lhs, const Device<DTrhs> &rhs)
 {
     return((void*) &lhs == (void*) &rhs);
+}
+
+std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT)
+{
+    switch (DT)
+    {
+        case CPU:
+            output<<"CPU";
+            break;
+        case GPU:
+            output<<"GPU";
+            break;
+    }
+
+    return output;
+}
+
+std::ostream& operator<<(
+    std::ostream& output,
+    const enum MemcpyKind &MK)
+{
+    switch (MK)
+    {
+        case MemcpyHostToHost:
+            output<<"MemcpyHostToHost";
+            break;
+
+        case MemcpyHostToDevice:
+            output<<"MemcpyHostToDevice";
+            break;
+
+        case MemcpyDeviceToHost:
+            output<<"MemcpyDeviceToHost";
+            break;
+
+        case MemcpyDeviceToDevice:
+            output<<"MemcpyDeviceToDevice";
+            break;
+
+        default:
+            output<<"DONT KNOW MemcpyKind "<< int(MK);
+    }
+
+    return output;
 }

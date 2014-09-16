@@ -1,5 +1,7 @@
 #include <unistd.h>  //for sleep()
 #include "DeviceTest.h"
+#include <iostream>
+#include <sstream>
 
 int main(int argc, char** argv)
 {
@@ -7,6 +9,56 @@ int main(int argc, char** argv)
         <<"  Device Test:"
         <<"\n ==============================\n");
     sleep(1);
+
+    typedef ostringstream stm;
+    typedef string str;
+    {
+        stm stream;
+        str str;
+        stream<<CPU;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="CPU");
+    }
+
+    {
+        stm stream;
+        str str;
+        stream<<GPU;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="GPU");
+    }
+
+    {
+        stm stream;
+        str str;
+        stream<<MemcpyHostToHost;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="MemcpyHostToHost");
+    }
+
+    {
+        stm stream;
+        str str;
+        stream<<MemcpyHostToDevice;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="MemcpyHostToDevice");
+    }
+
+    {
+        stm stream;
+        str str;
+        stream<<MemcpyDeviceToHost;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="MemcpyDeviceToHost");
+    }
+
+    {
+        stm stream;
+        str str;
+        stream<<MemcpyDeviceToDevice;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="MemcpyDeviceToDevice");
+    }
 
     PROFILESTART();
     bool res;
