@@ -28,38 +28,6 @@ int main(int argc, char** argv)
         assert(stream.str()=="GPU");
     }
 
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyHostToHost;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyHostToHost");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyHostToDevice;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyHostToDevice");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyDeviceToHost;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyDeviceToHost");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyDeviceToDevice;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyDeviceToDevice");
-    }
-
     PROFILESTART();
     bool res;
     string sep(60,'-');

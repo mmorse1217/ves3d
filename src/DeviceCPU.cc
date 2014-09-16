@@ -689,32 +689,3 @@ std::ostream& operator<<(std::ostream& output, const enum DeviceType &DT)
 
     return output;
 }
-
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum MemcpyKind &MK)
-{
-    switch (MK)
-    {
-        case MemcpyHostToHost:
-            output<<"MemcpyHostToHost";
-            break;
-
-        case MemcpyHostToDevice:
-            output<<"MemcpyHostToDevice";
-            break;
-
-        case MemcpyDeviceToHost:
-            output<<"MemcpyDeviceToHost";
-            break;
-
-        case MemcpyDeviceToDevice:
-            output<<"MemcpyDeviceToDevice";
-            break;
-
-        default:
-            output<<"DONT KNOW MemcpyKind "<< int(MK);
-    }
-
-    return output;
-}

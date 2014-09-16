@@ -107,7 +107,7 @@ bool DeviceTest<DT,T>::TestCalloc()
     for(int ii=0;ii<arr_size;++ii)
         b[ii]=1.0;
 
-    device->Memcpy(b, a, arr_size * sizeof(T), MemcpyDeviceToHost);
+    device->Memcpy(b, a, arr_size * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
     bool res;
     for(size_t idx=0;idx<arr_size;++idx)
@@ -130,11 +130,11 @@ bool DeviceTest<DT,T>::TestMemcpy()
 
     for(int idx=0;idx<arr_size;++idx)
         b[idx] = 1;
-    device->Memcpy(a, b, arr_size * sizeof(T), MemcpyHostToDevice);
+    device->Memcpy(a, b, arr_size * sizeof(T), Device<DT>::MemcpyHostToDevice);
 
     for(int idx=0;idx<arr_size;++idx)
         b[idx] = 2;
-    device->Memcpy(b, a, arr_size * sizeof(T), MemcpyDeviceToHost);
+    device->Memcpy(b, a, arr_size * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
     bool res = true;
     for(int idx=0;idx<arr_size;++idx)
@@ -186,12 +186,12 @@ bool DeviceTest<DT,T>::TestDotProduct()
                 c_host[ii*stride+jj] = 1;
             }
 
-        device->Memcpy(a, a_host, arr_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(b, b_host, arr_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(c, c_host,  sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(a, a_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(b, b_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(c, c_host,  sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
 
         device->DotProduct(a,b,stride,num_vecs,c);
-        device->Memcpy(c_host, c, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(c_host, c, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -230,10 +230,10 @@ bool DeviceTest<DT,T>::TestDotProduct()
             c_host[idx] = 1.0;
         }
 
-        device->Memcpy(a, a_host, arr_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(c, c_host,  sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(a, a_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(c, c_host,  sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->DotProduct(a,a,stride,num_vecs,c);
-        device->Memcpy(c_host, c, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(c_host, c, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T nn;
         for(int idx=0;idx<sc_length;idx++)
@@ -246,9 +246,9 @@ bool DeviceTest<DT,T>::TestDotProduct()
                 a_host[idx+stride+stride] /= nn;
         }
 
-        device->Memcpy(a, a_host, arr_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(a, a_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->DotProduct(a,a,stride,num_vecs,c);
-        device->Memcpy(c_host, c, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(c_host, c, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -287,9 +287,9 @@ bool DeviceTest<DT,T>::TestCrossProduct()
                 a_host[DIM*ii*stride + idx+stride+stride] = drand48();
             }
 
-        device->Memcpy(a, a_host, arr_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(a, a_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->CrossProduct(a,a,stride,num_vecs,c);
-        device->Memcpy(c_host, c, arr_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(c_host, c, arr_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<stride*num_vecs;idx++)
@@ -342,19 +342,19 @@ bool DeviceTest<DT,T>::TestCrossProduct()
             c_host[idx+stride+stride] = drand48();
         }
 
-        device->Memcpy(a, a_host, arr_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(b, c_host, arr_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(c, c_host, arr_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(a, a_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(b, c_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(c, c_host, arr_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
 
         // (a x b).c
         device->CrossProduct(a,b,stride,num_vecs,d);
         device->DotProduct(d,c,stride,num_vecs,e);
-        device->Memcpy(e_host, e, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(e_host, e, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         // (b x a).c
         device->CrossProduct(b,a,stride,num_vecs,d);
         device->DotProduct(d,c,stride,num_vecs,f);
-        device->Memcpy(f_host, f, sc_length  * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(f_host, f, sc_length  * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -363,7 +363,7 @@ bool DeviceTest<DT,T>::TestCrossProduct()
         // (c x a).b
         device->CrossProduct(c,a,stride,num_vecs,d);
         device->DotProduct(d,b,stride,num_vecs,f);
-        device->Memcpy(f_host, f, sc_length  * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(f_host, f, sc_length  * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         for(int idx=0;idx<sc_length;idx++)
             err = ((e_host[idx]-f_host[idx])>err) ? e_host[idx]-f_host[idx] : err ;
@@ -405,9 +405,9 @@ bool DeviceTest<DT,T>::TestSqrt()
         for(int idx=0;idx<sc_length;idx++)
             x_host[idx] = (T) drand48();
 
-        device->Memcpy(x, x_host, sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->Sqrt(x,sc_length,y);
-        device->Memcpy(y_host, y, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(y_host, y, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
         {
@@ -450,10 +450,10 @@ bool DeviceTest<DT,T>::Testxy()
             y_host[idx] = (T) drand48();
         }
 
-        device->Memcpy(x, x_host, sc_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(y, y_host, sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(y, y_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->xy(x,y,sc_length,z);
-        device->Memcpy(z_host, z, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(z_host, z, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0, diff;
         for(int idx=0;idx<sc_length;idx++)
@@ -492,10 +492,10 @@ bool DeviceTest<DT,T>::TestxyInv()
         for(int idx=0;idx<sc_length;idx++)
             x_host[idx] = (T) drand48();
 
-        device->Memcpy(x, x_host, sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->xyInv((T*) NULL, x, sc_length,y);
         device->xyInv((T*) NULL, y, sc_length,y);
-        device->Memcpy(y_host, y, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(y_host, y, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
             err = (x_host[idx]-y_host[idx]>err) ? x_host[idx]-y_host[idx] : err ;
@@ -525,10 +525,10 @@ bool DeviceTest<DT,T>::TestxyInv()
         for(int idx=0;idx<sc_length;idx++)
             x_host[idx] = (T) drand48();
 
-        device->Memcpy(x, x_host, sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->xyInv((T*) NULL, x,sc_length,y);
         device->xyInv(x,y,sc_length,z);
-        device->Memcpy(z_host, z, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(z_host, z, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -567,12 +567,12 @@ bool DeviceTest<DT,T>::TestuyInv()
         for(int idx=0;idx<vec_length;idx++)
             u_host[idx] = (T) drand48();
 
-        device->Memcpy(u, u_host, vec_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(u, u_host, vec_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->DotProduct(u, u, stride, num_vecs, y);
         device->Sqrt(y,sc_length,y);
         device->uyInv(u,y,stride,num_vecs,u);
         device->DotProduct(u,u,stride, num_vecs,y);
-        device->Memcpy(y_host, y, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(y_host, y, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -609,9 +609,9 @@ bool DeviceTest<DT,T>::Testaxpy()
         for(int idx=0;idx<sc_length;idx++)
             x_host[idx] = (T) drand48();
 
-        device->Memcpy(x, x_host, sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->axpy((T) -1.0,x, (T*) NULL, sc_length,y);
-        device->Memcpy(y_host, y, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(y_host, y, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -640,9 +640,9 @@ bool DeviceTest<DT,T>::Testaxpy()
         for(int idx=0;idx<sc_length;idx++)
             x_host[idx] = (T) drand48();
 
-        device->Memcpy(x, x_host, sc_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->axpy((T) -1.0,x,x,sc_length,y);
-        device->Memcpy(y_host, y, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(y_host, y, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int idx=0;idx<sc_length;idx++)
@@ -683,10 +683,10 @@ bool DeviceTest<DT,T>::Testavpw()
         for(int idx=0;idx<num_vecs;++idx)
             a_host[idx] = idx;
 
-        device->Memcpy(v,v_host, vec_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(a,a_host, num_vecs * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(v,v_host, vec_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(a,a_host, num_vecs * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->avpw(a,v,v,stride,num_vecs,v);
-        device->Memcpy(w_host, v, vec_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(w_host, v, vec_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0;
         for(int ii=0;ii<num_vecs;++ii)
@@ -749,17 +749,17 @@ bool DeviceTest<DT,T>::Testxvpw()
         for(int idx=0;idx<sc_length;idx++)
             a_host[idx] = (T) drand48();
 
-        device->Memcpy(a, a_host, sc_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(x, x_host, vec_length * sizeof(T), MemcpyHostToDevice);
-        device->Memcpy(y, y_host, vec_length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(a, a_host, sc_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(x, x_host, vec_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(y, y_host, vec_length * sizeof(T), Device<DT>::MemcpyHostToDevice);
 
         device->xvpw(a,x, (T*) NULL,stride,num_vecs,z);
 
         device->DotProduct(x,y,stride,num_vecs,b);
         device->DotProduct(z,y,stride,num_vecs,d);
 
-        device->Memcpy(b_host, b, sc_length * sizeof(T), MemcpyDeviceToHost);
-        device->Memcpy(d_host, d, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(b_host, b, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
+        device->Memcpy(d_host, d, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err = 0, diff;
         for(int idx=0;idx<sc_length;idx++)
@@ -773,10 +773,10 @@ bool DeviceTest<DT,T>::Testxvpw()
         device->DotProduct(y,y,stride,num_vecs,c);
         device->DotProduct(z,y,stride,num_vecs,d);
 
-        device->Memcpy(a_host, a, sc_length * sizeof(T), MemcpyDeviceToHost);
-        device->Memcpy(b_host, b, sc_length * sizeof(T), MemcpyDeviceToHost);
-        device->Memcpy(c_host, c, sc_length * sizeof(T), MemcpyDeviceToHost);
-        device->Memcpy(d_host, d, sc_length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(a_host, a, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
+        device->Memcpy(b_host, b, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
+        device->Memcpy(c_host, c, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
+        device->Memcpy(d_host, d, sc_length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         for(int idx=0;idx<sc_length;idx++)
         {
@@ -835,12 +835,12 @@ bool DeviceTest<DT,T>::TestReduce()
             q_host[ii*stride+jj] = .25;
         }
 
-    device->Memcpy(x,x_host,length * sizeof(T),MemcpyHostToDevice);
-    device->Memcpy(w,w_host,length * sizeof(T),MemcpyHostToDevice);
-    device->Memcpy(q,q_host,stride * sizeof(T),MemcpyHostToDevice);
+    device->Memcpy(x,x_host,length * sizeof(T),Device<DT>::MemcpyHostToDevice);
+    device->Memcpy(w,w_host,length * sizeof(T),Device<DT>::MemcpyHostToDevice);
+    device->Memcpy(q,q_host,stride * sizeof(T),Device<DT>::MemcpyHostToDevice);
 
     device->Reduce(x, 1, w, q, stride, ns, I);
-    device->Memcpy(I_host,I,ns * sizeof(T),MemcpyDeviceToHost);
+    device->Memcpy(I_host,I,ns * sizeof(T),Device<DT>::MemcpyDeviceToHost);
 
     T err = 0;
     T II = (stride-1)*stride/16.0;
@@ -853,7 +853,7 @@ bool DeviceTest<DT,T>::TestReduce()
 
 
     device->Reduce((T*) NULL, 1, w, q, stride, ns, I);
-    device->Memcpy(I_host,I,ns * sizeof(T),MemcpyDeviceToHost);
+    device->Memcpy(I_host,I,ns * sizeof(T),Device<DT>::MemcpyDeviceToHost);
 
     II = stride/8.0;
     for(int ii=0;ii<ns;++ii)
@@ -864,7 +864,7 @@ bool DeviceTest<DT,T>::TestReduce()
     res = res && (err<eps) ? true : false;
 
     device->Reduce(w, 1, x, q, stride, ns, I);
-    device->Memcpy(I_host,I,ns * sizeof(T),MemcpyDeviceToHost);
+    device->Memcpy(I_host,I,ns * sizeof(T),Device<DT>::MemcpyDeviceToHost);
 
     II = (stride-1)*stride/16.0;
     for(int ii=0;ii<ns;++ii)
@@ -905,10 +905,10 @@ bool DeviceTest<DT,T>::TestTranspose()
         for(int ii=0;ii<length;++ii)
             x_host[ii] = ii;
 
-        device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->Transpose(x, n, m, y);
         device->Transpose(y, m, n, x);
-        device->Memcpy(x_host, x, length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(x_host, x, length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err=0, diff;
         for(int jj=0;jj<length;jj++)
@@ -935,9 +935,9 @@ bool DeviceTest<DT,T>::TestTranspose()
 
         T x_host[] = {0,2,4,1,3,5};
 
-        device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         device->Transpose(x, n, m, y);
-        device->Memcpy(x_host, y, length * sizeof(T), MemcpyDeviceToHost);
+        device->Memcpy(x_host, y, length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
 
         T err=0, diff;
         for(int jj=0;jj<length;jj++)
@@ -974,7 +974,7 @@ bool DeviceTest<DT,T>::TestMax()
             max = (max > abs(x_host[idx])) ? max : abs(x_host[idx]);
         }
 
-        device->Memcpy(x, x_host, length * sizeof(T), MemcpyHostToDevice);
+        device->Memcpy(x, x_host, length * sizeof(T), Device<DT>::MemcpyHostToDevice);
         T mx = device->MaxAbs(x,length);
 
         device->Free(x);

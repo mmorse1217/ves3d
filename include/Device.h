@@ -53,9 +53,6 @@
 //! is overloaded for this type.
 enum DeviceType {CPU, GPU};
 
-enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice,
-                 MemcpyDeviceToHost, MemcpyDeviceToDevice};
-
 // Forward declaration
 template<enum DeviceType DT> class Device;
 
@@ -85,6 +82,9 @@ template<enum DeviceType DT = CPU>
 class Device
 {
   public:
+    enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice,
+                     MemcpyDeviceToHost, MemcpyDeviceToDevice};
+
     static DeviceType type(){return(DT);}
 
     //! The constructor of the class. device_id is a user-specified ID
@@ -226,11 +226,6 @@ class Device
 std::ostream& operator<<(
     std::ostream& output,
     const enum DeviceType &DT);
-
-//! Overloaded insertion operator for MemcpyKind
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum MemcpyKind &MK);
 
 #include "DeviceCPU.cc"
 
