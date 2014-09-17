@@ -16,6 +16,7 @@ EXEC = 	ArrayTest.exe			\
 	ScalarsTest.exe			\
 	StokesTest.exe			\
         SurfaceTest.exe			\
+        VectorsTest.exe			\
 
 
 ARFILES = $(VES3D_DIR)/lib/libves3d.a
