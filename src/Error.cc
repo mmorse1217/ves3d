@@ -68,7 +68,7 @@ std::ostream& operator<<(std::ostream& output, const Error_t &err_t)
 /*
  * Error handler
  */
-stack<ErrorEvent> ErrorHandler::ErrorStack_;
+std::stack<ErrorEvent> ErrorHandler::ErrorStack_;
 ErrorHandler::ErrorCallBack ErrorHandler::call_back_(NULL);
 
 ErrorHandler::ErrorCallBack ErrorHandler::setErrorCallBack(
@@ -120,14 +120,14 @@ void ErrorHandler::clearErrorHist()
 
 void ErrorHandler::printErrorLog()
 {
-    stack<ErrorEvent> tmp_stack;
+    std::stack<ErrorEvent> tmp_stack;
 
     COUT(" =============================================="
-        <<"============================================="<<endl);
+        <<"============================================="<<std::endl);
     if ( ErrorStack_.empty() )
-        COUT("  Error log is clean."<<endl);
+        COUT("  Error log is clean."<<std::endl);
     else
-        COUT("   Error Log"<<endl);
+        COUT("   Error Log"<<std::endl);
 
     while ( !ErrorStack_.empty() )
     {
@@ -139,13 +139,13 @@ void ErrorHandler::printErrorLog()
     {
         ErrorStack_.push(tmp_stack.top());
         COUT(" --------------------------------------------"
-            <<"-----------------------------------------------"<<endl);
-        COUT(ErrorStack_.top()<<endl);
+            <<"-----------------------------------------------"<<std::endl);
+        COUT(ErrorStack_.top()<<std::endl);
         tmp_stack.pop();
     }
 
     COUT(" ==========================================="
-        <<"================================================"<<endl);
+        <<"================================================"<<std::endl);
 }
 
 Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
@@ -158,7 +158,7 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
     else
     {
         //not using CERR b/c of duplicate file info
-        cerr<<"\n  No callback is set to handle:"<<ee<<endl;
+        std::cerr<<"\n  No callback is set to handle:"<<ee<<std::endl;
     }
 
     return ErrorEvent::UnknownError;
