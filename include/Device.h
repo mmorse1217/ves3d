@@ -95,6 +95,9 @@ class Device
     //! Destructor
     ~Device();
 
+    //! Identifying cpu type with host
+    static bool IsHost() {return DT==CPU;}
+
     //! Memory allocation.
     void* Malloc(size_t length) const;
 
