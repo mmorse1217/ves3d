@@ -39,6 +39,7 @@
 #include <omp.h>
 #include <stack>
 #include <string>
+#include <cassert>
 // #include <sys/time.h>
 
 //! A log event recorded by the Logger class.
@@ -134,6 +135,18 @@ class Logger
 /*
  * Debugging macros
  */
+#ifndef NDEBUG
+// defineing assert_expr to avoid multiple evaluation of expr
+static bool assert_expr(false);
+#define ASSERT(expr,msg) (                                              \
+        assert_expr=expr,                                               \
+        (assert_expr) ?                                                 \
+        assert(assert_expr) :                                           \
+        CERR(msg,std::endl,assert(assert_expr)))
+#else
+#define ASSERT(expr,msg)
+#endif //NDEBUG
+
 #ifndef NDEBUG
 #define LOG(msg) (Logger::Log(msg))
 
