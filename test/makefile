@@ -35,13 +35,16 @@ all: $(EXEC)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
 	$(CXX) -MM $(CPPFLAGS) $*.cc -o $*.d
 
-.PHONY: clean check
+.PHONY: clean check run
 .SECONDARY:
 
 clean:
 	-$(RM) *.o *.exe *.out *.d
 
 check:  $(EXEC)
-	@for exec in *.exe; do echo "\n\nRunning " $$exec; ./$$exec; done
+	$(MAKE) run
+
+run:
+	@for exec in *.exe; do echo "\n\nRunning " $$exec; ./$$exec; sleep 1;done
 
 -include $(EXEC:.exe=.d)

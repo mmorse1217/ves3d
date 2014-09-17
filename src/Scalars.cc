@@ -152,7 +152,8 @@ Scalars<T, DT, DEVICE>::getSubN_end(size_t n) const
 
 /////////////////////////////////////////////////////////////////////
 template <typename T, typename DT, const DT &DEVICE>
-std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
+std::ostream& operator<<(std::ostream& output,
+    const Scalars<T, DT, DEVICE> &sc)
 {
     output<<" =====================================================\n"
           <<"  SH order            : "<<sc.getShOrder()<<"\n"
@@ -162,42 +163,34 @@ std::ostream& operator<<(std::ostream& output, const Scalars<T, DT, DEVICE> &sc)
           <<"  Number of functions : "<<sc.getNumSubs()<<"\n"
           <<" =====================================================\n";
 
-    return(output);
-}
+    if(output.iword(scalars_xalloc) == true){
 
-template <typename Container>
-ShowEntries<Container>::ShowEntries(const Container &c) : c_(c) {}
+        T *buffer;
+        if ( DT::IsHost() ){
+            buffer = (T*) sc.begin();
+        } else {
+            buffer = new T[sc.size()];
 
-template <typename Container>
-std::ostream& ShowEntries<Container>::operator()(std::ostream &output) const
-{
-    output<<c_;
+            sc.getDevice().Memcpy(buffer,
+                sc.begin(),
+                sc.size() * sizeof(T),
+                DT::MemcpyDeviceToHost);
+        }
 
-    typedef typename Container::value_type T;
-    T *buffer(new T[this->c_.size()]);
-    this->c_.getDevice().Memcpy(buffer,
-        this->c_.begin(),
-        this->c_.size() * sizeof(T),
-        Container::device_type::MemcpyDeviceToHost);
+        for(size_t ii=0; ii<sc.size(); ++ii)
+        {
+            output<<buffer[ii]<<" ";
 
-    for(size_t ii=0; ii<this->c_.size(); ++ii)
-    {
-        output<<buffer[ii]<<" ";
+            if((ii + 1) % sc.getGridDim().second == 0)
+                output<<std::endl;
 
-        if((ii + 1)%this->c_.getGridDim().second == 0)
-            output<<std::endl;
+            if((ii + 1) % sc.getStride() == 0)
+                output<<std::endl;
+        }
 
-        if((ii + 1)%this->c_.getStride() == 0)
-            output<<std::endl;
+        if ( !DT::IsHost() )
+            delete[] buffer;
     }
 
-    delete[] buffer;
-
     return(output);
-}
-
-template<typename Container>
-std::ostream& operator<<(std::ostream& output, const ShowEntries<Container> &se)
-{
-    return(se(output));
 }

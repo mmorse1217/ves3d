@@ -17,10 +17,30 @@ class ScalarsTest
 {
   public:
     bool PerformAll();
+    bool TestResize();
+    bool TestReplicate();
 };
 
 template<typename Container>
 bool ScalarsTest<Container>::PerformAll()
+{
+    bool test_result;
+    test_result = TestResize()
+        && TestReplicate();
+
+    std::string res_print = (test_result) ? " Passed" : " Failed";
+
+    COUT("\n\n ====================================================\n"
+        <<"  The container "
+        <<typeid(Container).name()<<res_print<<std::endl
+        <<" ===================================================="
+        <<std::endl);
+
+    return test_result;
+}
+
+template<typename Container>
+bool ScalarsTest<Container>::TestResize()
 {
     int p(13), nsubs(3);
 
@@ -30,6 +50,19 @@ bool ScalarsTest<Container>::PerformAll()
     sc.resize(nsubs, p);
     COUT(sc);
 
+    bool res(sc.getNumSubs() == nsubs &&
+             sc.getShOrder() == p
+             );
+
+    return res;
+}
+
+template<typename Container>
+bool ScalarsTest<Container>::TestReplicate()
+{
+    int p(8), nsubs(6);
+
+    Container sc(nsubs, p);
     Container sc_cpy;
     COUT(sc_cpy);
     COUT(" Replicating :"<<std::endl);
@@ -65,13 +98,6 @@ bool ScalarsTest<Container>::PerformAll()
     COUT(" Copying form to and from the container: "
          <<((res) ? "Pass" : "Fail")
          <<std::endl);
-
-    if(res)
-        COUT("\n\n ===================================================\n"
-            <<"  The container "
-            <<typeid(Container).name()<<" works fine.\n"
-            <<" ==================================================="
-            <<std::endl);
 
     return res;
 }

@@ -123,27 +123,20 @@ class Scalars : public Array<T, DT, DEVICE>
     Scalars<T, DT, DEVICE>& operator=(const Scalars<T, DT, DEVICE>& rhs);
 };
 
+//! location of flag for streaming
+static int scalars_xalloc(std::ios_base::xalloc());
+
+//! Streaming manipulator
+std::ios_base& toggle_show_entries(std::ios_base& os)
+{
+    os.iword(scalars_xalloc) = !os.iword(scalars_xalloc);
+    return os;
+}
+
 //! Utitly for streaming
 template <typename T, typename DT, const DT &DEVICE>
 std::ostream& operator<<(std::ostream& output,
     const Scalars<T, DT, DEVICE>&sc);
-
-//! Streaming utility for debugging
-template<typename Container>
-class ShowEntries
-{
-  public:
-    ShowEntries(const Container &c);
-    std::ostream& operator()(std::ostream &out) const;
-
-  private:
-    const Container &c_;
-};
-
-template<typename Container>
-std::ostream& operator<<(
-    std::ostream& output,
-    const ShowEntries<Container> &se);
 
 #include "Scalars.cc"
 
