@@ -554,10 +554,12 @@ T Device<CPU>::MaxAbs(T *x_in, size_t length) const
         if(omp_get_thread_num() == 0)
             max_arr= (T*) this->Malloc(omp_get_num_threads() * sizeof(T));
 
-        T max_loc = abs(*x_in);
+        T max_loc = std::abs(*x_in);
 #pragma omp for
         for(size_t idx = 0;idx<length;idx++)
-            max_loc = (max_loc > abs(x_in[idx])) ? max_loc : abs(x_in[idx]);
+            max_loc = (max_loc > std::abs(x_in[idx])) ?
+                max_loc : std::abs(x_in[idx]);
+
         max_arr[omp_get_thread_num()] =  max_loc;
 
         if(omp_get_thread_num() == 0)

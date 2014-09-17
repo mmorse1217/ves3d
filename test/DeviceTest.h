@@ -9,7 +9,6 @@
 #include "Device.h"
 #include <iostream>
 #include <math.h>
-#include <time.h>
 #include <typeinfo>
 
 using namespace std;
@@ -905,10 +904,16 @@ bool DeviceTest<DT,T>::TestTranspose()
         for(int ii=0;ii<length;++ii)
             x_host[ii] = ii;
 
-        device->Memcpy(x, x_host, length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(x,
+            x_host,
+            length * sizeof(T),
+            Device<DT>::MemcpyHostToDevice);
         device->Transpose(x, n, m, y);
         device->Transpose(y, m, n, x);
-        device->Memcpy(x_host, x, length * sizeof(T), Device<DT>::MemcpyDeviceToHost);
+        device->Memcpy(x_host,
+            x,
+            length * sizeof(T),
+            Device<DT>::MemcpyDeviceToHost);
 
         T err=0, diff;
         for(int jj=0;jj<length;jj++)
@@ -971,16 +976,19 @@ bool DeviceTest<DT,T>::TestMax()
         for(int idx=0;idx<length;idx++)
         {
             x_host[idx] = (T) drand48() * 10 - 5;
-            max = (max > abs(x_host[idx])) ? max : abs(x_host[idx]);
+            max = (max > std::abs(x_host[idx])) ?
+                max : std::abs(x_host[idx]);
         }
 
-        device->Memcpy(x, x_host, length * sizeof(T), Device<DT>::MemcpyHostToDevice);
+        device->Memcpy(x,
+            x_host,
+            length * sizeof(T),
+            Device<DT>::MemcpyHostToDevice);
         T mx = device->MaxAbs(x,length);
 
         device->Free(x);
         free(x_host);
 
-        //cout<<mx<<" "<<max<<endl;
         T err = fabs(mx-max);
         res = res && (err<eps) ? true : false;
 
