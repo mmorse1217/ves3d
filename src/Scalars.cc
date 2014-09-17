@@ -32,10 +32,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
 inline std::pair<int, int> gridDimOf(int sh_order)
 {
-    return((sh_order >= 0) ?
+    return((sh_order >= -1) ?
         std::make_pair(sh_order + 1, 2 * sh_order + 2) :
         EMPTY_GRID);
 }
@@ -48,7 +47,7 @@ Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
     stride_(grid_dim_.first * grid_dim_.second),
     num_subs_(num_subs)
 {
-    Array<T, DT, DEVICE>::resize(this->arr_size());
+    array_type::resize(this->arr_size());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
@@ -86,9 +85,21 @@ size_t Scalars<T, DT, DEVICE>::getNumSubs() const
 }
 
 template <typename T, typename DT, const DT &DEVICE>
+size_t Scalars<T, DT, DEVICE>::getNumSubFuncs() const
+{
+    return(num_subs_);
+}
+
+template <typename T, typename DT, const DT &DEVICE>
 size_t Scalars<T, DT, DEVICE>::getSubLength() const
 {
     return((num_subs_ > 0 ) * the_dim_ * stride_);
+}
+
+template <typename T, typename DT, const DT &DEVICE>
+size_t Scalars<T, DT, DEVICE>::getSubFuncLength() const
+{
+    return((num_subs_ > 0 ) * stride_);
 }
 
 template <typename T, typename DT, const DT &DEVICE>
@@ -108,13 +119,13 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs,
         gridDimOf(sh_order_) : new_grid_dim;
     stride_   = grid_dim_.first * grid_dim_.second;
 
-    Array<T, DT, DEVICE>::resize(this->arr_size());
+    array_type::resize(this->arr_size());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
 void Scalars<T, DT, DEVICE>::replicate(Scalars<T, DT, DEVICE> const& sc_in)
 {
-    this->resize(sc_in.getNumSubs(), sc_in.getShOrder(),
+    this->resize(sc_in.getNumSubFuncs(), sc_in.getShOrder(),
         sc_in.getGridDim());
 }
 
@@ -122,32 +133,36 @@ template <typename T, typename DT, const DT &DEVICE>
 typename Scalars<T, DT, DEVICE>::iterator
 Scalars<T, DT, DEVICE>::getSubN_begin(size_t n)
 {
-    return(Array<T, DT, DEVICE>::begin() +
-        n * this->getTheDim() * this->getStride());
+    ASSERT(n<=this->getNumSubs(),
+        "Index exceeds the number of subfields");
+    return(array_type::begin() + n * this->getSubLength());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
 typename Scalars<T, DT, DEVICE>::iterator
 Scalars<T, DT, DEVICE>::getSubN_end(size_t n)
 {
-    return(Array<T, DT, DEVICE>::begin() +
-        (n+1) * this->getTheDim() * this->getStride());
+    ASSERT(n<=this->getNumSubs(),
+        "Index exceeds the number of subfields");
+    return(array_type::begin() + (n+1) * this->getSubLength());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
-typename Scalars<T, DT, DEVICE>::const_iterator
-Scalars<T, DT, DEVICE>::getSubN_begin(size_t n) const
+typename Scalars<T, DT, DEVICE>::iterator
+Scalars<T, DT, DEVICE>::getSubFuncN_begin(size_t n)
 {
-    return(Array<T, DT, DEVICE>::begin() +
-        n * this->getTheDim() * this->getStride());
+    ASSERT(n<=this->getNumSubFuncs(),
+        "Index exceeds the number of subfunctions");
+    return(array_type::begin() + n * this->getSubFuncLength());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
-typename Scalars<T, DT, DEVICE>::const_iterator
-Scalars<T, DT, DEVICE>::getSubN_end(size_t n) const
+typename Scalars<T, DT, DEVICE>::iterator
+Scalars<T, DT, DEVICE>::getSubFuncN_end(size_t n)
 {
-    return(Array<T, DT, DEVICE>::begin() +
-        (n+1) * this->getTheDim() * this->getStride());
+    ASSERT(n<=this->getNumSubFuncs(),
+        "Index exceeds the number of subfunctions");
+    return(array_type::begin() + (n+1) * this->getSubFuncLength());
 }
 
 /////////////////////////////////////////////////////////////////////

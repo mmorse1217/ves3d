@@ -61,10 +61,11 @@ template <typename T,    // content type
 class Scalars : public Array<T, DT, DEVICE>
 {
   public:
-    typedef typename Array<T, DT, DEVICE>::value_type     value_type;
-    typedef typename Array<T, DT, DEVICE>::device_type    device_type;
-    typedef typename Array<T, DT, DEVICE>::iterator       iterator;
-    typedef typename Array<T, DT, DEVICE>::const_iterator const_iterator;
+    typedef Array<T, DT, DEVICE> array_type;
+    typedef typename array_type::value_type     value_type;
+    typedef typename array_type::device_type    device_type;
+    typedef typename array_type::iterator       iterator;
+    typedef typename array_type::const_iterator const_iterator;
 
     //! if grid_dim is EMPTY_GRID, it is defaulted to the implied
     //! value throgh sh_
@@ -84,11 +85,17 @@ class Scalars : public Array<T, DT, DEVICE>
     //! Stride between sub-fields
     inline size_t getStride() const;
 
-    //! number of sub-fields
-    inline size_t getNumSubs() const;
+    //! number of sub-components
+    virtual inline size_t getNumSubs() const;
+
+    //! number of sub-fields each a scalar function
+    inline size_t getNumSubFuncs() const;
+
+    //! Total length of data for each sub-component
+    virtual inline size_t getSubLength() const;
 
     //! Total length of data for each sub-field
-    inline size_t getSubLength() const;
+    inline size_t getSubFuncLength() const;
 
     //! required size of the underlying array
     inline size_t arr_size() const;
@@ -101,12 +108,25 @@ class Scalars : public Array<T, DT, DEVICE>
     //! Explicit copying
     inline void replicate(Scalars<T, DT, DEVICE> const& sc_in);
 
-    //! The iterator for
+    //! head of each sub component
     inline iterator getSubN_begin(size_t n);
+    //! tail of each sub component
     inline iterator getSubN_end(size_t n);
 
+    //! head of each sub function
+    inline iterator getSubFuncN_begin(size_t n);
+    //! head of each sub function
+    inline iterator getSubFuncN_end(size_t n);
+
+    //! head of each sub component
     inline const_iterator getSubN_begin(size_t n) const;
+    //! tail of each sub component
     inline const_iterator getSubN_end(size_t n) const;
+
+    //! head of each sub fuction
+    inline const_iterator getSubFuncN_begin(size_t n) const;
+    //! tail of each sub function
+    inline const_iterator getSubFuncN_end(size_t n) const;
 
   protected:
     int sh_order_;
