@@ -1,8 +1,10 @@
-EXEC = 	BenchmarkInterfacialVel.exe	\
+EXEC = 	ArrayTest.exe			\
+	BenchmarkInterfacialVel.exe	\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
 	DeviceTest.exe			\
 	EnumsTest.exe			\
+	ErrorTest.exe			\
 	EvalVelocityTest.exe		\
 	EvolveSurfaceTest.exe		\
 	EvolveSurfaceTestMultThread.exe \
