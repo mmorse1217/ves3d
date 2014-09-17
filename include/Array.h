@@ -33,8 +33,7 @@
 #ifndef _ARRAY_H_
 #define _ARRAY_H_
 
-#include <cstddef> //for size_t
-#include <iostream>
+#include <iostream> //also has size_t
 #include "Logger.h"
 
 /**
