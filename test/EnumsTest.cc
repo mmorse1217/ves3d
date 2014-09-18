@@ -1,6 +1,5 @@
 #include <iostream>
 #include <sstream>
-#include <cassert>
 
 #include "Enums.h"
 #include "Logger.h"
@@ -18,57 +17,9 @@ int main(int argc, char** argv)
     {
         stm stream;
         str str;
-        stream<<CPU;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="CPU");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<GPU;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="GPU");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyHostToHost;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyHostToHost");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyHostToDevice;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyHostToDevice");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyDeviceToHost;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyDeviceToHost");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<MemcpyDeviceToDevice;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="MemcpyDeviceToDevice");
-    }
-
-    {
-        stm stream;
-        str str;
         stream<<PointMajor;
         COUT(stream.str()<<endl);
-        assert(stream.str()=="PointMajor");
+        ASSERT(stream.str()=="PointMajor","");
     }
 
     {
@@ -76,7 +27,7 @@ int main(int argc, char** argv)
         str str;
         stream<<AxisMajor;
         COUT(stream.str()<<endl);
-        assert(stream.str()=="AxisMajor");
+        ASSERT(stream.str()=="AxisMajor","");
     }
 
     {
@@ -84,9 +35,9 @@ int main(int argc, char** argv)
         str str;
         stream<<Explicit;
         COUT(stream.str()<<endl);
-        assert(stream.str()=="Explicit");
+        ASSERT(stream.str()=="Explicit","");
         int sc = EnumifyScheme("Explicit");
-        assert(sc==Explicit);
+        ASSERT(sc==Explicit,"");
     }
 
     {
@@ -94,9 +45,9 @@ int main(int argc, char** argv)
         str str;
         stream<<BlockImplicit;
         COUT(stream.str()<<endl);
-        assert(stream.str()=="BlockImplicit");
+        ASSERT(stream.str()=="BlockImplicit","");
         int sc = EnumifyScheme("BlockImplicit");
-        assert(sc==BlockImplicit);
+        ASSERT(sc==BlockImplicit,"");
     }
 
     {
@@ -104,16 +55,20 @@ int main(int argc, char** argv)
         str str;
         stream<<GloballyImplicit;
         COUT(stream.str()<<endl);
-        assert(stream.str()=="GloballyImplicit");
+        ASSERT(stream.str()=="GloballyImplicit","");
         int sc = EnumifyScheme("GloballyImplicit");
-        assert(sc==GloballyImplicit);
+        ASSERT(sc==GloballyImplicit,"");
     }
 
     {
-        stm stream;
-        str str;
-        stream<<Success;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="Success");
+        std::pair<int, int> gd = EMPTY_GRID;
+        ASSERT(gd.first == -1, "Default grid size");
+        ASSERT(gd.second == -1, "Default grid size");
+
+        int p(3);
+        gd = gridDimOf(p);
+        ASSERT(gd.first == p+1, "p+1 in latitude");
+        ASSERT(gd.second == 2*p+2, "2*p+2 in longitude");
     }
+
 }

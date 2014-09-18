@@ -1,33 +1,34 @@
 ///This test only performs the filtering. Use matlab/SHTransTest.m to
 ///see the result in Matlab
 
-#include "Device.h"
 #include "OperatorsMats.h"
+#include "Device.h"
 #include "DataIO.h"
 #include "Parameters.h"
-#include "Surface.h"
+#include "HelperFuns.h"
 #include "Scalars.h"
 #include "Vectors.h"
 
-using namespace std;
 typedef float real;
 
-extern Device<CPU> the_cpu_dev(0);
+typedef Device<CPU> DCPU;
+extern const DCPU the_cpu_dev(0);
 
 int main(int argc, char *argv[])
 {
-    typedef Scalars<real,CPU,the_cpu_dev> Sca_t;
-    typedef Vectors<real,CPU,the_cpu_dev> Vec_t;
-    typedef OperatorsMats<Sca_t> Mats_t;
+    typedef Scalars<real,DCPU,the_cpu_dev> Sca_t;
+    typedef typename Sca_t::array_type Arr_t;
+    typedef Vectors<real,DCPU,the_cpu_dev> Vec_t;
+    typedef OperatorsMats<Arr_t> Mats_t;
     typedef SHTrans<Sca_t,Mats_t> Sh_t;
 
     int nVec(1), p(6), q(2*p);
     Parameters<real> params;
     params.sh_order = p;
     params.rep_up_freq = q;
-    cout<<params<<endl;
+    COUT(params<<std::endl);
 
-    //reading mats
+    //reading mats2
     DataIO IO;
 
     //Initializing vesicle positions from text file
@@ -48,9 +49,10 @@ int main(int argc, char *argv[])
     Vec_t xr(nVec, q);
     Sh_t SH_p(params.sh_order,M);
     Sh_t SH_q(params.rep_up_freq,M);
-    assert(false); //outdated test
+
+ASSERT(false,"Outdated test");
     //Resample(x, SH_p, SH_q, shc, wrk, xr);
-    IO.WriteData("ShtResampling.out", xr, ios::out);
+    // IO.WriteData("ShtResampling.out", xr, std::ios::out);
 
     // //Filtering
 

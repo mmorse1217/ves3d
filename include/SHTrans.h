@@ -14,7 +14,7 @@
  * latitude(Legendre) variable. See SHTMats for more information.
  */
 template<typename Container, typename Mats>
-class SHTrans 
+class SHTrans
 {
   private:
     typedef typename Container::value_type value_type;
@@ -31,9 +31,9 @@ class SHTrans
      * work, and shc are all of the same size.
      */
     void forward(const Container &in, Container &work, Container &shc) const;
-    
+
     //Analysis Methods (all are wrappers around the private back method):
-    void backward(const Container &shc, Container &work, 
+    void backward(const Container &shc, Container &work,
         Container &out) const;
     void backward_du(const Container &shc, Container &work,Container &out) const;
     void backward_dv (const Container &shc, Container &work, Container &out) const;
@@ -41,30 +41,32 @@ class SHTrans
     void backward_d2v(const Container &shc, Container &work, Container &out) const;
     void backward_duv(const Container &shc, Container &work, Container &out) const;
 
-    void FirstDerivatives(const Container &in, Container &work, 
+    void FirstDerivatives(const Container &in, Container &work,
         Container &shc, Container &du, Container &dv) const;
 
-    void lowPassFilter(const Container &in, Container &work, 
+    void lowPassFilter(const Container &in, Container &work,
         Container &shc, Container &out) const;
 
     void collectSameOrder(const Container &in, Container &out) const;
     void collectSameFreq(const Container &in, Container &out) const;
-    
+
   private:
+    typedef typename Container::device_type device_type;
     const typename Container::device_type &device_;
+
     Mats &mats_;
-    
+
     static const value_type alpha_ = (value_type) 1.0;
     static const value_type beta_  = (value_type) 0.0;
 
     int p;
     int dft_size;
-        
-    /** 
+
+    /**
      * The forward and inverse Legendre transform. The case of forward
      * and backward depends on the matrix (set) <code>trans</code>
      * passed to the method.
-     * 
+     *
      * @param trans The set of transform matrices saves one after
      * another in one long array.
      * @param m The first dimension of the largest trans matrix
@@ -78,16 +80,16 @@ class SHTrans
      * @param kf The flag indicating whether the trans matrices size k
      * decrease or not (used in the call from the inverse transforms)
      */
-    void DLT(value_type *trans, const value_type *inputs, 
-        value_type *outputs, int m, int n , int k, int mf, 
+    void DLT(value_type *trans, const value_type *inputs,
+        value_type *outputs, int m, int n , int k, int mf,
         int nf, int kf) const;
-    
+
     ///The inverse transform.
-    void back(const value_type *inputs, value_type *work_arr, 
-        int n_funs, value_type *outputs, value_type *trans, 
+    void back(const value_type *inputs, value_type *work_arr,
+        int n_funs, value_type *outputs, value_type *trans,
         value_type *dft) const;
 
-    void ScaleFreq(const value_type *shc_in, int n_funs, 
+    void ScaleFreq(const value_type *shc_in, int n_funs,
         const value_type* scaling_coeff, value_type *shc_out) const;
 
     value_type* filter_coeff_;

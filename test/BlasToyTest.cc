@@ -5,6 +5,7 @@ typedef float real;
 
 int main(int argc, char **argv)
 {
+    PROFILESTART();
     COUT("\n ==============================\n"
         <<"  Blas Test:"
         <<"\n ==============================\n");
@@ -32,14 +33,15 @@ int main(int argc, char **argv)
             B_h[ii*k+jj] = drand48();
 
     {// cpu
+        COUT(" - Testing CPU"<<std::endl);
         Device<CPU> cpu(0);
 
         real *A = (real*) cpu.Malloc(sa * sizeof(real));
         real *B = (real*) cpu.Malloc(sb * sizeof(real));
         real *C = (real*) cpu.Malloc(sc * sizeof(real));
 
-        cpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
-        cpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
+        cpu.Memcpy(A,A_h,sa,Device<CPU>::MemcpyHostToDevice);
+        cpu.Memcpy(B,B_h,sa,Device<CPU>::MemcpyHostToDevice);
         cpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
 
         cpu.Free(A);
@@ -49,14 +51,15 @@ int main(int argc, char **argv)
 
 #ifdef GPU_ACTIVE
     {
+        COUT(" - Testing GPU"<<std::endl);
         Device<GPU> gpu(0);
 
         real *A = (real*) gpu.Malloc(sa * sizeof(real));
         real *B = (real*) gpu.Malloc(sb * sizeof(real));
         real *C = (real*) gpu.Malloc(sc * sizeof(real));
 
-        gpu.Memcpy(A,A_h,sa,MemcpyHostToDevice);
-        gpu.Memcpy(B,B_h,sa,MemcpyHostToDevice);
+        gpu.Memcpy(A,A_h,sa,Device<GPU>::MemcpyHostToDevice);
+        gpu.Memcpy(B,B_h,sa,Device<GPU>::MemcpyHostToDevice);
         gpu.gemm("N", "N", &n, &k, &n, &alpha, A, &n, B, &n, &beta, C, &n);
 
         gpu.Free(A);
@@ -68,6 +71,7 @@ int main(int argc, char **argv)
     free(A_h);
     free(B_h);
 
-    PROFILEREPORT(SortFlopRate);
+    PROFILEEND("",0);
+    PROFILEREPORT(SortFlop);
     sleep(.5);
 }

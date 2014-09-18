@@ -1,11 +1,15 @@
 #ifndef _SHMATS_H_
 #define _SHMATS_H_
 
+#include <cmath>
+#include "Enums.h"
+#include "Logger.h"
+
 template<typename T, typename Device>
 class SHTMats{
   protected:
     int sh_order_;
-    pair<int, int> grid_dim_;
+    std::pair<int, int> grid_dim_;
     T *data_;
     int dft_size;
     const Device &device_;
@@ -16,15 +20,16 @@ class SHTMats{
     void gen_dft_d2backward();
 
   public:
-    SHTMats(const Device &dev, int sh_order, T *data, bool genrateMats = false, 
-        pair<int, int> gird_dim = EMPTY_GRID);
+    SHTMats(const Device &dev, int sh_order,
+        T *data, bool genrateMats = false,
+        std::pair<int, int> gird_dim = EMPTY_GRID);
     ~SHTMats();
 
     inline int getShOrder() const;
-    inline pair<int, int> getGridDim() const;
-    
-    static inline size_t getDataLength(int sh_order, 
-        pair<int, int> grid_dim = EMPTY_GRID);
+    inline std::pair<int, int> getGridDim() const;
+
+    static inline size_t getDataLength(int sh_order,
+        std::pair<int, int> grid_dim = EMPTY_GRID);
     inline size_t getDataLength() const;
     inline size_t getDFTLength() const;
     inline size_t getDLTLength() const;

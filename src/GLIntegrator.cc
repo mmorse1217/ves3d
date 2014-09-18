@@ -1,5 +1,5 @@
 template<typename Container>
-map<int, Container*> GaussLegendreIntegrator<Container>::qw_map;
+std::map<int, Container*> GaussLegendreIntegrator<Container>::qw_map;
 
 template<typename Container>
 GaussLegendreIntegrator<Container>::GaussLegendreIntegrator()
@@ -9,7 +9,7 @@ template<typename Container>
 GaussLegendreIntegrator<Container>::~GaussLegendreIntegrator()
 {
     ///@bug this defeats the purpose of static, map is cleared
-    typename map<int, Container*>::iterator it(qw_map.begin());
+    typename std::map<int, Container*>::iterator it(qw_map.begin());
     for ( ; it != qw_map.end(); ++it)
         delete it->second;
     qw_map.clear();
@@ -19,15 +19,15 @@ template<typename Container>
 Container* GaussLegendreIntegrator<Container>::getQuadWeights(
     int key) const
 {
-    typename map<int, Container*>::iterator it(qw_map.find(key));
-    
+    typename std::map<int, Container*>::iterator it(qw_map.find(key));
+
     if(it == qw_map.end())
     {
         Container* qw(buildQuadWeights(key));
-        it = qw_map.insert(qw_map.begin(), make_pair(key, qw));
+        it = qw_map.insert(qw_map.begin(), std::make_pair(key, qw));
     }
-    
-    return(it->second);    
+
+    return(it->second);
 }
 
 template<typename Container>
@@ -36,15 +36,15 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
 {
     int order = gridDimOf(shOrder).first;
     int d2 = gridDimOf(shOrder).second;
-    
-    typedef typename Container::value_type vt; 
-    
+
+    typedef typename Container::value_type vt;
+
     vt* d = new vt[order];
     vt* e = new vt[order-1];
     vt* work = new vt[order * ((d2 > 2) ? d2 : 2)];
     vt* eig = new vt[order * order];
     vt tmp;
-    
+
     //Calculating the quadrature points
     for (int ii(0); ii<order-1; ++ii)
     {
@@ -57,12 +57,12 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
         *(d + ii) = 0;
     }
     *(d + order - 1) = 0;
-    
+
      int info;
      Steqr("I", order, d, e, eig, order, work, info);
-    
+
     //d holds the quadrature points
-    
+
     //replicating for the grid, multiplying by the weight of the
     //uniform grid in the longitude direction and dividing by the
     //sin(latitude)
@@ -70,22 +70,24 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
         for(int jj=0;jj<d2; ++jj)
             work[ii * d2 + jj] = (2 * eig[ii * order] * eig[ii * order]) *
                 (2 * M_PI/d2 ) / sqrt(1 - d[ii] * d[ii]);
-    
+
     Container* qw = new Container(1, shOrder);
-    qw->getDevice().Memcpy(qw->begin(), work, 
-        order * d2 * sizeof(vt), MemcpyHostToDevice);
- 
+    qw->getDevice().Memcpy(qw->begin(),
+        work,
+        order * d2 * sizeof(vt),
+        Container::device_type::MemcpyHostToDevice);
+
     delete[] d;
     delete[] e;
     delete[] work;
     delete[] eig;
-    
+
     return(qw);
 }
 
 template<typename Container>
 template<typename InputContainer>
-void GaussLegendreIntegrator<Container>::operator()(const InputContainer &x_in, 
+void GaussLegendreIntegrator<Container>::operator()(const InputContainer &x_in,
     const Container &w_in, InputContainer &x_dw) const
 {
     Reduce(x_in, w_in, *getQuadWeights(x_in.getShOrder()), x_dw);
@@ -93,7 +95,7 @@ void GaussLegendreIntegrator<Container>::operator()(const InputContainer &x_in,
 
 
 template<typename Container>
-void GaussLegendreIntegrator<Container>::operator()(const Container &w_in, 
+void GaussLegendreIntegrator<Container>::operator()(const Container &w_in,
     Container &dw) const
 {
     Reduce(w_in, *getQuadWeights(w_in.getShOrder()), dw);

@@ -22,10 +22,53 @@ std::ostream& operator<<(std::ostream& output, const ErrorEvent &ee)
     return output;
 }
 
+std::ostream& operator<<(std::ostream& output, const Error_t &err_t)
+{
+    switch (err_t)
+    {
+        case ErrorEvent::Success:
+            output<<"Success";
+            break;
+        case ErrorEvent::InvalidParameter:
+            output<<"InvalidParameter";
+	    break;
+        case ErrorEvent::UnknownError:
+            output<<"UnkownError";
+            break;
+        case ErrorEvent::InvalidDevice:
+            output<<"InvalidDevice";
+            break;
+        case ErrorEvent::SetOnActiveDevice:
+            output<<"SetOnActiveDevice";
+            break;
+        case ErrorEvent::SolverDiverged:
+            output<<"SolverDiverged";
+            break;
+        case ErrorEvent::NoInteraction:
+            output<<"NoInteraction";
+            break;
+        case ErrorEvent::InteractionFailed:
+            output<<"InteractionFailed";
+            break;
+        case ErrorEvent::RepartitioningFailed:
+            output<<"RepartitioningFailed";
+            break;
+        case ErrorEvent::AccuracyError:
+            output<<"AccuracyError";
+            break;
+        default:
+            output<<err_t
+                  <<" [The string for the given enum type is not known"
+                  <<", update the insertion operator]";
+    }
+
+    return output;
+}
+
 /*
  * Error handler
  */
-stack<ErrorEvent> ErrorHandler::ErrorStack_;
+std::stack<ErrorEvent> ErrorHandler::ErrorStack_;
 ErrorHandler::ErrorCallBack ErrorHandler::call_back_(NULL);
 
 ErrorHandler::ErrorCallBack ErrorHandler::setErrorCallBack(
@@ -39,7 +82,7 @@ ErrorHandler::ErrorCallBack ErrorHandler::setErrorCallBack(
 ErrorEvent ErrorHandler::submitError(ErrorEvent ee,
     ErrorCallBack call_back_in)
 {
-    if (ee.err_ != Success )
+    if (ee.err_ != ErrorEvent::Success )
     {
         ErrorHandler::ErrorStack_.push(ee);
         ErrorHandler::ringTheCallBack(ee, call_back_in);
@@ -77,14 +120,14 @@ void ErrorHandler::clearErrorHist()
 
 void ErrorHandler::printErrorLog()
 {
-    stack<ErrorEvent> tmp_stack;
+    std::stack<ErrorEvent> tmp_stack;
 
     COUT(" =============================================="
-        <<"============================================="<<endl);
+        <<"============================================="<<std::endl);
     if ( ErrorStack_.empty() )
-        COUT("  Error log is clean."<<endl);
+        COUT("  Error log is clean."<<std::endl);
     else
-        COUT("   Error Log"<<endl);
+        COUT("   Error Log"<<std::endl);
 
     while ( !ErrorStack_.empty() )
     {
@@ -96,13 +139,13 @@ void ErrorHandler::printErrorLog()
     {
         ErrorStack_.push(tmp_stack.top());
         COUT(" --------------------------------------------"
-            <<"-----------------------------------------------"<<endl);
-        COUT(ErrorStack_.top()<<endl);
+            <<"-----------------------------------------------"<<std::endl);
+        COUT(ErrorStack_.top()<<std::endl);
         tmp_stack.pop();
     }
 
     COUT(" ==========================================="
-        <<"================================================"<<endl);
+        <<"================================================"<<std::endl);
 }
 
 Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
@@ -115,8 +158,8 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
     else
     {
         //not using CERR b/c of duplicate file info
-        cerr<<"\n  No callback is set to handle:"<<ee<<endl;
+        std::cerr<<"\n  No callback is set to handle:"<<ee<<std::endl;
     }
 
-    return UnknownError;
+    return ErrorEvent::UnknownError;
 }

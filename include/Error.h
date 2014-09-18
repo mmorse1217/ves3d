@@ -33,38 +33,49 @@
 #ifndef _ERROR_H_
 #define _ERROR_H_
 
-#include "Enums.h"
+#include <iostream>
+#include <stack>
+#include <string>
 
 class ErrorEvent
 {
   public:
-    /// lightweight error event that can be handled by
-    /// ErrorHandler
+    //! Errors in the Ves3D code
+    enum Error_t {Success=0,
+                  InvalidParameter,
+                  UnknownError,
+                  InvalidDevice, SetOnActiveDevice,    //Device error
+                  SolverDiverged,
+                  NoInteraction, InteractionFailed,
+                  NoRepartition, RepartitioningFailed,
+                  AccuracyError};
+
+    //! lightweight error event that can be handled by
+    //! ErrorHandler
     ErrorEvent(const Error_t &err, const char* fun,
         const char* file, int line);
 
-    Error_t err_;
-    string  funname_;
-    string  filename_;
-    int     linenumber_;
+    Error_t      err_;
+    std::string  funname_;
+    std::string  filename_;
+    int          linenumber_;
 
     operator bool(){return bool(err_);}
 };
 
-std::ostream& operator<<(std::ostream& output,
-    const ErrorEvent &ee);
+typedef ErrorEvent::Error_t Error_t;
 
-/// Singleton class for error handling
+//! Singleton class for error handling
 class ErrorHandler
 {
   public:
-    /// Callback function pointer type
+    //! Callback function pointer type
     typedef Error_t (*ErrorCallBack)(const Error_t &);
 
-    /// Updates the currecnt callback and returns the old one
+    //! Updates the currecnt callback and returns the old one
     static ErrorCallBack setErrorCallBack(ErrorCallBack call_back);
 
-    /// Raise an error with optional callback
+    //! Raise an error with optional callback
     static ErrorEvent submitError( ErrorEvent ee,
         ErrorCallBack call_back_in = NULL);
     static ErrorEvent submitError(const Error_t &err, const char* fun,
@@ -82,11 +93,17 @@ class ErrorHandler
         ErrorCallBack cb = NULL);
 
     static ErrorCallBack call_back_;
-    static stack<ErrorEvent> ErrorStack_;
+    static std::stack<ErrorEvent> ErrorStack_;
 };
 
+std::ostream& operator<<(std::ostream& output,
+    const ErrorEvent &ee);
+
+std::ostream& operator<<(std::ostream& output,
+    const Error_t &err_t);
+
 // Error macros
-/// CHK(err) with err as Error_t enum, raises an error if err is not Succes.
+//! CHK(err) with err as Error_t enum, raises an error if err is not Succes.
 #define CHK(err) (                 \
         err &&                     \
     ErrorHandler::submitError(err, \

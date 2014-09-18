@@ -70,14 +70,14 @@ class InterfacialVelocity
     mutable Sca_t tension_;
 
     //Workspace
-    mutable queue<Sca_t*> scalar_work_q_;
-    auto_ptr<Sca_t> checkoutSca() const;
-    void recycle(auto_ptr<Sca_t> scp) const;
+    mutable std::queue<Sca_t*> scalar_work_q_;
+    std::auto_ptr<Sca_t> checkoutSca() const;
+    void recycle(std::auto_ptr<Sca_t> scp) const;
     mutable int checked_out_work_sca_;
 
-    mutable queue<Vec_t*> vector_work_q_;
-    auto_ptr<Vec_t> checkoutVec() const;
-    void recycle(auto_ptr<Vec_t> vcp) const;
+    mutable std::queue<Vec_t*> vector_work_q_;
+    std::auto_ptr<Vec_t> checkoutVec() const;
+    void recycle(std::auto_ptr<Vec_t> vcp) const;
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;

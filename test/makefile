@@ -1,9 +1,10 @@
-
-EXEC = 	BenchmarkInterfacialVel.exe	\
+EXEC = 	ArrayTest.exe			\
+	BenchmarkInterfacialVel.exe	\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
 	DeviceTest.exe			\
 	EnumsTest.exe			\
+	ErrorTest.exe			\
 	EvalVelocityTest.exe		\
 	EvolveSurfaceTest.exe		\
 	EvolveSurfaceTestMultThread.exe \
@@ -16,6 +17,7 @@ EXEC = 	BenchmarkInterfacialVel.exe	\
 	ScalarsTest.exe			\
 	StokesTest.exe			\
         SurfaceTest.exe			\
+        VectorsTest.exe			\
 
 
 ARFILES = $(VES3D_DIR)/lib/libves3d.a
@@ -29,18 +31,22 @@ include $(MAKEIN)
 
 all: $(EXEC)
 
-%.exe: %.o $(ARFILES) %.d $(MAKEIN)
+#build the dependencies for next time. We can have a rule for
+#dependency files (%.d: %.cc) but that builds the dependency everytime
+%.exe: %.o $(ARFILES) $(MAKEIN)
 	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
+	$(CXX) -MM $(CPPFLAGS) $*.cc -o $*.d
 
-%.d: %.cc
-	$(CXX) -MM $(CPPFLAGS) $*.cc -o $@
-
-.PHONY: clean check
+.PHONY: clean check run
+.SECONDARY:
 
 clean:
 	-$(RM) *.o *.exe *.out *.d
 
 check:  $(EXEC)
-	@for exec in *.exe; do echo "\n\nRunning " $$exec; ./$$exec; done
+	$(MAKE) run
+
+run:
+	@for exec in *.exe; do echo "\n\nRunning " $$exec; ./$$exec; sleep 1;done
 
 -include $(EXEC:.exe=.d)

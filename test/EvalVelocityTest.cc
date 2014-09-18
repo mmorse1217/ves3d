@@ -9,14 +9,16 @@
 #include "Surface.h"
 
 #define DT CPU
-extern const Device<DT> the_device(0);
+typedef Device<DT> Dev;
+extern const Dev the_device(0);
+
 typedef float real;
 
 int main(int argc, char** argv)
 {
     typedef Parameters<real> Par_t;
-    typedef Scalars<real, DT, the_device> Sca_t;
-    typedef Vectors<real, DT, the_device> Vec_t;
+    typedef Scalars<real, Dev, the_device> Sca_t;
+    typedef Vectors<real, Dev, the_device> Vec_t;
     typedef OperatorsMats<Sca_t> Mats_t;
     typedef void(*StokesEval_t)(const real*, const real*,
         size_t, real*, void*);
@@ -33,14 +35,14 @@ int main(int argc, char** argv)
     sim_par.bending_modulus = bending_modulus;
     sim_par.bg_flow_param = 0.1;
 
-    COUT(sim_par<<endl);
+    COUT(sim_par<<std::endl);
 
     //Building containers
     Sca_t saved_data( (DIM+1)* n_surfs * nSnapShots, sh_order);
     Vec_t x0(n_surfs, sh_order);
     Sca_t tension(n_surfs, sh_order);
-    Vec_t x_eval(1, 1, make_pair(n_eval,1));
-    Vec_t vel(1, 1, make_pair(n_eval,1));
+    Vec_t x_eval(1, 1, std::make_pair(n_eval,1));
+    Vec_t vel(1, 1, std::make_pair(n_eval,1));
 
     //Reading the prototype form file
     DataIO myIO;
@@ -65,18 +67,19 @@ int main(int argc, char** argv)
     {
         //Copying position and tension to their containers
         Sca_t::getDevice().Memcpy(x0.begin(),
-            saved_data.getSubN((DIM+1) * n_surfs * ii),
-            x0.size() * sizeof(real), MemcpyDeviceToDevice);
+            saved_data.getSubN_begin((DIM+1) * n_surfs * ii),
+            x0.size() * sizeof(real),
+            Dev::MemcpyDeviceToDevice);
 
         Sca_t::getDevice().Memcpy(tension.begin(),
-            saved_data.getSubN((DIM+1) * n_surfs * ii + DIM * n_surfs),
-            tension.size() * sizeof(real), MemcpyDeviceToDevice);
+            saved_data.getSubN_begin((DIM+1) * n_surfs * ii + DIM * n_surfs),
+            tension.size() * sizeof(real), Dev::MemcpyDeviceToDevice);
 
         CHK( EV(x0, tension, x_eval, vel) );
 
         //Writing to file
-        myIO.WriteData("../matlab/Surfaces.out", x0, ios::app);
-        myIO.WriteData("VelocityField.out", vel, ios::app);
+        myIO.WriteData("../matlab/Surfaces.out", x0, std::ios::app);
+        myIO.WriteData("VelocityField.out", vel, std::ios::app);
     }
 
     return 0;

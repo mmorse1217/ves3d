@@ -10,7 +10,7 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
     const float *den, float *pot)
 {
     float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-    
+
 #pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
     for (int vt=0; vt<n_surfs; vt++)
     {
@@ -19,11 +19,11 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
             px = 0;
             py = 0;
             pz = 0;
-            
+
             tx=trg[3*vt*stride +                   trg_idx];
             ty=trg[3*vt*stride + stride +          trg_idx];
             tz=trg[3*vt*stride + stride + stride + trg_idx];
-            
+
             for (int s=0; s<stride; s++)
             {
                 dx=src[3*stride*vt +                   s]-tx;
@@ -33,14 +33,14 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
                 invR = dx*dx;
                 invR+= dy*dy;
                 invR+= dz*dz;
-                
+
                 if (invR!=0)
                     invR = 1.0/sqrt(invR);
-            
-                cpx = den[3*stride*vt +                   s] * qw[s]; 
-                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
-                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
-                
+
+                cpx = den[3*stride*vt +                   s] * qw[s];
+                cpy = den[3*stride*vt + stride +          s] * qw[s];
+                cpz = den[3*stride*vt + stride + stride + s] * qw[s];
+
                 cc  = dx*cpx;
                 cc += dy*cpy;
                 cc += dz*cpz;
@@ -50,7 +50,7 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
                 cpx += cc*dx;
                 cpy += cc*dy;
                 cpz += cc*dz;
-                
+
                 px += cpx*invR;
                 py += cpy*invR;
                 pz += cpz*invR;
@@ -64,7 +64,7 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
 }
 
 void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
-    int trg_idx_tail, const float *trg, const float *src, 
+    int trg_idx_tail, const float *trg, const float *src,
     const float *den, float *pot)
 {
     float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
@@ -77,11 +77,11 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
             px = 0;
             py = 0;
             pz = 0;
-            
+
             tx=trg[3*vt*stride +                   trg_idx];
             ty=trg[3*vt*stride + stride +          trg_idx];
             tz=trg[3*vt*stride + stride + stride + trg_idx];
-            
+
             for (int s=0; s<stride; s++)
             {
                 dx=src[3*stride*vt +                   s]-tx;
@@ -91,14 +91,14 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
                 invR = dx*dx;
                 invR+= dy*dy;
                 invR+= dz*dz;
-                
+
                 if (invR!=0)
                     invR = 1.0/sqrt(invR);
-            
-                cpx = den[3*stride*vt +                   s]; 
-                cpy = den[3*stride*vt + stride +          s]; 
-                cpz = den[3*stride*vt + stride + stride + s]; 
-                
+
+                cpx = den[3*stride*vt +                   s];
+                cpy = den[3*stride*vt + stride +          s];
+                cpz = den[3*stride*vt + stride + stride + s];
+
                 cc  = dx*cpx;
                 cc += dy*cpy;
                 cc += dz*cpz;
@@ -108,7 +108,7 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
                 cpx += cc*dx;
                 cpy += cc*dy;
                 cpz += cc*dz;
-                
+
                 px += cpx*invR;
                 py += cpy*invR;
                 pz += cpz*invR;
@@ -121,11 +121,11 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
 }
 
 void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
-    int trg_idx_tail, const double *qw, const double *trg, 
+    int trg_idx_tail, const double *qw, const double *trg,
     const double *src, const double *den, double *pot)
 {
     double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
-    
+
 #pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc)
     for (int vt=0; vt<n_surfs; vt++)
     {
@@ -134,11 +134,11 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
             px = 0;
             py = 0;
             pz = 0;
-            
+
             tx=trg[3*vt*stride +                   trg_idx];
             ty=trg[3*vt*stride + stride +          trg_idx];
             tz=trg[3*vt*stride + stride + stride + trg_idx];
-            
+
             for (int s=0; s<stride; s++)
             {
                 dx=src[3*stride*vt +                   s]-tx;
@@ -148,14 +148,14 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
                 invR = dx*dx;
                 invR+= dy*dy;
                 invR+= dz*dz;
-                
+
                 if (invR!=0)
                     invR = 1.0/sqrt(invR);
-            
-                cpx = den[3*stride*vt +                   s] * qw[s]; 
-                cpy = den[3*stride*vt + stride +          s] * qw[s]; 
-                cpz = den[3*stride*vt + stride + stride + s] * qw[s]; 
-                
+
+                cpx = den[3*stride*vt +                   s] * qw[s];
+                cpy = den[3*stride*vt + stride +          s] * qw[s];
+                cpz = den[3*stride*vt + stride + stride + s] * qw[s];
+
                 cc  = dx*cpx;
                 cc += dy*cpy;
                 cc += dz*cpz;
@@ -165,7 +165,7 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
                 cpx += cc*dx;
                 cpy += cc*dy;
                 cpz += cc*dz;
-                
+
                 px += cpx*invR;
                 py += cpy*invR;
                 pz += cpz*invR;
@@ -178,7 +178,7 @@ void DirectStokesKernel(int stride, int n_surfs, int trg_idx_head,
 }
 
 void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
-    int trg_idx_tail, const double *trg, const double *src, 
+    int trg_idx_tail, const double *trg, const double *src,
     const double *den, double *pot)
 {
 
@@ -192,11 +192,11 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
             px = 0;
             py = 0;
             pz = 0;
-            
+
             tx=trg[3*vt*stride +                   trg_idx];
             ty=trg[3*vt*stride + stride +          trg_idx];
             tz=trg[3*vt*stride + stride + stride + trg_idx];
-            
+
             for (int s=0; s<stride; s++)
             {
                 dx=src[3*stride*vt +                   s]-tx;
@@ -206,14 +206,14 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
                 invR = dx*dx;
                 invR+= dy*dy;
                 invR+= dz*dz;
-                
+
                 if (invR!=0)
                     invR = 1.0/sqrt(invR);
-            
-                cpx = den[3*stride*vt +                   s]; 
-                cpy = den[3*stride*vt + stride +          s]; 
-                cpz = den[3*stride*vt + stride + stride + s]; 
-                
+
+                cpx = den[3*stride*vt +                   s];
+                cpy = den[3*stride*vt + stride +          s];
+                cpz = den[3*stride*vt + stride + stride + s];
+
                 cc  = dx*cpx;
                 cc += dy*cpy;
                 cc += dz*cpz;
@@ -223,7 +223,7 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
                 cpx += cc*dx;
                 cpy += cc*dy;
                 cpz += cc*dz;
-                
+
                 px += cpx*invR;
                 py += cpy*invR;
                 pz += cpz*invR;
@@ -233,29 +233,29 @@ void DirectStokesKernel_Noqw(int stride, int n_surfs, int trg_idx_head,
             pot[3*vt*stride + stride +stride + trg_idx] = pz * I_PI;
         }
     }
-} 
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
-void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail, 
-    const float *qw, const float *trg, const float *src, 
+void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail,
+    const float *qw, const float *trg, const float *src,
     const float *den, float *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", endl, exit(1));
+        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
 
 #pragma omp parallel for
     for (int vt=0; vt<n_surfs; vt++)
     {
-        float aux_arr[3*SIMD_LEN_F+3]; 
-        float *tempvalx; 
-        float *tempvaly; 
-        float *tempvalz; 
+        float aux_arr[3*SIMD_LEN_F+3];
+        float *tempvalx;
+        float *tempvaly;
+        float *tempvalz;
         size_t residual = size_t(aux_arr)%IDEAL_ALIGNMENT;
         if (residual)  // if aux_arr is misaligned
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(float);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", endl, exit(1));
+            CERR(" ", std::endl, exit(1));
         tempvaly=tempvalx+SIMD_LEN_F;
         tempvalz=tempvaly+SIMD_LEN_F;
 
@@ -287,9 +287,9 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
                 float cur_pot_y = den[3*stride*vt +  stride + s] * qw[s];
                 float cur_pot_z = den[3*stride*vt +2*stride + s] * qw[s];
 
-                float tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y + 
+                float tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y +
                     dZ_reg*cur_pot_z)*invR*invR;
-                
+
                 cur_pot_x += tmp_scalar*dX_reg;
                 cur_pot_y += tmp_scalar*dY_reg;
                 cur_pot_z += tmp_scalar*dZ_reg;
@@ -351,7 +351,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
                 dY = _mm_sub_ps(tyi , syj);
                 dZ = _mm_sub_ps(tzi , szj);
 
-                sxj = _mm_mul_ps(dX, dX); 
+                sxj = _mm_mul_ps(dX, dX);
                 syj = _mm_mul_ps(dY, dY);
                 szj = _mm_mul_ps(dZ, dZ);
 
@@ -397,9 +397,9 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
 
             }
 
-            _mm_store_ps(tempvalx, tempx); 
-            _mm_store_ps(tempvaly, tempy); 
-            _mm_store_ps(tempvalz, tempz); 
+            _mm_store_ps(tempvalx, tempx);
+            _mm_store_ps(tempvaly, tempy);
+            _mm_store_ps(tempvalz, tempz);
 
             for (size_t k = 0; k < SIMD_LEN_F; k++) {
                 p[0] += tempvalx[k];
@@ -421,27 +421,27 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
 
 ///////////////////////////////////////////////////////////////////////////////////
 void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
-    int trg_idx_tail, const float *trg, const float *src, 
+    int trg_idx_tail, const float *trg, const float *src,
     const float *den, float *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", endl, exit(1));
-    
+        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+
 #pragma omp parallel for
     ///@todo add the openmp instructions
     for (int vt=0; vt<n_surfs; vt++)
     {
-        float aux_arr[3*SIMD_LEN_F+3]; 
-        float *tempvalx; 
-        float *tempvaly; 
-        float *tempvalz; 
+        float aux_arr[3*SIMD_LEN_F+3];
+        float *tempvalx;
+        float *tempvaly;
+        float *tempvalz;
         size_t residual = size_t(aux_arr)%IDEAL_ALIGNMENT;
         if (residual)  // if aux_arr is misaligned
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(float);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", endl, exit(1));
-        
+            CERR(" ", std::endl, exit(1));
+
         tempvaly=tempvalx+SIMD_LEN_F;
         tempvalz=tempvaly+SIMD_LEN_F;
 
@@ -473,7 +473,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
                 float cur_pot_y = den[3*stride*vt +  stride + s];
                 float cur_pot_z = den[3*stride*vt +2*stride + s];
 
-                float tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y 
+                float tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y
                     + dZ_reg*cur_pot_z)*invR*invR;
                 cur_pot_x += tmp_scalar*dX_reg;
                 cur_pot_y += tmp_scalar*dY_reg;
@@ -535,7 +535,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
                 dY = _mm_sub_ps(tyi , syj);
                 dZ = _mm_sub_ps(tzi , szj);
 
-                sxj = _mm_mul_ps(dX, dX); 
+                sxj = _mm_mul_ps(dX, dX);
                 syj = _mm_mul_ps(dY, dY);
                 szj = _mm_mul_ps(dZ, dZ);
 
@@ -581,9 +581,9 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
 
             }
 
-            _mm_store_ps(tempvalx, tempx); 
-            _mm_store_ps(tempvaly, tempy); 
-            _mm_store_ps(tempvalz, tempz); 
+            _mm_store_ps(tempvalx, tempx);
+            _mm_store_ps(tempvaly, tempy);
+            _mm_store_ps(tempvalz, tempz);
 
             for (size_t k = 0; k < SIMD_LEN_F; k++) {
                 p[0] += tempvalx[k];
@@ -604,27 +604,27 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, 
-    int trg_idx_tail, const double *qw, const double *trg, 
+void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const double *qw, const double *trg,
     const double *src, const double *den, double *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", endl, exit(1));
-    
+        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+
 #pragma omp parallel for
     ///@todo add the openmp instructions
     for (int vt=0; vt<n_surfs; vt++)
     {
-        double aux_arr[3*SIMD_LEN_D+3]; 
-        double *tempvalx; 
-        double *tempvaly; 
-        double *tempvalz; 
+        double aux_arr[3*SIMD_LEN_D+3];
+        double *tempvalx;
+        double *tempvaly;
+        double *tempvalz;
         size_t residual = size_t(aux_arr)%IDEAL_ALIGNMENT;
         if (residual)  // if aux_arr is misaligned
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(double);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", endl, exit(1));
+            CERR(" ", std::endl, exit(1));
         tempvaly=tempvalx+SIMD_LEN_D;
         tempvalz=tempvaly+SIMD_LEN_D;
 
@@ -658,7 +658,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
 
                 double tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y
                     + dZ_reg*cur_pot_z)*invR*invR;
-                
+
                 cur_pot_x += tmp_scalar*dX_reg;
                 cur_pot_y += tmp_scalar*dY_reg;
                 cur_pot_z += tmp_scalar*dZ_reg;
@@ -709,7 +709,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
                 dY = _mm_sub_pd(tyi , syj);
                 dZ = _mm_sub_pd(tzi , szj);
 
-                sxj = _mm_mul_pd(dX, dX); 
+                sxj = _mm_mul_pd(dX, dX);
                 syj = _mm_mul_pd(dY, dY);
                 szj = _mm_mul_pd(dZ, dZ);
 
@@ -718,11 +718,11 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
 
                 __m128d zero = _mm_setzero_pd ();
                 __m128d is_zero = _mm_cmpeq_pd(dR2, zero);
-                
+
                 ///@bug this part of code may be buggy -abtin
                 // S = _mm_rsqrt_ps(dR2);
                 __m128 dR2_s  = _mm_cvtpd_ps(dR2);
-                
+
                 const __m128 approx = _mm_rsqrt_ps( dR2_s );
                 const __m128 muls  = _mm_mul_ps(_mm_mul_ps(dR2_s, approx), approx);
                 const __m128 three = _mm_set1_ps (3.0f);
@@ -760,9 +760,9 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
 
             }
 
-            _mm_store_pd(tempvalx, tempx); 
-            _mm_store_pd(tempvaly, tempy); 
-            _mm_store_pd(tempvalz, tempz); 
+            _mm_store_pd(tempvalx, tempx);
+            _mm_store_pd(tempvaly, tempy);
+            _mm_store_pd(tempvalz, tempz);
 
             for (size_t k = 0; k < SIMD_LEN_D; k++) {
                 p[0] += tempvalx[k];
@@ -771,8 +771,8 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
             }
 
             if (s!=size_t(stride))
-                CERR(" ", endl, exit(1));;
-            
+                CERR(" ", std::endl, exit(1));;
+
             pot[3*vt*stride +            trg_idx] = p[0] * I_PI;
             pot[3*vt*stride +   stride + trg_idx] = p[1] * I_PI;
             pot[3*vt*stride + 2*stride + trg_idx] = p[2] * I_PI;
@@ -782,27 +782,27 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
     return;
 }
 
-void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head, 
+void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
     int trg_idx_tail, const double *trg, const double *src,
     const double *den, double *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", endl, exit(1));
-    
+        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+
 #pragma omp parallel for
     ///@todo add the openmp instructions
     for (int vt=0; vt<n_surfs; vt++)
     {
-        double aux_arr[3*SIMD_LEN_D+3]; 
-        double *tempvalx; 
-        double *tempvaly; 
-        double *tempvalz; 
+        double aux_arr[3*SIMD_LEN_D+3];
+        double *tempvalx;
+        double *tempvaly;
+        double *tempvalz;
         size_t residual = size_t(aux_arr)%IDEAL_ALIGNMENT;
         if (residual)  // if aux_arr is misaligned
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(double);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", endl, exit(1));
+            CERR(" ", std::endl, exit(1));
 
         tempvaly=tempvalx+SIMD_LEN_D;
         tempvalz=tempvaly+SIMD_LEN_D;
@@ -837,7 +837,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
 
                 double tmp_scalar = (dX_reg*cur_pot_x + dY_reg*cur_pot_y
                     + dZ_reg*cur_pot_z)*invR*invR;
-                
+
                 cur_pot_x += tmp_scalar*dX_reg;
                 cur_pot_y += tmp_scalar*dY_reg;
                 cur_pot_z += tmp_scalar*dZ_reg;
@@ -888,7 +888,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
                 dY = _mm_sub_pd(tyi , syj);
                 dZ = _mm_sub_pd(tzi , szj);
 
-                sxj = _mm_mul_pd(dX, dX); 
+                sxj = _mm_mul_pd(dX, dX);
                 syj = _mm_mul_pd(dY, dY);
                 szj = _mm_mul_pd(dZ, dZ);
 
@@ -897,11 +897,11 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
 
                 __m128d zero = _mm_setzero_pd ();
                 __m128d is_zero = _mm_cmpeq_pd(dR2, zero);
-                
+
                 ///@bug this part of code may be buggy -abtin
                 // S = _mm_rsqrt_ps(dR2);
                 __m128 dR2_s  = _mm_cvtpd_ps(dR2);
-                
+
                 const __m128 approx = _mm_rsqrt_ps( dR2_s );
                 const __m128 muls  = _mm_mul_ps(_mm_mul_ps(dR2_s, approx), approx);
                 const __m128 three = _mm_set1_ps (3.0f);
@@ -939,9 +939,9 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
 
             }
 
-            _mm_store_pd(tempvalx, tempx); 
-            _mm_store_pd(tempvaly, tempy); 
-            _mm_store_pd(tempvalz, tempz); 
+            _mm_store_pd(tempvalx, tempx);
+            _mm_store_pd(tempvaly, tempy);
+            _mm_store_pd(tempvalz, tempz);
 
             for (size_t k = 0; k < SIMD_LEN_D; k++) {
                 p[0] += tempvalx[k];
@@ -950,8 +950,8 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
             }
 
             if (s!=size_t(stride))
-                CERR(" ", endl, exit(1));
-            
+                CERR(" ", std::endl, exit(1));
+
             pot[3*vt*stride +            trg_idx] = p[0] * I_PI;
             pot[3*vt*stride +   stride + trg_idx] = p[1] * I_PI;
             pot[3*vt*stride + 2*stride + trg_idx] = p[2] * I_PI;
@@ -969,37 +969,37 @@ void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot, v
     float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
     const float *trg(src), *srcPtr(src), *denPtr(den);
 
-#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)   
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)
     for (int trg_idx=0; trg_idx<np; ++trg_idx)
     {
         px = 0; py = 0; pz = 0;
         tx=trg[3*trg_idx]; ty=trg[3*trg_idx+1]; tz=trg[3*trg_idx+2];
-        
+
         src = srcPtr; den = denPtr;
         for (int src_idx=0; src_idx<np; ++src_idx)
         {
             dx=*src++ - tx;
             dy=*src++ - ty;
             dz=*src++ - tz;
-                
+
             invR = dx*dx + dy*dy + dz*dz;
-            
+
             if (invR!=0)
                 invR = 1.0/sqrt(invR);
-            
-            cpx = *den++; cpy = *den++; cpz = *den++; 
-            
+
+            cpx = *den++; cpy = *den++; cpz = *den++;
+
             cc  = dx*cpx + dy*cpy + dz*cpz;
             cc *= invR; cc *= invR;
-            
+
             cpx += cc*dx;
             cpy += cc*dy;
             cpz += cc*dz;
-            
+
             px += cpx*invR;
             py += cpy*invR;
             pz += cpz*invR;
-            
+
         }
         pot[3*trg_idx  ] = px * I_PI;
         pot[3*trg_idx+1] = py * I_PI;
@@ -1012,37 +1012,37 @@ void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot
     double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
     const double *trg(src), *srcPtr(src), *denPtr(den);
 
-#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)   
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc, src, den)
     for (size_t trg_idx=0; trg_idx<np; ++trg_idx)
     {
         px = 0; py = 0; pz = 0;
         tx=trg[3*trg_idx]; ty=trg[3*trg_idx+1]; tz=trg[3*trg_idx+2];
-        
+
         src = srcPtr; den = denPtr;
         for (int src_idx=0; src_idx<np; ++src_idx)
         {
             dx=*src++ - tx;
             dy=*src++ - ty;
             dz=*src++ - tz;
-                
+
             invR = dx*dx + dy*dy + dz*dz;
-            
+
             if (invR!=0)
                 invR = 1.0/sqrt(invR);
-            
-            cpx = *den++; cpy = *den++; cpz = *den++; 
-            
+
+            cpx = *den++; cpy = *den++; cpz = *den++;
+
             cc  = dx*cpx + dy*cpy + dz*cpz;
             cc *= invR; cc *= invR;
-            
+
             cpx += cc*dx;
             cpy += cc*dy;
             cpz += cc*dz;
-            
+
             px += cpx*invR;
             py += cpy*invR;
             pz += cpz*invR;
-            
+
         }
         pot[3*trg_idx  ] = px * I_PI;
         pot[3*trg_idx+1] = py * I_PI;

@@ -17,15 +17,15 @@ Device:
 - CudaKernels.cu
 - CudaKernels.h
 - - -
-- [AR] Device.h
-- DeviceCPU.cc
-- DeviceGPU.cc
-- [AR] DeviceTest.cc
-- [AR] DeviceTest.h
-- - -
 - transpose_kernel.cu
 - transpose_kernel.h
 - transpose_wrapper.cu
+- - -
+- [R] Device.h
+- [R] DeviceCPU.cc
+- [AR] DeviceGPU.cc
+- [R] DeviceTest.cc
+- [R] DeviceTest.h
 
 Basic:
 ------
@@ -41,25 +41,28 @@ Basic:
 - [R] Logger.h
 - [R] LoggerTest.cc
 - - -
-- [AR] Array.cc
-- [AR] Array.h
+- [R] Array.cc
+- [R] Array.h
+- [R] ArrayTest.cc
 - - -
-- [AR] ScalarContainerTest.h
-- [AR] Scalars.cc
-- [AR] Scalars.h
-- [AR] ScalarsTest.cc
+- [R] Scalars.cc
+- [R] Scalars.h
+- [R] ScalarsTest.cc
+- [R] ScalarContainerTest.h
 - - -
-- [AR] Vectors.cc
-- [AR] Vectors.h
-- - -
-- [AR] OperatorsMats.cc
-- [AR] OperatorsMats.h
+- [R] Vectors.cc
+- [R] Vectors.h
+- [R] VectorsTest.h
+- [R] VectorsTest.cc
 - - -
 - [AR] SHTMats.cc
 - [AR] SHTMats.h
 - [AR] SHTrans.cc
 - [AR] SHTrans.h
 - [AR] SHTransTest.cc
+- - -
+- [AR] OperatorsMats.cc
+- [AR] OperatorsMats.h
 
 Core:
 -----

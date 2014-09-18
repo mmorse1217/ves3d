@@ -35,21 +35,28 @@
 #define _ENUMS_H_
 
 #include <iostream>
-#include <stack>
 #include <string>
-
-using namespace std;
+#include <utility>  // for pair
 
 #define DIM 3
 
-///The enum types for the types of device, the insertion operator <<
-///is overloaded for this type.
-enum DeviceType {CPU, GPU};
+//! Grid for spherical harmonic
+#define EMPTY_GRID std::make_pair(-1,-1)
 
-///The enum types for the memory copying action, the insertion
-///operator << is overloaded for this type.
-enum MemcpyKind {MemcpyHostToHost, MemcpyHostToDevice,
-                 MemcpyDeviceToHost, MemcpyDeviceToDevice};
+//! Grid function for spherical harmonics
+inline std::pair<int, int> gridDimOf(int sh_order)
+{
+    return((sh_order >= -1) ?
+        std::make_pair(sh_order + 1, 2 * sh_order) :
+        EMPTY_GRID);
+}
+
+//! typed pi
+template <typename T>
+inline T PI64(){
+    //64   -.------1-------2-------3-------4-------5-------6-------7-------8
+    return 3.141592653589793238462643383279502884197169399375105820974944592;
+}
 
 ///The enum type for the reordering of the points
 ///PointMajor means [x_1,y_1,z_1,...] ordering
@@ -63,33 +70,9 @@ enum SolverScheme {Explicit, BlockImplicit, GloballyImplicit};
 ///and cache some of the expected results
 enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 
-///The enum types for the errors in the Ves3D set of function, the
-///insertion operator << is overloaded for this type.
-
-///Errors in the Ves3D code
-enum Ves3DErrors {Success=0,
-                  InvalidParameter,
-                  UnknownError,
-                  InvalidDevice, SetOnActiveDevice,    //Device error
-                  SolverDiverged,
-                  NoInteraction, InteractionFailed,
-                  NoRepartition, RepartitioningFailed,
-                  AccuracyError};
-
-typedef enum Ves3DErrors Error_t;
-
 ///String to enums functions
 enum SolverScheme EnumifyScheme(const char * name);
 enum SingularStokesRot EnumifyStokesRot(const char * name);
-
-///Overloaded insertion operators
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum DeviceType &DT);
-
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum MemcpyKind &MK);
 
 std::ostream& operator<<(
     std::ostream& output,
@@ -102,9 +85,5 @@ std::ostream& operator<<(
 std::ostream& operator<<(
     std::ostream& output,
     const enum SingularStokesRot &SS);
-
-std::ostream& operator<<(
-    std::ostream& output,
-    const enum Ves3DErrors &err);
 
 #endif //_ENUMS_H_

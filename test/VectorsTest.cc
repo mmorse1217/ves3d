@@ -1,5 +1,5 @@
-#include "ScalarContainerTest.h"
-#include "Scalars.h"
+#include "VectorsTest.h"
+#include "Vectors.h"
 #include "Device.h"
 
 typedef Device<CPU> DevCPU;
@@ -13,15 +13,15 @@ extern const DevGPU gpu_dev(0);
 int main(int argc, char* argv[])
 {
     COUT("\n ==============================\n"
-        <<"  Scalars Test:"
+        <<"  Vectors Test:"
         <<"\n ==============================\n");
 
-    ScalarsTest<Scalars<float, DevCPU, cpu_dev> > sctest_cpu;
-    sctest_cpu.PerformAll();
+    VectorsTest<Vectors<float, DevCPU, cpu_dev> > tcpu;
+    tcpu.PerformAll();
 
 #ifdef GPU_ACTIVE
-    ScalarsTest<Scalars<float, DevGPU, gpu_dev> > sctest_gpu;
-    sctest_gpu.PerformAll();
+    VectorsTest<Vectors<float, DevCPU, cpu_dev> > tgpu;
+    tgpu.PerformAll();
 #endif
 
     return 0;

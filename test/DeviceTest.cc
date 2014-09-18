@@ -1,12 +1,30 @@
-#include <unistd.h>  //for sleep()
 #include "DeviceTest.h"
+#include <iostream>
+#include <sstream>
 
 int main(int argc, char** argv)
 {
     COUT("\n ==============================\n"
         <<"  Device Test:"
         <<"\n ==============================\n");
-    sleep(1);
+
+    typedef ostringstream stm;
+    typedef string str;
+    {
+        stm stream;
+        str str;
+        stream<<CPU;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="CPU");
+    }
+
+    {
+        stm stream;
+        str str;
+        stream<<GPU;
+        COUT(stream.str()<<endl);
+        assert(stream.str()=="GPU");
+    }
 
     PROFILESTART();
     bool res;
@@ -20,7 +38,6 @@ int main(int argc, char** argv)
         cout<<" * Initialization: "<<err<<" *"<<endl;
         DeviceTest<CPU,float> dvt_f(&cpu);
         res = dvt_f.PerformAll();
-        sleep(1);
     }
 
     {
@@ -28,7 +45,6 @@ int main(int argc, char** argv)
         Device<CPU> cpu;
         DeviceTest<CPU,double> dvt_d(&cpu);
         res &= dvt_d.PerformAll();
-        sleep(1);
     }
 
 #ifdef GPU_ACTIVE
@@ -41,7 +57,6 @@ int main(int argc, char** argv)
             cout<<" * Initialization: "<<err<<" *"<<endl;
             DeviceTest<GPU,float> dvt_gf(&gpu);
             res &= dvt_gf.PerformAll();
-            sleep(1);
         }
 
         {
@@ -52,7 +67,6 @@ int main(int argc, char** argv)
             cout<<" * Initialization: "<<err<<" *"<<endl;
             DeviceTest<GPU,double> dvt_gf(&gpu);
             res &= dvt_gf.PerformAll();
-            sleep(1);
         }
     }
 #endif //GPU_ACTIVE
@@ -63,6 +77,5 @@ int main(int argc, char** argv)
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);
 
-    sleep(1);
     return 0;
 }

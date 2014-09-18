@@ -14,7 +14,7 @@ SHTrans<Container, Mats>::SHTrans(int p_in, Mats &mats, int filter_freq) :
 {
     int ll = p * (p + 2);
     value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
-    
+
     int idx = 0, len;
     filter_freq = (filter_freq == -1) ? 2*p/3 : filter_freq;
 
@@ -22,24 +22,24 @@ SHTrans<Container, Mats>::SHTrans(int p_in, Mats &mats, int filter_freq) :
     {
         len = p + 1 - (ii+1)/2;
         for(int jj=0; jj < len; ++jj)
-            buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;       
+            buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;
     }
 
-    device_.Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type), 
-        MemcpyHostToDevice);
+    device_.Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type),
+        device_type::MemcpyHostToDevice);
     free(buffer);
 }
 
 template<typename Container, typename Mats>
-SHTrans<Container, Mats>::~SHTrans() 
+SHTrans<Container, Mats>::~SHTrans()
 {
     device_.Free(filter_coeff_);
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::DLT(value_type *trans, 
-    const value_type *inputs, value_type *outputs, 
-    int m, int n , int k, int mf, int nf, int kf) const 
+void SHTrans<Container, Mats>::DLT(value_type *trans,
+    const value_type *inputs, value_type *outputs,
+    int m, int n , int k, int mf, int nf, int kf) const
 {
     PROFILESTART();
 
@@ -47,7 +47,7 @@ void SHTrans<Container, Mats>::DLT(value_type *trans,
         int num_legendre_inputs = n;
         if (freq == 0 || freq == p) num_legendre_inputs = n / 2;
 
-        device_.gemm("N", "N", &m, &num_legendre_inputs, &k, &alpha_, 
+        device_.gemm("N", "N", &m, &num_legendre_inputs, &k, &alpha_,
             trans, &m, inputs, &k, &beta_,outputs, &m);
 
         trans += m * k;
@@ -61,18 +61,18 @@ void SHTrans<Container, Mats>::DLT(value_type *trans,
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::back(const value_type *inputs, 
-    value_type *work_arr, int n_funs, value_type *outputs, 
-    value_type *trans, value_type *dft) const 
-{    
+void SHTrans<Container, Mats>::back(const value_type *inputs,
+    value_type *work_arr, int n_funs, value_type *outputs,
+    value_type *trans, value_type *dft) const
+{
     PROFILESTART();
     int num_dft_inputs = n_funs * (p + 1);
     DLT(trans, inputs, outputs, p + 1, 2 * n_funs, p + 1, 0, 0, 1);
-    
+
     device_.Transpose(outputs, dft_size, num_dft_inputs, work_arr);
-    
+
     PROFILESTART();
-    device_.gemm("T", "N", &dft_size, &num_dft_inputs, 
+    device_.gemm("T", "N", &dft_size, &num_dft_inputs,
         &dft_size, &alpha_, dft, &dft_size,
         work_arr, &dft_size, &beta_, outputs, &dft_size);
     PROFILEEND("SHT_DFT_",0);
@@ -87,71 +87,71 @@ void SHTrans<Container, Mats>::forward(const Container &in, Container &work,
     PROFILESTART();
     int n_funs = in.getNumSubs();
     int num_dft_inputs = n_funs * (p + 1);
-    
+
     PROFILESTART();
-    device_.gemm("N", "N", &dft_size, &num_dft_inputs, &dft_size, 
-        &alpha_, mats_.dft_, &dft_size,in.begin(), &dft_size, &beta_, 
+    device_.gemm("N", "N", &dft_size, &num_dft_inputs, &dft_size,
+        &alpha_, mats_.dft_, &dft_size,in.begin(), &dft_size, &beta_,
         shc.begin(), &dft_size);
     PROFILEEND("SHT_DFT_",0);
 
     device_.Transpose(shc.begin(), num_dft_inputs, dft_size, work.begin());
     DLT(mats_.dlt_, work.begin(), shc.begin(), p + 1, 2 * n_funs, p + 1, 1, 0, 0);
-    
+
     PROFILEEND("SHT_",0);
 }
 
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::backward(const Container &shc, 
+void SHTrans<Container, Mats>::backward(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(), 
+    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
         mats_.dlt_inv_, mats_.dft_inv_);
 }
 
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::backward_du(const Container &shc, 
+void SHTrans<Container, Mats>::backward_du(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(), 
+    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
         mats_.dlt_inv_d1_, mats_.dft_inv_);
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::backward_d2u(const Container &shc, 
+void SHTrans<Container, Mats>::backward_d2u(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(), 
+    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
         mats_.dlt_inv_d2_, mats_.dft_inv_);
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::backward_dv(const Container &shc, 
+void SHTrans<Container, Mats>::backward_dv(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(), 
+    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
         mats_.dlt_inv_, mats_.dft_inv_d1_);
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::backward_d2v(const Container &shc, 
+void SHTrans<Container, Mats>::backward_d2v(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(), 
+    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
         mats_.dlt_inv_, mats_.dft_inv_d2_);
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::backward_duv(const Container &shc, 
+void SHTrans<Container, Mats>::backward_duv(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(), 
+    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
         mats_.dlt_inv_d1_, mats_.dft_inv_d1_);
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::lowPassFilter(const Container &in, Container &work, 
+void SHTrans<Container, Mats>::lowPassFilter(const Container &in, Container &work,
     Container &shc, Container &out) const
 {
     int n_funs = in.getNumSubs();
@@ -162,11 +162,11 @@ void SHTrans<Container, Mats>::lowPassFilter(const Container &in, Container &wor
 
 template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::ScaleFreq(
-    const value_type *shc_in, int n_funs, 
+    const value_type *shc_in, int n_funs,
     const value_type* scaling_coeff, value_type *shc_out) const
 {
     int leg_order = p+1;
-    
+
     device_.ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
     scaling_coeff += leg_order;
     shc_in += n_funs * leg_order;
@@ -174,21 +174,21 @@ void SHTrans<Container, Mats>::ScaleFreq(
     leg_order--;
 
     // process remaining frequencies except the last cosine
-    for (; leg_order>1; leg_order--) 
+    for (; leg_order>1; leg_order--)
     {
         // first process cosine
         device_.ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
         scaling_coeff += leg_order;
         shc_in += n_funs * leg_order;
         shc_out += n_funs * leg_order;
-        
+
         // then process sine
         device_.ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
         scaling_coeff += leg_order;
         shc_in += n_funs * leg_order;
         shc_out += n_funs * leg_order;
     }
-    
+
     // process last cosine
     device_.ax(scaling_coeff, shc_in, leg_order, n_funs, shc_out);
 }
@@ -203,7 +203,7 @@ void SHTrans<Container, Mats>::FirstDerivatives(const Container &in,
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::collectSameOrder(const Container &in, 
+void SHTrans<Container, Mats>::collectSameOrder(const Container &in,
     Container &out) const
 {
     ///@bug this code need to be moved to the device
@@ -211,12 +211,12 @@ void SHTrans<Container, Mats>::collectSameOrder(const Container &in,
     typename Container::value_type *outPtr(NULL), *head(out.begin());
 
     int ns = in.getNumSubs() * in.getTheDim();
-  
+
     for(int ii=0; ii<= p; ++ii)
     {
         int len = 2*ii + 1 - (ii/p);
-                
-        inPtr = in.begin() + ii;       
+
+        inPtr = in.begin() + ii;
         for(int jj=0; jj<= 2*ii-(ii/p); ++jj)
         {
             outPtr = head + jj;
@@ -235,19 +235,19 @@ void SHTrans<Container, Mats>::collectSameOrder(const Container &in,
 }
 
 template<typename Container, typename Mats>
-void SHTrans<Container, Mats>::collectSameFreq(const Container &in, 
+void SHTrans<Container, Mats>::collectSameFreq(const Container &in,
     Container &out) const
 {
     ///@bug this code need to be moved to the device
     const typename Container::value_type *inPtr(NULL), *head(in.begin());
     typename Container::value_type *outPtr(NULL);
 
-    int ns = in.getNumSubs() * in.getTheDim();  
+    int ns = in.getNumSubs() * in.getTheDim();
     for(int ii=0; ii<= p; ++ii)
     {
         int len = 2*ii + 1 - (ii/p);
-                
-        outPtr = out.begin() + ii;       
+
+        outPtr = out.begin() + ii;
         for(int jj=0; jj<= 2*ii-(ii/p); ++jj)
         {
             inPtr = head + jj;

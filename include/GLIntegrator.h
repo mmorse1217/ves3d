@@ -14,17 +14,17 @@ class GaussLegendreIntegrator
     ~GaussLegendreIntegrator();
 
     template<typename InputContainer>
-    inline void operator()(const InputContainer &x_in, 
+    inline void operator()(const InputContainer &x_in,
         const Container &w_in, InputContainer &x_dw) const;
-    
-    inline void operator()(const Container &w_in, 
+
+    inline void operator()(const Container &w_in,
         Container &dw) const;
 
     Container* getQuadWeights(int key) const;
     Container* buildQuadWeights(int shOrder) const;
 
   private:
-    static map<int, Container*> qw_map;
+    static std::map<int, Container*> qw_map;
 };
 
 #include "GLIntegrator.cc"

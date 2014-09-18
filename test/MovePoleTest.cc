@@ -8,16 +8,16 @@
 
 #define DT CPU
 typedef double real;
-extern const Device<DT> the_device(0);
-
+typedef Device<DT> Dev;
+extern const Dev the_device(0);
 
 int main(int argc, char** argv)
 {
     bool check_correct = (argc > 1) ? atoi(argv[1]) : true;
     bool profile = (argc > 2) ? atoi(argv[2]) : true;
 
-    typedef Scalars<real, DT, the_device> Sca_t;
-    typedef Vectors<real, DT, the_device> Vec_t;
+    typedef Scalars<real, Dev, the_device> Sca_t;
+    typedef Vectors<real, Dev, the_device> Vec_t;
     typedef OperatorsMats<Sca_t> Mats_t;
     int p(12);
     int nVec(1);
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 
     Vec_t x0(nVec, p);
     int fLen = x0.getStride();
-    string prec = (typeid(real) == typeid(float)) ? "float" : "double";
+    std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
     sprintf(fname,"precomputed/dumbbell_%u_%s.txt",p,prec.c_str());
     myIO.ReadData(fname, x0, 0, fLen * DIM);
 
@@ -70,9 +70,10 @@ int main(int argc, char** argv)
                     myIO.Append(xr_spHarm);
                 }
                 axpy(-1,xr_direct, xr_spHarm, xr_spHarm);
-                err = max(err,AlgebraicDot(xr_spHarm,xr_spHarm));
+                err = std::max(err,AlgebraicDot(xr_spHarm,xr_spHarm));
             }
-        COUT("    The difference between the two methods : "<<err<<endl<<endl);
+        COUT("    The difference between the two methods : "
+             <<err<<std::endl<<std::endl);
     }
 
 
