@@ -6,11 +6,8 @@
 #include "Device.h"
 
 #include "Scalars.h"
-// #include "Vectors.h"
 #include "HelperFuns.h"
 #include "BiCGStab.h"
-// #include <stdlib.h>
-
 
 typedef float real;
 
@@ -23,6 +20,7 @@ class MatVec
 {
   public:
     typedef typename Container::value_type T;
+    typedef typename Container::device_type DT;
     Container diag;
 
     MatVec(int nf, int p)
@@ -35,7 +33,7 @@ class MatVec
             buffer[ii] = (ii + 1) * (ii + 1);
 
         diag.getDevice().Memcpy(diag.begin(), buffer,
-            size * sizeof(T), MemcpyHostToDevice);
+            size * sizeof(T), DT::MemcpyHostToDevice);
 
         delete[] buffer;
     }
@@ -47,10 +45,12 @@ class MatVec
 };
 #endif //Doxygen_skip
 
-extern const Device<CPU> the_cpu_dev(0);
+typedef Device<CPU> DCPU;
+extern const DCPU the_cpu_dev(0);
 
 #ifdef GPU_ACTIVE
-extern const Device<GPU> the_gpu_dev(0);
+typedef Device<CPU> DGPU;
+extern const DGPU the_gpu_dev(0);
 #endif //GPU_ACTIVE
 
 int main(int argc, char **argv)
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     sleep(.5);
 
 
-    typedef Scalars<real,CPU, the_cpu_dev> ScaCPU_t;
+    typedef Scalars<real,DCPU, the_cpu_dev> ScaCPU_t;
 
     int p = 12;
     int nfuns(1);
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     {
         ScaCPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
-            b.size() * sizeof(real), MemcpyHostToDevice);
+            b.size() * sizeof(real), DCPU::MemcpyHostToDevice);
 
         BiCGStab<ScaCPU_t, MatVec<ScaCPU_t> > Solver;
         int iter_in(iter);
@@ -102,12 +102,12 @@ int main(int argc, char **argv)
 
 #ifdef GPU_ACTIVE
     {
-        typedef Scalars<real,GPU, the_gpu_dev> ScaGPU_t;
+        typedef Scalars<real,DGPU, the_gpu_dev> ScaGPU_t;
         MatVec<ScaGPU_t> AxGPU(nfuns, p);
 
         ScaGPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
-            b.size() * sizeof(real), MemcpyHostToDevice);
+            b.size() * sizeof(real), DGPU,MemcpyHostToDevice);
 
         axpy(0, x, x);
 

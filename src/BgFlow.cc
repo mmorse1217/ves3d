@@ -11,23 +11,23 @@ void ShearFlow<VecContainer>::operator()(const VecContainer &pos, const value_ty
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();
     int idx;
-    
+
     axpy(0.0, pos, vel_inf);
     for(int ii=0;ii<n_surfs;ii++)
     {
         idx = pos.getTheDim() * ii * stride;
-        pos.getDevice().Memcpy(vel_inf.begin() + idx, 
+        pos.getDevice().Memcpy(vel_inf.begin() + idx,
             pos.begin() + idx + stride + stride
-            ,stride * sizeof(typename VecContainer::value_type), 
-            MemcpyDeviceToDevice);
+            ,stride * sizeof(typename VecContainer::value_type),
+            pos.getDevice().MemcpyDeviceToDevice);
     }
     axpy(shear_rate_, vel_inf, vel_inf);
 }
 
 // Parabolic flow ///////////////////////////////////////////////////////////////
 template<typename ScalarContainer, typename VecContainer>
-ParabolicFlow<ScalarContainer, VecContainer>::ParabolicFlow(value_type radius, 
-    value_type center_vel, value_type flow_dir_x, value_type flow_dir_y, 
+ParabolicFlow<ScalarContainer, VecContainer>::ParabolicFlow(value_type radius,
+    value_type center_vel, value_type flow_dir_x, value_type flow_dir_y,
         value_type flow_dir_z) :
     inv_radius2_( - 1.0 / radius / radius),
     center_vel_(center_vel),
@@ -43,7 +43,7 @@ ParabolicFlow<ScalarContainer, VecContainer>::ParabolicFlow(value_type radius,
     flow_dir_y_ /= norm;
     flow_dir_z_ /= norm;
 }
- 
+
 template<typename ScalarContainer, typename VecContainer>
 void ParabolicFlow<ScalarContainer, VecContainer>::CheckContainers(
     const VecContainer &ref) const
@@ -56,27 +56,29 @@ void ParabolicFlow<ScalarContainer, VecContainer>::CheckContainers(
     {
         int ll = flow_direction_.getStride();
         value_type* buffer = new value_type[ll * DIM];
-        
+
         for(int jj=0; jj< ll; ++jj)
         {
             buffer[       jj] = flow_dir_x_;
             buffer[  ll + jj] = flow_dir_y_;
             buffer[2*ll + jj] = flow_dir_z_;
-        } 
+        }
 
         VecContainer::getDevice().Memcpy(flow_direction_.begin(),
-            buffer, DIM *ll * sizeof(value_type), MemcpyHostToDevice);
+            buffer, DIM *ll * sizeof(value_type),
+            VecContainer::getDevice().MemcpyHostToDevice);
         delete[] buffer;
-    }   
+    }
 
     for(int ii=ns; ii<flow_direction_.getNumSubs(); ++ii)
         VecContainer::getDevice().Memcpy(flow_direction_.getSubN(ii),
-            flow_direction_.begin(), flow_direction_.getSubLength() * 
-            sizeof(value_type), MemcpyDeviceToDevice);
+            flow_direction_.begin(), flow_direction_.getSubLength() *
+            sizeof(value_type),
+            VecContainer::getDevice().MemcpyDeviceToDevice);
 }
 
 template<typename ScalarContainer, typename VecContainer>
-void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const 
+void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
     VecContainer &pos, const value_type time, VecContainer &vel_inf) const
 {
     this->CheckContainers(pos);
@@ -98,7 +100,7 @@ void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
  */
 template<typename VecContainer>
 TaylorVortex<VecContainer>::TaylorVortex(value_type strength, value_type x_period,
-    value_type y_period) : 
+    value_type y_period) :
     strength_(strength), x_period_(x_period), y_period_(y_period)
 {
     assert( VecContainer::getDeviceType() == CPU );
@@ -111,7 +113,7 @@ void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();
     int idx;
-    
+
     wrk_vec1_.replicate(pos);
     wrk_vec2_.replicate(pos);
 
@@ -121,7 +123,7 @@ void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value
     for ( size_t ii=0;ii<pos.size(); ++ii )
     {
         wrk_vec1_.begin()[ii] = cos(wrk_vec1_.begin()[ii]);
-        wrk_vec2_.begin()[ii] = sin(wrk_vec2_.begin()[ii]); 
+        wrk_vec2_.begin()[ii] = sin(wrk_vec2_.begin()[ii]);
     }
 
     axpy(0.0, pos, vel_inf);
@@ -133,9 +135,5 @@ void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value
             vel_inf.begin()[idx + stride ] =  wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride];
 
         }
-    axpy(strength_, vel_inf, vel_inf); 
+    axpy(strength_, vel_inf, vel_inf);
 }
-    
-
-    
-

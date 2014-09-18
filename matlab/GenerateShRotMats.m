@@ -1,8 +1,5 @@
 function [Rall Rcell]= GenerateShRotMats(p)
 
-  addpath ../../Ves3DMat/src/
-  addpath ../../Ves3DMat/util/
-
   Rall = [];
   Rcell = cell(p+1,1);
   R = cell(p+1,1);

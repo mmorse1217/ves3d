@@ -11,8 +11,8 @@ int main(int argc, char **argv)
         <<"\n ==============================\n");
     sleep(1);
 
-    int k = 4*2048;
-    int n = 4*2048;
+    int k = 2*2048;
+    int n = 2*2048;
 
     size_t sa = n*n;
     size_t sb = n*k;
@@ -33,7 +33,7 @@ int main(int argc, char **argv)
             B_h[ii*k+jj] = drand48();
 
     {// cpu
-      COUT(" - Testing CPU"<<endl);
+        COUT(" - Testing CPU"<<std::endl);
         Device<CPU> cpu(0);
 
         real *A = (real*) cpu.Malloc(sa * sizeof(real));
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 
 #ifdef GPU_ACTIVE
     {
-      COUT(" - Testing GPU"<<endl);
+        COUT(" - Testing GPU"<<std::endl);
         Device<GPU> gpu(0);
 
         real *A = (real*) gpu.Malloc(sa * sizeof(real));

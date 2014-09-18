@@ -36,8 +36,27 @@
 
 #include <iostream>
 #include <string>
+#include <utility>  // for pair
 
 #define DIM 3
+
+//! Grid for spherical harmonic
+#define EMPTY_GRID std::make_pair(-1,-1)
+
+//! Grid function for spherical harmonics
+inline std::pair<int, int> gridDimOf(int sh_order)
+{
+    return((sh_order >= -1) ?
+        std::make_pair(sh_order + 1, 2 * sh_order) :
+        EMPTY_GRID);
+}
+
+//! typed pi
+template <typename T>
+inline T PI64(){
+    //64   -.------1-------2-------3-------4-------5-------6-------7-------8
+    return 3.141592653589793238462643383279502884197169399375105820974944592;
+}
 
 ///The enum type for the reordering of the points
 ///PointMajor means [x_1,y_1,z_1,...] ordering

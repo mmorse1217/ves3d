@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include "Enums.h"
+#include "Error.h"
 #include "anyoption.h"
 
 template <typename T>

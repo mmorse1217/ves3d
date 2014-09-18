@@ -39,10 +39,7 @@
 #include <utility>  // for pair
 #include <cstddef>  // for size_t
 #include "Array.h"
-
-#define EMPTY_GRID std::make_pair(-1,-1)
-
-inline std::pair<int, int> gridDimOf(int sh_order);
+#include "Enums.h"
 
 /**
  * @class Scalar

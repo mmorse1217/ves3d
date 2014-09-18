@@ -40,8 +40,8 @@ Error_t VesInteraction<T>::operator()(
             0, potential.size() * sizeof(value_type));
 
         COUT("  No interaction."
-            <<"\n ------------------------------------"<<endl);
-        return NoInteraction;
+            <<"\n ------------------------------------"<<std::endl);
+        return ErrorEvent::NoInteraction;
     }
 
     //Getting the sizes
@@ -52,24 +52,29 @@ Error_t VesInteraction<T>::operator()(
     //Copying to the host and maybe casting to fmm_value_type
     if(typeid(value_type) == typeid(T))
     {
+
         position.getDevice().Memcpy(all_pos_ + idx, position.begin(),
-            n_cpy * sizeof(value_type), MemcpyDeviceToHost);
+            n_cpy * sizeof(value_type),
+            position.getDevice().MemcpyDeviceToHost);
 
         density.getDevice().Memcpy(all_den_ + idx, density.begin(),
-            n_cpy * sizeof(value_type), MemcpyDeviceToHost);
+            n_cpy * sizeof(value_type),
+            density.getDevice().MemcpyDeviceToHost);
     }
     else
     {
         value_type* buffer(new value_type[n_cpy]);
 
         position.getDevice().Memcpy(buffer, position.begin(),
-            n_cpy * sizeof(value_type), MemcpyDeviceToHost);
+            n_cpy * sizeof(value_type),
+            position.getDevice().MemcpyDeviceToHost);
 
         for(size_t ii=0; ii<n_cpy; ++ii)
             *(all_pos_ + idx + ii) = static_cast<T>(buffer[ii]);
 
         position.getDevice().Memcpy(buffer, density.begin(),
-            n_cpy * sizeof(value_type), MemcpyDeviceToHost);
+            n_cpy * sizeof(value_type),
+            position.getDevice().MemcpyDeviceToHost);
 
         for(size_t ii=0; ii<n_cpy; ++ii)
             *(all_den_ + idx + ii) = static_cast<T>(buffer[ii]);
@@ -87,7 +92,8 @@ Error_t VesInteraction<T>::operator()(
     if(typeid(value_type) == typeid(T))
     {
         potential.getDevice().Memcpy(potential.begin(), all_pot_ + idx,
-            n_cpy * sizeof(value_type), MemcpyHostToDevice);
+            n_cpy * sizeof(value_type),
+            potential.getDevice().MemcpyHostToDevice);
     }
     else
     {
@@ -97,14 +103,15 @@ Error_t VesInteraction<T>::operator()(
             buffer[ii] = static_cast<T>(*(all_pot_ + idx + ii));
 
         potential.getDevice().Memcpy(potential.begin(), buffer,
-            n_cpy * sizeof(value_type), MemcpyHostToDevice);
+            n_cpy * sizeof(value_type),
+            potential.MemcpyHostToDevice);
 
         delete[] buffer;
     }
 
     COUT("  Interaction resolved."
-        <<"\n ------------------------------------"<<endl);
-    return Success;
+        <<"\n ------------------------------------"<<std::endl);
+    return ErrorEvent::Success;
 }
 
 template<typename T>
@@ -167,7 +174,7 @@ void VesInteraction<T>::checkContainersSize() const
 // template<typename Device>
 // void template<typename T> VesInteraction<T>::directInteraction(const Device &device)
 // {
-//     cout<<"Direct"<<endl;
+//     cout<<"Direct"<<std::endl;
     //             int the_dim = VecContainer::getTheDim();
 
             //             position.getDevice().Transpose(all_pos_, np_, the_dim, all_pot_);

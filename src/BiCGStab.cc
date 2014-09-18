@@ -36,7 +36,7 @@ std::ostream& operator<<(std::ostream& output, const enum BiCGSReturn &ret)
 
         default:
             CERR("\n The BiCGSReturn type is not recognized. Please update the"
-                <<"\n overloaded insertion operator",endl, NULL);
+                <<"\n overloaded insertion operator",std::endl, NULL);
     }
     return output;
 }
@@ -105,7 +105,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             tol = resid;
             max_iter = i;
             COUT("\n  BiCGStab:   Iteration = "<<i
-                <<"\n                 Relres = "<<SCI_PRINT_FRMT<<resid<<endl);
+                <<"\n                 Relres = "<<SCI_PRINT_FRMT<<resid<<std::endl);
             return BiCGSSuccess;
         }
 
@@ -123,7 +123,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             tol = resid;
             max_iter = i;
             COUT("\n  BiCGStab:   Iteration = "<<i
-                <<"\n                 Relres = "<<SCI_PRINT_FRMT<<resid<<endl);
+                <<"\n                 Relres = "<<SCI_PRINT_FRMT<<resid<<std::endl);
             return BiCGSSuccess;
         }
         if (omega == 0) {
@@ -200,7 +200,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             if ((tol = Norm(s)/normb) < tol_in) {
                 axpy(alpha, p, x , x);
                 COUT("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
-                    <<"\n                 Relres = "<<scientific<<setprecision(4)<<tol<<endl);
+                    <<"\n                 Relres = "<<std::scientific<<std::setprecision(4)<<tol<<std::endl);
                 return BiCGSSuccess;
             }
 
@@ -214,7 +214,7 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             rho_2 = rho_1;
 
             COUT("\n  BiCGStab:   Iteration = "<<iter_per_restart<<" ("<<num_restart<<")"
-                    <<"\n                 Relres = "<<scientific<<setprecision(4)<<tol<<endl);
+                <<"\n                 Relres = "<<std::scientific<<std::setprecision(4)<<tol<<std::endl);
 
             if ((tol = Norm(r) / normb) < tol_in)
                 return BiCGSSuccess;

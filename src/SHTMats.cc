@@ -1,14 +1,14 @@
 template<typename T, typename Device>
-SHTMats<T, Device>::SHTMats(const Device &dev, int sh_order, T *data, 
-    bool generateMats, pair<int, int> grid_dim) :
+SHTMats<T, Device>::SHTMats(const Device &dev, int sh_order, T *data,
+    bool generateMats, std::pair<int, int> grid_dim) :
     sh_order_(sh_order),
     grid_dim_((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order_) : grid_dim),
     data_(data),
     dft_size(grid_dim_.second),
     device_(dev)
 {
-    assert(data_ != NULL);
-    
+    ASSERT(data_ != NULL,"NULL pointer passed!");
+
     size_t dft_size = getDFTLength();
     size_t dlt_size = getDLTLength();
 
@@ -42,7 +42,7 @@ int SHTMats<T, Device>::getShOrder() const
 }
 
 template<typename T, typename Device>
-pair<int, int> SHTMats<T, Device>::getGridDim() const
+std::pair<int, int> SHTMats<T, Device>::getGridDim() const
 {
     return(grid_dim_);
 }
@@ -60,22 +60,22 @@ size_t SHTMats<T, Device>::getDLTLength() const
 }
 
 template<typename T, typename Device>
-size_t SHTMats<T, Device>::getDataLength() const 
+size_t SHTMats<T, Device>::getDataLength() const
 {
     return( 4 * getDFTLength() + 4 * getDLTLength());
 }
 
 template<typename T, typename Device>
-size_t SHTMats<T, Device>::getDataLength(int sh_order, pair<int, int> grid_dim)
+size_t SHTMats<T, Device>::getDataLength(int sh_order, std::pair<int, int> grid_dim)
 {
     grid_dim = ((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order) : grid_dim);
-    
-    return( 4 * grid_dim.second * grid_dim.second + 
+
+    return( 4 * grid_dim.second * grid_dim.second +
         4 * grid_dim.first * grid_dim.first * ( grid_dim.first + 1));
 }
 
 template<typename T, typename Device>
-const Device& SHTMats<T,Device>::getDevice() const 
+const Device& SHTMats<T,Device>::getDevice() const
 {
     return(device_);
 }
@@ -90,18 +90,19 @@ void SHTMats<T, Device>::gen_dft_forward() {
 
     for(int j = 0; j < dft_size; j++)
         for(int i = 1; i < sh_order_; i++) {
-            buffer[2 * i - 1 + dft_size * j] = cos(M_PI * i * j / sh_order_) 
-                / dft_size * 2;
-            
-            buffer[2 * i + dft_size * j] = sin(M_PI * i * j / sh_order_) 
-                / dft_size * 2;
+            buffer[2 * i - 1 + dft_size * j] =
+                cos(PI64<T>() * i * j / sh_order_)/ dft_size * 2;
+
+            buffer[2 * i + dft_size * j] =
+                sin(PI64<T>() * i * j / sh_order_)/ dft_size * 2;
         }
 
     for(int j = 0; j < dft_size; j++)
-        buffer[dft_size - 1 + dft_size * j] = cos(M_PI * j) / dft_size;
+        buffer[dft_size - 1 + dft_size * j] =
+            cos(PI64<T>() * j) / dft_size;
 
     device_.Memcpy(dft_, buffer, getDFTLength() * sizeof(T),
-        MemcpyHostToDevice);
+        Device::MemcpyHostToDevice);
     delete[] buffer;
 }
 
@@ -110,72 +111,77 @@ template<typename T, typename Device>
 void SHTMats<T, Device>::gen_dft_backward() {
 
     T* buffer = new T[getDFTLength()];
-    
+
     for(int j = 0; j < dft_size; j++)
         buffer[dft_size * j] = 1.0F;
-  
+
     for(int j = 0; j < dft_size; j++)
         for(int i = 1; i < sh_order_; i++) {
-            buffer[2 * i - 1 + dft_size * j] = cos(M_PI * i * j / sh_order_);
-            buffer[2 * i + dft_size * j] = sin(M_PI * i * j / sh_order_);
+            buffer[2 * i - 1 + dft_size * j] =
+                cos(PI64<T>() * i * j / sh_order_);
+            buffer[2 * i + dft_size * j] =
+                sin(PI64<T>() * i * j / sh_order_);
         }
 
     for(int j = 0; j < dft_size; j++)
-        buffer[dft_size - 1 + dft_size * j] = cos(M_PI * j);
+        buffer[dft_size - 1 + dft_size * j] = cos(PI64<T>() * j);
 
     device_.Memcpy(dft_inv_, buffer, getDFTLength() * sizeof(T),
-        MemcpyHostToDevice);
+        Device::MemcpyHostToDevice);
     delete[] buffer;
 }
 
 
 template<typename T, typename Device>
 void SHTMats<T, Device>::gen_dft_d1backward() {
-    
+
     T* buffer = new T[getDFTLength()];
-    
+
     for(int j = 0; j < dft_size; j++)
         buffer[dft_size * j] = 0;
 
     for(int j = 0; j < dft_size; j++)
         for(int i = 1; i < sh_order_; i++) {
-            buffer[2 * i - 1 + dft_size * j] = -i * 
-                sin(M_PI * i * j / sh_order_);
-            
-            buffer[2 * i + dft_size * j] = i * 
-                cos(M_PI * i * j / sh_order_);
+            buffer[2 * i - 1 + dft_size * j] = -i *
+                sin(PI64<T>() * i * j / sh_order_);
+
+            buffer[2 * i + dft_size * j] = i *
+                cos(PI64<T>() * i * j / sh_order_);
         }
 
     for(int j = 0; j < dft_size; j++)
         buffer[dft_size - 1 + dft_size * j] = 0;
-    
+
     device_.Memcpy(dft_inv_d1_, buffer, getDFTLength() * sizeof(T),
-        MemcpyHostToDevice);
+        Device::MemcpyHostToDevice);
     delete[] buffer;
 }
 
 
 template<typename T, typename Device>
 void SHTMats<T, Device>::gen_dft_d2backward() {
-   
+
     T* buffer = new T[getDFTLength()];
-    
+
     for(int j = 0; j < dft_size; j++)
         buffer[dft_size * j] = 0;
-  
+
     for(int j = 0; j < dft_size; j++)
         for(int i = 1; i < sh_order_; i++) {
-            buffer[2 * i - 1 + dft_size * j] = -i * i * 
-                cos(M_PI * i * j / sh_order_);
+            buffer[2 * i - 1 + dft_size * j] = -i * i *
+                cos(PI64<T>() * i * j / sh_order_);
 
-            buffer[2 * i + dft_size * j] = -i * i * 
-                sin(M_PI * i * j / sh_order_);
+            buffer[2 * i + dft_size * j] = -i * i *
+                sin(PI64<T>() * i * j / sh_order_);
         }
 
     for(int j=0; j<dft_size; j++)
-        buffer[dft_size-1 + dft_size*j] = - sh_order_*sh_order_*cos(M_PI*j);
+        buffer[dft_size-1 + dft_size*j] = -
+            sh_order_*sh_order_*cos(PI64<T>()*j);
 
-    device_.Memcpy(dft_inv_d2_, buffer, getDFTLength() * sizeof(T),
-        MemcpyHostToDevice);
+    device_.Memcpy(dft_inv_d2_,
+        buffer,
+        getDFTLength() * sizeof(T),
+        Device::MemcpyHostToDevice);
     delete[] buffer;
 }

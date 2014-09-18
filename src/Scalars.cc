@@ -32,13 +32,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-inline std::pair<int, int> gridDimOf(int sh_order)
-{
-    return((sh_order >= -1) ?
-        std::make_pair(sh_order + 1, 2 * sh_order + 2) :
-        EMPTY_GRID);
-}
-
 template <typename T, typename DT, const DT &DEVICE>
 Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
     std::pair<int, int> grid_dim) :

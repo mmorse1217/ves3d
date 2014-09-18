@@ -64,17 +64,17 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
 
   //print usage if no options
   if( ! opt.hasOptions() ) {
-      cout<<"\n You need to define the simulation options"<<endl;
+      std::cout<<"\n You need to define the simulation options"<<std::endl;
       opt.printUsage();
-      return InvalidParameter;
+      return ErrorEvent::InvalidParameter;
   }
 
   // 6. GET THE VALUES
   this->getOptionValues(&opt);
 
-  //COUT(*this<<endl);
+  //COUT(*this<<std::endl);
 
-  return Success;
+  return ErrorEvent::Success;
 }
 
 template<typename T>

@@ -3,6 +3,7 @@
 
 #include <typeinfo>
 #include "Enums.h"
+#include "Error.h"
 #include <omp.h>
 /**
  * The gateway function between the local code and FMM code. This

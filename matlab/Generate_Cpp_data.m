@@ -1,8 +1,5 @@
 function Generate_Cpp_data(p, precision, varargin)
   
-  addpath ../../Ves3DMat/src/
-  addpath ../../Ves3DMat/util/
-
   for ii = 1:length(varargin)
     
     switch varargin{ii}

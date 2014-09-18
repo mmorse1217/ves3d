@@ -7,28 +7,26 @@
 #include <string>
 #include <cstring>
 
-#define COMMON_OPT 	1
-#define COMMAND_OPT 	2
-#define FILE_OPT 	3
-#define COMMON_FLAG 	4
-#define COMMAND_FLAG 	5
-#define FILE_FLAG 	6
+#define COMMON_OPT   1
+#define COMMAND_OPT  2
+#define FILE_OPT     3
+#define COMMON_FLAG  4
+#define COMMAND_FLAG 5
+#define FILE_FLAG    6
 
-#define COMMAND_OPTION_TYPE  	1
+#define COMMAND_OPTION_TYPE 1
 #define COMMAND_FLAG_TYPE 	2
 #define FILE_OPTION_TYPE  	3
 #define FILE_FLAG_TYPE 		4
 #define UNKNOWN_TYPE 		5
 
-#define DEFAULT_MAXOPTS 	10
-#define MAX_LONG_PREFIX_LENGTH 	2
+#define DEFAULT_MAXOPTS        10
+#define MAX_LONG_PREFIX_LENGTH 2
 
-#define DEFAULT_MAXUSAGE	3
-#define DEFAULT_MAXHELP         10
+#define DEFAULT_MAXUSAGE 3
+#define DEFAULT_MAXHELP  10
 
 #define TRUE_FLAG "true"
-
-using namespace std;
 
 class AnyOption
 {

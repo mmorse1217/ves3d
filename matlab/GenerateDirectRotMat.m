@@ -1,8 +1,5 @@
 function [R Rcell] = GenerateDirectRotMat(p)
 
-  addpath ../../Ves3DMat/src/
-  addpath ../../Ves3DMat/util/
-
   np = 2*p*(p+1);
   ind = reshape(1:np,p+1,[])';
   ind = ind(:);

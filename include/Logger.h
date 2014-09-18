@@ -164,7 +164,7 @@ static bool assert_expr(false);
 /*
  * Printing macro
  */
-#define SCI_PRINT_FRMT scientific<<setprecision(4)
+#define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
 #define CERR(str,endline,action) (                                      \
         std::cerr<<std::endl<<str                                       \
         <<"\n        File     : "<< __FILE__                            \
