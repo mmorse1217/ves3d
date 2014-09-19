@@ -151,7 +151,7 @@ static bool assert_expr(false);
 #define LOG(msg) (Logger::Log(msg))
 
 #ifdef VERBOSE
-#define COUTDEBUG(str) (std::cout<<str)
+#define COUTDEBUG(str) (std::cout<<" [DEBUG] "<<str)
 #else
 #define COUTDEBUG(str)
 #endif //VERBOSE
