@@ -43,13 +43,14 @@
 
 
 //! Sentinel grid-size for spherical harmonic
-#define EMPTY_GRID std::make_pair(-1,-1)
+//! The second zero is to make grid size zero -1*0=0
+#define EMPTY_GRID std::make_pair(-1,0)
 
 //! Grid function for spherical harmonics (longitude,lattitude) grid
 inline std::pair<int, int> SpharmGridDim(int sh_order)
 {
     return((sh_order >= 0) ?
-        std::make_pair(sh_order+1, 2*sh_order+2) :
+        std::make_pair(sh_order+1, 2*sh_order+1) :
         EMPTY_GRID);
 }
 

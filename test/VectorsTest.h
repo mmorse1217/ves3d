@@ -56,7 +56,7 @@ class VectorsTest
 
 template<typename V>
 int VectorsTest<V>::grid_size(int p)
-{ return 2*(p+1)*p ;}
+{ return (p+1)*(2*p+1) ;}
 
 template<typename V>
 bool VectorsTest<V>::PerformAll()
