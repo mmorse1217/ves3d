@@ -17,6 +17,7 @@ EXEC = 	ArrayTest.exe			\
 	ScalarsTest.exe			\
 	StokesTest.exe			\
         SurfaceTest.exe			\
+        Tr1Test.exe			\
         VectorsTest.exe			\
 
 

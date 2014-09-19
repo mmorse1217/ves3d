@@ -40,6 +40,7 @@
 #include <cstddef>  // for size_t
 #include "Array.h"
 #include "Enums.h"
+#include "Spharm.h"
 
 /**
  * @class Scalar

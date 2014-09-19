@@ -40,17 +40,6 @@
 
 #define DIM 3
 
-//! Grid for spherical harmonic
-#define EMPTY_GRID std::make_pair(-1,-1)
-
-//! Grid function for spherical harmonics
-inline std::pair<int, int> gridDimOf(int sh_order)
-{
-    return((sh_order >= -1) ?
-        std::make_pair(sh_order + 1, 2 * sh_order) :
-        EMPTY_GRID);
-}
-
 //! typed pi
 template <typename T>
 inline T PI64(){

@@ -36,7 +36,8 @@ template <typename T, typename DT, const DT &DEVICE>
 Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
     std::pair<int, int> grid_dim) :
     sh_order_(sh_order),
-    grid_dim_((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order_) : grid_dim),
+    grid_dim_((grid_dim == EMPTY_GRID) ?
+        SpharmGridDim(sh_order_) : grid_dim),
     stride_(grid_dim_.first * grid_dim_.second),
     num_subs_(num_subs)
 {
@@ -109,7 +110,7 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs,
     num_subs_ = new_num_subs;
     sh_order_ = (new_sh_order == -1) ? sh_order_ : new_sh_order;
     grid_dim_ = (new_grid_dim == EMPTY_GRID) ?
-        gridDimOf(sh_order_) : new_grid_dim;
+        SpharmGridDim(sh_order_) : new_grid_dim;
     stride_   = grid_dim_.first * grid_dim_.second;
 
     array_type::resize(this->arr_size());
