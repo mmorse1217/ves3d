@@ -80,7 +80,7 @@ namespace tr1{
         //
         ~shared_ptr()
         {
-            COUTDEBUG("Destructing shared_ptr to "<<this->ptr_<<std::endl);
+            COUTDEBUG("Destructing shared_ptr to "<<this->ptr_);
             leave();
         }
 
@@ -118,7 +118,7 @@ namespace tr1{
                 aft->fore = fore;
 
             if (fore == NULL && aft == NULL && ptr_){
-                COUTDEBUG("Deleting pointer to "<<ptr_<<std::endl);
+                COUTDEBUG("Deleting pointer to "<<ptr_);
                 delete ptr_;
             }
         }

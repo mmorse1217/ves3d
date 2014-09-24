@@ -28,13 +28,19 @@ bool ScalarsTest<Container>::PerformAll()
     test_result = TestResize()
         && TestReplicate();
 
-    std::string res_print = (test_result) ? " Passed" : " Failed";
-
-    COUT("\n\n ====================================================\n"
-        <<"  The container "
-        <<typeid(Container).name()<<res_print<<std::endl
-        <<" ===================================================="
-        <<std::endl);
+    if (test_result){
+        COUT(emph<<"\n\n ====================================================\n"
+            <<"  The container "
+            <<typeid(Container).name()<<" Passed"<<std::endl
+            <<" ===================================================="
+            <<emph);
+    } else {
+        COUT(alert<<"\n\n ====================================================\n"
+            <<"  The container "
+            <<typeid(Container).name()<<" Failed"<<std::endl
+            <<" ===================================================="
+            <<alert);
+    }
 
     return test_result;
 }
@@ -65,7 +71,7 @@ bool ScalarsTest<Container>::TestReplicate()
     Container sc(nsubs, p);
     Container sc_cpy;
     COUT(sc_cpy);
-    COUT(" Replicating :"<<std::endl);
+    COUT(" Replicating:");
     sc_cpy.replicate(sc);
     COUT(sc_cpy);
 
@@ -97,7 +103,7 @@ bool ScalarsTest<Container>::TestReplicate()
 
     COUT(" Copying form to and from the container: "
          <<((res) ? "Pass" : "Fail")
-         <<std::endl);
+         );
 
     return res;
 }

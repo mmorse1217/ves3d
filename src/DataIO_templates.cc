@@ -5,9 +5,8 @@ bool DataIO::ReadData(const std::string &file_name, size_t size, T* data) const
 
     if(!data_file.good())
         CERR("\n  Could not read the data from the file."
-            <<"\n\n    File name : "<<file_name<<".\n",std::endl, exit(1));
-
-    COUTDEBUG("\n  Reading file:\n    "<<file_name<<std::endl<<std::endl);
+            <<"\n\n    File name : "<<file_name<<".","", exit(1));
+    COUTDEBUG("Reading file: "<<file_name);
 
     size_t idx=0;
     while (idx<size )
@@ -22,7 +21,8 @@ bool DataIO::WriteData(const std::string &file_name, size_t size, const T* data,
     std::ios_base::openmode mode) const
 {
     COUT("\n  DataIO::"<<__FUNCTION__<<":\n"
-        <<"              size : "<<size<<std::endl);
+        <<"              file : "<<file_name<<"\n"
+        <<"              size : "<<size);
 
 #pragma omp ordered //critical writeData
     {
@@ -36,7 +36,7 @@ bool DataIO::WriteData(const std::string &file_name, size_t size, const T* data,
             data_file<<data[idx++]<<std::endl;
         data_file.close();
 
-        COUT("           written : "<<idx<<std::endl);
+        COUT("           written : "<<idx);
 
     }
     return(true);
@@ -94,7 +94,7 @@ bool DataIO::Append(const Container &data) const
             <<"\n              Total     = "<<out_size_
             <<"\n              Used      = "<<out_used_
             <<"\n              Available = "<<out_size_-out_used_
-            <<std::endl);
+            );
 
         Container::getDevice().Memcpy(out_buffer_ + out_used_,
             data.begin(),
@@ -110,7 +110,7 @@ template<typename T>
 bool DataIO::FlushBuffer() const
 {
     COUT("\n  DataIO::FlushBuffer() [typed] to:\n"
-        <<"              "<<out_file_ <<std::endl);
+        <<"              "<<out_file_);
 
     bool res(true);
     if(out_buffer_ !=0 && out_used_ > 0)

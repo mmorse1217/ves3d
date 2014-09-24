@@ -51,7 +51,7 @@ double Logger::Toc()
 {
     double toc;
     if(Logger::TicStack.empty())
-        CERR(" There is no matching Logger::Tic() call.",std::endl, toc=0);
+        CERR(" There is no matching Logger::Tic() call.","", toc=0);
     else
     {
         toc = Logger::Now();
@@ -114,14 +114,14 @@ void Logger::Report(enum ReportFormat rf)
         case SortFunName:
             COUT("\n =========================================================================================="<<std::endl
                 <<"   >Function name               Calls            Total time         GFlop         GFlop/sec"
-                <<"\n ------------------------------------------------------------------------------------------"<<std::endl);
+                <<"\n ------------------------------------------------------------------------------------------");
             for_each(PrflMap.begin(), PrflMap.end(), &PrintLogEvent<std::string>);
             break;
 
         case SortNumCalls:
             COUT("\n ==========================================================================================="<<std::endl
                 <<"    Function name              >Calls            Total time         GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<std::endl);
+                <<"\n -------------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.num_calls, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
@@ -130,7 +130,7 @@ void Logger::Report(enum ReportFormat rf)
         case SortTime:
             COUT("\n ==========================================================================================="<<std::endl
                 <<"    Function name               Calls           >Total time         GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<std::endl);
+                <<"\n -------------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.time, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
@@ -139,7 +139,7 @@ void Logger::Report(enum ReportFormat rf)
         case SortFlop:
             COUT("\n ==========================================================================================="<<std::endl
                 <<"    Function name               Calls            Total time        >GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<std::endl);
+                <<"\n -------------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.flop, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
@@ -148,17 +148,17 @@ void Logger::Report(enum ReportFormat rf)
         case SortFlopRate:
             COUT("\n ==========================================================================================="<<std::endl
                 <<"    Function name               Calls            Total time         GFlop       >GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------"<<std::endl);
+                <<"\n -------------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.flop_rate, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
     }
-    COUT(" ==========================================================================================="<<std::endl);
+    COUT(" ===========================================================================================");
 
     if(TicStack.size())
-        CERR("\n There may be unbalanced Tic() and Toc() calls.",std::endl,sleep(0));
+        CERR("\n There may be unbalanced Tic() and Toc() calls.","",sleep(0));
 }
 
 void Logger::SetLogFile(std::string file_name)
@@ -174,7 +174,7 @@ void Logger::Log(const char *event)
     {
         CERR(" Could not open the log file." <<std::endl
             <<" File name : " << log_file <<"."<<std::endl
-            <<"\n Log event: "<<event,std::endl,exit(1));
+            <<"\n Log event: "<<event,"",exit(1));
     }
     else
     {
@@ -190,4 +190,26 @@ double Logger::GetFlops()
         return(Logger::FlopStack.top());
     else
         return(0);
+}
+
+std::ostream& alert(std::ostream& os)
+{
+    if(os.iword(alert_xalloc) == false)
+        os<<"\033[1;31m";
+    else
+        os<<"\033[0m\n";
+
+    os.iword(alert_xalloc) = !os.iword(alert_xalloc);
+    return os;
+}
+
+std::ostream& emph(std::ostream& os)
+{
+    if(os.iword(emph_xalloc) == false)
+        os<<"\033[1;36m";
+    else
+        os<<"\033[0m\n";
+
+    os.iword(emph_xalloc) = !os.iword(emph_xalloc);
+    return os;
 }

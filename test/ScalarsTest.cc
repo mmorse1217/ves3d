@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 {
     COUT("\n ==============================\n"
         <<"  Scalars Test:"
-        <<"\n ==============================\n");
+        <<"\n ==============================");
 
     ScalarsTest<Scalars<float, DevCPU, cpu_dev> > sctest_cpu;
     sctest_cpu.PerformAll();

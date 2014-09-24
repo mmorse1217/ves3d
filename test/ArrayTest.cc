@@ -12,26 +12,26 @@ void test_array(){
     typedef typename Arr::value_type T;
     typedef typename Arr::device_type DT;
 
-    cout<<" -- Testing array with device "<<Arr::getDevice().type()<<endl;
+    COUT(" -- Testing array with device "<<Arr::getDevice().type());
     {
         size_t sz(6);
-        cout<<" . Test initialization"<<endl;
+        COUT(" . Test initialization");
 
         Arr a,b(sz);
-        assert(a.size()==0);
-        assert(b.size()==sz);
+        ASSERT(a.size()==0,"zero size");
+        ASSERT(b.size()==sz,"non-zero size");
 
         a.resize(sz);
-        assert(a.size()==sz);
+        ASSERT(a.size()==sz,"resize");
     }
 
     {
         size_t sz(6);
-        cout<<" . Test iterator"<<endl;
+        COUT(" . Test iterator");
 
         Arr a,b(sz);
-        assert((a.end()-a.begin())==a.size());
-        assert((b.end()-b.begin())==b.size());
+        ASSERT((a.end()-a.begin())==a.size(),"pointer arithmetic");
+        ASSERT((b.end()-b.begin())==b.size(),"pointer arithmetic");
 
         T *c =  new T[sz];
         T *d =  new T[sz];
@@ -51,7 +51,7 @@ void test_array(){
             DT::MemcpyDeviceToHost);
 
         for(size_t i=0;i<sz;++i)
-            assert(d[i]==i*i);
+            ASSERT(d[i]==i*i,"memcpy");
     }
 }
 
@@ -69,13 +69,15 @@ int main(int argc, char** argv)
 {
     COUT("\n ==============================\n"
         <<"  Array Test:"
-        <<"\n ==============================\n");
+        <<"\n ==============================");
     sleep(1);
 
     PROFILESTART();
     test_array<CArr>();
+    COUT(emph<<" ** CPU passed **"<<emph);
 #ifdef GPU_ACTIVE
     test_array<GArr>();
+    COUT(emph<<"** GPU passed **"<<emph);
 #endif //GPU_ACTIVE
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);

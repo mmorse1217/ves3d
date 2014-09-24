@@ -9,6 +9,7 @@ syntax: glob
 *.d
 results/
 precomputed
+data/
 docs/html/
 docs/latex/
 TAGS

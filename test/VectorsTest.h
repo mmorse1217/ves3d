@@ -56,7 +56,7 @@ class VectorsTest
 
 template<typename V>
 int VectorsTest<V>::grid_size(int p)
-{ return (p+1)*(2*p+1) ;}
+{ return (p+1)*(2*p) ;}
 
 template<typename V>
 bool VectorsTest<V>::PerformAll()
@@ -71,15 +71,17 @@ bool VectorsTest<V>::PerformAll()
         && TestPointOrder()
         ;
 
-    std::string res_print = (test_result) ? "Passed" : "Failed";
-    COUT("\n *** Vector class " + res_print + " ***\n"<<std::endl);
+    if (test_result)
+        COUT(emph<<"\n *** Vector class passed ***\n"<<emph);
+    else
+        COUT(alert<<"\n *** Vector class failed ***\n"<<alert);
     return test_result;
 }
 
 template<typename V>
 bool VectorsTest<V>::TestTheDim()
 {
-    COUT(" . TestTheDim"<<std::endl);
+    COUT(" . TestTheDim");
     V v(3,4);
     S* s(&v);
 
@@ -105,7 +107,7 @@ bool VectorsTest<V>::TestTheDim()
 template<typename V>
 bool VectorsTest<V>::TestNumSubs()
 {
-    COUT(" . TestNumSubs"<<std::endl);
+    COUT(" . TestNumSubs");
     int ns(2), p(8);
     V v(ns,p);
     S* s(&v);
@@ -129,7 +131,7 @@ bool VectorsTest<V>::TestNumSubs()
 template<typename V>
 bool VectorsTest<V>::TestSubLength()
 {
-    COUT(" . TestSubLength"<<std::endl);
+    COUT(" . TestSubLength");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v(ns,p);
@@ -155,7 +157,7 @@ bool VectorsTest<V>::TestSubLength()
 template<typename V>
 bool VectorsTest<V>::TestResize()
 {
-    COUT(" . TestResize"<<std::endl);
+    COUT(" . TestResize");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v;
@@ -282,7 +284,7 @@ bool VectorsTest<V>::TestResize()
 template<typename V>
 bool VectorsTest<V>::TestIterators()
 {
-    COUT(" . TestIterators"<<std::endl);
+    COUT(" . TestIterators");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v(ns,p);
@@ -344,7 +346,7 @@ bool VectorsTest<V>::TestIterators()
 template<typename V>
 bool VectorsTest<V>::TestReplicate()
 {
-    COUT(" . TestReplicate"<<std::endl);
+    COUT(" . TestReplicate");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v(ns,p),vr,vsr;
@@ -389,7 +391,7 @@ bool VectorsTest<V>::TestReplicate()
 template<typename V>
 bool VectorsTest<V>::TestPointOrder()
 {
-    COUT(" . TestPointOrder"<<std::endl);
+    COUT(" . TestPointOrder");
     V v(3,4),vr;
 
     bool res = true;

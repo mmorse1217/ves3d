@@ -1,4 +1,3 @@
-#include <unistd.h>  //for sleep()
 #include <sstream>
 
 #include "Logger.h"
@@ -57,9 +56,7 @@ int main(int argc, char **argv)
 {
     COUT("\n ==============================\n"
         <<"  BiCGStab Test:"
-        <<"\n ==============================\n");
-    sleep(.5);
-
+        <<"\n ==============================");
 
     typedef Scalars<real,DCPU, the_cpu_dev> ScaCPU_t;
 
@@ -134,12 +131,10 @@ int main(int argc, char **argv)
     }
 #endif //GPU_ACTIVE
 
-    cout<<cpu_o.str();
+    COUT(cpu_o.str());
 #ifdef GPU_ACTIVE
-    cout<<gpu_o.str();
+    COOUT(gpu_o.str());
 #endif //GPU_ACTIVE
-    cout<<endl;
-    sleep(.5);
 
    return 0;
 }

@@ -34,8 +34,8 @@ template<typename Container>
 Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
     int shOrder) const
 {
-    int order = gridDimOf(shOrder).first;
-    int d2 = gridDimOf(shOrder).second;
+    int order = SpharmGridDim(shOrder).first;
+    int d2 = SpharmGridDim(shOrder).second;
 
     typedef typename Container::value_type vt;
 

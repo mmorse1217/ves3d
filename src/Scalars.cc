@@ -169,7 +169,7 @@ std::ostream& operator<<(std::ostream& output,
           <<"  Grid size           : ( "
           <<sc.getGridDim().first<<" , "<<sc.getGridDim().second<<" )"<<"\n"
           <<"  stride              : "<<sc.getStride()<<"\n"
-          <<"  Number of functions : "<<sc.getNumSubs()<<"\n"
+          <<"  Number of functions : "<<sc.getNumSubFuncs()<<"\n"
           <<" =====================================================\n";
 
     if(output.iword(scalars_xalloc) == true){

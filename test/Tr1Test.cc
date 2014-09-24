@@ -37,65 +37,68 @@
 
 int main(int argc, char** argv){
 
-    //Testing shared_ptr
-    COUT(" - Default constructor"<<std::endl);
-    tr1::shared_ptr<int> p0,p1; // default constructor
-    ASSERT(!p0,"NULL pointer");
-    ASSERT(!p1,"NULL pointer");
-
-    int *i;
-    int k(3);
     {
-        i = new int(5);
-        int *j(new int(8));
-        COUT(" - Copy constructor from bare pointer"<<std::endl);
-        tr1::shared_ptr<int> p2(i);
-        ASSERT(bool(p2),"non-NULL pointer");
-        ASSERT(p2.get()==i,"underlying pointer");
-        ASSERT(*p2==*i,"underlying pointer");
+        //Testing shared_ptr
+        COUT(" - Default constructor");
+        tr1::shared_ptr<int> p0,p1; // default constructor
+        ASSERT(!p0,"NULL pointer");
+        ASSERT(!p1,"NULL pointer");
 
-        COUT(" - Copy constructor from shared_ptr"<<std::endl);
-        tr1::shared_ptr<int> p3(p2);
-        ASSERT(bool(p3),"non-NULL pointer");
-        ASSERT(p3.get()==i,"underlying pointer");
-        ASSERT(*p3==*i,"underlying pointer");
+        int *i;
+        int k(3);
+        {
+            i = new int(5);
+            int *j(new int(8));
+            COUT(" - Copy constructor from bare pointer");
+            tr1::shared_ptr<int> p2(i);
+            ASSERT(bool(p2),"non-NULL pointer");
+            ASSERT(p2.get()==i,"underlying pointer");
+            ASSERT(*p2==*i,"underlying pointer");
 
-        COUT(" - Assignment from shared_ptr"<<std::endl);
-        p0 = p2;
-        ASSERT(bool(p0),"non-NULL pointer");
-        ASSERT(p0.get()==i,"underlying pointer");
-        ASSERT(*p0==*i,"underlying pointer");
+            COUT(" - Copy constructor from shared_ptr");
+            tr1::shared_ptr<int> p3(p2);
+            ASSERT(bool(p3),"non-NULL pointer");
+            ASSERT(p3.get()==i,"underlying pointer");
+            ASSERT(*p3==*i,"underlying pointer");
 
-        COUT(" - Assignment from bare pointer"<<std::endl);
-        p1 = j;
-        ASSERT(bool(p1),"non-NULL pointer");
-        ASSERT(p1.get()==j,"underlying pointer");
-        ASSERT(*p1==*j,"underlying pointer");
+            COUT(" - Assignment from shared_ptr");
+            p0 = p2;
+            ASSERT(bool(p0),"non-NULL pointer");
+            ASSERT(p0.get()==i,"underlying pointer");
+            ASSERT(*p0==*i,"underlying pointer");
 
-        *i = k;
+            COUT(" - Assignment from bare pointer");
+            p1 = j;
+            ASSERT(bool(p1),"non-NULL pointer");
+            ASSERT(p1.get()==j,"underlying pointer");
+            ASSERT(*p1==*j,"underlying pointer");
+
+            *i = k;
+            ASSERT(*p0==k,"underlying pointer");
+            ASSERT(*p1!=k,"underlying pointer");
+            ASSERT(*p1==*j,"underlying pointer");
+            ASSERT(*p2==k,"underlying pointer");
+            ASSERT(*p3==k,"underlying pointer");
+
+            *j = k;
+            ASSERT(*p1==k,"underlying pointer");
+        }
+
         ASSERT(*p0==k,"underlying pointer");
-        ASSERT(*p1!=k,"underlying pointer");
-        ASSERT(*p1==*j,"underlying pointer");
-        ASSERT(*p2==k,"underlying pointer");
-        ASSERT(*p3==k,"underlying pointer");
-
-        *j = k;
         ASSERT(*p1==k,"underlying pointer");
+
+        k   = 12;
+        *p0 = k;
+        ASSERT(*p0==k,"underlying pointer");
+        ASSERT(*i==k,"underlying pointer");
+
+        int l(20);
+        for(int j(0);j<l;++j)
+            tr1::shared_ptr<int> p(p1);
+
+        tr1::shared_ptr<int> sp[l];
+        for(int j(0);j<l;++j)
+            sp[j]=p1;
     }
-
-    ASSERT(*p0==k,"underlying pointer");
-    ASSERT(*p1==k,"underlying pointer");
-
-    k   = 12;
-    *p0 = k;
-    ASSERT(*p0==k,"underlying pointer");
-    ASSERT(*i==k,"underlying pointer");
-
-    int l(20);
-    for(int j(0);j<l;++j)
-        tr1::shared_ptr<int> p(p1);
-
-    tr1::shared_ptr<int> sp[l];
-    for(int j(0);j<l;++j)
-        sp[j]=p1;
+    COUT(emph<<" ** Tr1 test passed ** "<<emph);
 }

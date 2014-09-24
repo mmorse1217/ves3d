@@ -133,6 +133,15 @@ class Logger
 #endif //PROFILING
 
 /*
+ * stream manipulator (should check TERM)
+ */
+static int alert_xalloc(std::ios_base::xalloc());
+static int emph_xalloc(std::ios_base::xalloc());
+
+std::ostream& alert(std::ostream& os);
+std::ostream& emph(std::ostream& os);
+
+/*
  * Debugging macros
  */
 #ifndef NDEBUG
@@ -142,7 +151,7 @@ static bool assert_expr(false);
         assert_expr=expr,                                               \
         (assert_expr) ?                                                 \
         assert(assert_expr) :                                           \
-        CERR(msg,std::endl,assert(assert_expr)))
+        CERR(msg,"",assert(assert_expr)))
 #else
 #define ASSERT(expr,msg)
 #endif //NDEBUG
@@ -151,7 +160,7 @@ static bool assert_expr(false);
 #define LOG(msg) (Logger::Log(msg))
 
 #ifdef VERBOSE
-#define COUTDEBUG(str) (std::cout<<" [DEBUG] "<<str)
+#define COUTDEBUG(str) (std::cout<<"[DEBUG] "<<str<<std::endl)
 #else
 #define COUTDEBUG(str)
 #endif //VERBOSE
@@ -165,16 +174,18 @@ static bool assert_expr(false);
  * Printing macro
  */
 #define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
-#define CERR(str,endline,action) (                                      \
-        std::cerr<<std::endl<<str                                       \
+#define CERR(pre_msg,post_msg,action) (                                 \
+        std::cerr<<alert<<"[ERROR] "<<pre_msg                           \
         <<"\n        File     : "<< __FILE__                            \
         <<"\n        Line     : "<< __LINE__                            \
-        <<"\n        Function : "<< __FUNCTION__<<endline,              \
+        <<"\n        Function : "<< __FUNCTION__                        \
+        <<"\n"<<post_msg                                                \
+        <<alert<<std::endl,                                             \
         action                                                          \
                                                                         )
 
 #ifndef QUIET
-#define COUT(str) (std::cout<<str)
+#define COUT(str) (std::cout<<str<<std::endl)
 #else
 #define COUT(str)
 #endif //VERBOSE

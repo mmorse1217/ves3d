@@ -6,7 +6,7 @@ int main(int argc, char** argv)
 {
     COUT("\n ==============================\n"
         <<"  Device Test:"
-        <<"\n ==============================\n");
+        <<"\n ==============================");
 
     typedef ostringstream stm;
     typedef string str;
@@ -14,16 +14,16 @@ int main(int argc, char** argv)
         stm stream;
         str str;
         stream<<CPU;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="CPU");
+        COUT(stream.str());
+        ASSERT(stream.str()=="CPU","CPU enum");
     }
 
     {
         stm stream;
         str str;
         stream<<GPU;
-        COUT(stream.str()<<endl);
-        assert(stream.str()=="GPU");
+        COUT(stream.str());
+        ASSERT(stream.str()=="GPU","GPU enum");
     }
 
     PROFILESTART();
@@ -31,17 +31,17 @@ int main(int argc, char** argv)
     string sep(60,'-');
     sep = ' ' + sep;
     {
-        cout<<sep<<"\n  CPU -- float\n"<<sep<<endl;
+        COUT(sep<<"\n  CPU -- float\n"<<sep);
         int id = 0;
         Error_t err;
         Device<CPU> cpu(id, &err);
-        cout<<" * Initialization: "<<err<<" *"<<endl;
+        COUT(" * Initialization: "<<err<<" *");
         DeviceTest<CPU,float> dvt_f(&cpu);
         res = dvt_f.PerformAll();
     }
 
     {
-        cout<<sep<<"\n  CPU -- double\n"<<sep<<endl;
+        COUT(sep<<"\n  CPU -- double\n"<<sep);
         Device<CPU> cpu;
         DeviceTest<CPU,double> dvt_d(&cpu);
         res &= dvt_d.PerformAll();
@@ -50,21 +50,21 @@ int main(int argc, char** argv)
 #ifdef GPU_ACTIVE
     {
         {
-            cout<<sep<<"\n  GPU -- float\n"<<sep<<endl;
+            COUT(sep<<"\n  GPU -- float\n"<<sep);
             int id = 0;
             Error_t err;
             Device<GPU> gpu(id, &err);
-            cout<<" * Initialization: "<<err<<" *"<<endl;
+            COUT(" * Initialization: "<<err<<" *");
             DeviceTest<GPU,float> dvt_gf(&gpu);
             res &= dvt_gf.PerformAll();
         }
 
         {
-            cout<<sep<<"\n  GPU -- double\n"<<sep<<endl;
+            COUT(sep<<"\n  GPU -- double\n"<<sep);
             int id = 0;
             Error_t err;
             Device<GPU> gpu(id, &err);
-            cout<<" * Initialization: "<<err<<" *"<<endl;
+            COUT(" * Initialization: "<<err<<" *");
             DeviceTest<GPU,double> dvt_gf(&gpu);
             res &= dvt_gf.PerformAll();
         }
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 #endif //GPU_ACTIVE
 
     string res_print = res ? "works fine." : "is broken!";
-    cout<<sep<<"\n  The device class " + res_print<<endl<<sep<<endl;
+    COUT(sep<<"\n  The device class " + res_print<<endl<<sep);
 
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);

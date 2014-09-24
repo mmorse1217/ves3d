@@ -73,10 +73,13 @@ bool DeviceTest<DT,T>::PerformAll()
         && TestTranspose()
         && TestMax();
 
-    string res_print = (test_result) ? "Passed" : "Failed";
-    cout<<"\n *** Device Class tests with DT="<<DT
-        <<" and T="<< typeid(T).name()<< ": " + res_print + " ***\n"<<endl;
-
+    if (test_result){
+        COUT(emph<<"\n *** Device Class tests with DT="<<DT
+            <<" and T="<< typeid(T).name()<< ": Passed ***\n"<<emph);
+    } else {
+        COUT(alert<<"\n *** Device Class tests with DT="<<DT
+            <<" and T="<< typeid(T).name()<< ": Failed ***\n"<<alert);
+    }
     return test_result;
 }
 
@@ -92,7 +95,7 @@ bool DeviceTest<DT,T>::TestMalloc()
     device->Free(a);
 
     string res_print = (res) ? "Passed" : "Failed";
-    cout<<" * Device::Malloc: " + res_print + " *"<<endl;
+    COUT(" * Device::Malloc: " + res_print + " *");
     return res;
 }
 
@@ -116,7 +119,7 @@ bool DeviceTest<DT,T>::TestCalloc()
     device->Free(a);
     free(b);
 
-    cout<<" * Device::Calloc: " + res_print + " *"<<endl;
+    COUT(" * Device::Calloc: " + res_print + " *");
     return (res);
 }
 
@@ -143,7 +146,7 @@ bool DeviceTest<DT,T>::TestMemcpy()
     free(b);
 
     string res_print = (res) ? "Passed" : "Failed";
-    cout<<" * Device::Memcpy: " + res_print + " *"<<endl;
+    COUT(" * Device::Memcpy: " + res_print + " *");
     return res;
 }
 
@@ -206,7 +209,7 @@ bool DeviceTest<DT,T>::TestDotProduct()
         res = res && ((err<eps) ? true : false);
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::DotProduct (Orthogonality): " + res_print + " *"<<endl;
+        COUT(" * Device::DotProduct (Orthogonality): " + res_print + " *");
     }
 
     {//Normalization (random, single)
@@ -261,7 +264,7 @@ bool DeviceTest<DT,T>::TestDotProduct()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::DotProduct (Normalization): " + res_print + " *"<<endl;
+        COUT(" * Device::DotProduct (Normalization): " + res_print + " *");
     }
     return res;
 }
@@ -302,7 +305,7 @@ bool DeviceTest<DT,T>::TestCrossProduct()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::CrossProduct (Self-product): " + res_print + " *"<<endl;
+        COUT(" * Device::CrossProduct (Self-product): " + res_print + " *");
     }
 
     {//triple product
@@ -384,7 +387,7 @@ bool DeviceTest<DT,T>::TestCrossProduct()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::CrossProduct (Triple product): " + res_print + " *"<<endl;
+        COUT(" * Device::CrossProduct (Triple product): " + res_print + " *");
     }
     return res;
 }
@@ -422,7 +425,7 @@ bool DeviceTest<DT,T>::TestSqrt()
         res = res && (err<1e-6) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::Sqrt : " + res_print + " *"<<endl;
+        COUT(" * Device::Sqrt : " + res_print + " *");
     }
     return res;
 }
@@ -471,7 +474,7 @@ bool DeviceTest<DT,T>::Testxy()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::xy : " + res_print + " *"<<endl;
+        COUT(" * Device::xy : " + res_print + " *");
     }
     return res;
 }
@@ -507,7 +510,7 @@ bool DeviceTest<DT,T>::TestxyInv()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::xInv : " + res_print + " *"<<endl;
+        COUT(" * Device::xInv : " + res_print + " *");
     }
 
     {
@@ -544,7 +547,7 @@ bool DeviceTest<DT,T>::TestxyInv()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::xyInv : " + res_print + " *"<<endl;
+        COUT(" * Device::xyInv : " + res_print + " *");
     }
     return res;
 }
@@ -586,7 +589,7 @@ bool DeviceTest<DT,T>::TestuyInv()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::uyInv : " + res_print + " *"<<endl;
+        COUT(" * Device::uyInv : " + res_print + " *");
     }
     return res;
 }
@@ -624,7 +627,7 @@ bool DeviceTest<DT,T>::Testaxpy()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::axpb : " + res_print + " *"<<endl;
+        COUT(" * Device::axpb : " + res_print + " *");
     }
 
     {
@@ -655,7 +658,7 @@ bool DeviceTest<DT,T>::Testaxpy()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::axpy : " + res_print + " *"<<endl;
+        COUT(" * Device::axpy : " + res_print + " *");
     }
     return res;
 }
@@ -705,7 +708,7 @@ bool DeviceTest<DT,T>::Testavpw()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::avpw : " + res_print + " *"<<endl;
+        COUT(" * Device::avpw : " + res_print + " *");
 
     }
     return res;
@@ -802,7 +805,7 @@ bool DeviceTest<DT,T>::Testxvpw()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::xvpw : " + res_print + " *"<<endl;
+        COUT(" * Device::xvpw : " + res_print + " *");
     }
     return res;
 }
@@ -884,7 +887,7 @@ bool DeviceTest<DT,T>::TestReduce()
     device->Free(I);
 
     string res_print = (res) ? "Passed" : "Failed";
-    cout<<" * Device::Reduce : " + res_print + " *"<<endl;
+    COUT(" * Device::Reduce : " + res_print + " *");
     return res;
 }
 
@@ -924,7 +927,7 @@ bool DeviceTest<DT,T>::TestTranspose()
 
         res = res && (err<eps) ? true : false;
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::Transpose : " + res_print + " *"<<endl;
+        COUT(" * Device::Transpose : " + res_print + " *");
 
         device->Free(x);
         device->Free(y);
@@ -953,7 +956,7 @@ bool DeviceTest<DT,T>::TestTranspose()
 
         res = res && (err<eps) ? true : false;
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::Transpose : " + res_print + " *"<<endl;
+        COUT(" * Device::Transpose : " + res_print + " *");
 
         device->Free(x);
         device->Free(y);
@@ -993,7 +996,7 @@ bool DeviceTest<DT,T>::TestMax()
         res = res && (err<eps) ? true : false;
 
         string res_print = (res) ? "Passed" : "Failed";
-        cout<<" * Device::Max : " + res_print + " *"<<endl;
+        COUT(" * Device::Max : " + res_print + " *");
     }
     return res;
 }

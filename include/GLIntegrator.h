@@ -5,6 +5,7 @@
 #include "VesBlas.h"
 #include <typeinfo>
 #include "DataIO.h"
+#include "Spharm.h"
 
 template<typename Container>
 class GaussLegendreIntegrator
