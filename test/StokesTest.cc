@@ -1,8 +1,4 @@
 #include "Vectors.h"
-#include "Surface.h"
-#include "OperatorsMats.h"
-#include "VesInteraction.h"
-#include "InterfacialVelocity.h"
 #include "HelperFuns.h"
 
 typedef double real;
@@ -15,7 +11,7 @@ int main(int argc, char** argv)
 {
     COUT("\n ==============================\n"
         <<"  Stokes Kernels Test:"
-        <<"\n ==============================\n");
+        <<"\n ==============================");
 
     typedef Scalars<real, DevCPU, the_cpu_dev> Sca_t;
     typedef Vectors<real, DevCPU, the_cpu_dev> Vec_t;
@@ -37,14 +33,18 @@ int main(int argc, char** argv)
     DirectStokesKernel(pos.getStride(), pos.getNumSubs(), 0,
         numtrg, qw.begin(), pos.begin(),
         pos.begin(), den.begin(), pot1.begin());
-    COUT("  Time (Direct) : "<<Logger::Toc()<<std::endl);
+    double t1(Logger::Toc());
+    COUT("  Time (Direct) : "<<t1);
 
     Logger::Tic();
     DirectStokesSSE(pos.getStride(), pos.getNumSubs(), 0,
         numtrg, qw.begin(), pos.begin(),
         pos.begin(), den.begin(), pot2.begin());
-    COUT("  Time (SSE)    : "<<Logger::Toc()<<std::endl);
+    double t2(Logger::Toc());
+    COUT("  Time (SSE)    : "<<t2);
 
     axpy(-1,pot1,pot2, pot1);
-    COUT("\n  Error = "<<MaxAbs(pot1)<<std::endl);
+    COUT("\n  Error = "<<MaxAbs(pot1));
+    ASSERT(t1/t2>1.5,"SSE is faster");
+    COUT(emph<<" ** Stokes test with SSE passed **"<<emph);
 }

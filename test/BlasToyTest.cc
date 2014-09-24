@@ -1,4 +1,3 @@
-#include <unistd.h>  //for sleep()
 #include "Device.h"
 
 typedef float real;
@@ -8,8 +7,7 @@ int main(int argc, char **argv)
     PROFILESTART();
     COUT("\n ==============================\n"
         <<"  Blas Test:"
-        <<"\n ==============================\n");
-    sleep(1);
+        <<"\n ==============================");
 
     int k = 2*2048;
     int n = 2*2048;
@@ -33,7 +31,7 @@ int main(int argc, char **argv)
             B_h[ii*k+jj] = drand48();
 
     {// cpu
-        COUT(" - Testing CPU"<<std::endl);
+        COUT(" - Testing CPU");
         Device<CPU> cpu(0);
 
         real *A = (real*) cpu.Malloc(sa * sizeof(real));
@@ -51,7 +49,7 @@ int main(int argc, char **argv)
 
 #ifdef GPU_ACTIVE
     {
-        COUT(" - Testing GPU"<<std::endl);
+        COUT(" - Testing GPU");
         Device<GPU> gpu(0);
 
         real *A = (real*) gpu.Malloc(sa * sizeof(real));
@@ -73,5 +71,4 @@ int main(int argc, char **argv)
 
     PROFILEEND("",0);
     PROFILEREPORT(SortFlop);
-    sleep(.5);
 }

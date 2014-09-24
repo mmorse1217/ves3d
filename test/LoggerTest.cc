@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 {
     COUT("\n ==============================\n"
         <<"  Logger Test:"
-        <<"\n ==============================\n");
+        <<"\n ==============================");
     sleep(1);
 
     PROFILESTART();
@@ -49,14 +49,14 @@ int main(int argc, char** argv)
     int imax(3);
     for(int ii=0;ii<imax;++ii)
         Dummy(ii);
-    cout<<" "<<imax<<" calls to Dummy : "<<Logger::Toc()<<endl;
+    COUT(" "<<imax<<" calls to Dummy : "<<Logger::Toc());
 
     Logger::Tic();
     Wait(1);
     Logger::Tic();
     sleep(1);
-    cout<<" Inner Tic/Toc : "<<Logger::Toc()<<endl;
-    cout<<" Outer Tic/Toc : "<<Logger::Toc()<<endl;
+    COUT(" Inner Tic/Toc : "<<Logger::Toc());
+    COUT(" Outer Tic/Toc : "<<Logger::Toc());
 
     Wait((double) 1.0);
     PROFILEEND("",0);
@@ -69,14 +69,14 @@ int main(int argc, char** argv)
     ifstream file(log_file.c_str());
     string line;
     while ( getline ( file, line ) )
-        cout<<"  "<<line<<endl;
+        COUT("  "<<line);
 
     file.close();
 
     remove(log_file.c_str());
 
-    COUT("\n\nSending some text to cout"<<endl);
-    CERR("Some text to cerr",endl,NULL);
+    COUT("\n\nSending some text to cout");
+    CERR("Some text to cerr","",NULL);
 
     sleep(1);
 }
