@@ -2,7 +2,7 @@ template<typename T, typename Device>
 SHTMats<T, Device>::SHTMats(const Device &dev, int sh_order, T *data,
     bool generateMats, std::pair<int, int> grid_dim) :
     sh_order_(sh_order),
-    grid_dim_((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order_) : grid_dim),
+    grid_dim_((grid_dim == EMPTY_GRID) ? SpharmGridDim(sh_order_) : grid_dim),
     data_(data),
     dft_size(grid_dim_.second),
     device_(dev)
@@ -68,7 +68,7 @@ size_t SHTMats<T, Device>::getDataLength() const
 template<typename T, typename Device>
 size_t SHTMats<T, Device>::getDataLength(int sh_order, std::pair<int, int> grid_dim)
 {
-    grid_dim = ((grid_dim == EMPTY_GRID) ? gridDimOf(sh_order) : grid_dim);
+    grid_dim = ((grid_dim == EMPTY_GRID) ? SpharmGridDim(sh_order) : grid_dim);
 
     return( 4 * grid_dim.second * grid_dim.second +
         4 * grid_dim.first * grid_dim.first * ( grid_dim.first + 1));

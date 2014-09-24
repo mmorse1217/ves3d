@@ -19,14 +19,15 @@ int main(int argc, char *argv[])
     typedef Scalars<real,DCPU,the_cpu_dev> Sca_t;
     typedef typename Sca_t::array_type Arr_t;
     typedef Vectors<real,DCPU,the_cpu_dev> Vec_t;
-    typedef OperatorsMats<Arr_t> Mats_t;
-    typedef SHTrans<Sca_t,Mats_t> Sh_t;
+    typedef OperatorsMats<Arr_t> OMats_t;
+    typedef SHTMats<real,DCPU> SMats_t;
+    typedef SHTrans<Sca_t,SMats_t> Sh_t;
 
     int nVec(1), p(6), q(2*p);
     Parameters<real> params;
     params.sh_order = p;
     params.rep_up_freq = q;
-    COUT(params<<std::endl);
+    COUT(params);
 
     //reading mats2
     DataIO IO;
@@ -34,12 +35,13 @@ int main(int argc, char *argv[])
     //Initializing vesicle positions from text file
     Vec_t x(nVec, p);
     char fname[200];
-    sprintf(fname, "precomputed/biconcave_ra65_%d",p);
+    sprintf(fname, "precomputed/dumbbell_%d_double.txt",p);
     IO.ReadData(fname, x);
+    IO.WriteData("Original.out", x, std::ios::out);
 
     //Operators
     bool readFromFile(true);
-    Mats_t M(readFromFile, params);
+    OMats_t M(readFromFile, params);
 
     //Work vectors
     int mx = (p > q)? p : q;
@@ -47,18 +49,18 @@ int main(int argc, char *argv[])
 
     //resampling
     Vec_t xr(nVec, q);
-    Sh_t SH_p(params.sh_order,M);
-    Sh_t SH_q(params.rep_up_freq,M);
+    Sh_t SH_p(params.sh_order,M.mats_p_);
+    Sh_t SH_q(params.rep_up_freq,M.mats_p_up_);
 
-ASSERT(false,"Outdated test");
-    //Resample(x, SH_p, SH_q, shc, wrk, xr);
-    // IO.WriteData("ShtResampling.out", xr, std::ios::out);
+    Resample(x, SH_p, SH_q, shc, wrk, xr);
+    IO.WriteData("ShtResampling.out", xr, std::ios::out);
 
-    // //Filtering
+    //Filtering
+    IO.WriteData("ShtFiltering.out", x, std::ios::out);
+    SH_p.lowPassFilter(x, wrk, shc, x);
+    IO.WriteData("ShtFiltering.out", x, std::ios::app);
 
-    // IO.WriteData("ShtFiltering.out", x, ios::out);
-    // SH.lowPassFilter(x, wrk, shc, x);
-    // IO.WriteData("ShtFiltering.out", x, ios::app);
-
+    COUT(alert<<"\n  *** Run ../matlab/SHTransTest.m to see the results ***"
+        <<alert);
     return 0;
 }

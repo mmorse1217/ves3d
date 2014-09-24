@@ -50,7 +50,7 @@
 inline std::pair<int, int> SpharmGridDim(int sh_order)
 {
     return((sh_order >= 0) ?
-        std::make_pair(sh_order+1, 2*sh_order+1) :
+        std::make_pair(sh_order+1, 2*sh_order) :
         EMPTY_GRID);
 }
 

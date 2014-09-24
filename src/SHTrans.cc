@@ -85,7 +85,7 @@ void SHTrans<Container, Mats>::forward(const Container &in, Container &work,
     Container &shc) const
 {
     PROFILESTART();
-    int n_funs = in.getNumSubs();
+    int n_funs = in.getNumSubFuncs();
     int num_dft_inputs = n_funs * (p + 1);
 
     PROFILESTART();
@@ -105,7 +105,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::backward(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
+    back(shc.begin(), work.begin(), out.getNumSubFuncs(), out.begin(),
         mats_.dlt_inv_, mats_.dft_inv_);
 }
 
@@ -114,7 +114,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::backward_du(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
+    back(shc.begin(), work.begin(), out.getNumSubFuncs(), out.begin(),
         mats_.dlt_inv_d1_, mats_.dft_inv_);
 }
 
@@ -122,7 +122,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::backward_d2u(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
+    back(shc.begin(), work.begin(), out.getNumSubFuncs(), out.begin(),
         mats_.dlt_inv_d2_, mats_.dft_inv_);
 }
 
@@ -130,7 +130,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::backward_dv(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
+    back(shc.begin(), work.begin(), out.getNumSubFuncs(), out.begin(),
         mats_.dlt_inv_, mats_.dft_inv_d1_);
 }
 
@@ -138,7 +138,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::backward_d2v(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
+    back(shc.begin(), work.begin(), out.getNumSubFuncs(), out.begin(),
         mats_.dlt_inv_, mats_.dft_inv_d2_);
 }
 
@@ -146,7 +146,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::backward_duv(const Container &shc,
     Container &work, Container &out) const
 {
-    back(shc.begin(), work.begin(), out.getNumSubs(), out.begin(),
+    back(shc.begin(), work.begin(), out.getNumSubFuncs(), out.begin(),
         mats_.dlt_inv_d1_, mats_.dft_inv_d1_);
 }
 
@@ -154,7 +154,7 @@ template<typename Container, typename Mats>
 void SHTrans<Container, Mats>::lowPassFilter(const Container &in, Container &work,
     Container &shc, Container &out) const
 {
-    int n_funs = in.getNumSubs();
+    int n_funs = in.getNumSubFuncs();
     forward(in, work, shc);
     ScaleFreq(shc.begin(), n_funs, this->filter_coeff_, shc.begin());
     backward(shc, work, out);
@@ -210,7 +210,7 @@ void SHTrans<Container, Mats>::collectSameOrder(const Container &in,
     const typename Container::value_type *inPtr(NULL);
     typename Container::value_type *outPtr(NULL), *head(out.begin());
 
-    int ns = in.getNumSubs() * in.getTheDim();
+    int ns = in.getNumSubFuncs();
 
     for(int ii=0; ii<= p; ++ii)
     {
@@ -242,7 +242,7 @@ void SHTrans<Container, Mats>::collectSameFreq(const Container &in,
     const typename Container::value_type *inPtr(NULL), *head(in.begin());
     typename Container::value_type *outPtr(NULL);
 
-    int ns = in.getNumSubs() * in.getTheDim();
+    int ns = in.getNumSubFuncs();
     for(int ii=0; ii<= p; ++ii)
     {
         int len = 2*ii + 1 - (ii/p);

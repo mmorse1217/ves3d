@@ -1,11 +1,11 @@
 template<typename Container, typename Operators>
 MovePole<Container, Operators>::MovePole(Operators &mats) :
     p_(mats.p_),
-    np_(gridDimOf(p_).first * gridDimOf(p_).second),
-    sp_harm_mats_(gridDimOf(p_).first, 1,
+    np_(SpharmGridDim(p_).first * SpharmGridDim(p_).second),
+    sp_harm_mats_(SpharmGridDim(p_).first, 1,
         std::make_pair(1, p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_)),
-    all_rot_mats_(gridDimOf(p_).first, 1, std::make_pair(np_, np_)),
-    longitude_rot_(gridDimOf(p_).second, 1, std::make_pair(1, 4*p_ - 2)),
+    all_rot_mats_(SpharmGridDim(p_).first, 1, std::make_pair(np_, np_)),
+    longitude_rot_(SpharmGridDim(p_).second, 1, std::make_pair(1, 4*p_ - 2)),
     row_idx((int*) Container::getDevice().Malloc((4*p_ - 2) * sizeof(int))),
     col_idx((int*) Container::getDevice().Malloc((4*p_ - 2) * sizeof(int))),
     sht_(p_, mats.mats_p_),
@@ -16,7 +16,7 @@ MovePole<Container, Operators>::MovePole(Operators &mats) :
     alpha(1.0),
     beta(0.0),
     eager_n_stream_(4),
-    rot_mat_(gridDimOf(p_).first, 1, std::make_pair(gridDimOf(p_).second, np_)),
+    rot_mat_(SpharmGridDim(p_).first, 1, std::make_pair(SpharmGridDim(p_).second, np_)),
     shc_(NULL),
     eager_results_(NULL),
     eager_last_latitude_(-1)
@@ -133,10 +133,10 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
             if ( eager_results_ == NULL || num_ != num )
             {
                 delete[] eager_results_;
-                eager_results_ = new Container[num * gridDimOf(p_).second];
+                eager_results_ = new Container[num * SpharmGridDim(p_).second];
             }
 
-            for(int ii=0; ii<gridDimOf(p_).second; ++ii)
+            for(int ii=0; ii<SpharmGridDim(p_).second; ++ii)
                 for(int jj=0; jj<num; ++jj)
                     eager_results_[ii * num + jj].replicate(*(arr_[jj]));
             eager_wrk_.resize(eager_n_stream_,1,std::make_pair(np_,np_));
@@ -278,8 +278,8 @@ void MovePole<Container, Operators>::updateEagerResults(int trg_i) const
         src[ii] = arr_[ii]->begin();
     }
 
-    int n_lat = gridDimOf(p_).first;
-    int n_long = gridDimOf(p_).second;
+    int n_lat = SpharmGridDim(p_).first;
+    int n_long = SpharmGridDim(p_).second;
     int n_res =  num_ * n_long;
     value_type **res = new value_type*[n_res];
     for(int ii=0; ii<n_res; ++ii)

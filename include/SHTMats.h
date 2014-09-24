@@ -4,6 +4,7 @@
 #include <cmath>
 #include "Enums.h"
 #include "Logger.h"
+#include "Spharm.h"
 
 template<typename T, typename Device>
 class SHTMats{

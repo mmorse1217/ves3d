@@ -75,10 +75,10 @@ void Reduce(const IntegrandContainer &x_in,
 {
     assert(AreCompatible(x_in,w_in));
     assert(quad_w_in.getStride() == w_in.getStride());
-    assert(quad_w_in.getNumSubs() >= 1);
+    assert(quad_w_in.getNumSubFuncs() >= 1);
 
     x_in.getDevice().Reduce(x_in.begin(), x_in.getTheDim(), w_in.begin(),
-        quad_w_in.begin(), x_in.getStride(), x_in.getNumSubs(), x_dw.begin());
+        quad_w_in.begin(), x_in.getStride(), x_in.getNumSubFuncs(), x_dw.begin());
 }
 
 template<typename Container>
@@ -86,18 +86,18 @@ void Reduce(const Container &w_in, const Container &quad_w_in,
     Container &dw)
 {
     assert(quad_w_in.getStride() == w_in.getStride());
-    assert(quad_w_in.getNumSubs() >= 1);
+    assert(quad_w_in.getNumSubFuncs() >= 1);
 
     w_in.getDevice().Reduce(static_cast<typename Container::value_type* >(0),
         0, w_in.begin(), quad_w_in.begin(), w_in.getStride(),
-        w_in.getNumSubs(), dw.begin());
+        w_in.getNumSubFuncs(), dw.begin());
 }
 
 template<typename ScalarContainer>
 typename ScalarContainer::value_type Max(const ScalarContainer &x_in)
 {
     return(x_in.getDevice().Max(x_in.begin(),
-            x_in.getStride() * x_in.getNumSubs()));
+            x_in.getStride() * x_in.getNumSubFuncs()));
 }
 
 template<typename Container>
@@ -114,7 +114,7 @@ inline void GeometricDot(const VectorContainer &u_in,
     assert(AreCompatible(v_in,x_out));
 
     u_in.getDevice().DotProduct(u_in.begin(), v_in.begin(),
-        u_in.getStride(), u_in.getNumSubs(), x_out.begin());
+        u_in.getStride(), u_in.getNumSubFuncs(), x_out.begin());
 }
 
 template<typename VectorContainer>
@@ -136,7 +136,7 @@ inline void uyInv(const VectorContainer &u_in,
     assert(AreCompatible(y_in,uyInv_out));
 
     u_in.getDevice().uyInv(u_in.begin(), y_in.begin(),
-        u_in.getStride(), u_in.getNumSubs(), uyInv_out.begin());
+        u_in.getStride(), u_in.getNumSubFuncs(), uyInv_out.begin());
 }
 
 template<typename ScalarContainer, typename VectorContainer>
@@ -144,7 +144,7 @@ inline void avpw(const ScalarContainer &a_in,
     const VectorContainer &v_in,  const VectorContainer &w_in,
     VectorContainer &avpw_out)
 {
-    assert(a_in.getNumFuns() == v_in.getNumSubs());
+    assert(a_in.getNumSubs() == v_in.getNumSubs());
     assert(AreCompatible(v_in,w_in));
     assert(AreCompatible(w_in,avpw_out));
 
@@ -172,7 +172,7 @@ inline void ax(const Container& a, const Container& x, Container& ax_out)
     assert( a.getStride() == x.getStride() );
     assert( AreCompatible(x, ax_out) );
     Container::getDevice().ax(a.begin(), x.begin(), x.getStride(),
-        x.getNumSubs() * x.getTheDim(), ax_out.begin());
+        x.getNumSubFuncs() * x.getTheDim(), ax_out.begin());
 }
 
 
@@ -280,6 +280,7 @@ typename Container::value_type MaxAbs(Container &x)
     return(x.getDevice().MaxAbs(x.begin(), x.size()));
 }
 
+#include "Scalars.h"
 template<typename Container, typename SHT>
 void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     Container &shcpq, Container &wrkpq, Container &xq)
@@ -290,8 +291,10 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     int p = shtp.getShOrder();
     int q = shtq.getShOrder();
 
+    COUTDEBUG("Resample: from "<<p<<" to "<<q);
     if(p == q)
     {
+        COUTDEBUG("Resample: p==q, no need to resample");
         Container::getDevice().Memcpy(xq.begin(), xp.begin(),
             xp.size() * sizeof(value_type), DT::MemcpyDeviceToDevice);
         return;
@@ -303,20 +306,27 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     shc_p = wrkpq.begin();
     shc_q = shcpq.begin();
 
-    if(p < q)
+    if(p < q){
+        COUTDEBUG("Resample: q>p filling with zeros");
         Container::getDevice().Memset(shcpq.begin(), 0,
             shcpq.size() * sizeof(value_type));
+    }
 
     int len_p, len_q, cpy_len;
-    int mf = ( p > q ) ? q : p;
-    int n_funs = xp.getNumSubs() * xp.getTheDim();
+    int minfreq = ( p > q ) ? q : p;
+    int n_funs = xp.getNumSubFuncs();
+    COUTDEBUG("Resample: copying each coeff set (n_fun="
+        <<n_funs<<")");
 
-    for(int ii=0; ii< 2 * mf; ++ii)
+    for(int ii=0; ii< 2 * minfreq; ++ii)
     {
         len_p   = p  + 1 - (ii+1)/2;
         len_q   = q  + 1 - (ii+1)/2;
-        cpy_len = mf + 1 - (ii+1)/2;
+        cpy_len = minfreq + 1 - (ii+1)/2;
 
+        COUTDEBUG("Resample: copying coeffs of same degree "<<ii
+            <<" advancing p by "<<len_p
+            <<" advancing q by "<<len_q);
         for(int jj = 0; jj<n_funs; ++jj)
         {
             Container::getDevice().Memcpy(shc_q, shc_p,
