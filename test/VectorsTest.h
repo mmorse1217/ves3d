@@ -72,16 +72,16 @@ bool VectorsTest<V>::PerformAll()
         ;
 
     if (test_result)
-        COUT(emph<<"\n *** Vector class passed ***\n"<<emph);
+        COUT(emph<<" *** Vector class passed ***"<<emph);
     else
-        COUT(alert<<"\n *** Vector class failed ***\n"<<alert);
+        COUT(alert<<" *** Vector class failed ***"<<alert);
     return test_result;
 }
 
 template<typename V>
 bool VectorsTest<V>::TestTheDim()
 {
-    COUT(" . TestTheDim");
+    COUT(". TestTheDim");
     V v(3,4);
     S* s(&v);
 
@@ -107,7 +107,7 @@ bool VectorsTest<V>::TestTheDim()
 template<typename V>
 bool VectorsTest<V>::TestNumSubs()
 {
-    COUT(" . TestNumSubs");
+    COUT(". TestNumSubs");
     int ns(2), p(8);
     V v(ns,p);
     S* s(&v);
@@ -131,7 +131,7 @@ bool VectorsTest<V>::TestNumSubs()
 template<typename V>
 bool VectorsTest<V>::TestSubLength()
 {
-    COUT(" . TestSubLength");
+    COUT(". TestSubLength");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v(ns,p);
@@ -157,7 +157,7 @@ bool VectorsTest<V>::TestSubLength()
 template<typename V>
 bool VectorsTest<V>::TestResize()
 {
-    COUT(" . TestResize");
+    COUT(". TestResize");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v;
@@ -191,17 +191,17 @@ bool VectorsTest<V>::TestResize()
     ASSERT(res &= s->size() == 0,
         "zero size scalar");
 
-    ASSERT(res &= v.arr_size() == 0,
-        "zero arr_size vector");
+    ASSERT(res &= v.req_arr_size() == 0,
+        "zero req_arr_size vector");
 
-    ASSERT(res &= s->arr_size() == 0,
-        "zero arr_size scalar");
+    ASSERT(res &= s->req_arr_size() == 0,
+        "zero req_arr_size scalar");
 
     //resize vector
     v.resize(ns,p);
 
     ASSERT(res &= v.getNumSubs() == ns,
-        "expected num subs");
+        "expected num subs "<<ns<<" vs. "<<v.getNumSubs());
 
     ASSERT(res &= s->getNumSubs() == ns,
         "expected num subs for scalar");
@@ -230,11 +230,11 @@ bool VectorsTest<V>::TestResize()
     ASSERT(res &= s->size() == v.getTheDim()*ns*sl,
         "expected size scalar");
 
-    ASSERT(res &= v.arr_size() == v.getTheDim()*ns*sl,
-        "expected arr_size vector");
+    ASSERT(res &= v.req_arr_size() == v.getTheDim()*ns*sl,
+        "expected req_arr_size vector");
 
-    ASSERT(res &= s->arr_size() == v.getTheDim()*ns*sl,
-        "expected arr_size scalar");
+    ASSERT(res &= s->req_arr_size() == v.getTheDim()*ns*sl,
+        "expected req_arr_size scalar");
 
     //resize scalar
     ns=6;
@@ -242,16 +242,16 @@ bool VectorsTest<V>::TestResize()
     sl=grid_size(p);
 
     s->resize(ns,p);
-    ASSERT(res &= v.getNumSubs() == ns/v.getTheDim(),
+    ASSERT(res &= v.getNumSubs() == ns,
         "expected num subs");
 
-    ASSERT(res &= v.getNumSubFuncs() == ns,
+    ASSERT(res &= v.getNumSubFuncs() == ns*v.getTheDim(),
         "expected num subs");
 
-    ASSERT(res &= s->getNumSubs() == ns/v.getTheDim(),
+    ASSERT(res &= s->getNumSubs() == ns,
         "expected num subs for scalar");
 
-    ASSERT(res &= s->getNumSubFuncs() == ns,
+    ASSERT(res &= s->getNumSubFuncs() == ns*v.getTheDim(),
         "expected num subs for scalar");
 
     ASSERT(res &= s->getSubLength() == v.getTheDim()*sl,
@@ -266,17 +266,17 @@ bool VectorsTest<V>::TestResize()
     ASSERT(res &= s->getStride() == sl,
         "expected stride scalar");
 
-    ASSERT(res &= v.size() == sl*ns,
+    ASSERT(res &= v.size() == sl*ns*v.getTheDim(),
         "expected size vector");
 
-    ASSERT(res &= s->size() == ns*sl,
+    ASSERT(res &= s->size() == ns*sl*v.getTheDim(),
         "expected size scalar");
 
-    ASSERT(res &= v.arr_size() == ns*sl,
-        "expected arr_size vector");
+    ASSERT(res &= v.req_arr_size() == ns*sl*v.getTheDim(),
+        "expected req_arr_size vector");
 
-    ASSERT(res &= s->arr_size() == ns*sl,
-        "expected arr_size scalar");
+    ASSERT(res &= s->req_arr_size() == ns*sl*v.getTheDim(),
+        "expected req_arr_size scalar");
 
     return res;
 }
@@ -284,7 +284,7 @@ bool VectorsTest<V>::TestResize()
 template<typename V>
 bool VectorsTest<V>::TestIterators()
 {
-    COUT(" . TestIterators");
+    COUT(". TestIterators");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v(ns,p);
@@ -346,7 +346,7 @@ bool VectorsTest<V>::TestIterators()
 template<typename V>
 bool VectorsTest<V>::TestReplicate()
 {
-    COUT(" . TestReplicate");
+    COUT(". TestReplicate");
     int ns(3), p(7);
     int sl(grid_size(p));
     V v(ns,p),vr,vsr;
@@ -373,7 +373,7 @@ bool VectorsTest<V>::TestReplicate()
     ASSERT(res &= svr.size() == 0,"");
     svr.replicate(v);
     ASSERT(res &= svr.getShOrder() == v.getShOrder(),"");
-    ASSERT(res &= svr.getNumSubs() == v.getTheDim()*v.getNumSubs(),"");
+    ASSERT(res &= svr.getNumSubs() == v.getNumSubs(),"");
     ASSERT(res &= svr.getGridDim() == v.getGridDim(),"");
     ASSERT(res &= svr.getStride() == v.getStride(),"");
 
@@ -381,7 +381,11 @@ bool VectorsTest<V>::TestReplicate()
     ASSERT(res &= vsr.size() == 0,"");
     vsr.S::replicate(s);
     ASSERT(res &= vsr.getShOrder() == s.getShOrder(),"");
-    ASSERT(res &= vsr.getNumSubs() == s.getNumSubs()/v.getTheDim(),"");
+    ASSERT(res &= vsr.getNumSubs() == s.getNumSubs(),
+        "Check correct number of subs vc:"
+        <<vsr.getNumSubs()<<" sc:"<<s.getNumSubs()
+           );
+
     ASSERT(res &= vsr.getGridDim() == s.getGridDim(),"");
     ASSERT(res &= vsr.getStride() == s.getStride(),"");
 
@@ -391,7 +395,7 @@ bool VectorsTest<V>::TestReplicate()
 template<typename V>
 bool VectorsTest<V>::TestPointOrder()
 {
-    COUT(" . TestPointOrder");
+    COUT(". TestPointOrder");
     V v(3,4),vr;
 
     bool res = true;
@@ -404,10 +408,11 @@ bool VectorsTest<V>::TestPointOrder()
     ASSERT(res &= v.getPointOrder() == PointMajor,"");
     ASSERT(res &= vr.getPointOrder() == AxisMajor,"");
     vr.replicate(v);
-    ASSERT(res &= vr.getPointOrder() == PointMajor,"");
+    ASSERT(res &= vr.getPointOrder() == AxisMajor,
+        "point order not replicated");
 
-    v.setPointOrder(AxisMajor);
-    ASSERT(res &= v.getPointOrder() == AxisMajor,"");
+    v.setPointOrder(PointMajor);
+    ASSERT(res &= v.getPointOrder() == PointMajor,"");
 
     return res;
 }

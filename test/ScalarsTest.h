@@ -29,16 +29,12 @@ bool ScalarsTest<Container>::PerformAll()
         && TestReplicate();
 
     if (test_result){
-        COUT(emph<<"\n\n ====================================================\n"
-            <<"  The container "
-            <<typeid(Container).name()<<" Passed"<<std::endl
-            <<" ===================================================="
+        COUT(emph<<" *** The container "
+            <<typeid(Container).name()<<" Passed ***"
             <<emph);
     } else {
-        COUT(alert<<"\n\n ====================================================\n"
-            <<"  The container "
-            <<typeid(Container).name()<<" Failed"<<std::endl
-            <<" ===================================================="
+        COUT(alert<<" *** The container "
+            <<typeid(Container).name()<<" Failed ***"
             <<alert);
     }
 
@@ -48,32 +44,30 @@ bool ScalarsTest<Container>::PerformAll()
 template<typename Container>
 bool ScalarsTest<Container>::TestResize()
 {
+    COUT(". Resize");
     int p(13), nsubs(3);
 
     Container sc;
-    COUT(sc);
-    COUT(" Resizing to "<<p<<" and "<<nsubs<<std::endl);
     sc.resize(nsubs, p);
-    COUT(sc);
+    ASSERT(sc.getShOrder()==p,"");
+    ASSERT(sc.getNumSubs()==nsubs,"");
+    ASSERT(sc.size()>0,"");
 
-    bool res(sc.getNumSubs() == nsubs &&
-             sc.getShOrder() == p
-             );
-
-    return res;
+    return true;
 }
 
 template<typename Container>
 bool ScalarsTest<Container>::TestReplicate()
 {
+    COUT(". Replicate");
     int p(8), nsubs(6);
-
     Container sc(nsubs, p);
     Container sc_cpy;
-    COUT(sc_cpy);
-    COUT(" Replicating:");
     sc_cpy.replicate(sc);
-    COUT(sc_cpy);
+    ASSERT(sc_cpy.getNumSubs()==nsubs,"");
+    ASSERT(sc_cpy.getSubLength()==sc.getSubLength(),"");
+    ASSERT(sc_cpy.getSubFuncLength()==sc.getSubFuncLength(),"");
+    ASSERT(sc_cpy.size()==sc.size(),"");
 
     typedef typename Container::value_type T;
     size_t sz = sc.size();
@@ -101,9 +95,7 @@ bool ScalarsTest<Container>::TestReplicate()
 
     delete[] buffer;
 
-    COUT(" Copying form to and from the container: "
-         <<((res) ? "Pass" : "Fail")
-         );
+    ASSERT(res,"Copying form to and from the container");
 
     return res;
 }

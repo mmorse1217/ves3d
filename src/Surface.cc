@@ -20,14 +20,20 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
 {
+    COUTDEBUG("Initializing with upsample_freq="<<upsample_freq_
+        <<", rep_filter_freq="<<rep_filter_freq_
+        <<", sht_="<<sht_.getShOrder()
+        <<", sht_rep_filter_="<<sht_rep_filter_.getShOrder()
+        <<", sht_rep_upsample_="<<sht_rep_upsample_.getShOrder()
+              );
     setPosition(x_in);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
 Surface<ScalarContainer, VectorContainer>::~Surface()
 {
-    assert(!checked_out_work_sca_);
-    assert(!checked_out_work_vec_);
+    ASSERT(!checked_out_work_sca_,"All scalar are returned work pool");
+    ASSERT(!checked_out_work_vec_,"All vectors are returned work pool");
 
     purgeTheWorkSpace();
 }
@@ -44,7 +50,8 @@ void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec_t& x_in)
 }
 
 template <typename ScalarContainer, typename VectorContainer>
-VectorContainer& Surface<ScalarContainer, VectorContainer>::getPositionModifiable()
+VectorContainer&
+Surface<ScalarContainer,VectorContainer>::getPositionModifiable()
 {
     containers_are_stale_ = true;
     first_forms_are_stale_ = true;
@@ -54,13 +61,15 @@ VectorContainer& Surface<ScalarContainer, VectorContainer>::getPositionModifiabl
 }
 
 template <typename ScalarContainer, typename VectorContainer>
-const VectorContainer& Surface<ScalarContainer, VectorContainer>::getPosition() const
+const VectorContainer&
+Surface<ScalarContainer, VectorContainer>::getPosition() const
 {
     return(x_);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
-const VectorContainer& Surface<ScalarContainer, VectorContainer>::getNormal() const
+const VectorContainer&
+Surface<ScalarContainer, VectorContainer>::getNormal() const
 {
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -154,6 +163,7 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 updateFirstForms() const
 {
+    COUTDEBUG("Updating first fundamental forms");
     if(containers_are_stale_)
         checkContainers();
 
@@ -162,7 +172,7 @@ updateFirstForms() const
     std::auto_ptr<Vec_t> dif(checkoutVec());
     std::auto_ptr<Sca_t> scp(checkoutSca());
 
-    // Spherical harmonic coefficient
+    // Spherical harmonic coefficient (dif=du,normal=dv)
     sht_.FirstDerivatives(x_, *wrk, *shc, *dif, normal_);
 
     // First fundamental coefficients
@@ -189,7 +199,6 @@ updateFirstForms() const
     xv(F, *dif, cv_);
     axpy(static_cast<value_type>(-1), cv_, cv_);
     xvpw(E, normal_, cv_, cv_);
-
     GeometricCross(*dif, normal_, normal_);
     uyInv(normal_, w_, normal_);
 
@@ -205,6 +214,7 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 updateAll() const
 {
+    COUTDEBUG("Updating all fundamental forms");
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -312,6 +322,7 @@ template< typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 area(ScalarContainer &area_out) const
 {
+    COUTDEBUG("Computing area");
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -325,6 +336,7 @@ volume(ScalarContainer &vol_out) const
     if(first_forms_are_stale_)
         updateFirstForms();
 
+    COUTDEBUG("Computing volume");
     std::auto_ptr<Sca_t> scw(checkoutSca());
     GeometricDot(x_,normal_,*scw);
     axpy(static_cast<value_type>(1)/3, *scw, *scw);
@@ -337,6 +349,7 @@ template< typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 getCenters(Vec_t &centers) const
 {
+    COUTDEBUG("Computing centers of mass");
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -346,16 +359,16 @@ getCenters(Vec_t &centers) const
 
     std::auto_ptr<Vec_t> vcw(checkoutVec());
     xv(*scw, normal_, *vcw);
-    recycleSca(scw);
+    recycle(scw);
 
     integrator_(*vcw, w_, centers);
-    recycleVec(vcw);
+    recycle(vcw);
 
     scw = checkoutSca();
     scw->replicate(centers);
     volume(*scw);
     uyInv(centers, *scw, centers);
-    recycleSca(scw);
+    recycle(scw);
 }
 
 template <typename ScalarContainer, typename VectorContainer>

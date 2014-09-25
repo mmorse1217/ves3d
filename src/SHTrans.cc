@@ -12,6 +12,7 @@ SHTrans<Container, Mats>::SHTrans(int p_in, Mats &mats, int filter_freq) :
     dft_size(2*p),
     filter_coeff_((value_type*) device_.Malloc(p * (p + 2) * sizeof(value_type)))
 {
+    COUTDEBUG("Initializing with p="<<p<<", filter_freq="<<filter_freq);
     int ll = p * (p + 2);
     value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
 
@@ -27,6 +28,7 @@ SHTrans<Container, Mats>::SHTrans(int p_in, Mats &mats, int filter_freq) :
 
     device_.Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type),
         device_type::MemcpyHostToDevice);
+
     free(buffer);
 }
 

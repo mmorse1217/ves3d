@@ -441,9 +441,11 @@ T*  Device<CPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stri
 
 template<>
 template<typename T>
-T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in,
-    const size_t stride, const size_t ns, T *x_dw) const
+T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
+    const T *quad_w_in, const size_t stride, const size_t ns, T *x_dw) const
 {
+    COUTDEBUG("x=("<<x_dim<<","<<stride<<","<<ns<<")");
+
     PROFILESTART();
     register T val;
     T sum;

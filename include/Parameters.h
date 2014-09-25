@@ -6,6 +6,7 @@
 #include <string>
 #include "Enums.h"
 #include "Error.h"
+#include "Logger.h"
 #include "anyoption.h"
 
 template <typename T>

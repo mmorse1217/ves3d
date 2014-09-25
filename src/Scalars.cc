@@ -39,9 +39,9 @@ Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
     grid_dim_((grid_dim == EMPTY_GRID) ?
         SpharmGridDim(sh_order_) : grid_dim),
     stride_(grid_dim_.first * grid_dim_.second),
-    num_subs_(num_subs)
+    num_sub_funcs_(num_subs)
 {
-    array_type::resize(this->arr_size());
+    array_type::resize(this->req_arr_size());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
@@ -51,7 +51,7 @@ Scalars<T, DT, DEVICE>::~Scalars()
 template <typename T, typename DT, const DT &DEVICE>
 int Scalars<T, DT, DEVICE>::getTheDim()
 {
-    return(the_dim_);
+    return(scalar_dim_);
 }
 
 template <typename T, typename DT, const DT &DEVICE>
@@ -75,31 +75,37 @@ size_t Scalars<T, DT, DEVICE>::getStride() const
 template <typename T, typename DT, const DT &DEVICE>
 size_t Scalars<T, DT, DEVICE>::getNumSubs() const
 {
-    return(num_subs_);
+    return(num_sub_funcs_);
+}
+
+template <typename T, typename DT, const DT &DEVICE>
+void Scalars<T, DT, DEVICE>::setNumSubs(size_t num_subs)
+{
+    num_sub_funcs_ = num_subs;
 }
 
 template <typename T, typename DT, const DT &DEVICE>
 size_t Scalars<T, DT, DEVICE>::getNumSubFuncs() const
 {
-    return(num_subs_);
+    return(num_sub_funcs_);
 }
 
 template <typename T, typename DT, const DT &DEVICE>
 size_t Scalars<T, DT, DEVICE>::getSubLength() const
 {
-    return((num_subs_ > 0 ) * the_dim_ * stride_);
+    return( getTheDim() * getSubFuncLength());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
 size_t Scalars<T, DT, DEVICE>::getSubFuncLength() const
 {
-    return((num_subs_ > 0 ) * stride_);
+    return((getNumSubs() > 0 ) * getStride());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
-size_t Scalars<T, DT, DEVICE>::arr_size() const
+size_t Scalars<T, DT, DEVICE>::req_arr_size() const
 {
-    return( the_dim_ * stride_ * num_subs_ );
+    return( getNumSubs() * getSubLength() );
 }
 
 template <typename T, typename DT, const DT &DEVICE>
@@ -107,20 +113,19 @@ void Scalars<T, DT, DEVICE>::resize(size_t new_num_subs,
     int new_sh_order,
     std::pair<int, int> new_grid_dim)
 {
-    num_subs_ = new_num_subs;
-    sh_order_ = (new_sh_order == -1) ? sh_order_ : new_sh_order;
-    grid_dim_ = (new_grid_dim == EMPTY_GRID) ?
+    setNumSubs(new_num_subs);
+    sh_order_      = (new_sh_order == -1) ? sh_order_ : new_sh_order;
+    grid_dim_      = (new_grid_dim == EMPTY_GRID) ?
         SpharmGridDim(sh_order_) : new_grid_dim;
-    stride_   = grid_dim_.first * grid_dim_.second;
+    stride_        = grid_dim_.first * grid_dim_.second;
 
-    array_type::resize(this->arr_size());
+    array_type::resize(this->req_arr_size());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
-void Scalars<T, DT, DEVICE>::replicate(Scalars<T, DT, DEVICE> const& sc_in)
+void Scalars<T, DT, DEVICE>::replicate(Scalars<T, DT, DEVICE> const& rhs)
 {
-    this->resize(sc_in.getNumSubFuncs(), sc_in.getShOrder(),
-        sc_in.getGridDim());
+    this->resize(rhs.getNumSubs(), rhs.getShOrder(), rhs.getGridDim());
 }
 
 template <typename T, typename DT, const DT &DEVICE>
@@ -164,15 +169,16 @@ template <typename T, typename DT, const DT &DEVICE>
 std::ostream& operator<<(std::ostream& output,
     const Scalars<T, DT, DEVICE> &sc)
 {
-    output<<" =====================================================\n"
-          <<"  SH order            : "<<sc.getShOrder()<<"\n"
-          <<"  Grid size           : ( "
+    output<<"=====================================================\n"
+          <<" SH order            : "<<sc.getShOrder()<<"\n"
+          <<" Grid size           : ( "
           <<sc.getGridDim().first<<" , "<<sc.getGridDim().second<<" )"<<"\n"
-          <<"  stride              : "<<sc.getStride()<<"\n"
-          <<"  Number of functions : "<<sc.getNumSubFuncs()<<"\n"
-          <<" =====================================================\n";
+          <<" stride              : "<<sc.getStride()<<"\n"
+          <<" Number of functions : "<<sc.getNumSubFuncs()<<"\n"
+          <<"=====================================================";
 
     if(output.iword(scalars_xalloc) == true){
+        output<<std::endl;
 
         T *buffer;
         if ( DT::IsHost() ){

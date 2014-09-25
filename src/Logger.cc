@@ -2,7 +2,6 @@
 
 #include <algorithm> //to get for_each()
 #include <fstream>   //ofstream type
-// #include <ios>
 #include <unistd.h>  //to get sleep()
 
 
@@ -21,8 +20,8 @@ void PrintLogEvent(const std::pair<T, LogEvent> &ev)
     int print_length = 27;
     std::string printstr = ev.second.fun_name;
     printstr.resize(print_length,' ');
-    printstr= "     " + printstr +
-        "%-10u \t %-4.3e \t  %-4.3e  \t %-4.3e\n";
+    printstr= "  " + printstr +
+        "%-8u \t %-4.3e \t %-4.3e \t %-4.3e \n";
 
 #ifdef VERBOSE
     printf(printstr.c_str(), ev.second.num_calls, ev.second.time,
@@ -51,7 +50,7 @@ double Logger::Toc()
 {
     double toc;
     if(Logger::TicStack.empty())
-        CERR(" There is no matching Logger::Tic() call.","", toc=0);
+        CERR("There is no matching Logger::Tic() call.","", toc=0);
     else
     {
         toc = Logger::Now();
@@ -112,53 +111,53 @@ void Logger::Report(enum ReportFormat rf)
     switch ( rf )
     {
         case SortFunName:
-            COUT("\n =========================================================================================="<<std::endl
-                <<"   >Function name               Calls            Total time         GFlop         GFlop/sec"
-                <<"\n ------------------------------------------------------------------------------------------");
+            COUT("=====================================================================================\n"
+                <<" >Function name              Calls       Total time      GFlop           GFlop/sec\n"
+                <<"------------------------------------------------------------------------------------");
             for_each(PrflMap.begin(), PrflMap.end(), &PrintLogEvent<std::string>);
             break;
 
         case SortNumCalls:
-            COUT("\n ==========================================================================================="<<std::endl
-                <<"    Function name              >Calls            Total time         GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------");
+            COUT("=====================================================================================\n"
+                <<"  Function name             >Calls       Total time      GFlop           GFlop/sec\n"
+                <<"------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.num_calls, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
         case SortTime:
-            COUT("\n ==========================================================================================="<<std::endl
-                <<"    Function name               Calls           >Total time         GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------");
+            COUT("=====================================================================================\n"
+                <<"  Function name              Calls      >Total time      GFlop           GFlop/sec\n"
+                <<"------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.time, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
         case SortFlop:
-            COUT("\n ==========================================================================================="<<std::endl
-                <<"    Function name               Calls            Total time        >GFlop        GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------");
+            COUT("=====================================================================================\n"
+                <<"  Function name              Calls       Total time     >GFlop           GFlop/sec\n"
+                <<"------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.flop, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
         case SortFlopRate:
-            COUT("\n ==========================================================================================="<<std::endl
-                <<"    Function name               Calls            Total time         GFlop       >GFlop/sec"
-                <<"\n -------------------------------------------------------------------------------------------");
+            COUT("=====================================================================================\n"
+                <<"  Function name              Calls       Total time      GFlop          >GFlop/sec\n"
+                <<"------------------------------------------------------------------------------------");
             for (it = Logger::PrflMap.begin();it != Logger::PrflMap.end(); ++it)
                 ReportMap.insert(std::make_pair(it->second.flop_rate, it->second));
             for_each(ReportMap.begin(), ReportMap.end(), &PrintLogEvent<double>);
             break;
 
     }
-    COUT(" ===========================================================================================");
+    COUT("=====================================================================================");
 
     if(TicStack.size())
-        CERR("\n There may be unbalanced Tic() and Toc() calls.","",sleep(0));
+        CERR("There may be unbalanced Tic() and Toc() calls.","",sleep(0));
 }
 
 void Logger::SetLogFile(std::string file_name)
@@ -172,7 +171,7 @@ void Logger::Log(const char *event)
 
     if(!fl)
     {
-        CERR(" Could not open the log file." <<std::endl
+        CERR("Could not open the log file." <<std::endl
             <<" File name : " << log_file <<"."<<std::endl
             <<"\n Log event: "<<event,"",exit(1));
     }

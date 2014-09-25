@@ -1,4 +1,4 @@
-#include "ScalarContainerTest.h"
+#include "ScalarsTest.h"
 #include "Scalars.h"
 #include "Device.h"
 
@@ -12,9 +12,9 @@ extern const DevGPU gpu_dev(0);
 
 int main(int argc, char* argv[])
 {
-    COUT("\n ==============================\n"
-        <<"  Scalars Test:"
-        <<"\n ==============================");
+    COUT("==============================\n"
+        <<" Scalars Test:"
+        <<"\n==============================");
 
     ScalarsTest<Scalars<float, DevCPU, cpu_dev> > sctest_cpu;
     sctest_cpu.PerformAll();

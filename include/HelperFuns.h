@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include "Device.h"
+#include "Logger.h"
 #include "SHTrans.h"
 
 template<typename lhsContainer, typename rhsContainer>

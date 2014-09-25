@@ -9,7 +9,7 @@ inline bool AreCompatible(const lhsContainer &lhs, const  rhsContainer &rhs)
 template<typename ScalarContainer>
 void Sqrt(const ScalarContainer &x_in, ScalarContainer &sqrt_out)
 {
-    assert(AreCompatible(x_in, sqrt_out));
+    ASSERT(AreCompatible(x_in, sqrt_out),"Incompatible containers");
 
     x_in.getDevice().Sqrt(x_in.begin(), x_in.size(), sqrt_out.begin());
 }
@@ -18,8 +18,8 @@ template<typename ScalarContainer>
 void xy(const ScalarContainer &x_in, const ScalarContainer &y_in,
     ScalarContainer &xy_out)
 {
-    assert(AreCompatible(x_in,y_in));
-    assert(AreCompatible(y_in,xy_out));
+    ASSERT(AreCompatible(x_in,y_in),"Incompatible containers");
+    ASSERT(AreCompatible(y_in,xy_out),"Incompatible containers");
 
     x_in.getDevice().xy(x_in.begin(), y_in.begin(), x_in.size(), xy_out.begin());
 }
@@ -28,8 +28,8 @@ template<typename ScalarContainer>
 void xyInv(const ScalarContainer &x_in, const ScalarContainer &y_in,
     ScalarContainer &xyInv_out)
 {
-    assert(AreCompatible(x_in,y_in));
-    assert(AreCompatible(y_in,xyInv_out));
+    ASSERT(AreCompatible(x_in,y_in),"Incompatible containers");
+    ASSERT(AreCompatible(y_in,xyInv_out),"Incompatible containers");
 
     x_in.getDevice().xyInv(x_in.begin(), y_in.begin(), x_in.size(),
         xyInv_out.begin());
@@ -38,7 +38,7 @@ void xyInv(const ScalarContainer &x_in, const ScalarContainer &y_in,
 template<typename ScalarContainer>
 void xInv(const ScalarContainer &x_in, ScalarContainer &xInv_out)
 {
-    assert(AreCompatible(x_in,xInv_out));
+    ASSERT(AreCompatible(x_in,xInv_out),"Incompatible containers");
 
     x_in.getDevice().xyInv(static_cast<typename
         ScalarContainer::value_type*>(NULL), x_in.begin(),
@@ -50,8 +50,8 @@ void axpy(typename ScalarContainer::value_type a_in,
     const ScalarContainer &x_in, const ScalarContainer &y_in,
     ScalarContainer &axpy_out)
 {
-    assert(AreCompatible(x_in,y_in));
-    assert(AreCompatible(y_in,axpy_out));
+    ASSERT(AreCompatible(x_in,y_in),"Incompatible containers");
+    ASSERT(AreCompatible(y_in,axpy_out),"Incompatible containers");
 
     x_in.getDevice().axpy(a_in, x_in.begin(), y_in.begin(), x_in.size(),
         axpy_out.begin());
@@ -61,7 +61,7 @@ template<typename ScalarContainer>
 void axpy(typename ScalarContainer::value_type a_in,
     const ScalarContainer &x_in, ScalarContainer &axpy_out)
 {
-    assert(AreCompatible(x_in,axpy_out));
+    ASSERT(AreCompatible(x_in,axpy_out),"Incompatible containers");
 
     x_in.getDevice().axpy<typename ScalarContainer::value_type>(
         a_in, x_in.begin(), 0, x_in.size(), axpy_out.begin());
@@ -73,24 +73,50 @@ void Reduce(const IntegrandContainer &x_in,
     const ScalarContainer &w_in, const ScalarContainer &quad_w_in,
     IntegrandContainer &x_dw)
 {
-    assert(AreCompatible(x_in,w_in));
-    assert(quad_w_in.getStride() == w_in.getStride());
-    assert(quad_w_in.getNumSubFuncs() >= 1);
+    ASSERT(AreCompatible(x_in,w_in),"Incompatible containers");
+    ASSERT(quad_w_in.getStride() == w_in.getStride(),
+        "Incompatible containers");
+    ASSERT(quad_w_in.getNumSubFuncs() >= 1,"Incompatible containers");
 
-    x_in.getDevice().Reduce(x_in.begin(), x_in.getTheDim(), w_in.begin(),
-        quad_w_in.begin(), x_in.getStride(), x_in.getNumSubFuncs(), x_dw.begin());
+    COUTDEBUG("x=(dim:"<<
+        x_in.getTheDim()<<", numsubs:"
+        <<x_in.getNumSubs()<<", subfunc:"
+        <<x_in.getNumSubFuncs()<<", stride:"
+        <<x_in.getStride()<<", sublength:"
+        <<x_in.getSubLength()<<", size:"
+        <<x_in.size()<<")"
+              );
+
+    COUTDEBUG("w=(dim:"<<
+        w_in.getTheDim()<<", numsubs:"
+        <<w_in.getNumSubs()<<", subfunc:"
+        <<w_in.getNumSubFuncs()<<", stride:"
+        <<w_in.getStride()<<", sublength:"
+        <<w_in.getSubLength()<<", size:"
+        <<w_in.size()<<")"
+              );
+
+    COUTDEBUG("quad.size="<<quad_w_in.size()<<", x_dw.size="<<x_dw.size());
+
+    x_in.getDevice().Reduce(x_in.begin(),
+        x_in.getTheDim(),
+        w_in.begin(),
+        quad_w_in.begin(),
+        x_in.getStride(),
+        x_in.getNumSubs(),
+        x_dw.begin());
 }
 
 template<typename Container>
 void Reduce(const Container &w_in, const Container &quad_w_in,
     Container &dw)
 {
-    assert(quad_w_in.getStride() == w_in.getStride());
-    assert(quad_w_in.getNumSubFuncs() >= 1);
+    ASSERT(quad_w_in.getStride() == w_in.getStride(),"Incompatible containers");
+    ASSERT(quad_w_in.getNumSubFuncs() >= 1,"Incompatible containers");
 
     w_in.getDevice().Reduce(static_cast<typename Container::value_type* >(0),
         0, w_in.begin(), quad_w_in.begin(), w_in.getStride(),
-        w_in.getNumSubFuncs(), dw.begin());
+        w_in.getNumSubs(), dw.begin());
 }
 
 template<typename ScalarContainer>
@@ -110,19 +136,24 @@ template<typename ScalarContainer, typename VectorContainer>
 inline void GeometricDot(const VectorContainer &u_in,
     const VectorContainer &v_in, ScalarContainer &x_out)
 {
-    assert(AreCompatible(u_in,v_in));
-    assert(AreCompatible(v_in,x_out));
+    ASSERT(AreCompatible(u_in,v_in),"Incompatible containers");
+    ASSERT(AreCompatible(v_in,x_out),"Incompatible containers");
+
+    COUTDEBUG("u("<<u_in.getNumSubFuncs()
+        <<","<<u_in.getStride()<<")"
+        <<", v=("<<v_in.getNumSubFuncs()<<","<<v_in.getStride()<<")"
+        ", x=("<<x_out.getNumSubFuncs()<<","<<x_out.getStride()<<")");
 
     u_in.getDevice().DotProduct(u_in.begin(), v_in.begin(),
-        u_in.getStride(), u_in.getNumSubFuncs(), x_out.begin());
+        u_in.getStride(), u_in.getNumSubs(), x_out.begin());
 }
 
 template<typename VectorContainer>
 inline void GeometricCross(const VectorContainer &u_in,
     const VectorContainer &v_in, VectorContainer &w_out)
 {
-    assert(AreCompatible(u_in,v_in));
-    assert(AreCompatible(v_in,w_out));
+    ASSERT(AreCompatible(u_in,v_in),"Incompatible containers");
+    ASSERT(AreCompatible(v_in,w_out),"Incompatible containers");
 
     u_in.getDevice().CrossProduct(u_in.begin(), v_in.begin(),
         u_in.getStride(), u_in.getNumSubs(), w_out.begin());
@@ -132,11 +163,11 @@ template<typename ScalarContainer, typename VectorContainer>
 inline void uyInv(const VectorContainer &u_in,
     const ScalarContainer &y_in, VectorContainer &uyInv_out)
 {
-    assert(AreCompatible(u_in, y_in));
-    assert(AreCompatible(y_in,uyInv_out));
+    ASSERT(AreCompatible(u_in, y_in),"Incompatible containers");
+    ASSERT(AreCompatible(y_in,uyInv_out),"Incompatible containers");
 
     u_in.getDevice().uyInv(u_in.begin(), y_in.begin(),
-        u_in.getStride(), u_in.getNumSubFuncs(), uyInv_out.begin());
+        u_in.getStride(), u_in.getNumSubs(), uyInv_out.begin());
 }
 
 template<typename ScalarContainer, typename VectorContainer>
@@ -144,9 +175,9 @@ inline void avpw(const ScalarContainer &a_in,
     const VectorContainer &v_in,  const VectorContainer &w_in,
     VectorContainer &avpw_out)
 {
-    assert(a_in.getNumSubs() == v_in.getNumSubs());
-    assert(AreCompatible(v_in,w_in));
-    assert(AreCompatible(w_in,avpw_out));
+    ASSERT(a_in.getNumSubs() == v_in.getNumSubs(),"Incompatible containers");
+    ASSERT(AreCompatible(v_in,w_in),"Incompatible containers");
+    ASSERT(AreCompatible(w_in,avpw_out),"Incompatible containers");
 
     CERR("THIS NEEDS TO BE IMPLEMENTED",std::endl, exit(1));
     //u_in.getDevice().avpw(a_in.begin(), v_in.begin(),
@@ -158,9 +189,9 @@ inline void xvpw(const ScalarContainer &x_in,
     const VectorContainer &v_in, const VectorContainer &w_in,
     VectorContainer &xvpw_out)
 {
-    assert(AreCompatible(x_in,v_in));
-    assert(AreCompatible(v_in,w_in));
-    assert(AreCompatible(w_in,xvpw_out));
+    ASSERT(AreCompatible(x_in,v_in),"Incompatible containers");
+    ASSERT(AreCompatible(v_in,w_in),"Incompatible containers");
+    ASSERT(AreCompatible(w_in,xvpw_out),"Incompatible containers");
 
     x_in.getDevice().xvpw(x_in.begin(), v_in.begin(),
         w_in.begin(), v_in.getStride(), v_in.getNumSubs(), xvpw_out.begin());
@@ -169,30 +200,29 @@ inline void xvpw(const ScalarContainer &x_in,
 template<typename Container>
 inline void ax(const Container& a, const Container& x, Container& ax_out)
 {
-    assert( a.getStride() == x.getStride() );
-    assert( AreCompatible(x, ax_out) );
+    ASSERT( a.getStride() == x.getStride() ,"Incompatible containers");
+    ASSERT( AreCompatible(x, ax_out) ,"Incompatible containers");
     Container::getDevice().ax(a.begin(), x.begin(), x.getStride(),
-        x.getNumSubFuncs() * x.getTheDim(), ax_out.begin());
+        x.getNumSubFuncs(), ax_out.begin());
 }
-
 
 template<typename ScalarContainer, typename VectorContainer>
 inline void xv(const ScalarContainer &x_in,
-    const VectorContainer &v_in, VectorContainer &xvpw_out)
+    const VectorContainer &v_in, VectorContainer &xv_out)
 {
-    assert(AreCompatible(x_in,v_in));
-    assert(AreCompatible(v_in,xvpw_out));
+    ASSERT(AreCompatible(x_in,v_in),"Incompatible containers");
+    ASSERT(AreCompatible(v_in,xv_out),"Incompatible containers");
 
     x_in.getDevice().xvpw<typename ScalarContainer::value_type>(
-        x_in.begin(), v_in.begin(), 0, v_in.getStride(),
-        v_in.getNumSubs(), xvpw_out.begin());
+        x_in.begin(), v_in.begin(), NULL, v_in.getStride(),
+        v_in.getNumSubs(), xv_out.begin());
 }
 
 template<typename VectorContainer>
 inline void ShufflePoints(const VectorContainer &u_in,
     VectorContainer &u_out)
 {
-    assert(AreCompatible(u_in,u_out));
+    ASSERT(AreCompatible(u_in,u_out),"Incompatible containers");
     size_t stride = u_in.getStride();
 
     int dim = u_in.getTheDim();
@@ -280,7 +310,6 @@ typename Container::value_type MaxAbs(Container &x)
     return(x.getDevice().MaxAbs(x.begin(), x.size()));
 }
 
-#include "Scalars.h"
 template<typename Container, typename SHT>
 void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     Container &shcpq, Container &wrkpq, Container &xq)
@@ -291,10 +320,10 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     int p = shtp.getShOrder();
     int q = shtq.getShOrder();
 
-    COUTDEBUG("Resample: from "<<p<<" to "<<q);
+    COUTDEBUG("resample from "<<p<<" to "<<q);
     if(p == q)
     {
-        COUTDEBUG("Resample: p==q, no need to resample");
+        COUTDEBUG("p==q, no need to resample");
         Container::getDevice().Memcpy(xq.begin(), xp.begin(),
             xp.size() * sizeof(value_type), DT::MemcpyDeviceToDevice);
         return;
@@ -307,7 +336,7 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     shc_q = shcpq.begin();
 
     if(p < q){
-        COUTDEBUG("Resample: q>p filling with zeros");
+        COUTDEBUG("q>p filling with zeros");
         Container::getDevice().Memset(shcpq.begin(), 0,
             shcpq.size() * sizeof(value_type));
     }
@@ -315,7 +344,7 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     int len_p, len_q, cpy_len;
     int minfreq = ( p > q ) ? q : p;
     int n_funs = xp.getNumSubFuncs();
-    COUTDEBUG("Resample: copying each coeff set (n_fun="
+    COUTDEBUG("copying each coeff set (n_fun="
         <<n_funs<<")");
 
     for(int ii=0; ii< 2 * minfreq; ++ii)
@@ -324,7 +353,7 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
         len_q   = q  + 1 - (ii+1)/2;
         cpy_len = minfreq + 1 - (ii+1)/2;
 
-        COUTDEBUG("Resample: copying coeffs of same degree "<<ii
+        COUTDEBUG("copying coeffs of same degree "<<ii
             <<" advancing p by "<<len_p
             <<" advancing q by "<<len_q);
         for(int jj = 0; jj<n_funs; ++jj)

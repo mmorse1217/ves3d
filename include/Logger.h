@@ -160,7 +160,7 @@ static bool assert_expr(false);
 #define LOG(msg) (Logger::Log(msg))
 
 #ifdef VERBOSE
-#define COUTDEBUG(str) (std::cout<<"[DEBUG] "<<str<<std::endl)
+#define COUTDEBUG(str) (std::cout<<"[DEBUG]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #else
 #define COUTDEBUG(str)
 #endif //VERBOSE

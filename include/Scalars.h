@@ -96,15 +96,15 @@ class Scalars : public Array<T, DT, DEVICE>
     inline size_t getSubFuncLength() const;
 
     //! required size of the underlying array
-    inline size_t arr_size() const;
+    inline size_t req_arr_size() const;
 
     //! Resizing the container. This doesn't interpolate
     inline void resize(size_t new_num_subs,
         int new_sh_order = -1,
         std::pair<int, int> new_grid_dim = EMPTY_GRID);
 
-    //! Explicit copying
-    inline void replicate(Scalars<T, DT, DEVICE> const& sc_in);
+    //! resizing so that this is compatible with rhs
+    inline void replicate(Scalars<T, DT, DEVICE> const& rhs);
 
     //! head of each sub component
     inline iterator getSubN_begin(size_t n);
@@ -127,12 +127,15 @@ class Scalars : public Array<T, DT, DEVICE>
     inline const_iterator getSubFuncN_end(size_t n) const;
 
   protected:
+    //! set number of sub-components
+    virtual inline void setNumSubs(size_t num_subs);
+
     int sh_order_;
     std::pair<int, int> grid_dim_;
     size_t stride_;
-    size_t num_subs_;
+    size_t num_sub_funcs_;
 
-    static const int the_dim_ = 1; //scalar field has dim 1
+    static const int scalar_dim_ = 1; //scalar field has dim 1
 
     //! protected to copy constructor to enforce pass by ref
     Scalars(Scalars<T, DT, DEVICE> const& sc_in);

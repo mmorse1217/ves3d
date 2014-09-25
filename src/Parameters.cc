@@ -64,8 +64,9 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
 
   //print usage if no options
   if( ! opt.hasOptions() ) {
-      std::cout<<"\n You need to define the simulation options"<<std::endl;
-      opt.printUsage();
+      CERR("You need to define the simulation options",
+          "",
+          opt.printUsage());
       return ErrorEvent::InvalidParameter;
   }
 
@@ -88,7 +89,6 @@ void Parameters<T>::adjustFreqs()
 template<typename T>
 void Parameters<T>::setUsage(AnyOption *opt)
 {
-  opt->addUsage( "" );
   opt->addUsage( " Options list: " );
   opt->addUsage( "" );
   opt->addUsage( "  -f  --optFile              The name of the options file to be parsed.");
@@ -276,51 +276,51 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 template<typename T>
 std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
 {
-    output<<"\n ===================================="<<std::endl;
-    output<<"  Simulator parameters"<<std::endl;
-    output<<" ===================================="<<std::endl;
-    output<<"  Surface:"<<std::endl;
-    output<<"    Number of surfaces       : "<<par.n_surfs<<std::endl;
-    output<<"    SH order                 : "<<par.sh_order<<std::endl;
-    output<<"    Filter freq              : "<<par.filter_freq<<std::endl;
-    output<<"    Bending modulus          : "<<par.bending_modulus<<std::endl;
-    output<<" ------------------------------------"<<std::endl;
-    output<<"  Solver:"<<std::endl;
-    output<<"    Position solver iter     : "<<par.position_solver_iter<<std::endl;
-    output<<"    tension solver iter      : "<<par.tension_solver_iter<<std::endl;
-    output<<"    Position solver restart  : "<<par.position_solver_restart<<std::endl;
-    output<<"    Tension solver restart   : "<<par.tension_solver_restart<<std::endl;
-    output<<"    Position solver tol      : "<<par.position_solver_tol<<std::endl;
-    output<<"    Tension solver tol       : "<<par.tension_solver_tol<<std::endl;
+    output<<"===================================="<<std::endl;
+    output<<" Simulator parameters"<<std::endl;
+    output<<"===================================="<<std::endl;
+    output<<" Surface:"<<std::endl;
+    output<<"   Number of surfaces       : "<<par.n_surfs<<std::endl;
+    output<<"   SH order                 : "<<par.sh_order<<std::endl;
+    output<<"   Filter freq              : "<<par.filter_freq<<std::endl;
+    output<<"   Bending modulus          : "<<par.bending_modulus<<std::endl;
+    output<<"------------------------------------"<<std::endl;
+    output<<" Solver:"<<std::endl;
+    output<<"   Position solver iter     : "<<par.position_solver_iter<<std::endl;
+    output<<"   tension solver iter      : "<<par.tension_solver_iter<<std::endl;
+    output<<"   Position solver restart  : "<<par.position_solver_restart<<std::endl;
+    output<<"   Tension solver restart   : "<<par.tension_solver_restart<<std::endl;
+    output<<"   Position solver tol      : "<<par.position_solver_tol<<std::endl;
+    output<<"   Tension solver tol       : "<<par.tension_solver_tol<<std::endl;
 
-    output<<" ------------------------------------"<<std::endl;
-    output<<"  Time stepper:"<<std::endl;
-    output<<"    Time horizon             : "<<par.time_horizon<<std::endl;
-    output<<"    Step size                : "<<par.ts<<std::endl;
-    output<<"    Scheme                   : "<<par.scheme<<std::endl;
-    output<<"    Singular Stokes          : "<<par.singular_stokes<<std::endl;
-    output<<" ------------------------------------"<<std::endl;
-    output<<"  Reparametrization:"<<std::endl;
-    output<<"    Rep maxit                : "<<par.rep_maxit<<std::endl;
-    output<<"    Rep upsample freq        : "<<par.rep_up_freq<<std::endl;
-    output<<"    Rep filter freq          : "<<par.rep_filter_freq<<std::endl;
-    output<<"    Rep step size            : "<<par.rep_ts<<std::endl;
-    output<<"    Rep tol                  : "<<par.rep_tol<<std::endl;
-    output<<" ------------------------------------"<<std::endl;
-    output<<"  Initialization:"<<std::endl;
-    output<<"    Init file name           : "<<par.init_file_name<<std::endl;
-    output<<"    Centers file name        : "<<par.cntrs_file_name<<std::endl;
-    output<<" ------------------------------------"<<std::endl;
-    output<<"  Saving:"<<std::endl;
-    output<<"    Save data                : "<<std::boolalpha<<par.save_data<<std::endl;
-    output<<"    Save file name           : "<<par.save_file_name<<std::endl;
-    output<<"    Save stride              : "<<par.save_stride<<std::endl;
-    output<<"    Error Factor             : "<<par.error_factor<<std::endl;
-    output<<" ------------------------------------"<<std::endl;
-    output<<"  Background flow:"<<std::endl;
-    output<<"    Background flow parameter: "<<par.bg_flow_param<<std::endl;
-    output<<"    Upsample Interaction     : "<<std::boolalpha<<par.upsample_interaction<<std::endl;
-    output<<" ===================================="<<std::endl<<std::endl;
+    output<<"------------------------------------"<<std::endl;
+    output<<" Time stepper:"<<std::endl;
+    output<<"   Time horizon             : "<<par.time_horizon<<std::endl;
+    output<<"   Step size                : "<<par.ts<<std::endl;
+    output<<"   Scheme                   : "<<par.scheme<<std::endl;
+    output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
+    output<<"------------------------------------"<<std::endl;
+    output<<" Reparametrization:"<<std::endl;
+    output<<"   Rep maxit                : "<<par.rep_maxit<<std::endl;
+    output<<"   Rep upsample freq        : "<<par.rep_up_freq<<std::endl;
+    output<<"   Rep filter freq          : "<<par.rep_filter_freq<<std::endl;
+    output<<"   Rep step size            : "<<par.rep_ts<<std::endl;
+    output<<"   Rep tol                  : "<<par.rep_tol<<std::endl;
+    output<<"------------------------------------"<<std::endl;
+    output<<" Initialization:"<<std::endl;
+    output<<"   Init file name           : "<<par.init_file_name<<std::endl;
+    output<<"   Centers file name        : "<<par.cntrs_file_name<<std::endl;
+    output<<"------------------------------------"<<std::endl;
+    output<<" Saving:"<<std::endl;
+    output<<"   Save data                : "<<std::boolalpha<<par.save_data<<std::endl;
+    output<<"   Save file name           : "<<par.save_file_name<<std::endl;
+    output<<"   Save stride              : "<<par.save_stride<<std::endl;
+    output<<"   Error Factor             : "<<par.error_factor<<std::endl;
+    output<<"------------------------------------"<<std::endl;
+    output<<" Background flow:"<<std::endl;
+    output<<"   Background flow parameter: "<<par.bg_flow_param<<std::endl;
+    output<<"   Upsample Interaction     : "<<std::boolalpha<<par.upsample_interaction<<std::endl;
+    output<<"====================================";
 
     return output;
 }

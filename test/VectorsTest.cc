@@ -12,9 +12,9 @@ extern const DevGPU gpu_dev(0);
 
 int main(int argc, char* argv[])
 {
-    COUT("\n ==============================\n"
-        <<"  Vectors Test:"
-        <<"\n ==============================");
+    COUT("==============================\n"
+        <<" Vectors Test:"
+        <<"\n==============================");
 
     VectorsTest<Vectors<float, DevCPU, cpu_dev> > tcpu;
     tcpu.PerformAll();

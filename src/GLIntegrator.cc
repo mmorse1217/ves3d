@@ -87,7 +87,8 @@ Container* GaussLegendreIntegrator<Container>::buildQuadWeights(
 
 template<typename Container>
 template<typename InputContainer>
-void GaussLegendreIntegrator<Container>::operator()(const InputContainer &x_in,
+void GaussLegendreIntegrator<Container>::operator()(
+    const InputContainer &x_in,
     const Container &w_in, InputContainer &x_dw) const
 {
     Reduce(x_in, w_in, *getQuadWeights(x_in.getShOrder()), x_dw);

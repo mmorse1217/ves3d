@@ -66,15 +66,6 @@ class Vectors : public Scalars<T, DT, DEVICE>
     //! Total length of data for each sub-field
     virtual inline size_t getSubLength() const;
 
-    //! Resizing the container. This doesn't interpolate
-    //! @note This is intentionally non-virtual
-    inline void resize(size_t new_num_vecs,
-        int new_sh_order = -1,
-        std::pair<int, int> new_grid_dim = EMPTY_GRID);
-
-    //! Explicit copying (overloading replicate)
-    inline void replicate(Vectors<T, DT, DEVICE> const& vec_in);
-
     //! The ordering of vectors when iterated upon
     //! Point ordering could be AxisMajor or PointMajor
     //! @todo call to this should either transpose the points or store
@@ -83,8 +74,11 @@ class Vectors : public Scalars<T, DT, DEVICE>
     inline enum CoordinateOrder getPointOrder() const;
 
   protected:
+    //! set number of sub-components
+    virtual inline void setNumSubs(size_t num_subs);
+
     enum CoordinateOrder point_order_;
-    static const int the_dim_ = 3;
+    static const int vector_dim_ = 3;
 };
 
 #include "Vectors.cc"
