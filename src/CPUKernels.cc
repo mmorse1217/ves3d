@@ -964,7 +964,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
 //////////////////////////////////////////////////////////////////////////
 ///All to all ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot, void*)
+void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot, void**)
 {
     float tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
     const float *trg(src), *srcPtr(src), *denPtr(den);
@@ -1007,7 +1007,7 @@ void StokesAlltoAll(const float *src, const float *den, size_t np, float *pot, v
     }
 }
 
-void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot, void*)
+void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot, void**)
 {
     double tx, ty, tz, px, py, pz, dx, dy, dz, invR, cpx, cpy, cpz, cc;
     const double *trg(src), *srcPtr(src), *denPtr(den);

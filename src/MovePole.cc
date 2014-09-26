@@ -106,21 +106,29 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
     switch (rot_scheme)
     {
         case Direct:
+            COUTDEBUG("Setting rot_handle to Direct");
             rot_handle_ = &MovePole::movePoleDirectly;
             break;
 
         case ViaSpHarm:
+            COUTDEBUG("Setting rot_handle to ViaSpHarm");
             rot_handle_ = &MovePole::movePoleViaSpHarm;
+
+
             if ( num != num_ || rot_scheme != last_rot_)
             {
+                COUTDEBUG("Alocatting new shc container: "
+                    <<"old_num="<<num_<<", old scheme "<<last_rot_
+                    <<", new_num="<<num <<", new scheme "<<rot_scheme);
                 delete[] shc_;
                 shc_ = new Container[num];
             }
 
+            COUTDEBUG("Adjusting container's size");
             for(int ii=0; ii<num; ++ii)
             {
-                shc_[ii].replicate(*(arr_[ii]));
-                wrk_.replicate(*(arr_[ii]));
+                shc_[ii].match_size(*(arr_[ii]));
+                wrk_.match_size(*(arr_[ii]));
                 sht_.forward(*(arr_[ii]), shc_[ii], wrk_);
                 sht_.collectSameOrder(wrk_, shc_[ii]);
             }
@@ -128,6 +136,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
             break;
 
         case DirectEagerEval:
+            COUTDEBUG("Setting rot_handle to DirectEagerEval");
             rot_handle_ = &MovePole::movePoleDirectly;
             eager_last_latitude_ = -1;
             if ( eager_results_ == NULL || num_ != num )
@@ -138,7 +147,7 @@ void MovePole<Container, Operators>::setOperands(const Container** arr,
 
             for(int ii=0; ii<SpharmGridDim(p_).second; ++ii)
                 for(int jj=0; jj<num; ++jj)
-                    eager_results_[ii * num + jj].replicate(*(arr_[jj]));
+                    eager_results_[ii * num + jj].match_size(*(arr_[jj]));
             eager_wrk_.resize(eager_n_stream_,1,std::make_pair(np_,np_));
             break;
     }
@@ -165,7 +174,7 @@ void MovePole<Container, Operators>::movePoleDirectly(int trg_i, int trg_j,
 
         for(int ii=0; ii<num_; ++ii)
         {
-            int nsub(arr_[ii]->getNumSubs());
+            int nsub(arr_[ii]->getNumSubFuncs());
             Container::getDevice().gemm("N", "N", &np_, &nsub, &np_,
                 &alpha, rot_mat_.begin(), &np_, arr_[ii]->begin(),
                 &np_, &beta, results[ii]->begin(), &np_);
@@ -199,12 +208,12 @@ void MovePole<Container, Operators>::movePoleViaSpHarm(int trg_i, int trg_j,
 
     for(int ii=0; ii<num_; ++ii)
     {
-        wrk_.replicate(*(results[ii]));
-        shc_out.replicate(wrk_);
+        wrk_.match_size(*(results[ii]));
+        shc_out.match_size(wrk_);
 
         srcPtr = results[ii]->begin();
         resPtr = wrk_.begin();
-        nsub = shc_[ii].getNumSubs();
+        nsub = shc_[ii].getNumSubFuncs();
         rotmat = sp_harm_mats_.getSubN_begin(trg_i);
 
         for(int jj=0; jj<=p_; ++jj)
@@ -230,9 +239,9 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
     Container** results) const
 {
     PROFILESTART();
-    ///@todo the sparse matrix matrix multiplier is the cpu
-    ///version. coomm should be added to the device.
-    assert( typeid(Container::getDevice()) == typeid(Device<CPU>));
+    //!@todo the sparse matrix matrix multiplier is the cpu
+    //!version. coomm should be added to the device.
+    assert(Container::getDevice().IsHost());
 
     value_type* rotmat(NULL);
     value_type* srcPtr(NULL);
@@ -243,11 +252,11 @@ void MovePole<Container, Operators>::alignMeridian(int trg_j,
 
     for(int ii=0; ii<num_; ++ii)
     {
-        wrk_.replicate(*(results[ii]));
+        wrk_.match_size(*(results[ii]));
 
         srcPtr = shc_[ii].begin();
         resPtr = results[ii]->begin();
-        nsub = shc_[ii].getNumSubs();
+        nsub   = shc_[ii].getNumSubFuncs();
         rotmat = const_cast<value_type*>(longitude_rot_.getSubN_begin(trg_j));
 
         for(int jj=0; jj<=p_; ++jj)

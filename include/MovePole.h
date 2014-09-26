@@ -15,11 +15,11 @@ class MovePole
   public:
     MovePole(Operators &mats);
     ~MovePole();
-    
-    void setOperands(const Container** arr, int num, 
+
+    void setOperands(const Container** arr, int num,
         enum SingularStokesRot rot_scheme = Direct);
 
-    inline void operator()(int trg_i, int trg_j, 
+    inline void operator()(int trg_i, int trg_j,
         Container** results) const;
 
   private:
@@ -53,8 +53,8 @@ class MovePole
 
     void movePoleDirectly(int trg_i, int trg_j,
         Container** results) const;
-    
-    void movePoleViaSpHarm(int trg_i, int trg_j, 
+
+    void movePoleViaSpHarm(int trg_i, int trg_j,
         Container** results) const;
 
     void alignMeridian(int trg_j, Container** results) const;

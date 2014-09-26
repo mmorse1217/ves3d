@@ -129,8 +129,23 @@ void Scalars<T, DT, DEVICE>::replicate(Scalars<T, DT, DEVICE> const& rhs)
 }
 
 template <typename T, typename DT, const DT &DEVICE>
+void Scalars<T, DT, DEVICE>::match_size(Scalars<T, DT, DEVICE> const& rhs)
+{
+    this->resize(rhs.getNumSubFuncs(), rhs.getShOrder(), rhs.getGridDim());
+}
+
+template <typename T, typename DT, const DT &DEVICE>
 typename Scalars<T, DT, DEVICE>::iterator
 Scalars<T, DT, DEVICE>::getSubN_begin(size_t n)
+{
+    ASSERT(n<=this->getNumSubs(),
+        "Index exceeds the number of subfields");
+    return(array_type::begin() + n * this->getSubLength());
+}
+
+template <typename T, typename DT, const DT &DEVICE>
+typename Scalars<T, DT, DEVICE>::const_iterator
+Scalars<T, DT, DEVICE>::getSubN_begin(size_t n) const
 {
     ASSERT(n<=this->getNumSubs(),
         "Index exceeds the number of subfields");
@@ -147,6 +162,15 @@ Scalars<T, DT, DEVICE>::getSubN_end(size_t n)
 }
 
 template <typename T, typename DT, const DT &DEVICE>
+typename Scalars<T, DT, DEVICE>::const_iterator
+Scalars<T, DT, DEVICE>::getSubN_end(size_t n) const
+{
+    ASSERT(n<=this->getNumSubs(),
+        "Index exceeds the number of subfields");
+    return(array_type::begin() + (n+1) * this->getSubLength());
+}
+
+template <typename T, typename DT, const DT &DEVICE>
 typename Scalars<T, DT, DEVICE>::iterator
 Scalars<T, DT, DEVICE>::getSubFuncN_begin(size_t n)
 {
@@ -156,8 +180,26 @@ Scalars<T, DT, DEVICE>::getSubFuncN_begin(size_t n)
 }
 
 template <typename T, typename DT, const DT &DEVICE>
+typename Scalars<T, DT, DEVICE>::const_iterator
+Scalars<T, DT, DEVICE>::getSubFuncN_begin(size_t n) const
+{
+    ASSERT(n<=this->getNumSubFuncs(),
+        "Index exceeds the number of subfunctions");
+    return(array_type::begin() + n * this->getSubFuncLength());
+}
+
+template <typename T, typename DT, const DT &DEVICE>
 typename Scalars<T, DT, DEVICE>::iterator
 Scalars<T, DT, DEVICE>::getSubFuncN_end(size_t n)
+{
+    ASSERT(n<=this->getNumSubFuncs(),
+        "Index exceeds the number of subfunctions");
+    return(array_type::begin() + (n+1) * this->getSubFuncLength());
+}
+
+template <typename T, typename DT, const DT &DEVICE>
+typename Scalars<T, DT, DEVICE>::const_iterator
+Scalars<T, DT, DEVICE>::getSubFuncN_end(size_t n) const
 {
     ASSERT(n<=this->getNumSubFuncs(),
         "Index exceeds the number of subfunctions");

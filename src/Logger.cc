@@ -196,7 +196,7 @@ std::ostream& alert(std::ostream& os)
     if(os.iword(alert_xalloc) == false)
         os<<"\033[1;31m";
     else
-        os<<"\033[0m\n";
+        os<<"\033[0m";
 
     os.iword(alert_xalloc) = !os.iword(alert_xalloc);
     return os;
@@ -207,7 +207,7 @@ std::ostream& emph(std::ostream& os)
     if(os.iword(emph_xalloc) == false)
         os<<"\033[1;36m";
     else
-        os<<"\033[0m\n";
+        os<<"\033[0m";
 
     os.iword(emph_xalloc) = !os.iword(emph_xalloc);
     return os;

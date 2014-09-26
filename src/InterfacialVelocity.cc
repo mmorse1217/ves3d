@@ -1,7 +1,7 @@
 template<typename SurfContainer, typename Interaction>
 InterfacialVelocity<SurfContainer, Interaction>::
 InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
-    OperatorsMats<Sca_t> &mats,
+    OperatorsMats<Arr_t> &mats,
     const Parameters<value_type> &params, const BgFlowBase<Vec_t> &bgFlow) :
     usr_ptr_(NULL),
     S_(S_in),
@@ -30,7 +30,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     w_sph_.resize(1, p);
     w_sph_inv_.resize(1, p);
     w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
-        np * sizeof(value_type), w_sph_.getDevice().MemcpyDeviceToDevice);
+        np * sizeof(value_type), device_type::MemcpyDeviceToDevice);
     xInv(w_sph_,w_sph_inv_);
 
     //Singular quadrature weights
@@ -38,21 +38,21 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(),
         mats.sing_quad_weights_, sing_quad_weights_.size() *
         sizeof(value_type),
-        sing_quad_weights_.getDevice().MemcpyDeviceToDevice);
+        device_type::MemcpyDeviceToDevice);
 
     //quadrature weights
     quad_weights_.resize(1,p);
     quad_weights_.getDevice().Memcpy(quad_weights_.begin(),
         mats.quad_weights_,
         quad_weights_.size() * sizeof(value_type),
-        quad_weights_.getDevice().MemcpyDeviceToDevice);
+        device_type::MemcpyDeviceToDevice);
 
     int p_up = sht_upsample_.getShOrder();
     quad_weights_up_.resize(1, p_up);
     quad_weights_up_.getDevice().Memcpy(quad_weights_up_.begin(),
         mats.quad_weights_p_up_,
         quad_weights_up_.size() * sizeof(value_type),
-        quad_weights_up_.getDevice().MemcpyDeviceToDevice);
+        device_type::MemcpyDeviceToDevice);
 
 }
 
@@ -125,25 +125,24 @@ updatePositionImplicit(const value_type &dt)
     //Update position
     int iter(params_.position_solver_iter);
     int rsrt(params_.position_solver_restart);
-    value_type tol(params_.position_solver_tol);
+    value_type tol(params_.position_solver_tol),relres(params_.position_solver_tol);
     enum BiCGSReturn solver_ret;
     Error_t ret_val(ErrorEvent::Success);
 
-    COUT("  Position solve\n ------------------------------------\n");
-    solver_ret = linear_solver_vec_(*this, *u2, *u1, rsrt, iter, tol);
+    COUTDEBUG("Solving for position");
+    solver_ret = linear_solver_vec_(*this, *u2, *u1, rsrt, iter, relres);
     if ( solver_ret  != BiCGSSuccess )
         ret_val = ErrorEvent::SolverDiverged;
-    COUT(" ------------------------------------"<<std::endl);
-    COUT("       Total iterations = "<< iter
-        <<"\n                 Relres = "<<tol<<std::endl);
 
-    COUTDEBUG("            True relres = "<<
-        ((*this)(*u2, *u3),
+    COUTDEBUG("Position solve: Total iter = "<<iter<<", relres = "<<tol);
+    COUTDEBUG("Checking true relres");
+    ASSERT(((*this)(*u2, *u3),
             axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
-            tol = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1))
-         )<<std::endl);
-
-    COUT(" ------------------------------------"<<std::endl);
+            relres = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1)),
+            relres<tol
+           ),
+           "relres ("<<relres<<")<tol("<<tol<<")"
+           );
 
     u2->getDevice().Memcpy(S_.getPositionModifiable().begin(), u2->begin(),
         S_.getPosition().size() * sizeof(value_type),
@@ -267,23 +266,25 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
 
     int iter(params_.tension_solver_iter);
     int rsrt(params_.tension_solver_restart);
-    value_type tol(params_.tension_solver_tol);
+    value_type tol(params_.tension_solver_tol),relres(params_.tension_solver_tol);
     enum BiCGSReturn solver_ret;
     Error_t ret_val(ErrorEvent::Success);
 
-    COUT("  Tension solve\n ------------------------------------\n");
-    solver_ret = linear_solver_(*this, tension, *rhs, rsrt, iter, tol);
+    COUTDEBUG("Solving for tension");
+    solver_ret = linear_solver_(*this, tension, *rhs, rsrt, iter, relres);
+
     if ( solver_ret  != BiCGSSuccess )
         ret_val = ErrorEvent::SolverDiverged;
-    COUT(" ------------------------------------"<<std::endl);
-    COUT("       Total iterations = "<< iter
-        <<"\n                 Relres = "<<tol<<std::endl);
-    COUTDEBUG("            True relres = "<<
-        ((*this)(tension, *wrk),
+
+    COUTDEBUG("Tension solve: Total iter = "<< iter<<", relres = "<<relres);
+    COUTDEBUG("Checking true relres");
+    ASSERT(((*this)(tension, *wrk),
             axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
-            tol = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs))
-         )<<std::endl);
-    COUT(" ------------------------------------"<<std::endl);
+            relres = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs)),
+            relres<tol
+           ),
+           "relres ("<<relres<<")<tol("<<tol<<")"
+           );
 
     recycle(wrk);
     recycle(rhs);
@@ -359,6 +360,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     std::auto_ptr<Vec_t> fs = checkoutVec();
     std::auto_ptr<Vec_t> u = checkoutVec();
 
+    COUTDEBUG("Tension matvec");
     Intfcl_force_.tensileForce(S_, tension, *fs);
     CHK(stokes(*fs, *u));
     S_.div(*u, div_stokes_fs);
@@ -380,7 +382,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     std::auto_ptr<Vec_t> u2 = checkoutVec();
     std::auto_ptr<Sca_t> wrk = checkoutSca();
 
-    COUT("  Reparametrization \n ------------------------------------\n");
+    COUTDEBUG("Reparametrization");
     while ( ++ii < params_.rep_maxit )
     {
         S_.getSmoothedShapePosition(*u1);
@@ -398,17 +400,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
         vel = MaxAbs(*u1);
 
-        COUT("\n              Iteration = "<<ii
-            <<"\n                  |vel| = "<<vel<<std::endl);
+        COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
 
         if(vel < params_.rep_tol )
             break;
 
     }
-    COUT(" ------------------------------------"<<std::endl);
-    COUT("       Total iterations = "<<ii
-        <<"\n                  |vel| = "<<vel
-        <<"\n ------------------------------------"<<std::endl);
+    COUTDEBUG("Total iterations = "<<ii<<"|vel| = "<<vel);
 
     recycle(u1);
     recycle(u2);
@@ -502,11 +500,10 @@ benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel, Sca_t &tension,
         benchmarkTension(vel, tension, tol)              &&
         benchmarkNewPostitionExplicit(xnew, tol);
 
-    COUT("\n\n -------------------------------"
-        <<" Explicit stepper benchmark with "
+    ASSERT(res,"Explicit stepper benchmark failed");
+    COUTDEBUG(emph<<" *** Explicit stepper benchmark with "
         << S_.getPosition().getNumSubs() << " surface(s) "
-        <<((res) ? "*Passed*" : "*Failed*" )
-        <<" -------------------------------"<<std::endl);
+        << "Passed ***"<<emph);
     return ( res );
 }
 
@@ -519,12 +516,11 @@ benchmarkImplicit(Sca_t &tension, Vec_t &matvec, Vec_t &xnew, value_type tol)
         benchmarkMatVecImplicit(S_.getPosition(), matvec, tol) &&
         benchmarkNewPostitionImplicit(xnew, tol);
 
-
-    COUT("\n\n -------------------------------"
-        <<" Implicit stepper benchmark with "
+    ASSERT(res,"Implicit stepper benchmark failed");
+    COUTDEBUG(emph<<" *** Implicit stepper benchmark with "
         << S_.getPosition().getNumSubs() << " surface(s) "
-        <<((res) ? "*Passed*" : "*Failed*" )
-        <<" -------------------------------"<<std::endl);
+        << "Passed ***"<<emph);
+
     return ( res );
 }
 
@@ -532,8 +528,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
 {
-    COUTDEBUG("\n  Bending force benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking bending force");
+    COUTDEBUG("--------------------------------");
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     Intfcl_force_.linearBendingForce(S_, x, *u1);
@@ -542,9 +538,9 @@ benchmarkBendingForce(const Vec_t &x, Vec_t &Fb, value_type tol) const
     value_type err = MaxAbs(Fb);
     axpy(static_cast<value_type>(1), *u1, Fb);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Bending force benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Bending force benchmark passed"<<emph);
 
     recycle(u1);
     return (err < tol);
@@ -554,8 +550,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
 {
-    COUTDEBUG("\n  Singular Stokes benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking singular stokes");
+    COUTDEBUG("----------------------------------");
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     stokes(F, *u1);
@@ -564,9 +560,9 @@ benchmarkStokes(const Vec_t &F, Vec_t &SF, value_type tol) const
     value_type err = MaxAbs(SF);
     axpy(static_cast<value_type>(1), *u1, SF);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Singular stokes benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Singular stokes benchmark passed"<<emph);
 
     recycle(u1);
     return (err < tol);
@@ -576,8 +572,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
 {
-    COUTDEBUG("\n  Background flow benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking background flow");
+    COUTDEBUG("----------------------------------");
 
     this->updateInteraction();
     axpy(static_cast<value_type>(1), SFb, velocity_, velocity_);
@@ -587,9 +583,9 @@ benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
     value_type err = MaxAbs(vel);
     axpy(static_cast<value_type>(1), velocity_, vel);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Background flow benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Background benchmark passed"<<emph);
 
     return (err < tol);
 }
@@ -598,8 +594,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
 {
-    COUTDEBUG("\n  Tension benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking tension");
+    COUTDEBUG("--------------------------");
 
     std::auto_ptr<Sca_t> wrk = checkoutSca();
     axpy(static_cast<value_type>(0), *wrk, *wrk);
@@ -610,9 +606,9 @@ benchmarkTension(const Vec_t &vel, Sca_t &tension, value_type tol) const
     value_type err = MaxAbs(tension);
     axpy(static_cast<value_type>(1), *wrk, tension);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Tension benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Tension benchmark passed"<<emph);
 
     recycle(wrk);
     return (err < tol);
@@ -622,8 +618,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkNewPostitionExplicit(Vec_t &xnew, value_type tol)
 {
-    COUTDEBUG("\n  Explicit update benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking explicit update");
+    COUTDEBUG("----------------------------------");
 
     updatePositionExplicit(dt_);
 
@@ -631,9 +627,9 @@ benchmarkNewPostitionExplicit(Vec_t &xnew, value_type tol)
     value_type err = MaxAbs(xnew);
     axpy(static_cast<value_type>(1), S_.getPosition(), xnew);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Explicit update benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Explicit update benchmark passed"<<emph);
 
     return (err < tol);
 }
@@ -642,8 +638,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkTensionImplicit(Sca_t &tension, value_type tol)
 {
-    COUTDEBUG("\n  Tension (implicit) benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking tension (implicit)");
+    COUTDEBUG("-------------------------------------");
 
     this->updateInteraction();
 
@@ -665,9 +661,9 @@ benchmarkTensionImplicit(Sca_t &tension, value_type tol)
     value_type err = MaxAbs(tension);
     axpy(static_cast<value_type>(1), *scp, tension);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Tension (implicit) benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Tension (implicit) benchmark passed"<<emph);
 
     recycle(u1);
     recycle(u2);
@@ -680,8 +676,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkMatVecImplicit(const Vec_t &x, Vec_t &matvec, value_type tol)
 {
-    COUTDEBUG("\n  Implicit MatVec benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking implicit matvec");
+    COUTDEBUG("----------------------------------");
 
     std::auto_ptr<Vec_t> b = checkoutVec();
     this->operator()(x, *b);
@@ -690,9 +686,9 @@ benchmarkMatVecImplicit(const Vec_t &x, Vec_t &matvec, value_type tol)
     value_type err = MaxAbs(matvec);
     axpy(static_cast<value_type>(1), *b, matvec);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Implicit matvec benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Implicit matvec benchmark passed"<<emph);
 
     recycle(b);
     return (err < tol);
@@ -702,8 +698,8 @@ template<typename SurfContainer, typename Interaction>
 bool InterfacialVelocity<SurfContainer, Interaction>::
 benchmarkNewPostitionImplicit(Vec_t &xnew, value_type tol)
 {
-    COUTDEBUG("\n  Implicit update benchmark"
-        <<"\n ------------------------------------\n");
+    COUTDEBUG("Start benchmarking implicit update");
+    COUTDEBUG("----------------------------------");
 
     updatePositionImplicit(dt_);
 
@@ -711,9 +707,9 @@ benchmarkNewPostitionImplicit(Vec_t &xnew, value_type tol)
     value_type err = MaxAbs(xnew);
     axpy(static_cast<value_type>(1), S_.getPosition(), xnew);
 
-    COUTDEBUG("  The benchmark "
-        <<((err<tol) ? "*Passed*" : "*Failed*" )
-        <<" with\n                  error = "<<SCI_PRINT_FRMT<<err<<std::endl);
+    ASSERT(err<tol, "*** Implicit update benchmark failed: "
+        <<"err="<<err<<", tol="<<tol<<"***");
+    COUTDEBUG(emph<<"Implicit update benchmark passed"<<emph);
 
     return (err < tol);
 }

@@ -35,8 +35,8 @@ std::ostream& operator<<(std::ostream& output, const enum BiCGSReturn &ret)
             break;
 
         default:
-            CERR("\n The BiCGSReturn type is not recognized. Please update the"
-                <<"\n overloaded insertion operator",NULL, NULL);
+            CERR("The BiCGSReturn type is not recognized. Please update the"
+                <<"overloaded insertion operator",NULL, NULL);
     }
     return output;
 }
@@ -104,9 +104,8 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
             axpy(alpha, phat, x , x);
             tol = resid;
             max_iter = i;
-            COUTDEBUG("  BiCGStab:   Iteration = "<<i
-                <<"\n                 Relres = "
-                <<SCI_PRINT_FRMT<<resid);
+            COUTDEBUG("BiCGStab: iter = "<<i
+                <<", relres = "<<SCI_PRINT_FRMT<<resid);
             return BiCGSSuccess;
         }
 
@@ -123,9 +122,8 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
         if ((resid = Norm(r) / normb) < tol) {
             tol = resid;
             max_iter = i;
-            COUTDEBUG("  BiCGStab:   Iteration = "<<i
-                <<"\n                 Relres = "
-                <<SCI_PRINT_FRMT<<resid);
+            COUTDEBUG("BiCGStab:iter = "<<i
+                <<", relres = "<<SCI_PRINT_FRMT<<resid);
             return BiCGSSuccess;
         }
         if (omega == 0) {
@@ -201,11 +199,10 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
 
             if ((tol = Norm(s)/normb) < tol_in) {
                 axpy(alpha, p, x , x);
-                COUTDEBUG("  BiCGStab:   Iteration = "<<iter_per_restart
+                COUTDEBUG("BiCGStab: iter = "<<iter_per_restart
                     <<" ("<<num_restart<<")"
-                    <<"\n                 Relres = "
-                    <<std::scientific
-                    <<std::setprecision(4)<<tol);
+                    <<", relres = "
+                    <<SCI_PRINT_FRMT<<tol);
                 return BiCGSSuccess;
             }
 
@@ -218,11 +215,10 @@ enum BiCGSReturn BiCGStab<Container, MatVec, Precond>::operator()(const MatVec &
 
             rho_2 = rho_1;
 
-            COUTDEBUG("  BiCGStab:   Iteration = "
+            COUTDEBUG("BiCGStab: iter = "
                 <<iter_per_restart<<" ("<<num_restart<<")"
-                <<"\n                 Relres = "
-                <<std::scientific
-                <<std::setprecision(4)<<tol);
+                <<", relres = "
+                <<SCI_PRINT_FRMT<<tol);
 
             if ((tol = Norm(r) / normb) < tol_in)
                 return BiCGSSuccess;

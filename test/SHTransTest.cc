@@ -36,8 +36,8 @@ int main(int argc, char *argv[])
     Vec_t x(nVec, p);
     char fname[200];
     sprintf(fname, "precomputed/dumbbell_%d_double.txt",p);
-    IO.ReadData(fname, x);
-    IO.WriteData("Original.out", x, std::ios::out);
+    IO.ReadData(fname, x, DataIO::ASCII);
+    IO.WriteData("Original.out", x, DataIO::ASCII, std::ios::out);
 
     //Operators
     bool readFromFile(true);
@@ -53,12 +53,12 @@ int main(int argc, char *argv[])
     Sh_t SH_q(params.rep_up_freq,M.mats_p_up_);
 
     Resample(x, SH_p, SH_q, shc, wrk, xr);
-    IO.WriteData("ShtResampling.out", xr, std::ios::out);
+    IO.WriteData("ShtResampling.out", xr, DataIO::ASCII, std::ios::out);
 
     //Filtering
-    IO.WriteData("ShtFiltering.out", x, std::ios::out);
+    IO.WriteData("ShtFiltering.out", x, DataIO::ASCII, std::ios::out);
     SH_p.lowPassFilter(x, wrk, shc, x);
-    IO.WriteData("ShtFiltering.out", x, std::ios::app);
+    IO.WriteData("ShtFiltering.out", x, DataIO::ASCII, std::ios::app);
 
     COUT(alert<<"\n  *** Run ../matlab/SHTransTest.m to see the results ***"
         <<alert);

@@ -1,10 +1,8 @@
 function [] = MovePoleTest(p, task,precision)
 
-  addpath ../../Ves3DMat/src/
-  addpath ../../Ves3DMat/util/
-
   if ( nargin < 2 )
     task = 'DataCheck';
+    precision = 'double';
   end
   
   switch task
@@ -22,7 +20,8 @@ function [] = MovePoleTest(p, task,precision)
     for jj=1:size(XX,2)
       clf;
       disp(jj);
-      PlotShape(reshape(XX(:,jj),[],nv),p);
+      X = transpose_lat_long(XX(:,jj),p);
+      plotb(reshape(X,[],nv));
       drawnow;
       pause(.1);
     end
@@ -66,6 +65,15 @@ function [] = MovePoleTest(p, task,precision)
       pause(1);
     end
   end
+end
+
+function X=transpose_lat_long(X,p)
+X = reshape(X,[],3);
+x = reshape(X(:,1),[],p+1)';
+y = reshape(X(:,2),[],p+1)';
+z = reshape(X(:,3),[],p+1)';
+X = [x(:);y(:);z(:)];
+end
 
 %     for lambda = linspace(0,2*pi,p)
         

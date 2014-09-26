@@ -106,6 +106,9 @@ class Scalars : public Array<T, DT, DEVICE>
     //! resizing so that this is compatible with rhs
     inline void replicate(Scalars<T, DT, DEVICE> const& rhs);
 
+    //! resizing so that this is the same size as rhs
+    inline void match_size(Scalars<T, DT, DEVICE> const& rhs);
+
     //! head of each sub component
     inline iterator getSubN_begin(size_t n);
     //! tail of each sub component
