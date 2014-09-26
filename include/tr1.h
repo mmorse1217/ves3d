@@ -70,11 +70,13 @@ namespace tr1{
             leave();
             join(&r);
             ptr_ = r.ptr_;
+	    return *this;
         }
 
         shared_ptr& operator=(T* p){
             leave();
             ptr_ = p;
+	    return *this;
         }
 
         //
@@ -93,7 +95,7 @@ namespace tr1{
 
         T* get() const {return ptr_;}
 
-        explicit operator bool() const
+        operator bool() const
         { return(bool(ptr_)); }
 
       private:

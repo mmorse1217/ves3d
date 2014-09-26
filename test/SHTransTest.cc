@@ -9,7 +9,7 @@
 #include "Scalars.h"
 #include "Vectors.h"
 
-typedef float real;
+typedef double real;
 
 typedef Device<CPU> DCPU;
 extern const DCPU the_cpu_dev(0);

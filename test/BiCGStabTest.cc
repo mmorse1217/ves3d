@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 
         ScaGPU_t x(nfuns, p), b(nfuns,p);
         b.getDevice().Memcpy(b.begin(), b_ref.begin(),
-            b.size() * sizeof(real), DGPU,MemcpyHostToDevice);
+			     b.size() * sizeof(real), DGPU::MemcpyHostToDevice);
 
         axpy(0, x, x);
 
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 
         ScaCPU_t b_cpu(nfuns, p);
         b.getDevice().Memcpy(b_cpu.begin(), b.begin(),
-            b.size() * sizeof(real), MemcpyDeviceToHost);
+			     b.size() * sizeof(real), DGPU::MemcpyDeviceToHost);
 
         axpy((real) -1.0, b_ref, b_cpu, b_cpu);
 
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 
     COUT(cpu_o.str());
 #ifdef GPU_ACTIVE
-    COOUT(gpu_o.str());
+    COUT(gpu_o.str());
 #endif //GPU_ACTIVE
 
    return 0;

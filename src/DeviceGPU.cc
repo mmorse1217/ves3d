@@ -298,14 +298,11 @@ Device<GPU>::~Device()
 
 template<>
 template<typename T>
-void Device<GPU>::AggregateRotation(int sh_order, int n_vec,
+void Device<GPU>::AggregateRotation(int sh_order, int n_vec, int nlat, int nlong,				   
     const int* n_sub, const T* mat, const T** vec, T** wrk,
     T** res, int n_stream) const
 {
     PROFILESTART();
-    
-    int nlat = gridDimOf(sh_order).first;
-    int nlong = gridDimOf(sh_order).second;
     int np = nlat * nlong;
     
     T alpha(1), beta(0);
