@@ -1,12 +1,18 @@
+
 template<typename T>
-bool DataIO::ReadData(const std::string &file_name, size_t size, T* data) const
+bool DataIO::ReadData(const std::string &file_name, size_t size,
+    T* data, IOFormat frmt) const
 {
+    if (frmt == BIN)
+        return(ReadData(file_name, size * sizeof(T),
+                reinterpret_cast<char*>(data), BIN));
+
+    // ASCII input
+    COUTDEBUG("Reading ASCII file: "<<file_name);
     std::ifstream data_file(file_name.c_str(), std::ios::in);
 
     if(!data_file.good())
-        CERR("\n  Could not read the data from the file."
-            <<"\n\n    File name : "<<file_name<<".","", exit(1));
-    COUTDEBUG("Reading file: "<<file_name);
+        CERR("Could not read the data from the file: "<<file_name,"", exit(1));
 
     size_t idx=0;
     while (idx<size )
@@ -18,43 +24,42 @@ bool DataIO::ReadData(const std::string &file_name, size_t size, T* data) const
 
 template<typename T>
 bool DataIO::WriteData(const std::string &file_name, size_t size, const T* data,
-    std::ios_base::openmode mode) const
+    IOFormat frmt, std::ios_base::openmode mode) const
 {
-    COUT("\n  DataIO::"<<__FUNCTION__<<":\n"
-        <<"              file : "<<file_name<<"\n"
-        <<"              size : "<<size);
+    if (frmt == BIN)
+        return(WriteData(file_name, size * sizeof(T),
+                reinterpret_cast<const char*>(data), BIN, mode));
 
 #pragma omp ordered //critical writeData
     {
+        COUTDEBUG("Writing to ASCII file '"<<file_name<<"'"<<", size = "<<size);
         std::ofstream data_file(file_name.c_str(), mode);
         if(!data_file)
-            CERR("  Could not write the data to the file."
-                <<"\n\n    File name : "<< file_name, std::endl, exit(1));
+            CERR("Could not write the data to the file: "<< file_name,"", exit(1));
 
         size_t idx=0;
         while  (idx <size )
             data_file<<data[idx++]<<std::endl;
         data_file.close();
 
-        COUT("           written : "<<idx);
-
+        COUTDEBUG("Written "<<idx<<" items");
     }
     return(true);
 }
 
 template<typename Container>
 bool DataIO::ReadData(const std::string &file_name, Container &data,
-    int offset, int length) const
+    IOFormat frmt, int offset, int length) const
 {
     size_t size((length == -1)  ? data.size()-offset : length);
 
     if(Container::getDevice().IsHost())
-        return(this->ReadData(file_name, size, data.begin()+offset));
+        return(this->ReadData(file_name, size, data.begin()+offset, frmt));
     else
     {
         typename Container::value_type*
             buffer(new typename Container::value_type[size]);
-        bool ret = ReadData(file_name, size, buffer);
+        bool ret = ReadData(file_name, size, buffer, frmt);
 
         Container::getDevice().Memcpy(
             data.begin() + offset,
@@ -69,9 +74,9 @@ bool DataIO::ReadData(const std::string &file_name, Container &data,
 
 template<typename Container>
 bool DataIO::WriteData(const std::string &file_name, const Container &data,
-    std::ios_base::openmode mode) const
+    IOFormat frmt, std::ios_base::openmode mode) const
 {
-    return(this->WriteData(file_name, data.size(), data.begin(), mode));
+    return(this->WriteData(file_name, data.size(), data.begin(), frmt, mode));
 }
 
 template<typename Container>
@@ -88,13 +93,9 @@ bool DataIO::Append(const Container &data) const
         if(length > (out_size_ - out_used_))
             this->FlushBuffer<typename Container::value_type>();
 
-
-        COUT("\n  DataIO::Append():"
-            <<"\n              Size      = "<<length
-            <<"\n              Total     = "<<out_size_
-            <<"\n              Used      = "<<out_used_
-            <<"\n              Available = "<<out_size_-out_used_
-            );
+        COUTDEBUG("Appending: size="<<length<<" (buffer info: total = "
+            <<out_size_<<", used = "<<out_used_<<", available = "
+            <<out_size_-out_used_<<")");
 
         Container::getDevice().Memcpy(out_buffer_ + out_used_,
             data.begin(),
@@ -109,14 +110,12 @@ bool DataIO::Append(const Container &data) const
 template<typename T>
 bool DataIO::FlushBuffer() const
 {
-    COUT("\n  DataIO::FlushBuffer() [typed] to:\n"
-        <<"              "<<out_file_);
-
     bool res(true);
     if(out_buffer_ !=0 && out_used_ > 0)
     {
-        res = this->WriteData(out_file_, out_used_ /sizeof(T),
-            reinterpret_cast<T*>(out_buffer_), std::ios::app);
+        COUTDEBUG("Flush buffer (typed) to: "<<out_file_<<", length="<<out_used_);
+        res = this->WriteData(out_file_, out_used_/sizeof(T),
+            reinterpret_cast<T*>(out_buffer_), frmt_, std::ios::app);
         out_used_ = 0;
     }
 

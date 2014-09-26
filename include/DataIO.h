@@ -15,54 +15,57 @@
 #include <fstream>
 #include <string>
 #include <cassert>
-#include "Logger.h"
-#include "Enums.h"
 #include <memory>
 
+#include "Logger.h"
+//#include "Enums.h"
 
 /**
  * A simple data I/O class tailored for this project. It reads data
  * from and writes data to file.
+ *
+ * @note: Make sure flush the buffer with the type you'd like. If this
+ * is deconstructed with non-empty buffer, the buffer is dumped as
+ * bindary.
  */
 class DataIO
 {
   public:
-    explicit DataIO(std::string file_name = "", size_t buffer_size = 0,
-        int resize_factor = 2);
+    enum IOFormat {BIN,ASCII};
+
+    explicit DataIO(std::string file_name = "", IOFormat frmt = ASCII,
+        size_t buffer_size = 0, int resize_factor = 2);
     ~DataIO();
 
     template<typename Container>
     bool ReadData(const std::string &file_name, Container &data,
-        int offset = 0 , int length = -1) const;
+        IOFormat frmt = ASCII, int offset = 0 , int length = -1) const;
 
     template<typename Container>
     bool WriteData(const std::string &file_name, const Container &data,
-        std::ios_base::openmode mode = std::ios::out) const;
+        IOFormat frmt = ASCII, std::ios_base::openmode mode = std::ios::out) const;
 
     template<typename Container>
     bool Append(const Container &data) const;
 
     bool ResizeOutBuffer(size_t buffer_size) const;
-    bool FlushBuffer() const;
 
     template<typename T>
     bool FlushBuffer() const;
 
   private:
     // Basic type IO
+    // IOFormat default is differnet from public methods b/c of legacy
     template<typename T>
-    bool ReadData(const std::string &file_name, size_t size, T* data) const;
-    bool ReadData(const std::string &file_name, size_t size, char* data) const;
-
+    bool ReadData(const std::string &file_name, size_t size,
+        T* data, IOFormat frmt = BIN) const;
 
     template<typename T>
     bool WriteData(const std::string &file_name, size_t size, const T* data,
-        std::ios_base::openmode mode = std::ios::out) const;
-
-    bool WriteData(const std::string &file_name, size_t size, const char* data,
-        std::ios_base::openmode mode) const;
+        IOFormat frmt = BIN,  std::ios_base::openmode mode = std::ios::out) const;
 
     std::string out_file_;
+    IOFormat frmt_;
     mutable size_t out_size_;
     mutable size_t out_used_;
     mutable char* out_buffer_;

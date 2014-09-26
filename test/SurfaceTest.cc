@@ -21,8 +21,8 @@ typedef double real;
 template<typename Sca, typename Vec, typename Device>
 void testSurface(const Device &dev)
 {
-    typedef typename Sca::array_type Arr;
-    typedef OperatorsMats<Arr> Mats_t;
+    typedef typename Sca::array_type Arr_t;
+    typedef OperatorsMats<Arr_t> Mats_t;
     int const nVec(2);
 
     //IO
@@ -41,7 +41,7 @@ void testSurface(const Device &dev)
     char fname[400];
     COUT("Loading initial shape");
     sprintf(fname, "precomputed/dumbbell_%d_double.txt",sim_par.sh_order);
-    myIO.ReadData(fname, x0, 0, fLen * DIM);
+    myIO.ReadData(fname, x0, DataIO::ASCII, 0, fLen * DIM);
 
     COUT("Populating x0 (nves="<<nVec<<")");
     for(int ii=1;ii<nVec; ++ii)
