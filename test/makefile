@@ -2,6 +2,7 @@ EXEC = 	ArrayTest.exe			\
 	BenchmarkInterfacialVel.exe	\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
+	DataIOTest.exe			\
 	DeviceTest.exe			\
 	EnumsTest.exe			\
 	ErrorTest.exe			\
