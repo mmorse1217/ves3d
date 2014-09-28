@@ -13,13 +13,13 @@ class EvalVelocity
 {
   private:
     typedef Surface<Scalar, Vector> Sur_t;
+    typedef typename Scalar::array_type Arr_t;
     typedef typename Scalar::value_type value_type;
-
 
   public:
     EvalVelocity(const StokesEvaluator &stokes,
         const BgFlowBase<Vector> &vInf,
-        OperatorsMats<Scalar> &mats,
+        OperatorsMats<Arr_t> &mats,
         value_type bending_modulus);
     ~EvalVelocity();
 
@@ -30,7 +30,7 @@ class EvalVelocity
   private:
     const StokesEvaluator &stokes_;
     const BgFlowBase<Vector> &vInf_;
-    OperatorsMats<Scalar> &mats_;
+    OperatorsMats<Arr_t> &mats_;
     Sur_t *S_ptr_; //pointer, to avoid construction of the surface in
                    //the constructor
     InterfacialForce<Sur_t> Force_;

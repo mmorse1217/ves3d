@@ -19,14 +19,14 @@ int main(int argc, char** argv)
     typedef Parameters<real> Par_t;
     typedef Scalars<real, Dev, the_device> Sca_t;
     typedef Vectors<real, Dev, the_device> Vec_t;
-    typedef OperatorsMats<Sca_t> Mats_t;
-    typedef void(*StokesEval_t)(const real*, const real*,
-        size_t, real*, void*);
+    typedef typename Sca_t::array_type Arr_t;
+    typedef OperatorsMats<Arr_t> Mats_t;
+    typedef void(*StokesEval_t)(const real*, const real*, size_t, real*, void**);
     typedef EvalVelocity<Sca_t, Vec_t, StokesEval_t> Eval_t;
 
     //Parameters
     int nSnapShots(100);
-    int n_surfs(2), sh_order(12), n_eval(50 * 20 * 20);
+    int n_surfs(2), sh_order(6), n_eval(50 * 20 * 20);
     real bending_modulus(.01);
     Par_t sim_par;
 
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     sim_par.bending_modulus = bending_modulus;
     sim_par.bg_flow_param = 0.1;
 
-    COUT(sim_par<<std::endl);
+    COUT(sim_par);
 
     //Building containers
     Sca_t saved_data( (DIM+1)* n_surfs * nSnapShots, sh_order);
@@ -47,11 +47,11 @@ int main(int argc, char** argv)
     //Reading the prototype form file
     DataIO myIO;
     char fname[] = "../matlab/StreamlineData.out";
-    myIO.ReadData(fname, saved_data, 0, saved_data.size());
+    myIO.ReadData(fname, saved_data, DataIO::ASCII, 0, saved_data.size());
 
     //The evaluation points
     sprintf(fname,"../matlab/EvaluationPoints.out");
-    myIO.ReadData(fname, x_eval, 0, x_eval.size());
+    myIO.ReadData(fname, x_eval, DataIO::ASCII, 0, x_eval.size());
 
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
@@ -78,8 +78,8 @@ int main(int argc, char** argv)
         CHK( EV(x0, tension, x_eval, vel) );
 
         //Writing to file
-        myIO.WriteData("../matlab/Surfaces.out", x0, std::ios::app);
-        myIO.WriteData("VelocityField.out", vel, std::ios::app);
+        myIO.WriteData("../matlab/Surfaces.out", x0, DataIO::ASCII, std::ios::app);
+        myIO.WriteData("VelocityField.out", vel, DataIO::ASCII, std::ios::app);
     }
 
     return 0;

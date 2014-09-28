@@ -12,7 +12,7 @@ bool DataIO::ReadData(const std::string &file_name, size_t size,
     std::ifstream data_file(file_name.c_str(), std::ios::in);
 
     if(!data_file.good())
-        CERR("Could not read the data from the file: "<<file_name,"", exit(1));
+        CERR_LOC("Could not read the data from the file: "<<file_name,"", exit(1));
 
     size_t idx=0;
     while (idx<size )
@@ -35,7 +35,7 @@ bool DataIO::WriteData(const std::string &file_name, size_t size, const T* data,
         COUTDEBUG("Writing to ASCII file '"<<file_name<<"'"<<", size = "<<size);
         std::ofstream data_file(file_name.c_str(), mode);
         if(!data_file)
-            CERR("Could not write the data to the file: "<< file_name,"", exit(1));
+            CERR_LOC("Could not write the data to the file: "<< file_name,"", exit(1));
 
         size_t idx=0;
         while  (idx <size )

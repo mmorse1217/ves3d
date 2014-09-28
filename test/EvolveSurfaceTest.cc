@@ -1,13 +1,16 @@
 #include "EvolveSurface.h"
 #include "Error.h"
+#include "HelperFuns.h"
 #include "CPUKernels.h"
 
-extern const Device<CPU> the_cpu_device(0);
-extern const Device<GPU> the_gpu_device(0);
+typedef double real;
+typedef Device<CPU> DevCPU;
+typedef Device<GPU> DevGPU;
 
-typedef float real;
+extern const DevCPU the_cpu_device(0);
+extern const DevGPU the_gpu_device(0);
 
-template<enum DeviceType DT, const Device<DT> &DEVICE>
+template<typename DT, const DT &DEVICE>
 void EvolveSurfaceTest(Parameters<real> &sim_par)
 {
     typedef EvolveSurface<real, DT, DEVICE> Evolve_t;
@@ -17,11 +20,11 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
 
     //reading the prototype form file
-    DataIO myIO(sim_par.save_file_name);
+    DataIO myIO(sim_par.save_file_name,DataIO::ASCII);
     char fname[300];
-    string prec = (typeid(real) == typeid(float)) ? "float" : "double";
+    std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
     sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
-    myIO.ReadData(fname, x0, 0, x0.getSubLength());
+    myIO.ReadData(fname, x0, DataIO::ASCII, 0, x0.getSubLength());
 
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;
@@ -34,7 +37,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     }
     Array<real, DT, DEVICE> cntrs(DIM * sim_par.n_surfs);
     cntrs.getDevice().Memcpy(cntrs.begin(), cntrs_host,
-        cntrs.size() * sizeof(real), MemcpyHostToDevice);
+        cntrs.size() * sizeof(real), DT::MemcpyHostToDevice);
     Populate(x0, cntrs);
 
     //Reading Operators From File
@@ -53,28 +56,28 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
 
 int main(int argc, char **argv)
 {
-    COUT("\n\n ========================\n  EvolveSurface test: "
-        <<"\n ========================"<<endl);
+    COUT("========================\n  EvolveSurface test: "
+        <<"\n========================");
 
     typedef Parameters<real> Par_t;
     // Setting the parameters
     Par_t sim_par;
 
-    sim_par.sh_order = 12;
-    sim_par.filter_freq = 8;
-    sim_par.rep_up_freq = 24;
-    sim_par.rep_filter_freq = 4;
+    sim_par.sh_order        = 6;
+    sim_par.filter_freq     = 4;
+    sim_par.rep_up_freq     = 12;
+    sim_par.rep_filter_freq = 2;
 
-    sim_par.n_surfs = 2;
-    sim_par.ts = 1;
-    sim_par.time_horizon = 2;
-    sim_par.scheme = Explicit;
-    sim_par.singular_stokes = Direct;
-    sim_par.bg_flow_param = 0;
+    sim_par.n_surfs              = 2;
+    sim_par.ts                   = 1;
+    sim_par.time_horizon         = 2;
+    sim_par.scheme               = Explicit;
+    sim_par.singular_stokes      = Direct;
+    sim_par.bg_flow_param        = 0;
     sim_par.upsample_interaction = true;
-    sim_par.rep_maxit = 20;
-    sim_par.save_data = true;
-    sim_par.save_stride = 1;
+    sim_par.rep_maxit            = 20;
+    sim_par.save_data            = true;
+    sim_par.save_stride          = 1;
     sim_par.save_file_name = "EvolveSurf.out";
     COUT(sim_par);
 
@@ -83,8 +86,8 @@ int main(int argc, char **argv)
 
     CLEARERRORHIST();
     PROFILESTART();
-    COUT("\n ------------ \n  CPU device: \n ------------"<<endl);
-    EvolveSurfaceTest<CPU,the_cpu_device>(sim_par);
+    COUTDEBUG("Testing CPU device");
+    EvolveSurfaceTest<DevCPU,the_cpu_device>(sim_par);
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortFlopRate);
@@ -92,8 +95,8 @@ int main(int argc, char **argv)
 #ifdef GPU_ACTIVE
     CLEARERRORHIST();
     PROFILECLEAR();
-    COUT("\n ------------ \n  GPU device: \n ------------"<<endl);
-    EvolveSurfaceTest<GPU, the_gpu_device>(sim_par);
+    COUTDEBUG("Testing GPU device");
+    EvolveSurfaceTest<DevGPU, the_gpu_device>(sim_par);
     PRINTERRORLOG();
     PROFILEREPORT(SortFlopRate);
 

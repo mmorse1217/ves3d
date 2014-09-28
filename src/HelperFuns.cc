@@ -179,7 +179,7 @@ inline void avpw(const ScalarContainer &a_in,
     ASSERT(AreCompatible(v_in,w_in),"Incompatible containers");
     ASSERT(AreCompatible(w_in,avpw_out),"Incompatible containers");
 
-    CERR("THIS NEEDS TO BE IMPLEMENTED",std::endl, exit(1));
+    CERR_LOC("THIS NEEDS TO BE IMPLEMENTED",std::endl, exit(1));
     //u_in.getDevice().avpw(a_in.begin(), v_in.begin(),
     //    w_in.begin(), v_in.getStride(), u_in.getNumSubs(), avpw_out.begin());
 }
@@ -283,17 +283,17 @@ inline void Populate(VectorContainer &x, const CentCont &centers)
         return;
 
     for(int ii=1; ii<x.getNumSubs(); ++ii)
-        VT::getDevice().Memcpy(
-            x.getSubN(ii),
+        x.getDevice().Memcpy(
+            x.getSubN_begin(ii),
             x.begin(),
             cpysize,
-            VT::MemcpyDeviceToDevice);
+            DT::MemcpyDeviceToDevice);
 
-    VT::getDevice().apx(
+    x.getDevice().apx(
         centers.begin(),
         x.begin(),
         x.getStride(),
-        x.getTheDim() * x.getNumSubs(),
+        x.getNumSubFuncs(),
         x.begin());
 }
 

@@ -20,7 +20,7 @@ bool DataIO::ReadData<char>(const std::string &file_name, size_t size,
     std::ifstream data_file(file_name.c_str(), std::ios::binary | std::ios::in);
 
     if(!data_file.good())
-        CERR("Could not read the data from the file: "<<file_name,"", exit(1));
+        CERR_LOC("Could not read the data from the file: "<<file_name,"", exit(1));
 
     data_file.read(data, size);
     data_file.close();
@@ -38,7 +38,7 @@ bool DataIO::WriteData<char>(const std::string &file_name, size_t size, const ch
         ASSERT(frmt==BIN,"char IO is only supported for BIN format");
         std::ofstream data_file(file_name.c_str(), std::ios::binary | mode);
         if(!data_file)
-            CERR("Could not write the data to the file: "<<file_name, "", exit(1));
+            CERR_LOC("Could not write the data to the file: "<<file_name, "", exit(1));
 
         data_file.write(data, size);
         data_file.close();
@@ -64,7 +64,7 @@ DataIO::~DataIO()
 {
     if(out_used_ > 0){
         FlushBuffer<char>();
-        CERR("DataIO object deconstructed with non-empty buffer"
+        CERR_LOC("DataIO object deconstructed with non-empty buffer"
             ", dumping the content as binary","",NULL);
     }
 

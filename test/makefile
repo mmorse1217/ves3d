@@ -6,13 +6,11 @@ EXEC = 	ArrayTest.exe			\
 	DeviceTest.exe			\
 	EnumsTest.exe			\
 	ErrorTest.exe			\
-	EvalVelocityTest.exe		\
 	EvolveSurfaceTest.exe		\
 	EvolveSurfaceTestMultThread.exe \
 	LoggerTest.exe			\
 	MovePoleTest.exe		\
 	ParsingTest.exe			\
-	PVFMMInterfaceTest.exe		\
 	RepartitionTest.exe		\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
@@ -27,6 +25,10 @@ ARFILES = $(VES3D_DIR)/lib/libves3d.a
 
 ifeq ($(USE_GPU),yes)
   ARFILES += $(VES3D_DIR)/lib/libves3dgpu.a
+endif
+
+ifeq ($(USE_PVFMM),yes)
+  EXEC +=PVFMMInterfaceTest.exe
 endif
 
 MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in

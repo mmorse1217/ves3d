@@ -241,7 +241,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
     const float *den, float *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+        CERR_LOC("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
 
 #pragma omp parallel for
     for (int vt=0; vt<n_surfs; vt++)
@@ -255,7 +255,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head, int trg_idx_tail
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(float);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", std::endl, exit(1));
+            CERR_LOC(" ", std::endl, exit(1));
         tempvaly=tempvalx+SIMD_LEN_F;
         tempvalz=tempvaly+SIMD_LEN_F;
 
@@ -425,7 +425,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
     const float *den, float *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+        CERR_LOC("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
 
 #pragma omp parallel for
     ///@todo add the openmp instructions
@@ -440,7 +440,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(float);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", std::endl, exit(1));
+            CERR_LOC(" ", std::endl, exit(1));
 
         tempvaly=tempvalx+SIMD_LEN_F;
         tempvalz=tempvaly+SIMD_LEN_F;
@@ -609,7 +609,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
     const double *src, const double *den, double *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+        CERR_LOC("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
 
 #pragma omp parallel for
     ///@todo add the openmp instructions
@@ -624,7 +624,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(double);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", std::endl, exit(1));
+            CERR_LOC(" ", std::endl, exit(1));
         tempvaly=tempvalx+SIMD_LEN_D;
         tempvalz=tempvaly+SIMD_LEN_D;
 
@@ -771,7 +771,7 @@ void DirectStokesSSE(int stride, int n_surfs, int trg_idx_head,
             }
 
             if (s!=size_t(stride))
-                CERR(" ", std::endl, exit(1));;
+                CERR_LOC(" ", std::endl, exit(1));;
 
             pot[3*vt*stride +            trg_idx] = p[0] * I_PI;
             pot[3*vt*stride +   stride + trg_idx] = p[1] * I_PI;
@@ -787,7 +787,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
     const double *den, double *pot)
 {
     if (stride%4) // necessary for proper alignment of sources
-        CERR("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
+        CERR_LOC("The stride should a multiple of four in order to use SSE", std::endl, exit(1));
 
 #pragma omp parallel for
     ///@todo add the openmp instructions
@@ -802,7 +802,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
             tempvalx = aux_arr + (IDEAL_ALIGNMENT - residual)/sizeof(double);
         else tempvalx = aux_arr;
         if (size_t(tempvalx)%IDEAL_ALIGNMENT)  // for debugging
-            CERR(" ", std::endl, exit(1));
+            CERR_LOC(" ", std::endl, exit(1));
 
         tempvaly=tempvalx+SIMD_LEN_D;
         tempvalz=tempvaly+SIMD_LEN_D;
@@ -950,7 +950,7 @@ void DirectStokesSSE_Noqw(int stride, int n_surfs, int trg_idx_head,
             }
 
             if (s!=size_t(stride))
-                CERR(" ", std::endl, exit(1));
+                CERR_LOC(" ", std::endl, exit(1));
 
             pot[3*vt*stride +            trg_idx] = p[0] * I_PI;
             pot[3*vt*stride +   stride + trg_idx] = p[1] * I_PI;

@@ -50,7 +50,7 @@ double Logger::Toc()
 {
     double toc;
     if(Logger::TicStack.empty())
-        CERR("There is no matching Logger::Tic() call.","", toc=0);
+        CERR_LOC("There is no matching Logger::Tic() call.","", toc=0);
     else
     {
         toc = Logger::Now();
@@ -157,7 +157,7 @@ void Logger::Report(enum ReportFormat rf)
     COUT("=====================================================================================");
 
     if(TicStack.size())
-        CERR("There may be unbalanced Tic() and Toc() calls.","",sleep(0));
+        CERR_LOC("There may be unbalanced Tic() and Toc() calls.","",sleep(0));
 }
 
 void Logger::SetLogFile(std::string file_name)
@@ -167,20 +167,44 @@ void Logger::SetLogFile(std::string file_name)
 
 void Logger::Log(const char *event)
 {
-    std::ofstream fl(log_file.c_str(), std::ios::app);
+    if (log_file.empty()){
+        std::cout<<event<<std::endl;
+        return;
+    }
 
-    if(!fl)
+    std::ofstream out(log_file.c_str(), std::ios::app);
+
+    if(!out)
     {
-        CERR("Could not open the log file." <<std::endl
-            <<" File name : " << log_file <<"."<<std::endl
-            <<"\n Log event: "<<event,"",exit(1));
+        CERR_LOC("Could not open the log file '"<< log_file
+            <<"' for log event: "<<event,"",exit(1));
     }
     else
     {
-        fl<<event<<std::endl;
+        out<<event<<std::endl;
+    }
+    out.close();
+}
+
+void Logger::Log(std::ostream &event)
+{
+    if (log_file.empty()){
+        std::cout<<event<<std::endl;
+        return;
     }
 
-    fl.close();
+    std::ofstream out(log_file.c_str(), std::ios::app);
+
+    if(!out)
+    {
+        CERR_LOC("Could not open the log file '"<< log_file
+            <<"' for log event: "<<event,"",exit(1));
+    }
+    else
+    {
+        out<<event<<std::endl;
+    }
+    out.close();
 }
 
 double Logger::GetFlops()

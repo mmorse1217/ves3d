@@ -3,7 +3,7 @@
 
 #include <omp.h>
 #include <cassert>
-#include "Enums.h"
+#include "Error.h"
 
 /**
  * The interface class with the global repartitioning function. It

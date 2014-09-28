@@ -14,10 +14,10 @@ ErrorEvent::ErrorEvent(const Error_t &err, const char* fun,
 
 std::ostream& operator<<(std::ostream& output, const ErrorEvent &ee)
 {
-    output<<"\n        Error         : "<<ee.err_
-          <<"\n        Function name : "<<ee.funname_
-          <<"\n        File name     : "<<ee.filename_
-          <<"\n        Line number   : "<<ee.linenumber_<<"\n";
+    output<<"    Error         : "<<ee.err_
+          <<"\n    Function name : "<<ee.funname_
+          <<"\n    File name     : "<<ee.filename_
+          <<"\n    Line number   : "<<ee.linenumber_;
 
     return output;
 }
@@ -122,12 +122,18 @@ void ErrorHandler::printErrorLog()
 {
     std::stack<ErrorEvent> tmp_stack;
 
-    COUT(" =============================================="
-        <<"============================================="<<std::endl);
-    if ( ErrorStack_.empty() )
-        COUT("  Error log is clean."<<std::endl);
-    else
-        COUT("   Error Log"<<std::endl);
+    if ( ErrorStack_.empty() ){
+        COUT("=============================================="
+            <<"=======================================\n"
+            <<"Error log is clean.\n"
+            <<"=============================================="
+            <<"=======================================");
+        return;
+    }
+
+    CERR("=============================================="
+        <<"=======================================");
+    CERR("Error Log");
 
     while ( !ErrorStack_.empty() )
     {
@@ -138,14 +144,14 @@ void ErrorHandler::printErrorLog()
     while ( !tmp_stack.empty() )
     {
         ErrorStack_.push(tmp_stack.top());
-        COUT(" --------------------------------------------"
-            <<"-----------------------------------------------"<<std::endl);
-        COUT(ErrorStack_.top()<<std::endl);
+        CERR("---------------------------------------------"
+            <<"----------------------------------------");
+        CERR(ErrorStack_.top());
         tmp_stack.pop();
     }
 
-    COUT(" ==========================================="
-        <<"================================================"<<std::endl);
+    CERR("============================================"
+        <<"=========================================");
 }
 
 Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
@@ -158,7 +164,7 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
     else
     {
         //not using CERR b/c of duplicate file info
-        std::cerr<<"\n  No callback is set to handle:"<<ee<<std::endl;
+        CERR_LOC("No callback is set to handle error event:\n"<<ee,"",NULL);
     }
 
     return ErrorEvent::UnknownError;

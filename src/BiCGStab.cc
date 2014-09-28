@@ -35,7 +35,7 @@ std::ostream& operator<<(std::ostream& output, const enum BiCGSReturn &ret)
             break;
 
         default:
-            CERR("The BiCGSReturn type is not recognized. Please update the"
+            CERR_LOC("The BiCGSReturn type is not recognized. Please update the"
                 <<"overloaded insertion operator",NULL, NULL);
     }
     return output;

@@ -1,7 +1,7 @@
 template<typename Scalar, typename Vector, typename StokesEvaluator>
 EvalVelocity<Scalar, Vector, StokesEvaluator>::EvalVelocity(
     const StokesEvaluator &stokes, const BgFlowBase<Vector> &vInf,
-    OperatorsMats<Scalar> &mats, value_type bending_modulus) :
+    OperatorsMats<Arr_t> &mats, value_type bending_modulus) :
     stokes_(stokes),
     vInf_(vInf),
     mats_(mats),

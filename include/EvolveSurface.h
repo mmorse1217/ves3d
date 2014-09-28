@@ -22,15 +22,17 @@
 
 
 template<typename T,
-         enum DeviceType DT,
-         const Device<DT> &DEVICE,
+         typename DT,
+         const DT &DEVICE,
          typename Interact = VesInteraction<T>,
          typename Repart   = Repartition<T> >
 class EvolveSurface
 {
   public:
     typedef T value_type;
+    typedef DT device_type;
     typedef Scalars<T, DT, DEVICE> Sca_t;
+    typedef typename Sca_t::array_type Arr_t;
     typedef Vectors<T, DT, DEVICE> Vec_t;
     typedef Surface<Sca_t, Vec_t> Sur_t;
 
@@ -39,7 +41,7 @@ class EvolveSurface
     typedef Interact Interaction_t;
     typedef Repart Repartition_t;
 
-    typedef OperatorsMats<Sca_t> Mats_t;
+    typedef OperatorsMats<Arr_t> Mats_t;
     typedef Parameters<T> Params_t;
 
     ///external function pointer types

@@ -92,6 +92,9 @@ class Logger
     //! log_file.
     static void Log(const char *event);
 
+    //! Log event to file
+    static void Log(std::ostream &event);
+
     //! Clears the slate of profiler
     static void PurgeProfileHistory();
 
@@ -141,6 +144,7 @@ static int emph_xalloc(std::ios_base::xalloc());
 std::ostream& alert(std::ostream& os);
 std::ostream& emph(std::ostream& os);
 
+
 /*
  * Debugging macros
  */
@@ -151,13 +155,18 @@ static bool assert_expr(false);
         assert_expr=expr,                                               \
         (assert_expr) ?                                                 \
         assert(assert_expr) :                                           \
-        CERR(msg,"",assert(assert_expr)))
-#else
+        CERR_LOC(msg,"",assert(assert_expr)))
+
+#else  //NDEBUG
+
 #define ASSERT(expr,msg)
+
 #endif //NDEBUG
 
-#ifndef NDEBUG
-#define LOG(msg) (Logger::Log(msg))
+/*
+ * Printing macro
+ */
+#define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
 
 #ifdef VERBOSE
 #define COUTDEBUG(str) (std::cout<<"[DEBUG]["<<__FUNCTION__<<"] "<<str<<std::endl)
@@ -165,31 +174,26 @@ static bool assert_expr(false);
 #define COUTDEBUG(str)
 #endif //VERBOSE
 
+#ifdef QUIET
+#define COUT(str)
+#define INFO(str)
 #else
-#define LOG(msg)
-#define COUTDEBUG(str)
-#endif //NDEBUG
+#define INFO(str) (std::cout<<"[INFO]["<<__FUNCTION__<<"] "<<str<<std::endl)
+#define COUT(str) (std::cout<<str<<std::endl)
+#endif //QUIET
 
-/*
- * Printing macro
- */
-#define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
-#define CERR(pre_msg,post_msg,action) (                                 \
+#define LOG(msg) (Logger::Log(msg))
+
+#define CERR(msg) (std::cerr<<alert<<msg<<alert<<std::endl)
+#define CERR_LOC(pre_msg,post_msg,action) (                             \
         std::cerr<<alert<<"[ERROR] "<<pre_msg                           \
-        <<"\n        File     : "<< __FILE__                            \
-        <<"\n        Line     : "<< __LINE__                            \
-        <<"\n        Function : "<< __FUNCTION__                        \
+        <<"\n    File     : "<< __FILE__                                \
+        <<"\n    Line     : "<< __LINE__                                \
+        <<"\n    Function : "<< __FUNCTION__                            \
         <<"\n"<<post_msg                                                \
         <<alert<<std::endl,                                             \
         action                                                          \
                                                                         )
-
-#ifndef QUIET
-#define COUT(str) (std::cout<<str<<std::endl)
-#else
-#define COUT(str)
-#endif //VERBOSE
-
 //Timing macro
 #define GETSECONDS()(omp_get_wtime())
 

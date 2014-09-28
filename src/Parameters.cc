@@ -64,7 +64,7 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
 
   //print usage if no options
   if( ! opt.hasOptions() ) {
-      CERR("You need to define the simulation options",
+      CERR_LOC("You need to define the simulation options",
           "",
           opt.printUsage());
       return ErrorEvent::InvalidParameter;

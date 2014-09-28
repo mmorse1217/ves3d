@@ -2,6 +2,7 @@
 #define _MONITOR_H_
 
 #include "Logger.h"
+#include "Spharm.h"
 #include "Enums.h"
 
 template<typename EvolveSurface>

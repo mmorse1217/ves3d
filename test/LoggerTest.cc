@@ -63,8 +63,8 @@ int main(int argc, char** argv)
     PROFILEREPORT(SortTime);
 
     //printing the log file
-    COUT("\n\n  Content of the log file: \n"
-        <<" ==============================\n");
+    COUT("\n  Content of the log file: \n"
+        <<" ==============================");
 
     ifstream file(log_file.c_str());
     string line;
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
     remove(log_file.c_str());
 
     COUT("\n\nSending some text to cout");
-    CERR("Some text to cerr","",NULL);
+    CERR_LOC("Some text to cerr","",NULL);
 
     sleep(1);
 }

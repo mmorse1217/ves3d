@@ -1,7 +1,6 @@
 clear all;clc;clf
-addpath ../../Ves3DMat/src ../../Ves3DMat/util/
 
-p = 12;
+p = 6;
 nv = 2;
 np = 2 * p * (p + 1);
 nSnapShot = 100;

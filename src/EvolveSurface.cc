@@ -1,4 +1,4 @@
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
+template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M,
@@ -33,7 +33,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     }
 }
 
-// template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
+// template<typename T, typename DT, const DT &DEVICE,
 //          typename Interact, typename Repart>
 // EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats,
 //     Sur_t *S, BgFlow_t *vInf, Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr) :
@@ -49,7 +49,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
 //     ownsObjOnHeap_(false)
 // {}
 
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
+template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 {
@@ -62,7 +62,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 
 }
 
-template<typename T, enum DeviceType DT, const Device<DT> &DEVICE,
+template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
@@ -97,5 +97,5 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         CHK( (*monitor_)( this, t, dt) );
     }
 
-    return Success;
+    return ErrorEvent::Success;
 }

@@ -11,7 +11,7 @@ extern const DevCPU the_cpu_device(0);
 
 #ifdef GPU_ACTIVE
 typedef Device<GPU> DevGPU;
-extern const Device<GPU> the_gpu_device(0);
+extern const DevGPU the_gpu_device(0);
 #endif //GPU_ACTIVE
 
 typedef double real;
