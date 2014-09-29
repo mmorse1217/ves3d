@@ -80,8 +80,10 @@ int main(int argc, char** argv)
                 }
             }
 
-        if (!NO_SPARSE_MATVEC)
-            COUT("The difference between the two methods : "<<err);
+        if (!NO_SPARSE_MATVEC){
+	  INFO(emph<<"The difference between the two methods : "<<err<<emph);
+	  ASSERT(err<1e-12,"Same rotation result");
+	}
 
         myIO.FlushBuffer<real>();
         COUT(alert<<" *** Use ../matlab/MovePoleTest.m to check the result ***"<<alert);
