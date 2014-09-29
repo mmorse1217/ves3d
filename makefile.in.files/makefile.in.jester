@@ -1,7 +1,12 @@
 # User variables
+USE_PVFMM     ?= no
 USE_GPU       ?= no
 VES3D_TESTING ?= yes
 PLATFORM      ?= jester
+
+VES3D_BIN = $(VES3D_DIR)/bin
+VES3D_SRC = $(VES3D_DIR)/src
+VES3D_INC = $(VES3D_DIR)/include
 
 # Compiler
 CXX     = g++
@@ -10,6 +15,8 @@ AR      = ar
 RANLIB  = ranlib
 DOX     = doxygen
 TAGS    = etags
+MKDIRS  = mkdir -p
+RM      = rm -f
 
 # Platform dependent makefile
 include $(VES3D_DIR)/makefile.in.files/makefile.$(CXX)

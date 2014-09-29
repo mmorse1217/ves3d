@@ -1,31 +1,60 @@
 3D particulate flow simulation code.
 ------------------------------------
 
-To build:
----------
+Before build:
+-------------
 
- . In makefile.in.files directory, copy the makefile.in.sample file to
- makefile.in then
+ 0. Copy the ves3d project files to the install location and make an
+    environment variable pointing to that location:
 
-    1. Make sure that the makefile corresponding to the host machine
-    (the value returned by hostname in the shell) exists in the
+    $ cd ves3d-cxx
+    $ export VES3D_DIR=`pwd`
+
+ 1. In makefile.in.files directory, copy the makefile.in.sample file
+    to makefile.in.<hostname>
+
+    $ cd makefile.in.files
+    $ cp makefile.in.sample makefile.in.<hostname>
+
+ 2. Make sure that the makefile corresponding to the host machine (the
+    value returned by hostname in the shell) exists in the
     makefile.in.files/ or alternatively set the PLATFORM environmental
     variable or modify the PLATFORM in makefile.in.
 
-    2. In the platform specific makefile, set the correct include paths
-      for libraries
+ 3. In the platform specific makefile, set the correct include paths
+    for libraries
 
-    3. If the makefile corresponding to your choice of compiler does
+ 4. If the makefile corresponding to your choice of compiler does
     not exist, you also need to write that makefile (with the correct
     extension)
 
- . call make at the VES3D_DIR directory
- . make a softlink to the directory precomputed/ in the test/ directory.
- . call "make check" in the test/
+ 5. Make a symbolic link to makefile.in.<hostname>
 
- . Code-specific compiler options are: VERBOSE, PROFILING, VES3D_TESTING
+    $ln -s makefile.in.<hostname> makefile.in
 
-if you want the GPU code compiled set "USE_GPU=yes" in makefile.in
+ 6. Optionally add makefile.in.<hostname> to hg for future reference
 
-. Fully functional revisions of code are tagged by vYY.ID (YY is year
-and ID is an integer)
+Building:
+---------
+
+ 1. cd to VES3D_DIR and
+
+ $ make
+ $ make test
+ $ make check
+
+ 2. If the code compiles fine and tests pass, run
+
+ $ make install
+
+
+Misc:
+-----
+ . Code-specific compiler options are: VERBOSE, PROFILING,
+ VES3D_TESTING, USE_GPU, USE_PVFMM
+
+ . if you want the GPU code compiled set "USE_GPU=yes" in
+ makefile.in.<hostname>
+
+ . Fully functional revisions of code are tagged by vYY.ID (YY is year
+ and ID is an integer)

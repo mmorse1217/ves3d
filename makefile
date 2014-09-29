@@ -1,11 +1,11 @@
 MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
 include $(MAKEIN)
 
-BINS = ves3d_seq_direct
+BINS = ves3d_seq_direct ves3d_pvfmm
 
 all: lib
 
-.PHONY: docs tags all-tags lib test experiment clean bin
+.PHONY: docs tags all-tags lib install test experiment clean check
 
 docs: $(MAKEDEP)
 	-$(DOX) ./docs/Doxyfile
@@ -19,7 +19,7 @@ all-tags: $(MAKEDEP)
 lib:
 	$(MAKE) -C  ${VES3D_DIR}/lib/
 
-bin: $(addprefix $(VES3D_BIN)/,$(BINS))
+install: $(addprefix $(VES3D_BIN)/,$(BINS))
 
 $(VES3D_BIN)/%: $(VES3D_SRC)/%.o
 	-@$(MKDIRS) $(dir $@)
@@ -28,6 +28,9 @@ $(VES3D_BIN)/%: $(VES3D_SRC)/%.o
 
 test:
 	$(MAKE) -C  ${VES3D_DIR}/test/
+
+check:
+	$(MAKE) -C ${VES3D_DIR}/test check
 
 experiment:
 	$(MAKE) -C  ${VES3D_DIR}/experiment/

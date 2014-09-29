@@ -1,4 +1,4 @@
-EXEC = 	ArrayTest.exe			\
+TEST = 	ArrayTest.exe			\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
 	DataIOTest.exe			\
@@ -19,7 +19,6 @@ EXEC = 	ArrayTest.exe			\
         Tr1Test.exe			\
         VectorsTest.exe			\
 
-
 ARFILES = $(VES3D_DIR)/lib/libves3d.a
 
 ifeq ($(USE_GPU),yes)
@@ -27,17 +26,17 @@ ifeq ($(USE_GPU),yes)
 endif
 
 ifeq ($(USE_PVFMM),yes)
-  EXEC +=PVFMMInterfaceTest.exe
+  TEST +=PVFMMInterfaceTest.exe
 endif
 
 ifeq ($(VES3D_TESTING),yes)
-  EXEC +=BenchmarkInterfacialVel.exe
+  TEST +=BenchmarkInterfacialVel.exe
 endif
 
 MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
 include $(MAKEIN)
 
-all: $(EXEC)
+all: $(TEST)
 
 #build the dependencies for next time. We can have a rule for
 #dependency files (%.d: %.cc) but that builds the dependency everytime
@@ -51,10 +50,10 @@ all: $(EXEC)
 clean:
 	-$(RM) *.o *.exe *.out *.d
 
-check:  $(EXEC)
+check:  $(TEST)
 	$(MAKE) run
 
 run:
 	@for exec in *.exe; do echo "\nRunning " $$exec; ./$$exec;sleep 1;done
 
--include $(EXEC:.exe=.d)
+-include $(TEST:.exe=.d)
