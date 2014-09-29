@@ -1,5 +1,4 @@
 EXEC = 	ArrayTest.exe			\
-	BenchmarkInterfacialVel.exe	\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
 	DataIOTest.exe			\
@@ -31,6 +30,10 @@ ifeq ($(USE_PVFMM),yes)
   EXEC +=PVFMMInterfaceTest.exe
 endif
 
+ifeq ($(VES3D_TESTING),yes)
+  EXEC +=BenchmarkInterfacialVel.exe
+endif
+
 MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
 include $(MAKEIN)
 
@@ -52,6 +55,6 @@ check:  $(EXEC)
 	$(MAKE) run
 
 run:
-	@for exec in *.exe; do echo "\n\nRunning " $$exec; ./$$exec; sleep 1;done
+	@for exec in *.exe; do echo "\nRunning " $$exec; ./$$exec;sleep 1;done
 
 -include $(EXEC:.exe=.d)

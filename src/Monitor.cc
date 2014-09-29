@@ -49,8 +49,8 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
 
         INFO("Monitor: thread = "<<omp_get_thread_num()<<"/"<<omp_get_num_threads()
             <<", t = "<<SCI_PRINT_FRMT<<t
-            <<", area error = "<<SCI_PRINT_FRMT<<abs(A/A0-1)
-            <<", volume error = "<<SCI_PRINT_FRMT<<abs(V/V0-1));
+            <<", area error = "<<SCI_PRINT_FRMT<<fabs(A/A0-1)
+            <<", volume error = "<<SCI_PRINT_FRMT<<fabs(V/V0-1));
 
         bool save_now = static_cast<int>(t/save_stride_) > last_save;
 

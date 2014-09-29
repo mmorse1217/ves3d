@@ -57,8 +57,10 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
   // OPTIONS OVERRIDE THE FILE
   opt.processCommandArgs( argc, argv );
 
-  if( opt.getValue( 'f' ) != NULL  || opt.getValue( "optFile" ) )
-    opt.processFile( opt.getValue('f') );
+  if( opt.getValue( 'f' ) != NULL  || opt.getValue( "optFile" ) ){
+      INFO("Parsing input file "<<opt.getValue('f'));
+      opt.processFile( opt.getValue('f') );
+  }
 
   opt.processCommandArgs( argc, argv );
 

@@ -50,7 +50,7 @@ void EvolveEachObj(Parameters<T> &sim_par,
     DataIO myIO;
     char fname[300];
     std::string prec = (typeid(T) == typeid(float)) ? "float" : "double";
-    sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
+    sprintf(fname,"%s/precomputed/dumbbell_%u_%s.txt",VES3D_PATH,sim_par.sh_order,prec.c_str());
 
     //reading the prototype form file (critical only for the log file)
 #pragma omp critical

@@ -1,11 +1,10 @@
-
 template<typename T>
 bool DataIO::ReadData(const std::string &file_name, size_t size,
     T* data, IOFormat frmt) const
 {
     if (frmt == BIN)
-        return(ReadData(file_name, size * sizeof(T),
-                reinterpret_cast<char*>(data), BIN));
+        return(ReadBin(file_name, size * sizeof(T),
+                reinterpret_cast<char*>(data)));
 
     // ASCII input
     COUTDEBUG("Reading ASCII file: "<<file_name);
@@ -27,8 +26,8 @@ bool DataIO::WriteData(const std::string &file_name, size_t size, const T* data,
     IOFormat frmt, std::ios_base::openmode mode) const
 {
     if (frmt == BIN)
-        return(WriteData(file_name, size * sizeof(T),
-                reinterpret_cast<const char*>(data), BIN, mode));
+        return(WriteBin(file_name, size * sizeof(T),
+                reinterpret_cast<const char*>(data), mode));
 
 #pragma omp ordered //critical writeData
     {

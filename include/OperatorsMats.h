@@ -1,6 +1,7 @@
 #ifndef _OPERATORSMATS_H_
 #define _OPERATORSMATS_H_
 
+#include "ves3d_common.h"
 #include "SHTMats.h"
 #include "DataIO.h"
 #include "Parameters.h"

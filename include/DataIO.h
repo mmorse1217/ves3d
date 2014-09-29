@@ -64,6 +64,11 @@ class DataIO
     bool WriteData(const std::string &file_name, size_t size, const T* data,
         IOFormat frmt = BIN,  std::ios_base::openmode mode = std::ios::out) const;
 
+    bool FlushBufferBin() const;
+    bool ReadBin(const std::string &file_name, size_t size, char* data) const;
+    bool WriteBin(const std::string &file_name, size_t size, const char* data,
+        std::ios_base::openmode mode = std::ios::out) const;
+
     std::string out_file_;
     IOFormat frmt_;
     mutable size_t out_size_;

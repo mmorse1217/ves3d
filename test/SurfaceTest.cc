@@ -40,7 +40,7 @@ void testSurface(const Device &dev)
 
     char fname[400];
     COUT("Loading initial shape");
-    sprintf(fname, "precomputed/dumbbell_%d_double.txt",sim_par.sh_order);
+    sprintf(fname, "%s/precomputed/dumbbell_%d_double.txt",VES3D_PATH,sim_par.sh_order);
     myIO.ReadData(fname, x0, DataIO::ASCII, 0, fLen * DIM);
 
     COUT("Populating x0 (nves="<<nVec<<")");
@@ -205,7 +205,7 @@ void testSurface(const Device &dev)
     testSurface<ScaGPU_t, VecGPU_t, DevGPU>(the_gpu_device);
     PROFILEREPORT(SortTime);
 
-    COUT(emph<<" *** Surface class with CPU device passed ***"<<emph);
+    COUT(emph<<" *** Surface class with GPU device passed ***"<<emph);
 #endif //GPU_ACTIVE
 
     return 0;
