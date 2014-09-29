@@ -13,7 +13,7 @@ Error_t cb_abort(const Error_t &err)
     return err;
 }
 
-int run_sim(int argc, char **argv){
+void run_sim(int argc, char **argv){
     SET_ERR_CALLBACK(&cb_abort);
 
     typedef EvolveSurface<real, Dev, the_dev> Evolve_t;

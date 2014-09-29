@@ -13,7 +13,6 @@ TEST = 	ArrayTest.exe			\
 	RepartitionTest.exe		\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
-	SpharmTest.exe			\
 	StokesTest.exe			\
         SurfaceTest.exe			\
         Tr1Test.exe			\

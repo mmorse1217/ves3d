@@ -1,5 +1,5 @@
 # User variables
-USE_PVFMM     ?= no
+USE_PVFMM     ?= yes
 USE_GPU       ?= no
 VES3D_TESTING ?= no
 PLATFORM      ?= $(shell hostname --short)
