@@ -1,11 +1,11 @@
 include $(VES3D_DIR)/makefile.in.files/makefile.in
 
-LIB_SRC = $(VES3D_DIR)/src/CPUKernels.cc \
-	  $(VES3D_DIR)/src/Logger.cc	 \
-	  $(VES3D_DIR)/src/Enums.cc      \
-	  $(VES3D_DIR)/src/Error.cc      \
-	  $(VES3D_DIR)/src/DataIO.cc	 \
-	  $(VES3D_DIR)/src/anyoption.cc
+LIB_SRC = $(VES3D_SRC)/CPUKernels.cc \
+	  $(VES3D_SRC)/Logger.cc	 \
+	  $(VES3D_SRC)/Enums.cc      \
+	  $(VES3D_SRC)/Error.cc      \
+	  $(VES3D_SRC)/DataIO.cc	 \
+	  $(VES3D_SRC)/anyoption.cc
 
 ARFILES = libves3d.a
 
@@ -17,7 +17,6 @@ ifeq ($(USE_GPU),yes)
 endif
 
 LIB_OBJ = $(LIB_SRC:.cc=.o)
-
 
 all: $(ARFILES)
 
