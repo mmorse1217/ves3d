@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     //Initializing vesicle positions from text file
     Vec_t x(nVec, p);
     char fname[200];
-    sprintf(fname, "%s/precomputed/dumbbell_%d_double.txt",VES3D_PATH,p);
-    IO.ReadData(fname, x, DataIO::ASCII);
+    sprintf(fname, "precomputed/dumbbell_%d_double.txt",p);
+    IO.ReadData(FullPath(fname), x, DataIO::ASCII);
     IO.WriteData("Original.out", x, DataIO::ASCII, std::ios::out);
 
     //Operators

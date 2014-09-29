@@ -1,10 +1,10 @@
 include $(VES3D_DIR)/makefile.in.files/makefile.in
 
-LIB_SRC = $(VES3D_SRC)/CPUKernels.cc \
-	  $(VES3D_SRC)/Logger.cc	 \
-	  $(VES3D_SRC)/Enums.cc      \
-	  $(VES3D_SRC)/Error.cc      \
-	  $(VES3D_SRC)/DataIO.cc	 \
+LIB_SRC = $(VES3D_SRC)/CPUKernels.cc 	\
+	  $(VES3D_SRC)/Logger.cc 	\
+	  $(VES3D_SRC)/Enums.cc      	\
+	  $(VES3D_SRC)/Error.cc      	\
+	  $(VES3D_SRC)/DataIO.cc 	\
 	  $(VES3D_SRC)/anyoption.cc
 
 ARFILES = libves3d.a

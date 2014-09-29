@@ -28,7 +28,7 @@ bool DataIO::ReadBin(const std::string &file_name, size_t size, char* data) cons
     std::ifstream data_file(file_name.c_str(), std::ios::binary | std::ios::in);
 
     if(!data_file.good())
-        CERR_LOC("Could not read the data from the file: "<<file_name,"", exit(1));
+        CERR_LOC("Cannot open the file for reading: "<<file_name,"", exit(1));
 
     data_file.read(data, size);
     data_file.close();
@@ -44,7 +44,7 @@ bool DataIO::WriteBin(const std::string &file_name, size_t size, const char* dat
 
         std::ofstream data_file(file_name.c_str(), std::ios::binary | mode);
         if(!data_file)
-            CERR_LOC("Could not write the data to the file: "<<file_name, "", exit(1));
+            CERR_LOC("Cannot open file for writing: "<<file_name, "", exit(1));
 
         data_file.write(data, size);
         data_file.close();
@@ -72,4 +72,15 @@ bool DataIO::ResizeOutBuffer(size_t buffer_size) const
     out_buffer_ = (char*) malloc(buffer_size);
     out_size_ = buffer_size;
     return(true);
+}
+
+std::string FullPath(const std::string fname){
+    std::string base(VES3D_PATH);
+    base += "/" + fname;
+    return base;
+}
+
+std::string FullPath(const char* fname){
+    std::string str(fname);
+    return FullPath(str);
 }

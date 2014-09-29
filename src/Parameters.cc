@@ -53,13 +53,14 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
   // 4. SET THE OPTIONS
   this->setOptions(&opt);
 
-  // 5. PROCESS THE COMMANDLINE AND RESOURCE FILE, COMMAND LINE
-  // OPTIONS OVERRIDE THE FILE
+  // 5. PROCESS THE COMMANDLINE AND RESOURCE FILE
   opt.processCommandArgs( argc, argv );
 
   if( opt.getValue( 'f' ) != NULL  || opt.getValue( "optFile" ) ){
       INFO("Parsing input file "<<opt.getValue('f'));
-      opt.processFile( opt.getValue('f') );
+
+      if (!opt.processFile(opt.getValue('f')))
+          return ErrorEvent::InvalidParameter;
   }
 
   opt.processCommandArgs( argc, argv );
@@ -74,9 +75,6 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
 
   // 6. GET THE VALUES
   this->getOptionValues(&opt);
-
-  //COUT(*this<<std::endl);
-
   return ErrorEvent::Success;
 }
 
@@ -114,7 +112,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "      --repTol               The absolute value tol on the velocity of reparametrization" );
   opt->addUsage( "      --repUpFreq            The upsampling frequency for the reparametrization" );
   opt->addUsage( "      --saveStride           The frequency of saving to file (in time scale)" );
-  opt->addUsage( "      --scheme               The time stepping scheme {Explicit | BlockImplicit}" );
+  opt->addUsage( "      --timeScheme           The time stepping scheme {Explicit | BlockImplicit}" );
   opt->addUsage( "      --shOrder              The spherical harmonics order" );
   opt->addUsage( "      --singularStokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "      --tensionIterMax       Maximum number of iterations for the tension solver" );
@@ -137,7 +135,6 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setFlag( "upsampleInteraction");
 
   //an option (takes an argument), supporting long and short forms
-  opt->setOption( "optFile", 'f');
   opt->setOption( "initFile", 'i');
   opt->setOption( "outFile", 'o');
 
@@ -157,7 +154,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "repTol" );
   opt->setOption( "repUpFreq" );
   opt->setOption( "saveStride" );
-  opt->setOption( "scheme" );
+  opt->setOption( "timeScheme" );
   opt->setOption( "shOrder" );
   opt->setOption( "singularStokes" );
   opt->setOption( "tensionIterMax" );
@@ -168,7 +165,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
 
   //for options that will be checked only on the command and line not
   //in option/resource file
-  //opt.setCommandFlag( ... );
+  opt->setCommandOption( "optFile", 'f');
 
   // for options that will be checked only from the option/resource
   // file
@@ -251,8 +248,8 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "saveStride" ) != NULL  )
     this->save_stride =  atof(opt->getValue( "saveStride" ));
 
-  if( opt->getValue( "scheme" ) != NULL  )
-    this->scheme = EnumifyScheme(opt->getValue( "scheme" ));
+  if( opt->getValue( "timeScheme" ) != NULL  )
+    this->scheme = EnumifyScheme(opt->getValue( "timeScheme" ));
 
   if( opt->getValue( "singularStokes" ) != NULL  )
     this->singular_stokes = EnumifyStokesRot(opt->getValue( "singularStokes" ));

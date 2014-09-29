@@ -35,8 +35,8 @@ int main(int argc, char** argv)
     Vec_t x0(nVec, p);
     int fLen = x0.getStride();
     std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
-    sprintf(fname,"%s/precomputed/dumbbell_%u_%s.txt",VES3D_PATH,p,prec.c_str());
-    myIO.ReadData(fname, x0, DataIO::ASCII, 0, fLen * DIM);
+    sprintf(fname,"precomputed/dumbbell_%u_%s.txt",p,prec.c_str());
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * DIM);
 
     bool readFromFile = true;
     sim_par.singular_stokes = Direct;

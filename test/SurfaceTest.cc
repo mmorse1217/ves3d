@@ -40,8 +40,8 @@ void testSurface(const Device &dev)
 
     char fname[400];
     COUT("Loading initial shape");
-    sprintf(fname, "%s/precomputed/dumbbell_%d_double.txt",VES3D_PATH,sim_par.sh_order);
-    myIO.ReadData(fname, x0, DataIO::ASCII, 0, fLen * DIM);
+    sprintf(fname, "precomputed/dumbbell_%d_double.txt",sim_par.sh_order);
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * DIM);
 
     COUT("Populating x0 (nves="<<nVec<<")");
     for(int ii=1;ii<nVec; ++ii)

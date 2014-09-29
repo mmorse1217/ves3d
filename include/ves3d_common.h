@@ -36,7 +36,8 @@
 #define _VES3D_COMMON_H_
 
 #include <stdlib.h> //getenv
+#include <string>
 
-const char* VES3D_PATH(getenv("VES3D_DIR"));
+const std::string VES3D_PATH(getenv("VES3D_DIR"));
 
 #endif //_VES3D_COMMON_H_

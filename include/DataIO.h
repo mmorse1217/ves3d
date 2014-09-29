@@ -18,7 +18,7 @@
 #include <memory>
 
 #include "Logger.h"
-//#include "Enums.h"
+#include "ves3d_common.h"
 
 /**
  * A simple data I/O class tailored for this project. It reads data
@@ -76,6 +76,9 @@ class DataIO
     mutable char* out_buffer_;
     int resize_factor_;
 };
+
+std::string FullPath(const std::string fname);
+std::string FullPath(const char* fname);
 
 #include "DataIO_templates.cc"
 

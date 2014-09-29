@@ -40,73 +40,68 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     if(readFromFile)
     {
         std::string tname;
-        char fname[500];
+        char buffer[500];
 
         if ( typeid(value_type) == typeid(float) )
             tname = "single";
         else
             tname = "double";
 
-        sprintf(fname,"%s/precomputed/quad_weights_%u_%s.txt",
-            VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, quad_weights_ - data_.begin(), np);
+        sprintf(buffer,"precomputed/quad_weights_%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, quad_weights_ - data_.begin(), np);
 
-        sprintf(fname,"%s/precomputed/sing_quad_weights_%u_%s.txt",
-            VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, sing_quad_weights_- data_.begin() , np);
+        sprintf(buffer,"precomputed/sing_quad_weights_%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, sing_quad_weights_- data_.begin() , np);
 
-        sprintf(fname,"%s/precomputed/w_sph_%u_%s.txt",VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, w_sph_- data_.begin(), np);
+        sprintf(buffer,"precomputed/w_sph_%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, w_sph_- data_.begin(), np);
 
         if (rot_mat_size != 0)
         {
-            sprintf(fname,"%s/precomputed/all_rot_mats_%u_%s.txt",
-                VES3D_PATH, p_,tname.c_str());
-            fileIO.ReadData(fname, data_, DataIO::ASCII, all_rot_mats_- data_.begin(),
+            sprintf(buffer,"precomputed/all_rot_mats_%u_%s.txt", p_,tname.c_str());
+            fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, all_rot_mats_- data_.begin(),
                 rot_mat_size);
         } else {
-            sprintf(fname,"%s/precomputed/SpHarmRotMats_p%u_%s.txt",
-                VES3D_PATH, p_,tname.c_str());
-            fileIO.ReadData(fname, data_, DataIO::ASCII, sh_rot_mats_- data_.begin(),
+            sprintf(buffer,"precomputed/SpHarmRotMats_p%u_%s.txt", p_,tname.c_str());
+            fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, sh_rot_mats_- data_.begin(),
                 spharm_rot_size);
         }
 
         //p
-        sprintf(fname,"%s/precomputed/legTrans%u_%s.txt", VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_.dlt_ - data_.begin(),
+        sprintf(buffer,"precomputed/legTrans%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_.dlt_ - data_.begin(),
             mats_p_.getDLTLength());
 
-        sprintf(fname,"%s/precomputed/legTransInv%u_%s.txt",VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_.dlt_inv_ - data_.begin(),
+        sprintf(buffer,"precomputed/legTransInv%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_.dlt_inv_ - data_.begin(),
             mats_p_.getDLTLength());
 
-        sprintf(fname,"%s/precomputed/d1legTrans%u_%s.txt",VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_.dlt_inv_d1_ - data_.begin(),
+        sprintf(buffer,"precomputed/d1legTrans%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_.dlt_inv_d1_ - data_.begin(),
             mats_p_.getDLTLength());
 
-        sprintf(fname,"%s/precomputed/d2legTrans%u_%s.txt",VES3D_PATH, p_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_.dlt_inv_d2_- data_.begin(),
+        sprintf(buffer,"precomputed/d2legTrans%u_%s.txt", p_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_.dlt_inv_d2_- data_.begin(),
             mats_p_.getDLTLength());
 
         //p_up
-        sprintf(fname,"%s/precomputed/quad_weights_%u_%s.txt",
-            VES3D_PATH, p_up_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, quad_weights_p_up_ - data_.begin(), np_up);
+        sprintf(buffer,"precomputed/quad_weights_%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, quad_weights_p_up_ - data_.begin(), np_up);
 
-        sprintf(fname,"%s/precomputed/legTrans%u_%s.txt",VES3D_PATH, p_up_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_up_.dlt_- data_.begin(),
+        sprintf(buffer,"precomputed/legTrans%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_up_.dlt_- data_.begin(),
             mats_p_up_.getDLTLength());
 
-        sprintf(fname,"%s/precomputed/legTransInv%u_%s.txt",VES3D_PATH, p_up_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_up_.dlt_inv_ - data_.begin(),
+        sprintf(buffer,"precomputed/legTransInv%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_up_.dlt_inv_ - data_.begin(),
             mats_p_up_.getDLTLength());
 
-        sprintf(fname,"%s/precomputed/d1legTrans%u_%s.txt",VES3D_PATH, p_up_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_up_.dlt_inv_d1_ - data_.begin(),
+        sprintf(buffer,"precomputed/d1legTrans%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_up_.dlt_inv_d1_ - data_.begin(),
             mats_p_up_.getDLTLength());
 
-        sprintf(fname,"%s/precomputed/d2legTrans%u_%s.txt",VES3D_PATH, p_up_,tname.c_str());
-        fileIO.ReadData(fname, data_, DataIO::ASCII, mats_p_up_.dlt_inv_d2_ - data_.begin(),
+        sprintf(buffer,"precomputed/d2legTrans%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_up_.dlt_inv_d2_ - data_.begin(),
             mats_p_up_.getDLTLength());
     }
 }

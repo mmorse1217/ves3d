@@ -56,7 +56,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
 
         if ( save_flag_ && save_now )
         {
-            COUTDEBUG("Writing data to file.");
+            INFO("Writing data to file.");
             IO.Append(state->S_->getPosition());
             IO.Append(state->F_->tension());
             last_save++;

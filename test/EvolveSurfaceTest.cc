@@ -23,8 +23,8 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     DataIO myIO(sim_par.save_file_name,DataIO::ASCII);
     char fname[300];
     std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
-    sprintf(fname,"%s/precomputed/dumbbell_%u_%s.txt",VES3D_PATH,sim_par.sh_order,prec.c_str());
-    myIO.ReadData(fname, x0, DataIO::ASCII, 0, x0.getSubLength());
+    sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, x0.getSubLength());
 
     //Making Centers And Populating The Prototype
     int nVec = sim_par.n_surfs;

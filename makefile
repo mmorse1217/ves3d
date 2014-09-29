@@ -3,13 +3,9 @@ include $(MAKEIN)
 
 BINS = ves3d_seq_direct
 
-# include dependency file for templates
--include $(addprefix $(VES3D_SRC)/, $(addsuffix .d, $(BINS)))
-
 all: lib
 
 .PHONY: docs tags all-tags lib test experiment clean bin
-.SECONDARY:
 
 docs: $(MAKEDEP)
 	-$(DOX) ./docs/Doxyfile
@@ -39,6 +35,8 @@ experiment:
 clean:
 	$(MAKE) -C ${VES3D_DIR}/lib clean
 	$(MAKE) -C ${VES3D_DIR}/test clean
-	$(MAKE) -C ${VES3D_DIR}/experiment clean
 	-$(RM) *.o $(VES3D_SRC)/*.o ./docs/latex ./docs/html TAGS
 	-$(RM) $(VES3D_SRC)/*.d $(addprefix $(VES3D_BIN)/,$(BINS))
+
+# include dependency file for templates
+-include $(addprefix $(VES3D_SRC)/, $(addsuffix .d, $(BINS)))
