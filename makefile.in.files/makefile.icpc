@@ -8,3 +8,5 @@ else
 #  CXXFLAGS+= -O3 -finline -DPROFILING -unroll-agressive -msse4 -malign-double -DNDEBUG 
   CXXFLAGS+=  -O3 -finline  -unroll-agressive -msse4 -malign-double -DNDEBUG -DVERBOSE
 endif
+
+COMPILER_VENDOR=INTEL

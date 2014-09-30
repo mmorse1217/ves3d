@@ -20,6 +20,9 @@ TEST = 	ArrayTest.exe			\
 
 ARFILES = $(VES3D_DIR)/lib/libves3d.a
 
+MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
+include $(MAKEIN)
+
 ifeq ($(USE_GPU),yes)
   ARFILES += $(VES3D_DIR)/lib/libves3dgpu.a
 endif
@@ -31,9 +34,6 @@ endif
 ifeq ($(VES3D_TESTING),yes)
   TEST +=BenchmarkInterfacialVel.exe
 endif
-
-MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
-include $(MAKEIN)
 
 all: $(TEST)
 

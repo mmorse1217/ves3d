@@ -1,3 +1,4 @@
+#ifdef HAVE_PVFMM
 #include "Enums.h"
 
 #include <cstring>
@@ -300,4 +301,4 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
     memcpy(tensionr[0],&data[0],data.Dim()*sizeof(T));
   }
 }
-
+#endif

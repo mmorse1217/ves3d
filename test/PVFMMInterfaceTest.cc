@@ -1,3 +1,4 @@
+#ifdef HAVE_PVFMM
 #include "PVFMMInterface.h"
 #include "Enums.h"
 
@@ -115,4 +116,4 @@ int main(int argc, char** argv){
   MPI_Finalize();
   return 0;
 }
-
+#endif
