@@ -55,21 +55,28 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
 
   // 5. PROCESS THE COMMANDLINE AND RESOURCE FILE
   opt.processCommandArgs( argc, argv );
+  if( opt.getValue( 'h' ) != NULL  || opt.getValue( "help" ) ){
+      opt.printUsage();
+      exit(0);
+  }
 
-  if( opt.getValue( 'f' ) != NULL  || opt.getValue( "optFile" ) ){
+  if( opt.getValue( 'f' ) != NULL  || opt.getValue( "opt-file" ) ){
       INFO("Parsing input file "<<opt.getValue('f'));
 
       if (!opt.processFile(opt.getValue('f')))
           return ErrorEvent::InvalidParameter;
   }
-
+  // reporcess time commandline to override the file content
   opt.processCommandArgs( argc, argv );
 
   //print usage if no options
   if( ! opt.hasOptions() ) {
-      CERR_LOC("You need to define the simulation options",
+      CERR_LOC("You need to pass the simulation options"
+          " either through command-line or file.",
           "",
           opt.printUsage());
+      opt.printUsage();
+
       return ErrorEvent::InvalidParameter;
   }
 
@@ -89,38 +96,38 @@ void Parameters<T>::adjustFreqs()
 template<typename T>
 void Parameters<T>::setUsage(AnyOption *opt)
 {
-  opt->addUsage( " Options list: " );
+  opt->addUsage( "List of options: " );
   opt->addUsage( "" );
-  opt->addUsage( "  -f  --opt-file              The name of the options file to be parsed.");
-  opt->addUsage( "  -h  --help                  Prints this help " );
-  opt->addUsage( "  -i  --init-file             The file containing the initial shape of vesicles");
-  opt->addUsage( "  -o  --out-file              The output file");
-  opt->addUsage( "  -s  --save-data             Flag to save data to file" );
+  opt->addUsage( " -f  --opt-file              The name of the options file to be parsed.");
+  opt->addUsage( " -h  --help                  Prints this help " );
+  opt->addUsage( " -i  --init-file             The file containing the initial shape of vesicles");
+  opt->addUsage( " -o  --out-file              The output file");
+  opt->addUsage( " -s  --save-data             Flag to save data to file" );
   opt->addUsage( "" );
-  opt->addUsage( "      --bending-modulus       The bending modulus of the interfaces" );
-  opt->addUsage( "      --bg-flow-param         Single parameter passed to the background flow class" );
-  opt->addUsage( "      --cent-file             The file containing the initial center points");
-  opt->addUsage( "      --error-factor          The permissible increase factor in area and volume error");
-  opt->addUsage( "      --filter-freq           The differentiation filter frequency" );
-  opt->addUsage( "      --n-surfs               The number of surfaces" );
-  opt->addUsage( "      --position-iter-max     Maximum number of iterations for the position solver" );
-  opt->addUsage( "      --position-restart      Maximum number of restarts for the position solver" );
-  opt->addUsage( "      --position-tol          The tolerence for the position solver" );
-  opt->addUsage( "      --rep-filter-freq       The filter freq for the reparametrization" );
-  opt->addUsage( "      --rep-max-iter          Maximum number of reparametrization steps" );
-  opt->addUsage( "      --rep-timestep          The Time step for the reparametrization" );
-  opt->addUsage( "      --rep-tol               The absolute value tol on the velocity of reparametrization" );
-  opt->addUsage( "      --rep-up-freq           The upsampling frequency for the reparametrization" );
-  opt->addUsage( "      --save-stride           The frequency of saving to file (in time scale)" );
-  opt->addUsage( "      --time-scheme           The time stepping scheme {Explicit | BlockImplicit}" );
-  opt->addUsage( "      --sh-order              The spherical harmonics order" );
-  opt->addUsage( "      --singular-stokes       The scheme for the singular stokes evaluation" );
-  opt->addUsage( "      --tension-iter-max      Maximum number of iterations for the tension solver" );
-  opt->addUsage( "      --tension-restart       Maximum number of restarts for the tension solver" );
-  opt->addUsage( "      --tension-tol           The tolerence for the tension solver" );
-  opt->addUsage( "      --time-horizon          The time horizon of the simulation" );
-  opt->addUsage( "      --timestep              The time step size" );
-  opt->addUsage( "      --upsample-interaction  Flag to whether upsample (and filter) the interaction force" );
+  opt->addUsage( "     --bending-modulus       The bending modulus of the interfaces" );
+  opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
+  opt->addUsage( "     --cent-file             The file containing the initial center points");
+  opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
+  opt->addUsage( "     --filter-freq           The differentiation filter frequency" );
+  opt->addUsage( "     --n-surfs               The number of surfaces" );
+  opt->addUsage( "     --position-iter-max     Maximum number of iterations for the position solver" );
+  opt->addUsage( "     --position-restart      Maximum number of restarts for the position solver" );
+  opt->addUsage( "     --position-tol          The tolerence for the position solver" );
+  opt->addUsage( "     --rep-filter-freq       The filter freq for the reparametrization" );
+  opt->addUsage( "     --rep-max-iter          Maximum number of reparametrization steps" );
+  opt->addUsage( "     --rep-timestep          The Time step for the reparametrization" );
+  opt->addUsage( "     --rep-tol               The absolute value tol on the velocity of reparametrization" );
+  opt->addUsage( "     --rep-up-freq           The upsampling frequency for the reparametrization" );
+  opt->addUsage( "     --save-stride           The frequency of saving to file (in time scale)" );
+  opt->addUsage( "     --time-scheme           The time stepping scheme {Explicit | BlockImplicit}" );
+  opt->addUsage( "     --sh-order              The spherical harmonics order" );
+  opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
+  opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
+  opt->addUsage( "     --tension-restart       Maximum number of restarts for the tension solver" );
+  opt->addUsage( "     --tension-tol           The tolerence for the tension solver" );
+  opt->addUsage( "     --time-horizon          The time horizon of the simulation" );
+  opt->addUsage( "     --timestep              The time step size" );
+  opt->addUsage( "     --upsample-interaction  Flag to whether upsample (and filter) the interaction force" );
 }
 
 template<typename T>
@@ -130,9 +137,10 @@ void Parameters<T>::setOptions(AnyOption *opt)
   // from option/resource file
 
   // a flag (takes no argument), supporting long and short forms
-  opt->setFlag( "help", 'h' );
+  opt->setCommandFlag( "help", 'h');
   opt->setFlag( "save-data", 's' );
   opt->setFlag( "upsample-interaction");
+
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
@@ -165,7 +173,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
 
   //for options that will be checked only on the command and line not
   //in option/resource file
-  opt->setCommandOption( "optFile", 'f');
+  opt->setCommandOption( "opt-file", 'f');
 
   // for options that will be checked only from the option/resource
   // file
@@ -175,9 +183,6 @@ void Parameters<T>::setOptions(AnyOption *opt)
 template<typename T>
 void Parameters<T>::getOptionValues(AnyOption *opt)
 {
-  if( opt->getFlag( "help" ) || opt->getFlag( 'h' ) )
-    opt->printUsage();
-
   if( opt->getFlag( "save-data" ) || opt->getFlag( 's' ) )
       this->save_data = true;
   else

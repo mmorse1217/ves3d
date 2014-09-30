@@ -103,23 +103,26 @@ std::ostream& operator<<(std::ostream& output,
     const Error_t &err_t);
 
 // Error macros
-//! CHK(err) with err as Error_t enum, raises an error if err is not Succes.
-#define CHK(err) (                 \
-        err &&                     \
-    ErrorHandler::submitError(err, \
-        __FUNCTION__,              \
-        __FILE__,                  \
-        __LINE__                   \
-                              ))
+//! CHK(err) with err as Error_t enum, raises an error if err is not Success
+// defineing chk_expr to avoid multiple evaluation of expr
+static Error_t chk_expr(ErrorEvent::UnknownError);
 
-#define CHK_CB(err,callback) (     \
-        err &&                     \
-    ErrorHandler::submitError(err, \
-        __FUNCTION__,              \
-        __FILE__,                  \
-        __LINE__,                  \
-        callback                   \
-                              ))
+#define CHK(expr) (                            \
+        ( chk_expr = expr ) &&                 \
+        ErrorHandler::submitError(chk_expr,    \
+            __FUNCTION__,                      \
+            __FILE__,                          \
+            __LINE__                           \
+                                  ))
+
+#define CHK_CB(expr,callback) (                 \
+        ( chk_expr = expr ) &&                  \
+        ErrorHandler::submitError(chk_expr,     \
+            __FUNCTION__,                       \
+            __FILE__,                           \
+            __LINE__,                           \
+            callback                            \
+                                  ))
 
 #define SET_ERR_CALLBACK(cb) ( ErrorHandler::setErrorCallBack(cb) )
 #define ERRORSTATUS() ( ErrorHandler::errorStatus() )

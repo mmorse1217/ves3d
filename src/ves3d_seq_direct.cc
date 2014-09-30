@@ -14,8 +14,6 @@ Error_t cb_abort(const Error_t &err)
 }
 
 void run_sim(int argc, char **argv){
-    SET_ERR_CALLBACK(&cb_abort);
-
     typedef EvolveSurface<real, Dev, the_dev> Evolve_t;
     typedef Evolve_t::Params_t Par_t;
     typedef Evolve_t::Arr_t Arr_t;
@@ -65,6 +63,7 @@ void run_sim(int argc, char **argv){
 
 int main(int argc, char **argv)
 {
+    SET_ERR_CALLBACK(&cb_abort);
     PROFILESTART();
     run_sim(argc, argv);
     PROFILEEND("",0);
