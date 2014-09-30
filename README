@@ -1,60 +1,65 @@
-3D particulate flow simulation code.
-------------------------------------
+# 3D particulate flow simulation code. #
+---
 
-Before build:
--------------
-
- 0. Copy the ves3d project files to the install location and make an
+## Before build: ##
+---
+1. Copy the ves3d project files to the install location and make an
     environment variable pointing to that location:
-
+```
+#!shell
     $ cd ves3d-cxx
     $ export VES3D_DIR=`pwd`
+```
 
- 1. In makefile.in.files directory, copy the makefile.in.sample file
+1. In makefile.in.files directory, copy the makefile.in.sample file
     to makefile.in.<hostname>
+```
+#!shell
 
     $ cd makefile.in.files
     $ cp makefile.in.sample makefile.in.<hostname>
+```
 
- 2. Make sure that the makefile corresponding to the host machine (the
+1. Make sure that the makefile corresponding to the host machine (the
     value returned by hostname in the shell) exists in the
     makefile.in.files/ or alternatively set the PLATFORM environmental
     variable or modify the PLATFORM in makefile.in.
 
- 3. In the platform specific makefile, set the correct include paths
+1. In the platform specific makefile, set the correct include paths
     for libraries
 
- 4. If the makefile corresponding to your choice of compiler does
+1. If the makefile corresponding to your choice of compiler does
     not exist, you also need to write that makefile (with the correct
     extension)
 
- 5. Make a symbolic link to makefile.in.<hostname>
+ 1. Make a symbolic link to makefile.in.<hostname>
+```
+#!shell
 
     $ln -s makefile.in.<hostname> makefile.in
+```
 
- 6. Optionally add makefile.in.<hostname> to hg for future reference
+ 1. Optionally add makefile.in.<hostname> to hg for future reference
 
-Building:
----------
-
+## Building: ##
+---
  1. cd to VES3D_DIR and
+```
+#!shell
 
- $ make
- $ make test
- $ make check
+    $ make
+    $ make test
+    $ make check
+```
 
- 2. If the code compiles fine and tests pass, run
+ 1. If the code compiles fine and tests pass, run
+```
+#!shell
 
- $ make install
-
-
-Misc:
------
- . Code-specific compiler options are: VERBOSE, PROFILING,
- VES3D_TESTING, USE_GPU, USE_PVFMM
-
- . if you want the GPU code compiled set "USE_GPU=yes" in
- makefile.in.<hostname>
-
- . Fully functional revisions of code are tagged by vYY.ID (YY is year
- and ID is an integer)
+    $ make install
+```
+## Misc: ##
+---
+1. Code-specific compiler options are: VERBOSE, PROFILING, VES3D_TESTING, USE_GPU, USE_PVFMM
+1. If you want the GPU code compiled set "USE_GPU=yes" in makefile.in.<hostname>
+1. Fully functional revisions of code are tagged by vYY.ID (YY is year and ID is an integer)
