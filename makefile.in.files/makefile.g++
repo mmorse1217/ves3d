@@ -8,3 +8,5 @@ else
   CXXFLAGS+= -O3 -finline-functions -funroll-loops -w  			\
   	     -funsafe-loop-optimizations -DNDEBUG -msse3 #-malign-double
 endif
+
+COMPILER_VENDOR=GNU
