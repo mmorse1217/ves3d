@@ -91,36 +91,36 @@ void Parameters<T>::setUsage(AnyOption *opt)
 {
   opt->addUsage( " Options list: " );
   opt->addUsage( "" );
-  opt->addUsage( "  -f  --optFile              The name of the options file to be parsed.");
-  opt->addUsage( "  -h  --help                 Prints this help " );
-  opt->addUsage( "  -i  --initFile             The file containing the initial shape of vesicles");
-  opt->addUsage( "  -o  --outFile              The output file");
-  opt->addUsage( "  -s  --saveData             Flag to save data to file" );
+  opt->addUsage( "  -f  --opt-file              The name of the options file to be parsed.");
+  opt->addUsage( "  -h  --help                  Prints this help " );
+  opt->addUsage( "  -i  --init-file             The file containing the initial shape of vesicles");
+  opt->addUsage( "  -o  --out-file              The output file");
+  opt->addUsage( "  -s  --save-data             Flag to save data to file" );
   opt->addUsage( "" );
-  opt->addUsage( "      --bendingModulus       The bending modulus of the interfaces" );
-  opt->addUsage( "      --bgFlowParam          Single parameter passed to the background flow class" );
-  opt->addUsage( "      --centFile             The file containing the initial center points");
-  opt->addUsage( "      --errorFactor          The permissible increase factor in area and volume error");
-  opt->addUsage( "      --filterFreq           The differentiation filter frequency" );
-  opt->addUsage( "      --nSurfs               The number of surfaces" );
-  opt->addUsage( "      --positionIterMax      Maximum number of iterations for the position solver" );
-  opt->addUsage( "      --positionRestart      Maximum number of restarts for the position solver" );
-  opt->addUsage( "      --positionTol          The tolerence for the position solver" );
-  opt->addUsage( "      --repFilterFreq        The filter freq for the reparametrization" );
-  opt->addUsage( "      --repMaxIter           Maximum number of reparametrization steps" );
-  opt->addUsage( "      --repTimeStep          The Time step for the reparametrization" );
-  opt->addUsage( "      --repTol               The absolute value tol on the velocity of reparametrization" );
-  opt->addUsage( "      --repUpFreq            The upsampling frequency for the reparametrization" );
-  opt->addUsage( "      --saveStride           The frequency of saving to file (in time scale)" );
-  opt->addUsage( "      --timeScheme           The time stepping scheme {Explicit | BlockImplicit}" );
-  opt->addUsage( "      --shOrder              The spherical harmonics order" );
-  opt->addUsage( "      --singularStokes       The scheme for the singular stokes evaluation" );
-  opt->addUsage( "      --tensionIterMax       Maximum number of iterations for the tension solver" );
-  opt->addUsage( "      --tensionRestart       Maximum number of restarts for the tension solver" );
-  opt->addUsage( "      --tensionTol           The tolerence for the tension solver" );
-  opt->addUsage( "      --timeHorizon          The time horizon of the simulation" );
-  opt->addUsage( "      --timeStep             The time step size" );
-  opt->addUsage( "      --upsampleInteraction  Flag to whether upsample (and filter) the interaction force" );
+  opt->addUsage( "      --bending-modulus       The bending modulus of the interfaces" );
+  opt->addUsage( "      --bg-flow-param         Single parameter passed to the background flow class" );
+  opt->addUsage( "      --cent-file             The file containing the initial center points");
+  opt->addUsage( "      --error-factor          The permissible increase factor in area and volume error");
+  opt->addUsage( "      --filter-freq           The differentiation filter frequency" );
+  opt->addUsage( "      --n-surfs               The number of surfaces" );
+  opt->addUsage( "      --position-iter-max     Maximum number of iterations for the position solver" );
+  opt->addUsage( "      --position-restart      Maximum number of restarts for the position solver" );
+  opt->addUsage( "      --position-tol          The tolerence for the position solver" );
+  opt->addUsage( "      --rep-filter-freq       The filter freq for the reparametrization" );
+  opt->addUsage( "      --rep-max-iter          Maximum number of reparametrization steps" );
+  opt->addUsage( "      --rep-timestep          The Time step for the reparametrization" );
+  opt->addUsage( "      --rep-tol               The absolute value tol on the velocity of reparametrization" );
+  opt->addUsage( "      --rep-up-freq           The upsampling frequency for the reparametrization" );
+  opt->addUsage( "      --save-stride           The frequency of saving to file (in time scale)" );
+  opt->addUsage( "      --time-scheme           The time stepping scheme {Explicit | BlockImplicit}" );
+  opt->addUsage( "      --sh-order              The spherical harmonics order" );
+  opt->addUsage( "      --singular-stokes       The scheme for the singular stokes evaluation" );
+  opt->addUsage( "      --tension-iter-max      Maximum number of iterations for the tension solver" );
+  opt->addUsage( "      --tension-restart       Maximum number of restarts for the tension solver" );
+  opt->addUsage( "      --tension-tol           The tolerence for the tension solver" );
+  opt->addUsage( "      --time-horizon          The time horizon of the simulation" );
+  opt->addUsage( "      --timestep              The time step size" );
+  opt->addUsage( "      --upsample-interaction  Flag to whether upsample (and filter) the interaction force" );
 }
 
 template<typename T>
@@ -131,37 +131,37 @@ void Parameters<T>::setOptions(AnyOption *opt)
 
   // a flag (takes no argument), supporting long and short forms
   opt->setFlag( "help", 'h' );
-  opt->setFlag( "saveData", 's' );
-  opt->setFlag( "upsampleInteraction");
+  opt->setFlag( "save-data", 's' );
+  opt->setFlag( "upsample-interaction");
 
   //an option (takes an argument), supporting long and short forms
-  opt->setOption( "initFile", 'i');
-  opt->setOption( "outFile", 'o');
+  opt->setOption( "init-file", 'i');
+  opt->setOption( "out-file", 'o');
 
   //an option (takes an argument), supporting only long form
-  opt->setOption( "bendingModulus" );
-  opt->setOption( "bgFlowParam" );
-  opt->setOption( "centFile");
-  opt->setOption( "errorFactor" );
-  opt->setOption( "filterFreq" );
-  opt->setOption( "nSurfs" );
-  opt->setOption( "positionIterMax" );
-  opt->setOption( "positionRestart" );
-  opt->setOption( "positionTol" );
-  opt->setOption( "repFilterFreq" );
-  opt->setOption( "repMaxIter" );
-  opt->setOption( "repTimeStep" );
-  opt->setOption( "repTol" );
-  opt->setOption( "repUpFreq" );
-  opt->setOption( "saveStride" );
-  opt->setOption( "timeScheme" );
-  opt->setOption( "shOrder" );
-  opt->setOption( "singularStokes" );
-  opt->setOption( "tensionIterMax" );
-  opt->setOption( "tensionRestart" );
-  opt->setOption( "tensionTol" );
-  opt->setOption( "timeHorizon" );
-  opt->setOption( "timeStep" );
+  opt->setOption( "bending-modulus" );
+  opt->setOption( "bg-flow-param" );
+  opt->setOption( "cent-file");
+  opt->setOption( "error-factor" );
+  opt->setOption( "filter-freq" );
+  opt->setOption( "n-surfs" );
+  opt->setOption( "position-iter-max" );
+  opt->setOption( "position-restart" );
+  opt->setOption( "position-tol" );
+  opt->setOption( "rep-filter-freq" );
+  opt->setOption( "rep-max-iter" );
+  opt->setOption( "rep-timestep" );
+  opt->setOption( "rep-tol" );
+  opt->setOption( "rep-up-freq" );
+  opt->setOption( "save-stride" );
+  opt->setOption( "time-scheme" );
+  opt->setOption( "sh-order" );
+  opt->setOption( "singular-stokes" );
+  opt->setOption( "tension-iter-max" );
+  opt->setOption( "tension-restart" );
+  opt->setOption( "tension-tol" );
+  opt->setOption( "time-horizon" );
+  opt->setOption( "timestep" );
 
   //for options that will be checked only on the command and line not
   //in option/resource file
@@ -178,96 +178,96 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getFlag( "help" ) || opt->getFlag( 'h' ) )
     opt->printUsage();
 
-  if( opt->getFlag( "saveData" ) || opt->getFlag( 's' ) )
+  if( opt->getFlag( "save-data" ) || opt->getFlag( 's' ) )
       this->save_data = true;
   else
       this->save_data = false;
 
-  if( opt->getFlag( "upsampleInteraction" ) )
+  if( opt->getFlag( "upsample-interaction" ) )
       this->upsample_interaction = true;
   else
       this->upsample_interaction = false;
 
   //an option (takes an argument), supporting long and short forms
-  if( opt->getValue( "initFile" ) != NULL || opt->getValue( 'i' ) !=NULL )
+  if( opt->getValue( "init-file" ) != NULL || opt->getValue( 'i' ) !=NULL )
     this->init_file_name = opt->getValue( 'i' );
 
-  if( opt->getValue( 'o' ) !=NULL || opt->getValue( "outFile") !=NULL )
+  if( opt->getValue( 'o' ) !=NULL || opt->getValue( "out-file") !=NULL )
     this->save_file_name = opt->getValue( 'o' );
 
 
   //shOrder set first so that the adjusted frequencies can be overridden
-  if( opt->getValue( "shOrder" ) != NULL  )
+  if( opt->getValue( "sh-order" ) != NULL  )
   {
-    this->sh_order =  atoi(opt->getValue( "shOrder" ));
+    this->sh_order =  atoi(opt->getValue( "sh-order" ));
     this->adjustFreqs();
   }
 
-  if( opt->getValue( "bendingModulus" ) != NULL  )
-    this->bending_modulus=  atof(opt->getValue( "bendingModulus" ));
+  if( opt->getValue( "bending-modulus" ) != NULL  )
+    this->bending_modulus=  atof(opt->getValue( "bending-modulus" ));
 
-  if( opt->getValue( "bgFlowParam" ) != NULL  )
-    this->bg_flow_param =  atof(opt->getValue( "bgFlowParam" ));
+  if( opt->getValue( "bg-flow-param" ) != NULL  )
+    this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
 
-  if( opt->getValue( "centFile") !=NULL )
-    this->cntrs_file_name = opt->getValue( "centFile" );
+  if( opt->getValue( "cent-file") !=NULL )
+    this->cntrs_file_name = opt->getValue( "cent-file" );
 
-  if( opt->getValue( "filterFreq" ) != NULL  )
-    this->filter_freq =  atoi(opt->getValue( "filterFreq" ));
+  if( opt->getValue( "filter-freq" ) != NULL  )
+    this->filter_freq =  atoi(opt->getValue( "filter-freq" ));
 
-  if( opt->getValue( "errorFactor" ) != NULL  )
-    this->error_factor =  atof(opt->getValue( "errorFactor" ));
+  if( opt->getValue( "error-factor" ) != NULL  )
+    this->error_factor =  atof(opt->getValue( "error-factor" ));
 
-  if( opt->getValue( "nSurfs" ) != NULL  )
-    this->n_surfs =  atoi(opt->getValue( "nSurfs" ));
+  if( opt->getValue( "n-surfs" ) != NULL  )
+    this->n_surfs =  atoi(opt->getValue( "n-surfs" ));
 
-  if( opt->getValue( "positionIterMax" ) != NULL  )
-    this->position_solver_iter =  atoi(opt->getValue( "positionIterMax" ));
+  if( opt->getValue( "position-iter-max" ) != NULL  )
+    this->position_solver_iter =  atoi(opt->getValue( "position-iter-max" ));
 
-  if( opt->getValue( "positionRestart" ) != NULL  )
-    this->position_solver_restart =  atoi(opt->getValue( "positionRestart" ));
+  if( opt->getValue( "position-restart" ) != NULL  )
+    this->position_solver_restart =  atoi(opt->getValue( "position-restart" ));
 
-  if( opt->getValue( "positionTol" ) != NULL  )
-    this->position_solver_tol =  atof(opt->getValue( "positionTol" ));
+  if( opt->getValue( "position-tol" ) != NULL  )
+    this->position_solver_tol =  atof(opt->getValue( "position-tol" ));
 
-  if( opt->getValue( "repFilterFreq"  ) != NULL  )
-    this->rep_filter_freq =  atoi(opt->getValue( "repFilterFreq"  ));
+  if( opt->getValue( "rep-filter-freq"  ) != NULL  )
+    this->rep_filter_freq =  atoi(opt->getValue( "rep-filter-freq"  ));
 
-  if( opt->getValue( "repMaxIter" ) != NULL  )
-    this->rep_maxit =  atoi(opt->getValue( "repMaxIter" ));
+  if( opt->getValue( "rep-max-iter" ) != NULL  )
+    this->rep_maxit =  atoi(opt->getValue( "rep-max-iter" ));
 
-  if( opt->getValue( "repTimeStep" ) != NULL  )
-    this->rep_ts =  atof(opt->getValue( "repTimeStep" ));
+  if( opt->getValue( "rep-timestep" ) != NULL  )
+    this->rep_ts =  atof(opt->getValue( "rep-timestep" ));
 
-  if( opt->getValue( "repTol" ) != NULL  )
-    this->rep_tol =  atof(opt->getValue( "repTol" ));
+  if( opt->getValue( "rep-tol" ) != NULL  )
+    this->rep_tol =  atof(opt->getValue( "rep-tol" ));
 
-  if( opt->getValue( "repUpFreq" ) != NULL  )
-    this->rep_up_freq =  atoi(opt->getValue( "repUpFreq" ));
+  if( opt->getValue( "rep-up-freq" ) != NULL  )
+    this->rep_up_freq =  atoi(opt->getValue( "rep-up-freq" ));
 
-  if( opt->getValue( "saveStride" ) != NULL  )
-    this->save_stride =  atof(opt->getValue( "saveStride" ));
+  if( opt->getValue( "save-stride" ) != NULL  )
+    this->save_stride =  atof(opt->getValue( "save-stride" ));
 
-  if( opt->getValue( "timeScheme" ) != NULL  )
-    this->scheme = EnumifyScheme(opt->getValue( "timeScheme" ));
+  if( opt->getValue( "time-scheme" ) != NULL  )
+    this->scheme = EnumifyScheme(opt->getValue( "time-scheme" ));
 
-  if( opt->getValue( "singularStokes" ) != NULL  )
-    this->singular_stokes = EnumifyStokesRot(opt->getValue( "singularStokes" ));
+  if( opt->getValue( "singular-stokes" ) != NULL  )
+    this->singular_stokes = EnumifyStokesRot(opt->getValue( "singular-stokes" ));
 
-  if( opt->getValue( "tensionIterMax" ) != NULL  )
-    this->tension_solver_iter =  atoi(opt->getValue( "tensionIterMax" ));
+  if( opt->getValue( "tension-iter-max" ) != NULL  )
+    this->tension_solver_iter =  atoi(opt->getValue( "tension-iter-max" ));
 
-  if( opt->getValue( "tensionRestart" ) != NULL  )
-    this->tension_solver_restart =  atoi(opt->getValue( "tensionRestart" ));
+  if( opt->getValue( "tension-restart" ) != NULL  )
+    this->tension_solver_restart =  atoi(opt->getValue( "tension-restart" ));
 
-  if( opt->getValue( "tensionTol" ) != NULL  )
-    this->tension_solver_tol =  atof(opt->getValue( "tensionTol" ));
+  if( opt->getValue( "tension-tol" ) != NULL  )
+    this->tension_solver_tol =  atof(opt->getValue( "tension-tol" ));
 
-  if( opt->getValue( "timeHorizon" ) != NULL  )
-    this->time_horizon =  atof(opt->getValue( "timeHorizon" ));
+  if( opt->getValue( "time-horizon" ) != NULL  )
+    this->time_horizon =  atof(opt->getValue( "time-horizon" ));
 
-  if( opt->getValue( "timeStep" ) != NULL  )
-    this->ts =  atof(opt->getValue( "timeStep" ));
+  if( opt->getValue( "timestep" ) != NULL  )
+    this->ts =  atof(opt->getValue( "timestep" ));
 
 //   other methods: (bool) opt.getFlag( ... long or short ... )
 }

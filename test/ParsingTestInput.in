@@ -1,29 +1,29 @@
 # parsingTest input file
 
 #saveData
-initFile : initfile.in
-outFile  : outfile.out
-centFile : cntrsfile.in
+init-file : initfile.in
+out-file  : outfile.out
+cent-file : cntrsfile.in
 
-bendingModulus  : 2e2
-bgFlowParam     : 199
-errorFactor     : 180
-filterFreq      : 198
-nSurfs          : 197
-positionIterMax : 196
-positionRestart : 195
-positionTol     : 1.94e-2
-repFilterFreq   : 193
-repMaxIter      : 192
-repTimeStep     : 1.91e-1
-repTol          : 1.9e-1
-repUpFreq       : 189
-saveStride      : 1.87e-3
-scheme          : Explicit
-shOrder         : 186
-singularStokes  : ViaSpHarm
-tensionIterMax  : 185
-tensionRestart  : 184
-tensionTol      : 1.83e-2
-timeHorizon     : 1.82e2
-timeStep        : 1.81e-1
+bending-modulus   : 2e2
+bg-flow-param     : 199
+error-factor      : 180
+filter-freq       : 198
+n-surfs           : 197
+position-iter-max : 196
+position-restart  : 195
+position-tol      : 1.94e-2
+rep-filter-freq   : 193
+rep-max-iter      : 192
+rep-timestep      : 1.91e-1
+rep-tol           : 1.9e-1
+rep-up-freq       : 189
+save-stride       : 1.87e-3
+time-scheme       : Explicit
+sh-order          : 186
+singular-stokes   : ViaSpHarm
+tension-iter-max  : 185
+tension-restart   : 184
+tension-tol       : 1.83e-2
+time-horizon      : 1.82e2
+timestep          : 1.81e-1
