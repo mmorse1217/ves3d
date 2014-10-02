@@ -1,0 +1,77 @@
+########################################################
+### Do not add any customization to this file.       ###
+### put customizations in the platform or cxx files. ###
+########################################################
+
+MAKE_DEP += ${VES3D_MKDIR}/makefile.default
+
+# user flags
+VES3D_DEBUG      ?= no
+VES3D_PROFILE    ?= no
+VES3D_TESTING    ?= no
+VES3D_USE_GPU    ?= no
+VES3D_USE_PVFMM  ?= no
+VES3D_VERBOSE    ?= no
+
+# implicit variables
+AR      = ar
+CXX     = icpc
+DOX     = doxygen
+NVCC    = nvcc
+MKDIR   = mkdir -p
+RANLIB  = ranlib
+RM      = rm -f
+TAGS    = etags
+
+# ves3d variables
+VES3D_BINDIR   ?= $(VES3D_DIR)/bin
+VES3D_DOCDIR   ?= $(VES3D_DIR)/docs
+VES3D_EXPRDIR  ?= $(VES3D_DIR)/experiment
+VES3D_INCDIR   ?= $(VES3D_DIR)/include
+VES3D_LIBDIR   ?= $(VES3D_DIR)/lib
+VES3D_SRCDIR   ?= $(VES3D_DIR)/src
+VES3D_TSTDIR   ?= $(VES3D_DIR)/test
+
+# PVFMM (should come first so that the flags are ordered properly)
+ifeq (${VES3D_USE_PVFMM},yes)
+  -include ${PVFMM_DIR}/MakeVariables
+  ifdef CXXFLAGS_PVFMM
+    CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
+    LDFLAGS  += ${LDFLAGS_PVFMM}
+    CXX=${CXX_PVFMM}
+  else
+    $(warning WARNING: File not found: $${PVFMM_DIR}/MakeVariables. Not supporting PVFMM.)
+  endif
+endif
+
+# compiler
+VES3D_TEMPLATES = -I$(VES3D_SRCDIR)
+VES3D_INCLUDE   = -I$(VES3D_INCDIR) $(VES3D_TEMPLATES)
+VES3D_CXXFLAGS  = $(VES3D_INCLUDE)
+CXXFLAGS       += $(VES3D_CXXFLAGS)
+
+# linker
+VES3D_LIBS      = ves3d
+LDFLAGS        += -L$(VES3D_LIBDIR)
+LDLIBS         += -l${VES3D_LIBS}
+ARFILES         = $(addprefix lib,$(addsuffix .a,${VES3D_LIBS}))
+
+# GPU, CUDA_DIR below is undefined by default (platform file should define it)
+CUDA_INCLUDE  = -I${CUDA_DIR}/include
+CUDA_FLAGS    = ${CUDA_INCLUDE} -arch=sm_13
+CUDA_LDFLAGS  = -L${CUDA_DIR}/lib64
+CUDA_LDLIBS   = -lcublas -lcudart #-Wl,-rpath $(CUDA_DIR)/lib64
+
+%.o: %.cu $(MAKE_DEP)
+	$(NVCC) ${CXXFLAGS} ${CUDA_FLAGS} -c -o $@ $<
+
+# GPU
+ifeq ($(VES3D_USE_GPU),yes)
+  VES3D_LIBS   += ves3dgpu
+  CXXFLAGS     += -DGPU_ACTIVE ${CUDA_INCLUDE)
+  LDFLAGS      += ${CUDA_LDFLAGS}
+  LDLIBS       += ${CUDA_LDLIBS}
+endif
+
+# misc
+ARFLAGS = r

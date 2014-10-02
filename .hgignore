@@ -15,7 +15,6 @@ docs/html/
 docs/latex/
 TAGS
 my_*
-makefile.in
 
 syntax: regexp
 \.[oa]

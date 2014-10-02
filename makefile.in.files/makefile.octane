@@ -1,0 +1,21 @@
+MAKE_DEP += ${VES3D_MKDIR}/makefile.octane
+
+include ${VES3D_MKDIR}/makefile.default
+
+# customization ##########################################
+CXX = g++
+
+VES3D_DEBUG     = yes
+VES3D_PROFILE   = yes
+VES3D_TESTING   = yes
+VES3D_VERBOSE   = yes
+
+# compiler
+BLASPKG         = HAS_BLAS
+BLAS_LIBS       = -framework vecLib
+BLAS_INCLUDE    =
+CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
+
+# linker
+LDFLAGS        += -L$(VES3D_LIBDIR)
+LDLIBS         += -l${VES3D_LIBS} $(BLAS_LIBS) -lpthread
