@@ -3,18 +3,11 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.ronaldo
 include ${VES3D_MKDIR}/makefile.default
 
 # customization ##########################################
-CXX = icpc
-
 VES3D_PROFILE   = yes
 VES3D_VERBOSE   = yes
 VES3D_USE_PVFMM = yes
 
 # compiler
-BLASPKG         = HAS_BLAS
-BLAS_LIBS       = -framework vecLib
-BLAS_INCLUDE    =
-CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
-
 ifeq ($(CXX),icpc)
  BLASPKG         = HAS_MKL
  BLAS_LDFLAGS    = -L ${ICES_MKL_LIB} 
