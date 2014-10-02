@@ -15,6 +15,7 @@ VES3D_VERBOSE    ?= no
 
 # implicit variables
 AR      = ar
+CC      = icc
 CXX     = icpc
 DOX     = doxygen
 NVCC    = nvcc
@@ -37,7 +38,8 @@ ifeq (${VES3D_USE_PVFMM},yes)
   -include ${PVFMM_DIR}/MakeVariables
   ifdef CXXFLAGS_PVFMM
     CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
-    LDFLAGS  += ${LDFLAGS_PVFMM}
+    LDFLAGS  := $(LDFLAGS_PVFMM) $(LDFLAGS)
+    #LDFLAGS  += ${LDFLAGS_PVFMM}
     CXX=${CXX_PVFMM}
   else
     $(warning WARNING: File not found: $${PVFMM_DIR}/MakeVariables. Not supporting PVFMM.)

@@ -1,20 +1,35 @@
-# includes and libraries
-VES3D_TEMPLATES = -I$(VES3D_DIR)/src
-VES3D_INCLUDE   = -I$(VES3D_DIR)/include $(VES3D_TEMPLATES)
-VES3D_LIBS      = -L$(VES3D_DIR)/lib -lves3d 
+MAKE_DEP += ${VES3D_MKDIR}/makefile.ronaldo
+
+include ${VES3D_MKDIR}/makefile.default
+
+# customization ##########################################
+CXX = icpc
+
+VES3D_PROFILE   = yes
+VES3D_VERBOSE   = yes
+VES3D_USE_PVFMM = yes
+
+# compiler
+BLASPKG         = HAS_BLAS
+BLAS_LIBS       = -framework vecLib
+BLAS_INCLUDE    =
+CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
 
 ifeq ($(CXX),icpc)
  BLASPKG         = HAS_MKL
- BLAS_LIBS      = -L ${ICES_MKL_LIB} -Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread		\
-	-lmkl_core -Wl,--end-group
+ BLAS_LDFLAGS    = -L ${ICES_MKL_LIB} 
+ BLAS_LDLIBS     = -Wl,--start-group -lmkl_intel_lp64  \
+		-lmkl_intel_thread -lmkl_core -Wl,--end-group
  BLAS_INCLUDE   = -I ${ICES_MKL_INC}
 else
- 
  BLASPKG        = HAS_BLAS
- BLAS_LIBS      = -L/usr/lib64/ /usr/lib64/liblapack.so.3.0.3 -lblas
+ BLAS_LDFLAGS   = -L/usr/lib64/ 
+ BLAS_LDLIBS    = /usr/lib64/liblapack.so.3.0.3 -lblas
  BLAS_INCLUDE   = 
 endif
 
-CXXFLAGS       += -D$(BLASPKG)
-ALL_INCLUDE     = $(VES3D_INCLUDE) $(BLAS_INCLUDE) 
-LDFLAGS         = $(VES3D_LIBS) $(BLAS_LIBS) -lpthread 
+CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
+
+# linker
+LDFLAGS        += ${BLAS_LDFLAGS}
+LDLIBS         += $(BLAS_LDLIBS) -lpthread

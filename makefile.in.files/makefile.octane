@@ -17,5 +17,5 @@ BLAS_INCLUDE    =
 CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
 
 # linker
-LDFLAGS        += -L$(VES3D_LIBDIR)
-LDLIBS         += -l${VES3D_LIBS} $(BLAS_LIBS) -lpthread
+LDFLAGS        += 
+LDLIBS         += $(BLAS_LIBS) -lpthread
