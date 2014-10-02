@@ -910,9 +910,8 @@ void avpwGpu(const float *a_in, const float *v_in,
   cudaThreadSynchronize();
 }
 
-///@bug the kernel modifies the input
 __global__
-void reduceMaxKernel(float *in, int n) {
+void reduceMaxKernel(float* max, float *in, int n) {
     __shared__ float sdata[BLOCK_HEIGHT];
     int idx = blockIdx.x * BLOCK_HEIGHT + threadIdx.x;
     if (idx < n)
@@ -923,7 +922,7 @@ void reduceMaxKernel(float *in, int n) {
     int redOff = 1;
     int redStride = 2;
     while(redOff != BLOCK_HEIGHT) {
-        if (threadIdx.x % redStride == 0) {
+        if ((threadIdx.x & (redStride-1)) == 0) {
             syncthreads();
             sdata[threadIdx.x] = fmaxf(abs(sdata[threadIdx.x]), abs(sdata[threadIdx.x + redOff]));
         }
@@ -931,19 +930,23 @@ void reduceMaxKernel(float *in, int n) {
         redStride *= 2;
     }
     if(threadIdx.x == 0) {
-        in[blockIdx.x] = sdata[0];
+        max[blockIdx.x] = sdata[0];
     }
 }
 
 float maxGpu(float *in, int n) {
+  float max;
+  float *maxGPU;
+  cudaMalloc((void **) &maxGPU, (n / BLOCK_HEIGHT + 1)*sizeof(float));
   while(n > 0) {
     int grid = n / BLOCK_HEIGHT + 1;
-    reduceMaxKernel<<<grid, BLOCK_HEIGHT>>> (in, n);
+    reduceMaxKernel<<<grid, BLOCK_HEIGHT>>> (maxGPU, in, n);
     n /= BLOCK_HEIGHT;
+    in=maxGPU;
   }
-  float max;
-  cudaMemcpy(&max, in, sizeof(float), cudaMemcpyDeviceToHost);
-  cudaThreadSynchronize();
+  cudaMemcpy(&max, maxGPU, sizeof(float), cudaMemcpyDeviceToHost);
+  //cudaDeviceSynchronize(); // don't think this is needed.
+  cudaFree(maxGPU);
   return max;
 }
 
@@ -1063,6 +1066,32 @@ void apxGpu(const float *a_in, const float *x_in,
   grid.x = n_subs * stride / BLOCK_HEIGHT + 1;
   apxKernel<<<grid, BLOCK_HEIGHT>>> (a_in, x_in, stride, n_subs * stride, apx_out);
   cudaThreadSynchronize();
+}
+
+__global__
+void PermuteGpuKernel(const float *Ai, int p, int j, float *Aij)
+{
+    int jj = blockIdx.x;
+    int ii = threadIdx.x;
+
+    int dim = 2 * p * (p + 1);
+    int stride = 2 * p;
+
+    int original_jj = jj%stride - j;
+    original_jj += (original_jj < 0) ? stride : 0;
+    original_jj += (jj/stride) * stride;
+
+    while (ii < dim) {
+        Aij[jj*dim + ii] = Ai[original_jj*dim + ii];
+        ii += blockDim.x;
+    }
+}
+
+void PermuteGpu(const float *Ai, int p, int j, float *Aij, cudaStream_t stream)
+{
+    int dim = 2 * p * (p + 1);
+    dim3 grid(dim);
+    PermuteGpuKernel<<<grid, BLOCK_HEIGHT, 0, stream>>>(Ai, p, j, Aij);
 }
 
 
@@ -1966,9 +1995,8 @@ void avpwGpu(const double *a_in, const double *v_in,
   cudaThreadSynchronize();
 }
 
-///@bug the kernel modifies the input
 __global__
-void reduceMaxKernel(double *in, int n) {
+void reduceMaxKernel(double* max, double *in, int n) {
     __shared__ double sdata[BLOCK_HEIGHT];
     int idx = blockIdx.x * BLOCK_HEIGHT + threadIdx.x;
     if (idx < n)
@@ -1979,7 +2007,7 @@ void reduceMaxKernel(double *in, int n) {
     int redOff = 1;
     int redStride = 2;
     while(redOff != BLOCK_HEIGHT) {
-        if (threadIdx.x % redStride == 0) {
+        if ((threadIdx.x & (redStride-1)) == 0) {
             syncthreads();
             sdata[threadIdx.x] = fmaxf(abs(sdata[threadIdx.x]), abs(sdata[threadIdx.x + redOff]));
         }
@@ -1987,19 +2015,23 @@ void reduceMaxKernel(double *in, int n) {
         redStride *= 2;
     }
     if(threadIdx.x == 0) {
-        in[blockIdx.x] = sdata[0];
+        max[blockIdx.x] = sdata[0];
     }
 }
 
 double maxGpu(double *in, int n) {
+  double max;
+  double *maxGPU;
+  cudaMalloc((void **) &maxGPU, (n / BLOCK_HEIGHT + 1)*sizeof(double));
   while(n > 0) {
     int grid = n / BLOCK_HEIGHT + 1;
-    reduceMaxKernel<<<grid, BLOCK_HEIGHT>>> (in, n);
+    reduceMaxKernel<<<grid, BLOCK_HEIGHT>>> (maxGPU, in, n);
     n /= BLOCK_HEIGHT;
+    in=maxGPU;
   }
-  double max;
-  cudaMemcpy(&max, in, sizeof(double), cudaMemcpyDeviceToHost);
-  cudaThreadSynchronize();
+  cudaMemcpy(&max, maxGPU, sizeof(double), cudaMemcpyDeviceToHost);
+  //cudaDeviceSynchronize(); // don't think this is needed.
+  cudaFree(maxGPU);
   return max;
 }
 
@@ -2093,8 +2125,8 @@ void apxGpu(const double *a_in, const double *x_in,
   cudaThreadSynchronize();
 }
 
-__global__ 
-void PermuteGpuKernel(const float *Ai, int p, int j, float *Aij)
+__global__
+void PermuteGpuKernel(const double *Ai, int p, int j, double *Aij)
 {
     int jj = blockIdx.x;
     int ii = threadIdx.x;
@@ -2112,7 +2144,7 @@ void PermuteGpuKernel(const float *Ai, int p, int j, float *Aij)
     }
 }
 
-void PermuteGpu(const float *Ai, int p, int j, float *Aij, cudaStream_t stream)
+void PermuteGpu(const double *Ai, int p, int j, double *Aij, cudaStream_t stream)
 {
     int dim = 2 * p * (p + 1);
     dim3 grid(dim);
