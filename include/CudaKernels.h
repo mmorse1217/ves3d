@@ -21,6 +21,7 @@ float maxGpu(float *in, int n);
 float AlgebraicDotGpu(const float *x, const float *y, size_t length);
 void axGpu(const float* a, const float* x, size_t stride, size_t n_vecs, float* ax_out);
 void apxGpu(const float *a_in, const float *x_in, int stride, int n_subs, float *apx_out);
+void PermuteGpu(const float *Ai, int p, int j, float *Aij, cudaStream_t stream);
 
 void DotProductGpu(const double *a, const double *b, int stride, int num_surfs, double *aDb);
 void CrossProductGpu(const double *a, const double *b, int stride, int num_surfs, double *aCb);
@@ -45,6 +46,6 @@ double maxGpu(double *in, int n);
 double AlgebraicDotGpu(const double *x, const double *y, size_t length);
 void axGpu(const double* a, const double* x, size_t stride, size_t n_vecs, double* ax_out);
 void apxGpu(const double *a_in, const double *x_in, int stride, int n_subs, double *apx_out);
-void PermuteGpu(const float *Ai, int p, int j, float *Aij, cudaStream_t stream);
+void PermuteGpu(const double *Ai, int p, int j, double *Aij, cudaStream_t stream);
 
 #include "transpose_kernel.h"
