@@ -1,32 +1,40 @@
-include $(VES3D_DIR)/makefile.in.files/makefile.in
+########################################################
+### Do not add any customization to this file.       ###
+### put customizations in the platform or cxx files. ###
+########################################################
 
-LIB_SRC = $(VES3D_SRC)/CPUKernels.cc 	\
-	  $(VES3D_SRC)/Logger.cc 	\
-	  $(VES3D_SRC)/Enums.cc      	\
-	  $(VES3D_SRC)/Error.cc      	\
-	  $(VES3D_SRC)/DataIO.cc 	\
-	  $(VES3D_SRC)/anyoption.cc
-
-ARFILES = libves3d.a
-
-ifeq ($(USE_GPU),yes)
-  LIB_SRC_GPU = $(VES3D_DIR)/src/CudaKernels.cu
-  LIB_SRC    +=	$(VES3D_DIR)/src/CudaApiGlobals.cc
-  LIB_OBJ_GPU = $(LIB_SRC_GPU:.cu=.o)
-  ARFILES    += libves3dgpu.a
+ifndef VES3D_DIR
+$(error "$${VES3D_DIR} environment variable is not set.")
 endif
 
-LIB_OBJ = $(LIB_SRC:.cc=.o)
+# include rules and flag for compiler/host
+VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
+include ${VES3D_MKDIR}/makefile.in
 
-all: $(ARFILES)
+LIB_SRC = ${VES3D_SRCDIR}/CPUKernels.cc 	\
+	  ${VES3D_SRCDIR}/Logger.cc	 	\
+	  ${VES3D_SRCDIR}/Enums.cc      	\
+	  ${VES3D_SRCDIR}/Error.cc      	\
+	  ${VES3D_SRCDIR}/DataIO.cc 		\
+	  ${VES3D_SRCDIR}/anyoption.cc
 
-libves3d.a: $(LIB_OBJ) $(MAKEIN)
-	$(AR) $(ARFLAGS) $(VES3D_DIR)/lib/libves3d.a $(LIB_OBJ)
-	$(RANLIB) $(VES3D_DIR)/lib/libves3d.a
+LIB_SRC_GPU = ${VES3D_SRCDIR}/CudaKernels.cu
+ifeq (${VES3D_USE_GPU},yes)
+  LIB_SRC += ${VES3D_SRCDIR}/CudaApiGlobals.cc
+endif
 
-libves3dgpu.a: $(LIB_OBJ_GPU) $(MAKEIN)
-	$(AR) $(ARFLAGS) $(VES3D_DIR)/lib/libves3dgpu.a $(LIB_OBJ_GPU)
-	$(RANLIB) $(VES3D_DIR)/lib/libves3dgpu.a
+LIB_OBJ     = $(LIB_SRC:.cc=.o)
+LIB_OBJ_GPU = $(LIB_SRC_GPU:.cu=.o)
+
+all: ${ARFILES}
+
+libves3d.a: ${LIB_OBJ} ${MAKE_DEP}
+	${AR} ${ARFLAGS} ${VES3D_LIBDIR}/libves3d.a ${LIB_OBJ}
+	${RANLIB} ${VES3D_LIBDIR}/libves3d.a
+
+libves3dgpu.a: ${LIB_OBJ_GPU} ${MAKE_DEP}
+	${AR} ${ARFLAGS} ${VES3D_LIBDIR}/libves3dgpu.a ${LIB_OBJ_GPU}
+	${RANLIB} ${VES3D_LIBDIR}/libves3dgpu.a
 
 clean:
 	-$(RM) *.a

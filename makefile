@@ -1,45 +1,56 @@
-MAKEIN = $(VES3D_DIR)/makefile.in.files/makefile.in
-include $(MAKEIN)
+########################################################
+### Do not add any customization to this file.       ###
+### put customizations in the platform or cxx files. ###
+########################################################
 
-BINS = ves3d_seq_direct ves3d_pvfmm
+ifndef VES3D_DIR
+$(error "$${VES3D_DIR} environment variable is not set.")
+endif
+
+# include rules and flag for compiler/host
+VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
+include ${VES3D_MKDIR}/makefile.in
+
+# targets of install
+VES3D_BINS = ves3d_seq_direct ves3d_pvfmm
 
 all: lib
 
-.PHONY: docs tags all-tags lib install test experiment clean check
-
-docs: $(MAKEDEP)
-	-$(DOX) ./docs/Doxyfile
-
-tags: $(MAKEDEP)
-	-$(TAGS) $(VES3D_SRC)/*.cc  $(VES3D_INC)/*.h test/*.cc test/*.h
-
-all-tags: $(MAKEDEP)
-	-$(TAGS) $(VES3D_SRC)/* $(VES3D_INC)/* tests/* experiments/* etc/*
-
 lib:
-	$(MAKE) -C  ${VES3D_DIR}/lib/
+	${MAKE} -C  ${VES3D_LIBDIR}
 
-install: $(addprefix $(VES3D_BIN)/,$(BINS))
-
-$(VES3D_BIN)/%: $(VES3D_SRC)/%.o
-	-@$(MKDIRS) $(dir $@)
-	$(CXX) $(CPPFLAGS) $< -o $@ $(LDFLAGS)
-	$(CXX) -MM $(CPPFLAGS) -MT $(VES3D_SRC)/$*.o -o $(VES3D_SRC)/$*.d  $(VES3D_SRC)/$*.cc
+install: $(addprefix ${VES3D_BINDIR}/,${VES3D_BINS})
 
 test:
-	$(MAKE) -C  ${VES3D_DIR}/test/
+	${MAKE} -C  ${VES3D_TSTDIR}
 
 check:
-	$(MAKE) -C ${VES3D_DIR}/test check
+	${MAKE} -C ${VES3D_TSTDIR} check
 
-experiment:
-	$(MAKE) -C  ${VES3D_DIR}/experiment/
+docs: ${MAKE_DEP}
+	${DOX} ${VES3D_DOCDIR}/Doxyfile
+
+tags: ${MAKE_DEP}
+	${TAGS} ${VES3D_SRCDIR}/*.cc  ${VES3D_INCDIR}/*.h ${VES3D_TSTDIR}/*.cc ${VES3D_TSTDIR}/*.h
+
+all-tags: ${MAKE_DEP}
+	${TAGS} ${VES3D_SRCDIR}/*  ${VES3D_INCDIR}/* ${VES3D_TSTDIR}/*
+
+${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP}
+	-@${MKDIR} $(dir $@)
+	${CXX} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS} $< ${LDLIBS} -o $@
+	${CXX} -MM -MT ${VES3D_SRCDIR}/$*.o ${CXXFLAGS} ${CPPFLAGS} -c -o ${VES3D_SRCDIR}/$*.d ${VES3D_SRCDIR}/$*.cc
 
 clean:
-	$(MAKE) -C ${VES3D_DIR}/lib clean
-	$(MAKE) -C ${VES3D_DIR}/test clean
-	-$(RM) *.o $(VES3D_SRC)/*.o ./docs/latex ./docs/html TAGS
-	-$(RM) $(VES3D_SRC)/*.d $(addprefix $(VES3D_BIN)/,$(BINS))
+	${MAKE} -C ${VES3D_LIBDIR} clean
+	${MAKE} -C ${VES3D_TSTDIR} clean
+	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
 
-# include dependency file for templates
--include $(addprefix $(VES3D_SRC)/, $(addsuffix .d, $(BINS)))
+distclean:
+	${MAKE} clean
+	-${RM} $(addprefix ${VES3D_BINDIR}/,${VES3D_BINS})
+
+# include dependency file for templates (generated in when making bin files)
+-include $(addprefix ${VES3D_SRCDIR}/, $(addsuffix .d, ${VES3D_BINS}))
+
+.PHONY: lib install config test check experiment docs tags all-tags clean distclean

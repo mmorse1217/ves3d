@@ -11,35 +11,26 @@
     $ export VES3D_DIR=`pwd`
 ```
 
-1. In makefile.in.files directory, copy the makefile.in.sample file
-    to makefile.in.<hostname>
-```
+1. In makefile.in.files directory, make a file for the machine you're
+installing VES3D. You can copy one of the existing machine files, for
+example
+
 #!shell
-
     $ cd makefile.in.files
-    $ cp makefile.in.sample makefile.in.<hostname>
+    $ cp makefile.octane makefile.`hostname -s`
 ```
 
-1. Make sure that the makefile corresponding to the host machine (the
-    value returned by hostname in the shell) exists in the
-    makefile.in.files/ or alternatively set the PLATFORM environmental
-    variable or modify the PLATFORM in makefile.in.
+You can alternatively use one of the existing host files by passing
+the VES3D_PLATFORM variable to make.
 
-1. In the platform specific makefile, set the correct include paths
-    for libraries
+1. In the platform specific makefile you created in the previous step,
+    set the correct include paths for libraries
 
 1. If the makefile corresponding to your choice of compiler does
     not exist, you also need to write that makefile (with the correct
     extension)
 
- 1. Make a symbolic link to makefile.in.<hostname>
-```
-#!shell
-
-    $ln -s makefile.in.<hostname> makefile.in
-```
-
- 1. Optionally add makefile.in.<hostname> to hg for future reference
+ 1. Optionally add makefile.<hostname> to hg for future reference
 
 ## Building: ##
 ---
@@ -60,6 +51,6 @@
 ```
 ## Misc: ##
 ---
-1. Code-specific compiler options are: VERBOSE, PROFILING, VES3D_TESTING, USE_GPU, USE_PVFMM
-1. If you want the GPU code compiled set "USE_GPU=yes" in makefile.in.<hostname>
+1. Code-specific compiler options are: VERBOSE, PROFILING, VES3D_TESTING, VES3D_USE_GPU, VES3D_USE_PVFMM
+1. If you want the GPU code compiled set "VES3D_USE_GPU=yes" in makefile.<hostname>
 1. Fully functional revisions of code are tagged by vYY.ID (YY is year and ID is an integer)
