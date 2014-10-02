@@ -14,12 +14,11 @@
 1. In makefile.in.files directory, make a file for the machine you're
 installing VES3D. You can copy one of the existing machine files, for
 example
-
+```
 #!shell
     $ cd makefile.in.files
     $ cp makefile.octane makefile.`hostname -s`
 ```
-
 You can alternatively use one of the existing host files by passing
 the VES3D_PLATFORM variable to make.
 
