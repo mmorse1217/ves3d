@@ -8,17 +8,17 @@ VES3D_VERBOSE   = yes
 VES3D_USE_PVFMM = yes
 
 # compiler
-ifeq ($(CXX),icpc)
+ifeq (${COMPILER_VENDOR},intel)
  BLASPKG         = HAS_MKL
- BLAS_LDFLAGS    = -L ${ICES_MKL_LIB} 
+ BLAS_LDFLAGS    = -L ${ICES_MKL_LIB}
  BLAS_LDLIBS     = -Wl,--start-group -lmkl_intel_lp64  \
 		-lmkl_intel_thread -lmkl_core -Wl,--end-group
  BLAS_INCLUDE   = -I ${ICES_MKL_INC}
 else
  BLASPKG        = HAS_BLAS
- BLAS_LDFLAGS   = -L/usr/lib64/ 
+ BLAS_LDFLAGS   = -L/usr/lib64/
  BLAS_LDLIBS    = /usr/lib64/liblapack.so.3.0.3 -lblas
- BLAS_INCLUDE   = 
+ BLAS_INCLUDE   =
 endif
 
 CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}

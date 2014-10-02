@@ -3,7 +3,9 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.octane
 include ${VES3D_MKDIR}/makefile.default
 
 # customization ##########################################
-CXX = g++
+COMPILER_VENDOR = gnu
+CC		= gcc
+CXX		= g++
 
 VES3D_DEBUG     = yes
 VES3D_PROFILE   = yes
@@ -17,5 +19,5 @@ BLAS_INCLUDE    =
 CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
 
 # linker
-LDFLAGS        += 
+LDFLAGS        +=
 LDLIBS         += $(BLAS_LIBS) -lpthread

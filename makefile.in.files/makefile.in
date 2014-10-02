@@ -8,12 +8,9 @@ VES3D_MKDIR    ?= ${VES3D_DIR}/makefile.in.files
 MAKE_DEP       += ${VES3D_MKDIR}/makefile.in
 
 ## Platform dependent makefile
-# all machine personalization should go to platform file
+# all machine customization should go to platform file
 include ${VES3D_MKDIR}/makefile.$(VES3D_PLATFORM)
 
 ## compiler dependent makefile
-# platform for commandline should define CXX
--include $(VES3D_MKDIR)/makefile.$(CXX)
-ifndef COMPILER_VENDOR # assuming MPI, try to determine the underlying compiler
-  include $(VES3D_DIR)/makefile.in.files/makefile.$(shell basename $(shell $(CXX) -show | cut -d ' ' -f 1 ))
-endif
+# platform for commandline should define COMPILER_VENDOR
+include $(VES3D_MKDIR)/makefile.$(COMPILER_VENDOR)

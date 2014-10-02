@@ -2,17 +2,16 @@
 ## Should only define/adjust CXXFLAGS, CPPFLAGS, LDFLAGS, LDLIBS ##
 ###################################################################
 
-MAKE_DEP += ${VES3D_MKDIR}/makefile.icpc
+MAKE_DEP += ${VES3D_MKDIR}/makefile.gnu
 
-CXXFLAGS += -openmp -fPIC  -early-template-check -sox -fno-exceptions ${PFLAG} -Wall -Werror
+CXXFLAGS += -fopenmp -fPIC -fno-exceptions -w
 
 ifeq ($(VES3D_TESTING),yes)
-  CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline -DVERBOSE  -DPROFILING
+  CXXFLAGS += -O0 -g -pedantic -DVERBOSE -DPROFILING #-gstabs+
 else
-  CXXFLAGS+=  -O3 -finline  -unroll-agressive -msse4 -malign-double -DNDEBUG
+  CXXFLAGS += -O3 -finline-functions -funroll-loops -w	\
+	      -funsafe-loop-optimizations -DNDEBUG -msse3 #-malign-double
 endif
-
-COMPILER_VENDOR = INTEL
 
 ## for ref, these are the implicit rule gnu make uses for compile/link
 # f: f.cc

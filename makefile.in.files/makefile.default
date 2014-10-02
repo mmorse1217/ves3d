@@ -15,14 +15,21 @@ VES3D_VERBOSE    ?= no
 
 # implicit variables
 AR      = ar
-CC      = icc
-CXX     = icpc
 DOX     = doxygen
 NVCC    = nvcc
 MKDIR   = mkdir -p
 RANLIB  = ranlib
 RM      = rm -f
 TAGS    = etags
+
+COMPILER_VENDOR = intel #or gnu
+ifeq (${COMPILER_VENDOR},intel)
+  CC  = icc
+  CXX = icpc
+else
+  CC  = gcc
+  CXX = g++
+endif
 
 # ves3d variables
 VES3D_BINDIR   ?= $(VES3D_DIR)/bin
@@ -40,7 +47,7 @@ ifeq (${VES3D_USE_PVFMM},yes)
     CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
     LDFLAGS  := $(LDFLAGS_PVFMM) $(LDFLAGS)
     #LDFLAGS  += ${LDFLAGS_PVFMM}
-    CXX=${CXX_PVFMM}
+    CXX = ${CXX_PVFMM}
   else
     $(warning WARNING: File not found: $${PVFMM_DIR}/MakeVariables. Not supporting PVFMM.)
   endif
