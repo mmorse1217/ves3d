@@ -54,3 +54,4 @@ distclean:
 -include $(addprefix ${VES3D_SRCDIR}/, $(addsuffix .d, ${VES3D_BINS}))
 
 .PHONY: lib install config test check experiment docs tags all-tags clean distclean
+.SECONDARY:

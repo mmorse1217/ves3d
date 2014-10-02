@@ -22,7 +22,7 @@ RANLIB  = ranlib
 RM      = rm -f
 TAGS    = etags
 
-COMPILER_VENDOR = intel #or gnu
+COMPILER_VENDOR = intel
 ifeq (${COMPILER_VENDOR},intel)
   CC  = icc
   CXX = icpc
