@@ -45,7 +45,7 @@ ifeq (${VES3D_USE_PVFMM},yes)
   -include ${PVFMM_DIR}/MakeVariables
   ifdef CXXFLAGS_PVFMM
     CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
-    LDFLAGS  := $(LDFLAGS_PVFMM) $(LDFLAGS)
+    LDLIBS  := $(LDFLAGS_PVFMM) $(LDLIBS)
     #LDFLAGS  += ${LDFLAGS_PVFMM}
     CXX = ${CXX_PVFMM}
   else
