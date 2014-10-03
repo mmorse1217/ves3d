@@ -1,0 +1,20 @@
+module use /org/centers/ccgo/local/modulefiles/
+module load sl6 paraview/4.0.1
+#module load gcc
+module load intel 
+module load mkl 
+module load openmpi
+module load cuda
+module load petsc
+module load matlab
+
+export PVFMM_DIR=/org/groups/padas/packages/share/pvfmm
+export FFTW_DIR=/org/groups/padas/packages/fftw
+
+export PETSC_ARCH=linux-gnu-c-debug
+export PETSC_DIR=/org/groups/padas/packages/petsc/petsc-3.0.0-p12
+
+export CUDA_DIR=${CUDA_LIB}/../
+export CUDA_PATH=${CUDA_LIB}/../
+
+

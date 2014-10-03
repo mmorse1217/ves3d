@@ -240,7 +240,7 @@ T* Device<GPU>::gemm(const char *transA, const char *transB,
     cugemm(transA, transB, m, n, k, alpha, A, lda, B, 
         ldb, beta, C, ldc); 
     
-    //cudaThreadSynchronize();
+    PROFILEING_EXPR(cudaThreadSynchronize());
     PROFILEEND("GPU",(double) 2* (*k) * (*n) * (*m) + *(beta) * (*n) * (*m));
     return C;
 }

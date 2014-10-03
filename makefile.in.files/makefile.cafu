@@ -1,11 +1,14 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.cafu
 
+# flags for default 
+VES3D_USE_PVFMM  = no
+VES3D_USE_GPU    = yes
+VES3D_PROFILE    = yes
+VES3D_VERBOSE    = yes
+
 include ${VES3D_MKDIR}/makefile.default
 
 # customization ##########################################
-VES3D_USE_PVFMM  = yes
-VES3D_PROFILE    = yes
-VES3D_VERBOSE    = yes
 
 ifeq ($(COMPILER_VENDOR),intel)
  BLASPKG         = HAS_MKL
@@ -18,9 +21,11 @@ else
  BLAS_LDLIBS    = /usr/lib64/liblapack.so.3.0.3 -lblas
  BLAS_INCLUDE   =
 endif
-
 CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
 
 # linker
 LDFLAGS        += ${BLAS_LDFLAGS}
 LDLIBS         += $(BLAS_LDLIBS) -lpthread
+
+
+

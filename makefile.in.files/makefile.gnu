@@ -6,6 +6,18 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.gnu
 
 CXXFLAGS += -fopenmp -fPIC -fno-exceptions -w
 
+ifeq (${VES3D_VERBOSE},yes)
+  CXXFLAGS += -DVERBOSE
+endif
+
+ifeq (${VES3D_PROFILE},yes)
+  CXXFLAGS += -DPROFILING
+endif
+
+ifeq (${VES3D_DEBUG},no)
+  CXXFLAGS += -DNDEBUG
+endif
+
 ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS += -O0 -g -pedantic -DVERBOSE -DPROFILING #-gstabs+
 else

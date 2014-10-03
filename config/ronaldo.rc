@@ -2,7 +2,8 @@ module load autoconf
 module load intel
 module load mkl 
 module load matlab
- 
+
+export PVFMM_DIR=/org/groups/padas/packages/share/pvfmm 
 export FFTW_DIR=/org/groups/padas/packages/fftw
 export PATH=/share/apps/intel_12.1/openmpi/bin:$PATH
 export DENDRO_DIR=/org/groups/padas/packages/Dendro3.0.0

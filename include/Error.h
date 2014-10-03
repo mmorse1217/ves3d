@@ -108,21 +108,23 @@ std::ostream& operator<<(std::ostream& output,
 static Error_t chk_expr(ErrorEvent::UnknownError);
 
 #define CHK(expr) (                            \
-        ( chk_expr = expr ) &&                 \
+		   ( chk_expr = expr ),	       \
+		   chk_expr &&		       \
         ErrorHandler::submitError(chk_expr,    \
             __FUNCTION__,                      \
             __FILE__,                          \
             __LINE__                           \
                                   ))
 
-#define CHK_CB(expr,callback) (                 \
-        ( chk_expr = expr ) &&                  \
-        ErrorHandler::submitError(chk_expr,     \
-            __FUNCTION__,                       \
-            __FILE__,                           \
-            __LINE__,                           \
-            callback                            \
-                                  ))
+#define CHK_CB(expr,callback) (						\
+			       ( chk_expr = expr ),			\
+			       chk_expr &&				\
+			       ErrorHandler::submitError(chk_expr,	\
+							 __FUNCTION__,	\
+							 __FILE__,	\
+							 __LINE__,	\
+							 callback	\
+							 ))
 
 #define SET_ERR_CALLBACK(cb) ( ErrorHandler::setErrorCallBack(cb) )
 #define ERRORSTATUS() ( ErrorHandler::errorStatus() )

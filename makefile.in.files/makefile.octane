@@ -1,12 +1,9 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.octane
 
+COMPILER_VENDOR = gnu
 include ${VES3D_MKDIR}/makefile.default
 
 # customization ##########################################
-COMPILER_VENDOR = gnu
-CC		= gcc
-CXX		= g++
-
 VES3D_DEBUG     = yes
 VES3D_PROFILE   = yes
 VES3D_TESTING   = yes

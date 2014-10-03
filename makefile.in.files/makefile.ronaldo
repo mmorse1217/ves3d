@@ -1,12 +1,13 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.ronaldo
 
+# flags for default 
+VES3D_USE_PVFMM  = no
+VES3D_PROFILE    = yes
+VES3D_VERBOSE    = yes
+
 include ${VES3D_MKDIR}/makefile.default
 
 # customization ##########################################
-VES3D_PROFILE   = yes
-VES3D_VERBOSE   = yes
-VES3D_USE_PVFMM = yes
-
 # compiler
 ifeq (${COMPILER_VENDOR},intel)
  BLASPKG         = HAS_MKL

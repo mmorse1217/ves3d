@@ -6,6 +6,18 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.intel
 
 CXXFLAGS += -openmp -fPIC -early-template-check -sox -fno-exceptions ${PFLAG} -Wall -Werror
 
+ifeq (${VES3D_VERBOSE},yes)
+  CXXFLAGS += -DVERBOSE
+endif
+
+ifeq (${VES3D_PROFILE},yes)
+  CXXFLAGS += -DPROFILING
+endif
+
+ifeq (${VES3D_DEBUG},no)
+  CXXFLAGS += -DNDEBUG
+endif
+
 ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline -DVERBOSE -DPROFILING
 else

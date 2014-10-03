@@ -22,7 +22,7 @@ RANLIB  = ranlib
 RM      = rm -f
 TAGS    = etags
 
-COMPILER_VENDOR = intel
+COMPILER_VENDOR ?= intel
 ifeq (${COMPILER_VENDOR},intel)
   CC  = icc
   CXX = icpc
@@ -62,25 +62,25 @@ CXXFLAGS       += $(VES3D_CXXFLAGS)
 # linker
 VES3D_LIBS      = ves3d
 LDFLAGS        += -L$(VES3D_LIBDIR)
-LDLIBS         += -l${VES3D_LIBS}
-ARFILES         = $(addprefix lib,$(addsuffix .a,${VES3D_LIBS}))
+LDLIBS         += $(addprefix -l,${VES3D_LIBS})
 
 # GPU, CUDA_DIR below is undefined by default (platform file should define it)
 CUDA_INCLUDE  = -I${CUDA_DIR}/include
-CUDA_FLAGS    = ${CUDA_INCLUDE} -arch=sm_13
+CUDA_FLAGS    = ${VES3D_INCLUDE} ${CUDA_INCLUDE} -arch=sm_50
 CUDA_LDFLAGS  = -L${CUDA_DIR}/lib64
-CUDA_LDLIBS   = -lcublas -lcudart #-Wl,-rpath $(CUDA_DIR)/lib64
+CUDA_LDLIBS   = -lcublas -lcudart #-Wl,-rpath ${CUDA_DIR}/lib64
 
 %.o: %.cu $(MAKE_DEP)
-	$(NVCC) ${CXXFLAGS} ${CUDA_FLAGS} -c -o $@ $<
+	$(NVCC) ${CUDA_FLAGS} -c -o $@ $<
 
 # GPU
 ifeq ($(VES3D_USE_GPU),yes)
   VES3D_LIBS   += ves3dgpu
-  CXXFLAGS     += -DGPU_ACTIVE ${CUDA_INCLUDE)
+  CXXFLAGS     += -DGPU_ACTIVE ${CUDA_INCLUDE}
   LDFLAGS      += ${CUDA_LDFLAGS}
   LDLIBS       += ${CUDA_LDLIBS}
 endif
 
 # misc
 ARFLAGS = r
+ARFILES = $(addprefix lib,$(addsuffix .a,${VES3D_LIBS}))

@@ -237,10 +237,10 @@ int main(int argc, char* argv[])
   DataIOTest<Array<float, DevCPU, cpu_dev> > io_a_cpu;
   io_a_cpu.PerformAll();
 
-  // #ifdef GPU_ACTIVE
-  //     DataIOTest<Scalars<float, DevGPU, gpu_dev> > io_gpu;
-  //     io_gpu.PerformAll();
-  // #endif
+  #ifdef GPU_ACTIVE
+      DataIOTest<Array<float, DevGPU, gpu_dev> > io_gpu;
+      io_gpu.PerformAll();
+  #endif
 
   return 0;
 }

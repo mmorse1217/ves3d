@@ -128,11 +128,13 @@ class Logger
         Logger::Record(__FUNCTION__, str, Logger::Toc(), flps))
 #define PROFILECLEAR() (Logger::PurgeProfileHistory())
 #define PROFILEREPORT(format) (Logger::Report(format))
+#define PROFILEING_EXPR(expr) (expr)
 #else
 #define PROFILESTART()
 #define PROFILEEND(str,flps)
 #define PROFILECLEAR()
 #define PROFILEREPORT(format)
+#define PROFILEING_EXPR(expr)
 #endif //PROFILING
 
 /*
