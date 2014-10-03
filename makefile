@@ -12,7 +12,10 @@ VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
 # targets of install
-VES3D_BINS = ves3d_seq_direct ves3d_pvfmm
+VES3D_BINS = ves3d_seq_direct
+ifeq (${VES3D_USE_PVFMM},yes)
+  VES3D_BINS += ves3d_pvfmm
+endif
 
 all: lib
 
