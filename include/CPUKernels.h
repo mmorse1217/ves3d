@@ -49,4 +49,15 @@ void StokesAlltoAll(const double *src, const double *den, size_t np,
     double *pot, void**);
 
 
+
+
+
+void DirectStokesDoubleLayerKernel(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const float *qw, const float *trg,
+    const float *src, const float *norm, const float *den, float *pot);
+
+void DirectStokesDoubleLayerKernel(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const double *qw, const double *trg,
+    const double *src, const double *norm, const double *den, double *pot);
+
 #endif//_CPUKERNELS_H_

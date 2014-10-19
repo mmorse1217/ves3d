@@ -22,6 +22,7 @@ TEST = 	ArrayTest.exe			\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
 	StokesTest.exe			\
+	StokesDoubleLayerTest.exe			\
         SurfaceTest.exe			\
         Tr1Test.exe			\
         VectorsTest.exe			\

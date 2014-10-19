@@ -1,4 +1,5 @@
 #include "CudaKernels.h"
+#include <assert.h>
 #include <stdio.h>
 #include <cuda.h>
 
@@ -756,6 +757,164 @@ void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const flo
       stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U, Q);
   else
       stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U);
+  cudaThreadSynchronize();
+}
+
+
+template <typename Real_t>
+__device__ inline Real_t rsqrt_wrapper(Real_t y){
+  return rsqrt(y);
+}
+
+template <>
+__device__ inline float rsqrt_wrapper(float y){
+  return rsqrtf(y);
+}
+
+template <>
+__device__ inline double rsqrt_wrapper(double y){
+  return rsqrt(y);
+
+  //double x = rsqrtf(y);
+  //x-=0.5*(x - 1.0/(y*x)); // Newton iteration
+  //return x;
+}
+
+template <typename Real_t, bool HAVE_QW>
+__global__ void stokes_double_layer(int m, int n, int t_head, const Real_t *T, const Real_t *S, const Real_t *N, const Real_t *D, Real_t *U, const Real_t *Q) {
+  const Real_t lambda=2.0; // Viscosity contrast
+  const Real_t SCAL_CONST = -3.0*(1.0-lambda)/(4.0*M_PI);
+
+  Real_t trg_reg[3];
+  Real_t src_reg[3];
+  Real_t nor_reg[3];
+  Real_t den_reg[3];
+  Real_t dis_reg[3];
+  Real_t u_reg[3]={0.0, 0.0, 0.0};
+  __shared__
+  Real_t u_sh[BLOCK_HEIGHT][3];
+
+  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+
+  trg_reg[0] = T[t_off];
+  trg_reg[1] = T[m + t_off];
+  trg_reg[2] = T[m + m + t_off];
+
+  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int s = threadIdx.x;
+
+  while(block_off < blockIdx.x * 3 * m + m) {
+    src_reg[0] = S[block_off];
+    src_reg[1] = S[block_off + m];
+    src_reg[2] = S[block_off + m + m];
+
+    nor_reg[0] = N[block_off];
+    nor_reg[1] = N[block_off + m];
+    nor_reg[2] = N[block_off + m + m];
+
+    den_reg[0] = D[block_off];
+    den_reg[1] = D[block_off + m];
+    den_reg[2] = D[block_off + m + m];
+
+    dis_reg[0] = src_reg[0] - trg_reg[0];
+    dis_reg[1] = src_reg[1] - trg_reg[1];
+    dis_reg[2] = src_reg[2] - trg_reg[2];
+
+    Real_t R2= dis_reg[0] * dis_reg[0] + dis_reg[1] * dis_reg[1] + dis_reg[2] * dis_reg[2];
+    Real_t inv_r = rsqrt_wrapper(R2);
+
+    //Real_t inv_r = rsqrtf(R2);
+    //inv_r-=0.5*(inv_r - 1.0/(R2*inv_r));
+
+    inv_r = inv_r + (inv_r-inv_r); // if inv_r is inf then subtraction is NaN and then addition is NaN
+    inv_r = (inv_r > 0.0F) ? inv_r : 0.0F; //inv_r should be positive, and comparison with NaN is always false
+
+    Real_t inv_r5=inv_r*inv_r;
+    inv_r5=inv_r5*inv_r5*inv_r;
+
+    Real_t r_dot_n = nor_reg[0]*dis_reg[0] + nor_reg[1]*dis_reg[1] + nor_reg[2]*dis_reg[2];
+    Real_t r_dot_f = den_reg[0]*dis_reg[0] + den_reg[1]*dis_reg[1] + den_reg[2]*dis_reg[2];
+    Real_t p_ = r_dot_n * r_dot_f * inv_r5 * (HAVE_QW ? Q[s] : 1.0);
+
+    u_reg[0] += dis_reg[0] * p_;
+    u_reg[1] += dis_reg[1] * p_;
+    u_reg[2] += dis_reg[2] * p_;
+
+    block_off += BLOCK_HEIGHT;
+    s += BLOCK_HEIGHT;
+  }
+
+  u_sh[threadIdx.x][0] = u_reg[0];
+  u_sh[threadIdx.x][1] = u_reg[1];
+  u_sh[threadIdx.x][2] = u_reg[2];
+
+  int off = 1;
+  int stride = 2;
+  while (off != BLOCK_HEIGHT) {
+    if (threadIdx.x % stride == 0) {
+      syncthreads();
+      u_sh[threadIdx.x][0] += u_sh[threadIdx.x + off][0];
+      u_sh[threadIdx.x][1] += u_sh[threadIdx.x + off][1];
+      u_sh[threadIdx.x][2] += u_sh[threadIdx.x + off][2];
+    }
+    off = stride;
+    stride *= 2;
+  }
+  if (threadIdx.x == 0) {
+    U[0*m + t_off] = u_sh[0][0] * SCAL_CONST;
+    U[1*m + t_off] = u_sh[0][1] * SCAL_CONST;
+    U[2*m + t_off] = u_sh[0][2] * SCAL_CONST;
+  }
+}
+
+
+void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *N, const float *D, float *U, const float *Q) {
+  dim3 grid;
+  grid.x = n;
+  grid.y = t_tail - t_head;
+
+  { // cudaGetLastError()
+    cudaError_t error=cudaGetLastError();
+    if (error != cudaSuccess) fprintf(stderr,"CUDA Error: %s \n", cudaGetErrorString(error));
+    assert(error == cudaSuccess);
+  }
+
+  if (Q != NULL)
+      stokes_double_layer<float, true><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+  else
+      stokes_double_layer<float,false><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+
+  { // cudaGetLastError()
+    cudaError_t error=cudaGetLastError();
+    if (error != cudaSuccess) fprintf(stderr,"CUDA Error: %s \n", cudaGetErrorString(error));
+    assert(error == cudaSuccess);
+  }
+
+  cudaThreadSynchronize();
+}
+
+void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const double *T, const double *S, const double *N, const double *D, double *U, const double *Q) {
+  dim3 grid;
+  grid.x = n;
+  grid.y = t_tail - t_head;
+
+  { // cudaGetLastError()
+    cudaError_t error=cudaGetLastError();
+    if (error != cudaSuccess) fprintf(stderr,"CUDA Error: %s \n", cudaGetErrorString(error));
+    assert(error == cudaSuccess);
+  }
+
+  if (Q != NULL)
+      stokes_double_layer<double, true><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+  else
+      stokes_double_layer<double,false><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+
+  { // cudaGetLastError()
+    cudaError_t error=cudaGetLastError();
+    if (error != cudaSuccess) fprintf(stderr,"CUDA Error: %s \n", cudaGetErrorString(error));
+    assert(error == cudaSuccess);
+  }
+
   cudaThreadSynchronize();
 }
 

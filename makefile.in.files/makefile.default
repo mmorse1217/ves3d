@@ -43,10 +43,12 @@ VES3D_TSTDIR   ?= $(VES3D_DIR)/test
 # PVFMM (should come first so that the flags are ordered properly)
 ifeq (${VES3D_USE_PVFMM},yes)
   -include ${PVFMM_DIR}/MakeVariables
+  ifndef CXXFLAGS_PVFMM
+  -include $(VES3D_DIR)/pvfmm/MakeVariables
+  endif
   ifdef CXXFLAGS_PVFMM
     CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
-    LDLIBS  := $(LDFLAGS_PVFMM) $(LDLIBS)
-    #LDFLAGS  += ${LDFLAGS_PVFMM}
+    LDLIBS  += ${LDFLAGS_PVFMM}
     CXX = ${CXX_PVFMM}
   else
     $(warning WARNING: File not found: $${PVFMM_DIR}/MakeVariables. Not supporting PVFMM.)
@@ -66,7 +68,13 @@ LDLIBS         += $(addprefix -l,${VES3D_LIBS})
 
 # GPU, CUDA_DIR below is undefined by default (platform file should define it)
 CUDA_INCLUDE  = -I${CUDA_DIR}/include
-CUDA_FLAGS    = ${VES3D_INCLUDE} ${CUDA_INCLUDE} -arch=sm_50
+CUDA_FLAGS    = ${VES3D_INCLUDE} ${CUDA_INCLUDE} -m64 \
+								-gencode arch=compute_20,code=sm_20 \
+								-gencode arch=compute_30,code=sm_30 \
+								-gencode arch=compute_32,code=sm_32 \
+								-gencode arch=compute_35,code=sm_35 \
+								-gencode arch=compute_50,code=sm_50 \
+								-gencode arch=compute_50,code=compute_50
 CUDA_LDFLAGS  = -L${CUDA_DIR}/lib64
 CUDA_LDLIBS   = -lcublas -lcudart #-Wl,-rpath ${CUDA_DIR}/lib64
 

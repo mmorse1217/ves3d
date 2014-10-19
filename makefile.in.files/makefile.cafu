@@ -12,8 +12,8 @@ include ${VES3D_MKDIR}/makefile.default
 
 ifeq ($(COMPILER_VENDOR),intel)
  BLASPKG         = HAS_MKL
- BLAS_LDFLAGS    = -L ${MKLROOT}/lib/intel64
- BLAS_LDLIBS     = -Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group
+ BLAS_LDFLAGS    =
+ BLAS_LDLIBS     = -mkl
  BLAS_INCLUDE    = -I ${MKLROOT}/include
 else
  BLASPKG        = HAS_BLAS

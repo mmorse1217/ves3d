@@ -260,6 +260,19 @@ void Device<GPU>::DirectStokes(const T *src, const T *den,
 
 template<>
 template<typename T>
+void Device<GPU>::DirectStokesDoubleLayer(const T *src, const T *norm, const T *den,
+    const T *qw, size_t stride, size_t n_surfs, const T *trg,
+    size_t trg_idx_head, size_t trg_idx_tail, T *pot) const
+{
+    PROFILESTART();
+    cuda_stokes_double_layer(stride, n_surfs, trg_idx_head, trg_idx_tail, 
+        trg, src, norm, den, pot, qw);
+    PROFILEEND("GPU",((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
+    return;
+}
+
+template<>
+template<typename T>
 T Device<GPU>::MaxAbs(T *x_in, size_t length) const
 { 
     PROFILESTART();

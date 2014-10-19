@@ -13,6 +13,7 @@ void axpyGpu(float a, const float* x_in, const float *y_in, int length, float *a
 void axpbGpu(float a, const float* x_in, float b, int length, float *axpb_out);
 void cuda_shuffle(float *in, int stride, int n_surfs, int dim, float *out);
 void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *D, float *U, const float *Q);
+void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *N, const float *D, float *U, const float *Q);
 void ResampleGpu(int p, int n_funs, int q, const float *shc_p, float *shc_q);
 void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, float *shc_out);
 void avpwGpu(const float *a_in, const float *v_in, const float *w_in, int stride, int num_surfs, float *avpw_out);
@@ -38,6 +39,7 @@ void axpyGpu(double a, const double* x_in, const double *y_in, int length, doubl
 void axpbGpu(double a, const double* x_in, double b, int length, double *axpb_out);
 void cuda_shuffle(double *in, int stride, int n_surfs, int dim, double *out);
 void cuda_stokes(int m, int n, int t_head, int t_tail, const double *T, const double *S, const double *D, double *U, const double *Q);
+void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const double *T, const double *S, const double *N, const double *D, double *U, const double *Q);
 void ResampleGpu(int p, int n_funs, int q, const double *shc_p, double *shc_q);
 void ScaleFreqsGpu(int p, int n_funs, const double *shc_in, const double *alpha, double *shc_out);
 void avpwGpu(const double *a_in, const double *v_in, const double *w_in, int stride, int num_surfs, double *avpw_out);

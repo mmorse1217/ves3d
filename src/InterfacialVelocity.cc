@@ -66,6 +66,14 @@ InterfacialVelocity<SurfContainer, Interaction>::
     purgeTheWorkSpace();
 }
 
+// Performs the following computation:
+// velocity(n+1) = updateInteraction( bending(n), tension(n) ); // Far-field
+// velocity(n+1)+= stokes( bending(n) );                        // Add near-field due to bending
+// tension(n+1)  = getTension( velocity(n+1) )                  // Linear solve to compute new tension
+// velocity(n+1)+= stokes( tension(n+1) )                       // Add near-field due to tension
+// position(n+1) = position(n) + dt*velocity(n+1)
+//
+// Notes: tension solve is block implicit.
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updatePositionExplicit(const value_type &dt)
@@ -95,6 +103,8 @@ updatePositionExplicit(const value_type &dt)
     return ErrorEvent::Success;
 }
 
+// First compute block implicit position update from tension.
+// Then compute block implicit position update from bending force.
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updatePositionImplicit(const value_type &dt)
@@ -155,6 +165,8 @@ updatePositionImplicit(const value_type &dt)
     return ret_val;
 }
 
+// @Abtin: Why is self-interaction not up-sampled?
+// Compute velocity_far = velocity_bg + FMM(bending+tension) - DirectStokes(bending+tension)
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateInteraction() const
@@ -253,6 +265,8 @@ updateInteraction() const
     return ErrorEvent::Success;
 }
 
+// Linear solve to compute tension such that surface divergence:
+// surf_div( velocity + stokes(tension) ) = 0
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
@@ -262,7 +276,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
 
     S_.div(vel_in, *rhs);
 
-    axpy(static_cast<value_type>(-1), *rhs, *rhs);
+    axpy(static_cast<value_type>(-1), *rhs, *rhs); // @Abtin: does this set rhs=0? why?
 
     int iter(params_.tension_solver_iter);
     int rsrt(params_.tension_solver_restart);
@@ -292,6 +306,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     return ret_val;
 }
 
+// Computes near (self) velocity due to force.
+// Computes singular integration on the vesicle surface.
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     const Vec_t &force, Vec_t &velocity) const
@@ -328,6 +344,54 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
             PROFILEEND("SelfInteraction_",0);
+        }
+
+    recycle(t1);
+    recycle(t2);
+    recycle(v1);
+    recycle(v2);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
+    const Vec_t &force, Vec_t &velocity) const
+{
+    PROFILESTART();
+
+    int imax(S_.getPosition().getGridDim().first);
+    int jmax(S_.getPosition().getGridDim().second);
+    int np = S_.getPosition().getStride();
+    int nv = S_.getPosition().getNumSubs();
+
+    std::auto_ptr<Sca_t> t1 = checkoutSca();
+    std::auto_ptr<Sca_t> t2 = checkoutSca();
+    std::auto_ptr<Vec_t> v1 = checkoutVec();
+    std::auto_ptr<Vec_t> v2 = checkoutVec();
+    std::auto_ptr<Vec_t> v3 = checkoutVec();
+
+    ax(w_sph_inv_, S_.getAreaElement(), *t1);
+
+    int numinputs = 4;
+    const Sca_t* inputs[] = {&S_.getPosition(), &S_.getNormal(),   &force, t1.get()};
+    Sca_t*      outputs[] = { v1.get()        ,  v3.get()      , v2.get(), t2.get()};
+    move_pole.setOperands(inputs, numinputs, params_.singular_stokes);
+
+    for(int ii=0;ii < imax; ++ii)
+        for(int jj=0;jj < jmax; ++jj)
+        {
+            move_pole(ii, jj, outputs);
+
+            ax(w_sph_, *t2, *t2);
+            xv(*t2, *v2, *v2);
+
+            PROFILESTART();
+            S_.getPosition().getDevice().DirectStokesDoubleLayer(v1->begin(), v3->begin(), v2->begin(),
+                sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
+                ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
+            PROFILEEND("DblLayerSelfInteraction_",0);
         }
 
     recycle(t1);

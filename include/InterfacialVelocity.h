@@ -38,6 +38,7 @@ class InterfacialVelocity
 
     Error_t getTension(const Vec_t &vel_in, Sca_t &tension) const;
     Error_t stokes(const Vec_t &force, Vec_t &vel) const;
+    Error_t stokes_double_layer(const Vec_t &force, Vec_t &vel) const;
     Error_t updateInteraction() const;
 
     Error_t operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const;

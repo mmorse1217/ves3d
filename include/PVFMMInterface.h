@@ -6,11 +6,32 @@
 #include <kernel.hpp>
 #include <mpi_tree.hpp>
 
+///////////////////////// Kernel Function Declarations ////////////////////////
+
+template <class T>
+void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
+
+const pvfmm::Kernel<double> ker_stokes_m2l=pvfmm::BuildKernel<double, stokes_sl_m2l>("stokes_m2l", 3, std::pair<int,int>(4,3));
+
+
+
+template <class T>
+void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
+
+template <class T>
+void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
+
+const pvfmm::Kernel<double> ker_stokes=pvfmm::BuildKernel<double, stokes_sl, stokes_dl>("stokes_vel", 3, std::pair<int,int>(3,3),
+    NULL, NULL, NULL, &ker_stokes_m2l, &ker_stokes_m2l, &ker_stokes_m2l, NULL, NULL);
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+
 template<typename T>
 void* PVFMMCreateContext(int n=400, int m=10, int max_d=20,
     pvfmm::BoundaryType bndry=pvfmm::FreeSpace,
-    const pvfmm::Kernel<T>* ker=&pvfmm::ker_stokes_vel,
-    const pvfmm::Kernel<T>* aux_ker=NULL,
+    const pvfmm::Kernel<T>* ker=&ker_stokes,
     MPI_Comm comm=MPI_COMM_WORLD);
 
 template<typename T>
@@ -22,7 +43,10 @@ void PVFMMDestroyContext(void** ctx);
  * ctx_[0]==NULL, a new context is created and stored at ctx_[0].
  */
 template<typename T>
-void PVFMMEval(const T* all_pos, const T* all_den, size_t np, T* all_pot, void** ctx_);
+void PVFMMEval(const T* all_pos, const T* sl_den, size_t np, T* all_pot, void** ctx_);
+
+template<typename T>
+void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T* all_pot, void** ctx_);
 
 /**
  * Repartition nv vesicles by the MortonId of their center-of-mass between

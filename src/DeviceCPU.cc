@@ -542,6 +542,20 @@ void Device<CPU>::DirectStokes(const T *src, const T *den, const T *qw,
 
 template<>
 template<typename T>
+void Device<CPU>::DirectStokesDoubleLayer(const T *src, const T *norm, const T *den, const T *qw,
+    size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
+    size_t trg_idx_tail, T *pot) const
+{
+    PROFILESTART();
+
+    DirectStokesDoubleLayerKernel(stride, n_surfs, trg_idx_head,
+        trg_idx_tail, qw, trg, src, norm, den, pot);
+
+    PROFILEEND("CPU",((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
+}
+
+template<>
+template<typename T>
 T Device<CPU>::MaxAbs(T *x_in, size_t length) const
 {
     PROFILESTART();

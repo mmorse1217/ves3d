@@ -1049,3 +1049,86 @@ void StokesAlltoAll(const double *src, const double *den, size_t np, double *pot
         pot[3*trg_idx+2] = pz * I_PI;
     }
 }
+
+
+
+
+template <class Real_t, bool HAVE_QW>
+void DirectStokesDoubleLayerKernel_Template(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const Real_t *qw, const Real_t *trg, const Real_t *src, const Real_t *norm,
+    const Real_t *den, Real_t *pot)
+{
+    Real_t tx, ty, tz, px, py, pz, dx, dy, dz, nx, ny, nz, invR, invR5, cpx, cpy, cpz, cc;
+    const Real_t lambda=2.0; // Viscosity contrast
+    const Real_t SCAL_CONST = -3.0*(1.0-lambda)/(4.0*M_PI);
+
+#pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, nx, ny, nz, invR, invR5, cpx, cpy, cpz, cc)
+    for (int vt=0; vt<n_surfs; vt++)
+    {
+        for(int trg_idx=trg_idx_head;trg_idx<trg_idx_tail;++trg_idx)
+        {
+            px = 0;
+            py = 0;
+            pz = 0;
+
+            tx=trg[3*vt*stride +                   trg_idx];
+            ty=trg[3*vt*stride + stride +          trg_idx];
+            tz=trg[3*vt*stride + stride + stride + trg_idx];
+
+            for (int s=0; s<stride; s++)
+            {
+                dx=src[3*stride*vt +                   s]-tx;
+                dy=src[3*stride*vt + stride +          s]-ty;
+                dz=src[3*stride*vt + stride + stride + s]-tz;
+
+                nx=norm[3*stride*vt +                   s];
+                ny=norm[3*stride*vt + stride +          s];
+                nz=norm[3*stride*vt + stride + stride + s];
+
+                invR = dx*dx;
+                invR+= dy*dy;
+                invR+= dz*dz;
+
+                if (invR!=0)
+                    invR = 1.0/sqrt(invR);
+
+                invR5=invR*invR;
+                invR5=invR5*invR5*invR;
+
+                cpx = den[3*stride*vt +                   s];
+                cpy = den[3*stride*vt + stride +          s];
+                cpz = den[3*stride*vt + stride + stride + s];
+
+                Real_t r_dot_n =  nx*dx +  ny*dy +  nz*dz;
+                Real_t r_dot_f = cpx*dx + cpy*dy + cpz*dz;
+                Real_t p_ = r_dot_n * r_dot_f * invR5 * (HAVE_QW ? qw[s] : 1.0);
+
+                px += dx*p_;
+                py += dy*p_;
+                pz += dz*p_;
+            }
+            pot[3*vt*stride +                  trg_idx] = px * SCAL_CONST;
+            pot[3*vt*stride + stride +         trg_idx] = py * SCAL_CONST;
+            pot[3*vt*stride + stride +stride + trg_idx] = pz * SCAL_CONST;
+        }
+
+    }
+}
+
+
+void DirectStokesDoubleLayerKernel(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const float *qw, const float *trg, const float *src, const float *norm,
+    const float *den, float *pot)
+{
+  if(qw) DirectStokesDoubleLayerKernel_Template<float,  true>(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, norm, den, pot);
+  else   DirectStokesDoubleLayerKernel_Template<float, false>(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, norm, den, pot);
+}
+
+void DirectStokesDoubleLayerKernel(int stride, int n_surfs, int trg_idx_head,
+    int trg_idx_tail, const double *qw, const double *trg, const double *src, const double *norm,
+    const double *den, double *pot)
+{
+    if(qw) DirectStokesDoubleLayerKernel_Template<double,  true>(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, norm, den, pot);
+    else   DirectStokesDoubleLayerKernel_Template<double, false>(stride, n_surfs, trg_idx_head, trg_idx_tail, qw, trg, src, norm, den, pot);
+}
+
