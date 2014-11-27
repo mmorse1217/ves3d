@@ -13,6 +13,7 @@ VES3D_USE_GPU    ?= no
 VES3D_USE_PVFMM  ?= no
 VES3D_VERBOSE    ?= no
 
+
 # implicit variables
 AR      = ar
 DOX     = doxygen
@@ -39,6 +40,7 @@ VES3D_INCDIR   ?= $(VES3D_DIR)/include
 VES3D_LIBDIR   ?= $(VES3D_DIR)/lib
 VES3D_SRCDIR   ?= $(VES3D_DIR)/src
 VES3D_TSTDIR   ?= $(VES3D_DIR)/test
+VES3D_VERSION   = $(shell hg -q id)
 
 # PVFMM (should come first so that the flags are ordered properly)
 ifeq (${VES3D_USE_PVFMM},yes)
@@ -48,23 +50,19 @@ ifeq (${VES3D_USE_PVFMM},yes)
   endif
   ifdef CXXFLAGS_PVFMM
     CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
-    LDLIBS  += ${LDFLAGS_PVFMM}
+    LDLIBS  := ${LDFLAGS_PVFMM} ${LDLIBS}
     CXX = ${CXX_PVFMM}
   else
     $(warning WARNING: File not found: $${PVFMM_DIR}/MakeVariables. Not supporting PVFMM.)
   endif
 endif
 
-# compiler
+# CPU flags
 VES3D_TEMPLATES = -I$(VES3D_SRCDIR)
 VES3D_INCLUDE   = -I$(VES3D_INCDIR) $(VES3D_TEMPLATES)
-VES3D_CXXFLAGS  = $(VES3D_INCLUDE)
-CXXFLAGS       += $(VES3D_CXXFLAGS)
-
-# linker
+VES3D_CXXFLAGS  = $(VES3D_INCLUDE) -DVES3D_VERSION=${VES3D_VERSION}
 VES3D_LIBS      = ves3d
-LDFLAGS        += -L$(VES3D_LIBDIR)
-LDLIBS         += $(addprefix -l,${VES3D_LIBS})
+VES3D_LDFLAGS   = -L$(VES3D_LIBDIR)
 
 # GPU, CUDA_DIR below is undefined by default (platform file should define it)
 CUDA_INCLUDE  = -I${CUDA_DIR}/include
@@ -88,6 +86,11 @@ ifeq ($(VES3D_USE_GPU),yes)
   LDFLAGS      += ${CUDA_LDFLAGS}
   LDLIBS       += ${CUDA_LDLIBS}
 endif
+
+# implicit variables
+CXXFLAGS       += $(VES3D_CXXFLAGS)
+LDFLAGS        += -L$(VES3D_LIBDIR)
+LDLIBS         += $(addprefix -l,${VES3D_LIBS})
 
 # misc
 ARFLAGS = r

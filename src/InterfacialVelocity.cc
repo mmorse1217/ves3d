@@ -3,7 +3,6 @@ InterfacialVelocity<SurfContainer, Interaction>::
 InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     OperatorsMats<Arr_t> &mats,
     const Parameters<value_type> &params, const BgFlowBase<Vec_t> &bgFlow) :
-    usr_ptr_(NULL),
     S_(S_in),
     interaction_(Inter),
     bg_flow_(bgFlow),
@@ -224,7 +223,7 @@ updateInteraction() const
     }
 
     //Far interactions
-    Error_t status = interaction_(*u1, *u2, *u3, usr_ptr_);
+    Error_t status = interaction_(*u1, *u2, *u3);
 
     //Shuffling to the original order
     ShufflePoints(*u3, *u2);

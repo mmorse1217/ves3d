@@ -20,6 +20,9 @@ class VesInteraction
     ///The pointer-type to the external FMM function handle.
     typedef void(*InteractionFun_t)(const T*, const T*, size_t, T*, void**);
 
+    //Deallocator for the context
+    typedef void(*Dealloc_t)(void**);
+
     /**
      * @param interaction_handle The function pointer to the FMM
      * code. When set to <tt>NULL</tt>, no interaction is performed.
@@ -27,6 +30,7 @@ class VesInteraction
      * need to take care of.
      */
     explicit VesInteraction(InteractionFun_t interaction_handle = NULL,
+        Dealloc_t clear_context = NULL,
         int num_threads = omp_get_max_threads());
     ~VesInteraction();
 
@@ -38,16 +42,17 @@ class VesInteraction
      * @param position The Cartesian coordinate of the points.
      * @param density The density at each point.
      * @param potential (return value) The calculated potential on the points.
-     * @param usr_ptr The user defined pointer, that may be required by the FMM code.
      *
      * @return Enum type defined in enums.h indicating the outcome of interaction.
      */
     template<typename VecContainer>
     Error_t operator()(const VecContainer &position, VecContainer &density,
-        VecContainer &potential, void* usr_ptr = NULL) const;
+        VecContainer &potential) const;
 
   private:
     InteractionFun_t interaction_handle_;
+    Dealloc_t clear_context_;
+
     int num_threads_;
     size_t* each_thread_np_;
     size_t* each_thread_idx_;
@@ -58,7 +63,7 @@ class VesInteraction
     mutable T* all_pos_;
     mutable T* all_den_;
     mutable T* all_pot_;
-    mutable void* usr_ptr_;
+    mutable void* context_;
 
     size_t getCpyDestIdx(size_t this_thread_np) const;
     void checkContainersSize() const;

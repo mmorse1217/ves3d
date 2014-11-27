@@ -44,7 +44,6 @@ class InterfacialVelocity
     Error_t operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const;
     Error_t operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
 
-    void* usr_ptr_;
     Sca_t& tension(){ return tension_;}
 
   private:

@@ -19,7 +19,10 @@ class Repartition
     ///The function pointer type for the external repartitioning function.
     typedef void(*GlobalRepart_t)(size_t nv, size_t stride,
         const T* x, const T* tension, size_t* nvr, T** xr,
-        T** tensionr, void* user_ptr);
+        T** tensionr, void** context);
+
+    //Deallocator for the context
+    typedef void(*Dealloc_t)(void**);
 
     /**
      * @param fun_ptr The actual pointer to the repartitioning
@@ -27,6 +30,7 @@ class Repartition
      * @param num_threads The number of expected threads that to be handled.
      */
     explicit Repartition(GlobalRepart_t fun_ptr = NULL,
+        Dealloc_t clear_context = NULL,
         int num_threads = omp_get_max_threads());
     ~Repartition();
 
@@ -38,11 +42,12 @@ class Repartition
      * depending on the external repartitioning function.
      */
     template<typename VecContainer, typename ScaContainer>
-    Error_t operator()(VecContainer &coord, ScaContainer &tension,
-        void* user_ptr = NULL) const;
+    Error_t operator()(VecContainer &coord, ScaContainer &tension) const;
 
   private:
     GlobalRepart_t g_repart_handle_;
+    Dealloc_t clear_context_;
+
     int num_threads_;
     size_t* each_thread_nv_;
     size_t* each_thread_idx_;
@@ -56,7 +61,7 @@ class Repartition
     mutable T* posr_;
     mutable T* tensionr_;
     mutable size_t nvr_;
-
+    mutable void* context_;
 
     size_t getCpyIdx(size_t this_thread_nv, size_t stride) const;
     size_t getNvShare() const;

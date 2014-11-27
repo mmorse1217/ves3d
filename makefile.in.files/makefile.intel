@@ -21,7 +21,7 @@ endif
 ifeq ($(VES3D_TESTING),yes)
   CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline -DVERBOSE -DPROFILING
 else
-  CXXFLAGS+= -O3 -finline  -unroll-agressive -mavx -malign-double -DNDEBUG
+  CXXFLAGS+= -O3 -finline  -unroll-agressive -malign-double -DNDEBUG
 endif
 
 ## for ref, these are the implicit rule gnu make uses for compile/link

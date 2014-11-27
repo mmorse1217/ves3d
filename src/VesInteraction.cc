@@ -1,7 +1,9 @@
 template<typename T>
 VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
+    Dealloc_t clear_context,
     int num_threads) :
     interaction_handle_(interaction_handle),
+    clear_context_(clear_context),
     num_threads_(num_threads),
     each_thread_np_(new size_t[num_threads_]),
     each_thread_idx_(new size_t[num_threads_ + 1]),
@@ -10,28 +12,38 @@ VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
     all_pos_(NULL),
     all_den_(NULL),
     all_pot_(NULL),
-    usr_ptr_(NULL)
+    context_(NULL)
 {
+    COUTDEBUG("creating an interaction object");
     for(int ii=0; ii<num_threads_; ++ii)
         each_thread_idx_[ii] = each_thread_np_[ii] = 0;
+
+    if (this->interaction_handle_)
+        ASSERT(this->clear_context_,"with an interation_handle a deallocator should be defined");
 }
 
 template<typename T>
 VesInteraction<T>::~VesInteraction()
 {
+    COUTDEBUG("destroying the interaction object");
     delete[] each_thread_np_;
     delete[] each_thread_idx_;
 
     delete[] all_pos_;
     delete[] all_den_;
     delete[] all_pot_;
+
+    if (this->context_){
+        COUTDEBUG("deleting the interaction context");
+        this->clear_context_(&(this->context_));
+    };
 }
 
 template<typename T>
 template<typename VecContainer>
 Error_t VesInteraction<T>::operator()(
     const VecContainer &position, VecContainer &density,
-    VecContainer &potential, void* usr_ptr) const
+    VecContainer &potential) const
 {
     typedef typename VecContainer::value_type value_type;
     typedef typename VecContainer::device_type device_type;
@@ -86,8 +98,8 @@ Error_t VesInteraction<T>::operator()(
     // call user interaction routine
 #pragma omp barrier
 #pragma omp master
-    if(!usr_ptr) usr_ptr_=usr_ptr;
-    interaction_handle_(all_pos_, all_den_, np_, all_pot_, &usr_ptr_);
+    COUTDEBUG("computing vesicle interaction with "<<np_<< " points");
+    interaction_handle_(all_pos_, all_den_, np_, all_pot_, &(this->context_));
 #pragma omp barrier
 
     //Copying back the potential to the device(s)

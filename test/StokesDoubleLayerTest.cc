@@ -7,7 +7,9 @@
 #include "Parameters.h"
 #include "MovePole.h"
 
+#ifdef GPU_ACTIVE
 #include "CudaKernels.h"
+#endif //GPU_ACTIVE
 
 typedef Device<CPU> DevCPU;
 extern const DevCPU the_cpu_device(0);
@@ -241,7 +243,7 @@ int main(int argc, char ** argv){
       vel_gpu.getDevice().Memcpy(vel_gpu_copy.begin(), vel_gpu.begin(),
           vel_gpu.size() * sizeof(real), device_type::MemcpyDeviceToHost);
     }
-
+    
     { // Compute error.
       real tol=1e-12;
       VecCPU_t err_vec(nVec,sh_order);

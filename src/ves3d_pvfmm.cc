@@ -1,3 +1,4 @@
+#include "PVFMMInterface.h"
 #include "ves3d_common.h"
 #include "Logger.h"
 #include "EvolveSurface.h"
@@ -56,18 +57,21 @@ void run_sim(int argc, char **argv){
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
-    Inter_t direct_interaction(&StokesAlltoAll);
+    Inter_t fmm_interaction(&PVFMMEval);
 
     //Evolve surface class
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &direct_interaction);
+    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction);
     CHK( Es.Evolve() );
 }
 
 int main(int argc, char **argv)
 {
     PROFILESTART();
+    MPI_Init(&argc,&argv);
     run_sim(argc, argv);
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortTime);
+    MPI_Finalize();
+    return 0;
 }

@@ -1,7 +1,7 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.ronaldo
 
-# flags for default 
-VES3D_USE_PVFMM  = no
+# flags for default
+VES3D_USE_PVFMM  = yes
 VES3D_PROFILE    = yes
 VES3D_VERBOSE    = yes
 
@@ -11,7 +11,7 @@ include ${VES3D_MKDIR}/makefile.default
 # compiler
 ifeq (${COMPILER_VENDOR},intel)
  BLASPKG         = HAS_MKL
- BLAS_LDFLAGS    = -L ${ICES_MKL_LIB}
+ BLAS_LDFLAGS    = -L${ICES_MKL_LIB}
  BLAS_LDLIBS     = -Wl,--start-group -lmkl_intel_lp64  \
 		-lmkl_intel_thread -lmkl_core -Wl,--end-group
  BLAS_INCLUDE   = -I ${ICES_MKL_INC}

@@ -2,14 +2,13 @@ template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M,
-    Interaction_t *I, Repartition_t *R, void* user_ptr):
+    Interaction_t *I, Repartition_t *R):
     params_(params),
     mats_(mats),
     vInf_(vInf),
     monitor_(M),
     interaction_(I),
     repartition_(R),
-    user_ptr_(user_ptr),
     F_(NULL)
 {
     objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
@@ -72,7 +71,6 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
     delete F_;
     F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_);
-    F_->usr_ptr_ = user_ptr_;
 
     //Deciding on the updater type
     Scheme_t updater;
@@ -93,7 +91,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         F_->reparam();
         t += dt;
 
-        (*repartition_)(S_->getPositionModifiable(), F_->tension(), user_ptr_);
+        (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
     }
 

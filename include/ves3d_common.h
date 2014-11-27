@@ -38,6 +38,10 @@
 #include <stdlib.h> //getenv
 #include <string>
 
+#define STR_EXPAND(tok) #tok
+#define STR(tok) STR_EXPAND(tok)
+
 const std::string VES3D_PATH(getenv("VES3D_DIR"));
+const std::string VERSION(STR(VES3D_VERSION));
 
 #endif //_VES3D_COMMON_H_

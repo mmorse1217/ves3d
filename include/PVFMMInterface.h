@@ -13,8 +13,6 @@ void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_c
 
 const pvfmm::Kernel<double> ker_stokes_m2l=pvfmm::BuildKernel<double, stokes_sl_m2l>("stokes_m2l", 3, std::pair<int,int>(4,3));
 
-
-
 template <class T>
 void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
 
@@ -25,8 +23,6 @@ const pvfmm::Kernel<double> ker_stokes=pvfmm::BuildKernel<double, stokes_sl, sto
     NULL, NULL, NULL, &ker_stokes_m2l, &ker_stokes_m2l, &ker_stokes_m2l, NULL, NULL);
 
 ///////////////////////////////////////////////////////////////////////////////
-
-
 
 template<typename T>
 void* PVFMMCreateContext(int n=400, int m=10, int max_d=20,

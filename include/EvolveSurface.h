@@ -52,8 +52,8 @@ class EvolveSurface
     typedef Error_t (IntVel_t::*Scheme_t)(const value_type &);
 
     EvolveSurface(Params_t &params, Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,
-        Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,
-        void* user_ptr = NULL);
+        Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL
+        );
 
     ~EvolveSurface();
 
@@ -67,7 +67,6 @@ class EvolveSurface
     Monitor_t *monitor_;
     Interaction_t *interaction_;
     Repartition_t *repartition_;
-    void *user_ptr_;
     IntVel_t *F_;
 
     bool objsOnHeap_[3];//for monitor, interaction, and repartition

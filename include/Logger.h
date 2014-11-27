@@ -42,6 +42,8 @@
 #include <cassert>
 // #include <sys/time.h>
 
+#include "ves3d_common.h"
+
 //! A log event recorded by the Logger class.
 struct LogEvent
 {
@@ -189,9 +191,10 @@ static bool assert_expr(false);
 #define CERR(msg) (std::cerr<<alert<<msg<<alert<<std::endl)
 #define CERR_LOC(pre_msg,post_msg,action) (                             \
         std::cerr<<alert<<"[ERROR] "<<pre_msg                           \
-        <<"\n    File     : "<< __FILE__                                \
-        <<"\n    Line     : "<< __LINE__                                \
-        <<"\n    Function : "<< __FUNCTION__                            \
+        <<"\n    File           : "<< __FILE__                          \
+        <<"\n    Line           : "<< __LINE__                          \
+        <<"\n    Function       : "<< __FUNCTION__                      \
+        <<"\n    Ves3D Version  : "<< VERSION                           \
         <<"\n"<<post_msg                                                \
         <<alert<<std::endl,                                             \
         action                                                          \

@@ -1,7 +1,9 @@
 template<typename T>
 Repartition<T>::Repartition(GlobalRepart_t fun_ptr,
+    Dealloc_t clear_context,
     int num_threads) :
     g_repart_handle_(fun_ptr),
+    clear_context_(clear_context),
     num_threads_(num_threads),
     each_thread_nv_(new size_t[num_threads_]),
     each_thread_idx_(new size_t[num_threads_ + 1]),
@@ -11,27 +13,38 @@ Repartition<T>::Repartition(GlobalRepart_t fun_ptr,
     all_tension_(NULL),
     posr_(NULL),
     tensionr_(NULL),
+    context_(NULL),
     nvr_(0)
 {
+    COUTDEBUG("creating a repartion object");
     for(int ii=0; ii<num_threads_; ++ii)
         each_thread_idx_[ii] = each_thread_nv_[ii] = 0;
+
+    if (this->g_repart_handle_)
+        ASSERT(this->clear_context_,"With an interation_handle a deallocator should be defined");
 }
 
 template<typename T>
 Repartition<T>::~Repartition()
 {
+    COUTDEBUG("destroying the repartion object");
     delete[] each_thread_nv_;
     delete[] each_thread_idx_;
 
     delete[] all_pos_;
     delete[] all_tension_;
+
+    if (this->context_){
+        COUTDEBUG("deleting the repartion context");
+        this->clear_context_(&(this->context_));
+    }
 }
 
 
 template<typename T>
 template<typename VecContainer, typename ScaContainer>
 Error_t Repartition<T>::operator()(VecContainer &coord,
-    ScaContainer &tension, void* user_ptr) const
+    ScaContainer &tension) const
 {
     assert( typeid(T) == typeid(typename VecContainer::value_type) );
     assert( typeid(T) == typeid(typename ScaContainer::value_type) );
@@ -66,8 +79,9 @@ Error_t Repartition<T>::operator()(VecContainer &coord,
 #pragma omp barrier
 
 #pragma omp master
+    COUTDEBUG("repartitioning vesicle distribution with "<<nv_<<" vesicles");
     g_repart_handle_(nv_, stride, all_pos_, all_tension_, &nvr_,
-        &posr_, &tensionr_, user_ptr);
+        &posr_, &tensionr_, &(this->context_));
 
 #pragma omp barrier
 
