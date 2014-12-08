@@ -1,5 +1,6 @@
 #ifdef HAVE_PVFMM
 #include "Enums.h"
+#include "Logger.h"
 
 #include <cstring>
 #include <parUtils.h>
@@ -65,20 +66,18 @@ void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
                r_trg[3*t+2]-r_src[3*s+2]};
       T R = (dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
 
-      if (R!=0){
-        T invR2=1.0/R;
-        T invR=sqrt(invR2);
-        T invR3=invR2*invR;
-        T* f=&v_src[s*3];
+      T invR2=(R!=0?1.0/R:0.0);
+      T invR=sqrt(invR2);
+      T invR3=invR2*invR;
+      T* f=&v_src[s*3];
 
-        T inner_prod=(f[0]*dR[0] +
-                      f[1]*dR[1] +
-                      f[2]*dR[2])* invR3;
+      T inner_prod=(f[0]*dR[0] +
+                    f[1]*dR[1] +
+                    f[2]*dR[2])* invR3;
 
-        p[0] += f[0]*invR + dR[0]*inner_prod;
-        p[1] += f[1]*invR + dR[1]*inner_prod;
-        p[2] += f[2]*invR + dR[2]*inner_prod;
-      }
+      p[0] += f[0]*invR + dR[0]*inner_prod;
+      p[1] += f[1]*invR + dR[1]*inner_prod;
+      p[2] += f[2]*invR + dR[2]*inner_prod;
     }
     k_out[t*3+0] += p[0]*SCAL_CONST;
     k_out[t*3+1] += p[1]*SCAL_CONST;
@@ -132,7 +131,7 @@ void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 
 
 template<typename T>
-void PVFMMBoundingBox(size_t np, const T* x, T* scale_xr, T* shift_xr, MPI_Comm comm=MPI_COMM_WORLD){
+void PVFMMBoundingBox(size_t np, const T* x, T* scale_xr, T* shift_xr, MPI_Comm comm){
   T& scale_x=*scale_xr;
   T* shift_x= shift_xr;
 
@@ -163,6 +162,7 @@ void PVFMMBoundingBox(size_t np, const T* x, T* scale_xr, T* shift_xr, MPI_Comm 
     for(size_t k=0;k<DIM;k++){
       scale_x=std::min(scale_x,(T)(1.0/(max_x[k]-min_x[k])));
     }
+    if(scale_x*0.0!=0.0) scale_x=1.0; // fix for scal_x=inf
     scale_x*=(1.0-2*eps);
     for(size_t k=0;k<DIM;k++){
       shift_x[k]=-min_x[k]*scale_x+eps;
@@ -262,6 +262,9 @@ void PVFMMEval(const T* all_pos, const T* sl_den, size_t np, T* all_pot, void** 
 
 template<typename T>
 void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T* all_pot, void** ctx_){
+  PROFILESTART();
+  long long prof_FLOPS=pvfmm::Profile::Add_FLOP(0);
+
   typedef pvfmm::FMM_Node<pvfmm::MPI_Node<T> > Node_t;
   typedef pvfmm::FMM_Pts<Node_t> Mat_t;
   typedef pvfmm::FMM_Tree<Mat_t> Tree_t;
@@ -270,6 +273,7 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
   PVFMMContext<T>* ctx=(PVFMMContext<T>*)ctx_[0];
   const int* ker_dim=ctx->ker->ker_dim;
 
+  pvfmm::Profile::Tic("FMM",&ctx->comm);
   T scale_x, shift_x[DIM];
   PVFMMBoundingBox(np, all_pos, &scale_x, shift_x, ctx->comm);
 
@@ -348,7 +352,7 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
 
     {// Set tree_data
       std::vector<Node_t*> nodes;
-      { // Get list of leaf nods.
+      { // Get list of leaf nodes.
         std::vector<Node_t*>& all_nodes=ctx->tree->GetNodeList();
         for(size_t i=0;i<all_nodes.size();i++){
           if(all_nodes[i]->IsLeaf() && !all_nodes[i]->IsGhost()){
@@ -399,6 +403,9 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
   ctx->tree->SetupFMM(ctx->mat);
   ctx->tree->RunFMM();
 
+  //Write2File
+  //ctx->tree->Write2File("output",0);
+
   { // Get target potential.
     Node_t* n=NULL;
     { // Get first leaf node.
@@ -418,6 +425,12 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
       }
     }
   }
+  pvfmm::Profile::Toc();
+
+  prof_FLOPS=pvfmm::Profile::Add_FLOP(0)-prof_FLOPS;
+  pvfmm::Profile::print(&ctx->comm);
+  //PVFMMDestroyContext<T>(ctx_);
+  PROFILEEND("",prof_FLOPS);
 }
 
 template<typename T>

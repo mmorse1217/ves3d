@@ -1,3 +1,6 @@
+#include <Enums.h>
+#include <Device.h>
+
 // Shear flow /////////////////////////////////////////////////////////////////
 template<typename VecContainer>
 ShearFlow<VecContainer>::ShearFlow(value_type shear_rate) :

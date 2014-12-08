@@ -57,7 +57,7 @@ void run_sim(int argc, char **argv){
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
-    Inter_t fmm_interaction(&PVFMMEval);
+    Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real>);
 
     //Evolve surface class
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction);
@@ -66,6 +66,7 @@ void run_sim(int argc, char **argv){
 
 int main(int argc, char **argv)
 {
+    pvfmm::Profile::Enable(true);
     PROFILESTART();
     MPI_Init(&argc,&argv);
     run_sim(argc, argv);

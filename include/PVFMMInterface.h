@@ -25,7 +25,7 @@ const pvfmm::Kernel<double> ker_stokes=pvfmm::BuildKernel<double, stokes_sl, sto
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void* PVFMMCreateContext(int n=400, int m=10, int max_d=20,
+void* PVFMMCreateContext(int n=800, int m=10, int max_d=20,
     pvfmm::BoundaryType bndry=pvfmm::FreeSpace,
     const pvfmm::Kernel<T>* ker=&ker_stokes,
     MPI_Comm comm=MPI_COMM_WORLD);
@@ -52,6 +52,12 @@ template<typename T>
 void PVFMM_GlobalRepart(size_t nv, size_t stride,
     const T* x, const T* tension, size_t* nvr, T** xr,
     T** tensionr, void* user_ptr);
+
+/**
+ * Determine bounding box.
+ */
+template<typename T>
+void PVFMMBoundingBox(size_t np, const T* x, T* scale_xr, T* shift_xr, MPI_Comm comm=MPI_COMM_WORLD);
 
 #include "PVFMMInterface.cc"
 

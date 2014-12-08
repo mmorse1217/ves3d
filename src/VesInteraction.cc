@@ -96,11 +96,12 @@ Error_t VesInteraction<T>::operator()(
     }
 
     // call user interaction routine
-#pragma omp barrier
-#pragma omp master
+//#pragma omp barrier
+//#pragma omp master
+    assert(omp_get_num_threads()==1);
     COUTDEBUG("computing vesicle interaction with "<<np_<< " points");
     interaction_handle_(all_pos_, all_den_, np_, all_pot_, &(this->context_));
-#pragma omp barrier
+//#pragma omp barrier
 
     //Copying back the potential to the device(s)
     if(typeid(value_type) == typeid(T))
