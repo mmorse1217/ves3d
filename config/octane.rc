@@ -1,0 +1,6 @@
+# -*- mode: sh; -*-
+module load intel/15
+module list
+
+export VES3D_DIR=${RES_DIR}/ves3d/cxx/
+export VES3D_PLATFORM=octane
