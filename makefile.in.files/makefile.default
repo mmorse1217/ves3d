@@ -12,6 +12,7 @@ VES3D_TESTING    ?= no
 VES3D_USE_GPU    ?= no
 VES3D_USE_PVFMM  ?= no
 VES3D_VERBOSE    ?= no
+VES3D_PREC       ?= DOUBLE
 
 
 # implicit variables
@@ -40,7 +41,7 @@ VES3D_INCDIR   ?= $(VES3D_DIR)/include
 VES3D_LIBDIR   ?= $(VES3D_DIR)/lib
 VES3D_SRCDIR   ?= $(VES3D_DIR)/src
 VES3D_TSTDIR   ?= $(VES3D_DIR)/test
-VES3D_VERSION   = $(shell hg -q id)
+VES3D_VERSION   = $(shell hg -q id -n)
 
 # PVFMM (should come first so that the flags are ordered properly)
 ifeq (${VES3D_USE_PVFMM},yes)
