@@ -18,8 +18,9 @@ VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
     for(int ii=0; ii<num_threads_; ++ii)
         each_thread_idx_[ii] = each_thread_np_[ii] = 0;
 
-    if (this->interaction_handle_)
-        ASSERT(this->clear_context_,"with an interation_handle a deallocator should be defined");
+    if (this->interaction_handle_ && !this->clear_context_)
+      CERR("[WARNING] No deallocator is defined for the interaction context."
+	" This may cause memory leak.");
 }
 
 template<typename T>
