@@ -47,7 +47,8 @@ ${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP}
 clean:
 	${MAKE} -C ${VES3D_LIBDIR} clean
 	${MAKE} -C ${VES3D_TSTDIR} clean
-	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
+	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d
+	-${RM} -r ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
 
 distclean:
 	${MAKE} clean

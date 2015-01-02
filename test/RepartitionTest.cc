@@ -17,7 +17,7 @@ extern const Dev the_device(0);
 // assigning more surfaces
 void MyRepart(size_t nv, size_t stride, const real* x,
     const real* tension, size_t* nvr,
-    real** xr, real** tensionr, void*)
+    real** xr, real** tensionr, void**)
 {
     COUTDEBUG(emph<<"master repartitioning"<<emph);
     *nvr = 2*nv;
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
     //Checking the repartitioning code replicating mpi with threads
     {
         int nThreads(3);
-        Repartition<real> R(&MyRepart, nThreads);
+        Repartition<real> R(&MyRepart, NULL, nThreads);
         int p(4);
         int inc(1000);
 

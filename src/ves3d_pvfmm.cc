@@ -3,7 +3,6 @@
 #include "Logger.h"
 #include "EvolveSurface.h"
 
-typedef double real;
 typedef Device<CPU> Dev;
 extern const Dev the_dev(0);
 
@@ -17,7 +16,7 @@ Error_t cb_abort(const Error_t &err)
 void run_sim(int argc, char **argv){
     SET_ERR_CALLBACK(&cb_abort);
 
-    typedef EvolveSurface<real, Dev, the_dev> Evolve_t;
+    typedef EvolveSurface<real_t, Dev, the_dev> Evolve_t;
     typedef Evolve_t::Params_t Par_t;
     typedef Evolve_t::Arr_t Arr_t;
     typedef Evolve_t::Vec_t Vec_t;
@@ -35,7 +34,7 @@ void run_sim(int argc, char **argv){
     DataIO myIO(FullPath(sim_par.save_file_name));
 
     char fname[300];
-    std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
+    std::string prec = (typeid(real_t) == typeid(float)) ? "float" : "double";
     sprintf(fname, sim_par.init_file_name.c_str(), sim_par.sh_order,prec.c_str());
     myIO.ReadData( FullPath(fname), x0, DataIO::ASCII, 0, x0.getSubLength());
 

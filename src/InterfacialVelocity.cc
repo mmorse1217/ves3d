@@ -275,6 +275,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
 
     S_.div(vel_in, *rhs);
 
+    //! @bug sets rhs to 0 instead of negating
     axpy(static_cast<value_type>(-1), *rhs, *rhs); // @Abtin: does this set rhs=0? why?
 
     int iter(params_.tension_solver_iter);

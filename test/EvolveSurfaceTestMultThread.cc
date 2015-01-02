@@ -13,7 +13,7 @@ extern const DevGPU the_gpu(0);
 #ifndef Doxygen_skip
 void MyRepart(size_t nv, size_t stride, const real* x,
     const real* tension, size_t* nvr,
-    real** xr, real** tensionr, void*)
+    real** xr, real** tensionr, void**)
 {
     int expRate(2);
     *nvr = expRate*nv;
@@ -150,7 +150,7 @@ void TestEvolveSurfMT(){
         EvolveEachObj<T,Evolve_t>(sim_par, nsurfs, NULL, &repartition);
     }
 }
-#endif Doxygen_skip
+#endif //Doxygen_skip
 
 int main(int argc, char **argv)
 {
