@@ -1,6 +1,6 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.cafu
 
-# flags for default 
+# flags for default
 VES3D_USE_PVFMM  = yes
 VES3D_USE_GPU    = yes
 VES3D_PROFILE    = yes
@@ -26,6 +26,3 @@ CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
 # linker
 LDFLAGS        += ${BLAS_LDFLAGS}
 LDLIBS         += $(BLAS_LDLIBS) -lpthread
-
-
-

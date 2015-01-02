@@ -1,20 +1,29 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.octane
 
-COMPILER_VENDOR = gnu
-include ${VES3D_MKDIR}/makefile.default
-
-# customization ##########################################
+# flags for default
+COMPILER_VENDOR = intel
 VES3D_DEBUG     = yes
 VES3D_PROFILE   = yes
 VES3D_TESTING   = yes
 VES3D_VERBOSE   = yes
 
-# compiler
-BLASPKG         = HAS_BLAS
-BLAS_LIBS       = -framework vecLib
-BLAS_INCLUDE    =
+include ${VES3D_MKDIR}/makefile.default
+
+# customization ##########################################
+
+ifeq ($(COMPILER_VENDOR),intel)
+ BLASPKG         = HAS_MKL
+ BLAS_LDFLAGS    =
+ BLAS_LDLIBS     = -mkl
+ BLAS_INCLUDE    = -I${MKLROOT}/include
+else
+ BLASPKG        = HAS_BLAS
+ BLAS_LDFLAGS   =
+ BLAS_LDLIBS    = -lblas -llapack #-framework vecLib
+ BLAS_INCLUDE   =
+endif
 CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
 
 # linker
-LDFLAGS        +=
-LDLIBS         += $(BLAS_LIBS) -lpthread
+LDFLAGS        += ${BLAS_LDFLAGS}
+LDLIBS         += $(BLAS_LDLIBS) -lpthread

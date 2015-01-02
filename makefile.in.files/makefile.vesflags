@@ -1,0 +1,17 @@
+ifeq (${VES3D_VERBOSE},yes)
+  CXXFLAGS += -DVERBOSE
+endif
+
+ifeq (${VES3D_PROFILE},yes)
+  CXXFLAGS += -DPROFILING
+endif
+
+ifeq (${VES3D_DEBUG},no)
+  CXXFLAGS += -DNDEBUG
+endif
+
+ifeq (${VES3D_PERC},SINGLE)
+  CXXFLAGS += -DSINGLE_PREC
+else
+  CXXFLAGS += -DDOUBLE_PREC
+endif

@@ -14,3 +14,4 @@ include ${VES3D_MKDIR}/makefile.$(VES3D_PLATFORM)
 ## compiler dependent makefile
 # platform for commandline should define COMPILER_VENDOR
 include $(VES3D_MKDIR)/makefile.$(COMPILER_VENDOR)
+include $(VES3D_MKDIR)/makefile.vesflags
