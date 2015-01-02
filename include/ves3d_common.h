@@ -44,4 +44,12 @@
 const std::string VES3D_PATH(getenv("VES3D_DIR"));
 const std::string VERSION(STR(VES3D_VERSION));
 
+#ifdef DOUBLE_PREC
+typedef double real_t;
+#endif //DOUBLE_PREC
+
+#ifdef SINGLE_PREC
+typedef float real_t;
+#endif //SINGLE_PREC
+
 #endif //_VES3D_COMMON_H_
