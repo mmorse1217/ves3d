@@ -168,7 +168,7 @@ void Logger::SetLogFile(std::string file_name)
 void Logger::Log(const char *event)
 {
     if (log_file.empty()){
-        std::cout<<event<<std::endl;
+        COUT(event);
         return;
     }
 
@@ -189,7 +189,7 @@ void Logger::Log(const char *event)
 void Logger::Log(std::ostream &event)
 {
     if (log_file.empty()){
-        std::cout<<event<<std::endl;
+        COUT(event);
         return;
     }
 

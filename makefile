@@ -17,7 +17,7 @@ ifeq (${VES3D_USE_PVFMM},yes)
   VES3D_BINS += ves3d_pvfmm
 endif
 
-all: lib
+all: lib install test doc
 
 lib:
 	${MAKE} -C  ${VES3D_LIBDIR}
@@ -30,13 +30,13 @@ test:
 check:
 	${MAKE} -C ${VES3D_TSTDIR} check
 
-docs: ${MAKE_DEP}
+doc: ${MAKE_DEP}
 	${DOX} ${VES3D_DOCDIR}/Doxyfile
 
-tags: ${MAKE_DEP}
+tag: ${MAKE_DEP}
 	${TAGS} ${VES3D_SRCDIR}/*.cc  ${VES3D_INCDIR}/*.h ${VES3D_TSTDIR}/*.cc ${VES3D_TSTDIR}/*.h
 
-all-tags: ${MAKE_DEP}
+all-tag: ${MAKE_DEP}
 	${TAGS} ${VES3D_SRCDIR}/*  ${VES3D_INCDIR}/* ${VES3D_TSTDIR}/*
 
 ${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP}
