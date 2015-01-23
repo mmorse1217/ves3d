@@ -28,8 +28,12 @@ TEST = 	ArrayTest.exe			\
         VectorsTest.exe			\
 
 ifeq (${VES3D_USE_PVFMM},yes)
-  TEST +=PVFMMInterfaceTest.exe \
-				 NearSingularTest.exe
+  TEST += PVFMMInterfaceTest.exe	\
+	  NearSingularTest.exe
+endif
+
+ifeq (${VES3D_USE_PETSC},yes)
+  TEST += ParallelLinSolverPetscTest.exe
 endif
 
 ifeq (${VES3D_TESTING},yes)

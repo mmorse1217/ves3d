@@ -174,16 +174,20 @@ static bool assert_expr(false);
 
 #ifdef VERBOSE
 #define COUTDEBUG(str) (std::cout<<"[DEBUG]["<<__FUNCTION__<<"] "<<str<<std::endl)
+#define WHENVERBOSE(expr) expr
 #else
 #define COUTDEBUG(str)
+#define WHENVERBOSE(expr)
 #endif //VERBOSE
 
-#ifdef QUIET
-#define COUT(str)
-#define INFO(str)
-#else
-#define INFO(str) (std::cout<<"[INFO]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #define COUT(str) (std::cout<<str<<std::endl)
+#define COUTMASTER(str) (std::cout<<str<<std::endl)
+#ifdef QUIET
+#define INFO(str)
+#define WHENQUIET(expr)
+#else
+#define WHENQUIET(expr) expr
+#define INFO(str) (std::cout<<"[INFO]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #endif //QUIET
 
 #define LOG(msg) (Logger::Log(msg))

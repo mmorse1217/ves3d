@@ -1,13 +1,14 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.octane
 
 # flags for default
-COMPILER_VENDOR = intel
-VES3D_DEBUG     = yes
-VES3D_PROFILE   = yes
-VES3D_TESTING   = yes
-VES3D_VERBOSE   = yes
+COMPILER_VENDOR ?= intel
+VES3D_DEBUG     ?= yes
+VES3D_PROFILE   ?= yes
+VES3D_TESTING   ?= yes
+VES3D_VERBOSE   ?= yes
 
 include ${VES3D_MKDIR}/makefile.default
+include $(VES3D_MKDIR)/makefile.vesflags
 
 # customization ##########################################
 

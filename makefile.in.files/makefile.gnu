@@ -6,11 +6,11 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.gnu
 
 CXXFLAGS += -fopenmp -fPIC -fno-exceptions -w
 
-ifeq ($(VES3D_TESTING),yes)
-  CXXFLAGS += -O0 -g -pedantic -DVERBOSE -DPROFILING #-gstabs+
+ifeq ($(VES3D_DEBUG),yes)
+  CXXFLAGS += -O0 -g -pedantic #-gstabs+
 else
   CXXFLAGS += -O3 -finline-functions -funroll-loops -w	\
-	      -funsafe-loop-optimizations -DNDEBUG -msse3 #-malign-double
+	      -funsafe-loop-optimizations -msse3 #-malign-double
 endif
 
 ## for ref, these are the implicit rule gnu make uses for compile/link

@@ -1,3 +1,5 @@
+# -*- mode: makefile -*-
+#
 ########################################################
 ### Do not add any customization to this file.       ###
 ### put customizations in the platform or cxx files. ###
@@ -11,9 +13,10 @@ VES3D_PROFILE    ?= no
 VES3D_TESTING    ?= no
 VES3D_USE_GPU    ?= no
 VES3D_USE_PVFMM  ?= no
+VES3D_USE_PETSC  ?= yes
 VES3D_VERBOSE    ?= no
+VES3D_QUIET      ?= no
 VES3D_PREC       ?= DOUBLE
-
 
 # implicit variables
 AR      = ar
@@ -43,6 +46,14 @@ VES3D_SRCDIR   ?= $(VES3D_DIR)/src
 VES3D_TSTDIR   ?= $(VES3D_DIR)/test
 VES3D_VERSION   = $(shell hg -q id -n)
 
+# PETSC (needs to be first b/c it overwrites make variables!)
+ifeq (${VES3D_USE_PETSC},yes)
+  include ${PETSC_DIR}/conf/variables
+  CXXFLAGS += -I${PETSC_INC} -DHAS_PETSC
+  LDLIBS   += ${PETSC_LIB_BASIC}
+  LDFLAGS  += -L${PETSC_LIBDIR}
+endif
+
 # PVFMM (should come first so that the flags are ordered properly)
 ifeq (${VES3D_USE_PVFMM},yes)
   -include ${PVFMM_DIR}/MakeVariables
@@ -51,8 +62,8 @@ ifeq (${VES3D_USE_PVFMM},yes)
   endif
   ifdef CXXFLAGS_PVFMM
     CXXFLAGS += ${CXXFLAGS_PVFMM} -DHAVE_PVFMM
-    LDLIBS  := ${LDFLAGS_PVFMM} ${LDLIBS}
-    CXX = ${CXX_PVFMM}
+    LDLIBS   := ${LDFLAGS_PVFMM} ${LDLIBS}
+    CXX       = ${CXX_PVFMM}
   else
     $(warning WARNING: File not found: $${PVFMM_DIR}/MakeVariables. Not supporting PVFMM.)
   endif
