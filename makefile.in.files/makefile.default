@@ -8,15 +8,17 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.default
 
 # user flags
-VES3D_DEBUG      ?= no
-VES3D_PROFILE    ?= no
-VES3D_TESTING    ?= no
+VES3D_DEBUG      ?= no  #affects only compiler flags (not printing)
+VES3D_PROFILE    ?= no  #turns on profiling macros
+VES3D_VERBOSE    ?= 2   #1=most verbose, 2=normal, 3=quiet
+VES3D_TESTING    ?= no  #equal to DEBUG, PROFILE and VERBOSE=1
+
 VES3D_USE_GPU    ?= no
 VES3D_USE_PVFMM  ?= no
 VES3D_USE_PETSC  ?= yes
-VES3D_VERBOSE    ?= no
-VES3D_QUIET      ?= no
-VES3D_PREC       ?= DOUBLE
+VES3D_PREC       ?= DOUBLE #or SINGLE
+
+COMPILER_VENDOR  ?= intel  #or gnu
 
 # implicit variables
 AR      = ar
@@ -27,7 +29,6 @@ RANLIB  = ranlib
 RM      = rm -f
 TAGS    = etags
 
-COMPILER_VENDOR ?= intel
 ifeq (${COMPILER_VENDOR},intel)
   CC  = icc
   CXX = icpc

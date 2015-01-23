@@ -1,3 +1,4 @@
+# -*- mode: makefile -*-
 ###################################################################
 ## Should only define/adjust CXXFLAGS, CPPFLAGS, LDFLAGS, LDLIBS ##
 ###################################################################
@@ -9,7 +10,7 @@ CXXFLAGS += -openmp -fPIC -early-template-check -fno-exceptions ${PFLAG} -Wall -
 ifeq ($(VES3D_DEBUG),yes)
   CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline
 else
-  CXXFLAGS+= -O3 -finline  -unroll-agressive -malign-double
+  CXXFLAGS+= -O3 -finline  -unroll-aggressive -malign-double
 endif
 
 ## for ref, these are the implicit rule gnu make uses for compile/link

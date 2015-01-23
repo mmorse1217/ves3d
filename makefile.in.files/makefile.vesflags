@@ -1,23 +1,17 @@
 ifeq ($(VES3D_TESTING),yes)
-  VES3D_PROFILE	?= yes
-  VES3D_VERBOSE	?= yes
-  VES3D_DEBUG   ?= yes
-else
-  VES3D_PROFILE	?= no
-  VES3D_VERBOSE	?= no
-  VES3D_DEBUG   ?= no
-endif
-
-ifeq (${VES3D_QUIET},yes)
-  CXXFLAGS += -DQUIET
-else
-  ifeq (${VES3D_VERBOSE},yes)
-    CXXFLAGS += -DVERBOSE
-  endif
+  VES3D_DEBUG   = yes
+  VES3D_PROFILE	= yes
+  VES3D_VERBOSE	= 1
 endif
 
 ifeq (${VES3D_PROFILE},yes)
   CXXFLAGS += -DPROFILING
+endif
+
+ifeq (${VES3D_VERBOSE},3)
+  CXXFLAGS += -DQUIET
+else ifeq (${VES3D_VERBOSE},1)
+  CXXFLAGS += -DVERBOSE
 endif
 
 ifeq (${VES3D_DEBUG},no)

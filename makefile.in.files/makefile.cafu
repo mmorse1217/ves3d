@@ -4,7 +4,7 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.cafu
 VES3D_USE_PVFMM  = yes
 VES3D_USE_GPU    = yes
 VES3D_PROFILE    = yes
-VES3D_VERBOSE    = yes
+VES3D_VERBOSE    = 1
 
 include ${VES3D_MKDIR}/makefile.default
 
