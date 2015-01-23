@@ -70,6 +70,7 @@ private:
   void setUsage(AnyOption* opt);
   void setOptions(AnyOption* opt);
   void getOptionValues(AnyOption* opt);
+  void init();
 };
 
 template<typename T>

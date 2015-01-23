@@ -1,36 +1,44 @@
 template<typename T>
-Parameters<T>::Parameters() :
-    n_surfs(1),
-    sh_order(12),
-    filter_freq(8),
-    bending_modulus(1e-2),
-    position_solver_iter(15),
-    tension_solver_iter(15),
-    position_solver_restart(1),
-    tension_solver_restart(1),
-    position_solver_tol((typeid(T) == typeid(float)) ? 1e-4: 1e-8),
-    tension_solver_tol((typeid(T) == typeid(float)) ? 5e-4: 1e-8),
-    time_horizon(1),
-    ts(1),
-    scheme(Explicit),
-    singular_stokes(ViaSpHarm),
-    rep_maxit(10),
-    rep_up_freq(24),
-    rep_filter_freq(4),
-    rep_ts(1),
-    rep_tol((typeid(T) == typeid(float)) ? 1e-3 : 1e-4),
-    bg_flow_param(1e-1),
-    upsample_interaction(false),
-    save_data(false),
-    save_stride(-1),
-    error_factor(1)
-{}
+Parameters<T>::Parameters(){
+    this->init();
+}
 
 template<typename T>
 Parameters<T>::Parameters(int argc, char** argv)
 {
-  this->parseInput(argc, argv);
+    this->init();
+    this->parseInput(argc, argv);
 }
+
+template<typename T>
+void Parameters<T>::init()
+{
+    n_surfs		    = 1;
+    sh_order		    = 12;
+    filter_freq		    = 8;
+    bending_modulus	    = 1e-2;
+    position_solver_iter    = 15;
+    tension_solver_iter	    = 15;
+    position_solver_restart = 1;
+    tension_solver_restart  = 1;
+    position_solver_tol	    = (typeid(T) == typeid(float)) ? 1e-4: 1e-8;
+    tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
+    time_horizon	    = 1;
+    ts			    = 1;
+    scheme		    = JacobiExplicitBlock;
+    singular_stokes	    = ViaSpHarm;
+    rep_maxit		    = 10;
+    rep_up_freq		    = 24;
+    rep_filter_freq	    = 4;
+    rep_ts		    = 1;
+    rep_tol		    = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
+    bg_flow_param	    = 1e-1;
+    upsample_interaction    = false;
+    save_data		    = false;
+    save_stride		    = -1;
+    error_factor	    = 1;
+}
+
 
 template<typename T>
 Parameters<T>::~Parameters()
