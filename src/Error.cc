@@ -1,3 +1,4 @@
+
 #include "Error.h"
 #include "Logger.h"
 
@@ -26,35 +27,50 @@ std::ostream& operator<<(std::ostream& output, const Error_t &err_t)
 {
     switch (err_t)
     {
-        case ErrorEvent::Success:
+	case ErrorEvent::Success:
             output<<"Success";
             break;
-        case ErrorEvent::InvalidParameter:
-            output<<"InvalidParameter";
-	    break;
-        case ErrorEvent::UnknownError:
-            output<<"UnkownError";
+	case ErrorEvent::UnknownError:
+            output<<"UnknownError";
             break;
-        case ErrorEvent::InvalidDevice:
-            output<<"InvalidDevice";
+	case ErrorEvent::ArithmeticError:
+            output<<"ArithmeticError";
             break;
-        case ErrorEvent::SetOnActiveDevice:
-            output<<"SetOnActiveDevice";
+	case ErrorEvent::AssertionError:
+            output<<"AssertionError";
             break;
-        case ErrorEvent::SolverDiverged:
-            output<<"SolverDiverged";
+	case ErrorEvent::EnvironmentError:
+            output<<"EnvironmentError";
             break;
-        case ErrorEvent::NoInteraction:
-            output<<"NoInteraction";
+	case ErrorEvent::MemoryError:
+            output<<"MemoryError";
             break;
-        case ErrorEvent::InteractionFailed:
-            output<<"InteractionFailed";
+	case ErrorEvent::ReferenceError:
+            output<<"ReferenceError";
             break;
-        case ErrorEvent::RepartitioningFailed:
-            output<<"RepartitioningFailed";
+	case ErrorEvent::NotImplementedError:
+            output<<"NotImplementedError";
             break;
-        case ErrorEvent::AccuracyError:
+	case ErrorEvent::InvalidParameterError:
+            output<<"InvalidParameterError";
+            break;
+	case ErrorEvent::InvalidDeviceError:
+            output<<"InvalidDeviceError";
+            break;
+	case ErrorEvent::SetOnActiveDeviceError:
+            output<<"SetOnActiveDeviceError";
+            break;
+	case ErrorEvent::AccuracyError:
             output<<"AccuracyError";
+            break;
+	case ErrorEvent::DivergenceError:
+            output<<"DivergenceError";
+            break;
+	case ErrorEvent::InteractionError:
+            output<<"InteractionError";
+            break;
+	case ErrorEvent::RepartitioningError:
+            output<<"RepartitioningError";
             break;
         default:
             output<<err_t

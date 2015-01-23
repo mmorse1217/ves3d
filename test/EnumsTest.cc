@@ -3,8 +3,7 @@
 
 #include "Enums.h"
 #include "Logger.h"
-
-using namespace std;
+#include "TestTools.h"
 
 int main(int argc, char** argv)
 {
@@ -12,52 +11,37 @@ int main(int argc, char** argv)
         <<"  enums Test:"
         <<"\n ==============================\n");
 
-    typedef ostringstream stm;
-    typedef string str;
-    {
-        stm stream;
-        str str;
-        stream<<PointMajor;
-        COUT(stream.str());
-        ASSERT(stream.str()=="PointMajor","");
+    typedef std::ostringstream strm;
+    typedef std::string string;
+
+    int N(2);
+    CoordinateOrder cos [] = {PointMajor, AxisMajor};
+    const char* conames[] = {"PointMajor", "AxisMajor"};
+
+    for (int i=0;i<N; ++i){
+        strm stream;
+        stream<<cos[i];
+	string msg("testing ");
+	msg += conames[i];
+	testtools::AssertTrue(stream.str()==conames[i], msg ,"bad string");
     }
 
-    {
-        stm stream;
-        str str;
-        stream<<AxisMajor;
-        COUT(stream.str());
-        ASSERT(stream.str()=="AxisMajor","");
+    SolverScheme schemes [] = {JacobiBlockExplicit, JacobiBlockGaussSeidel, JacobiBlockImplicit,
+			       GloballyImplicit, UnkownScheme};
+
+    const char* snames[] = {"JacobiBlockExplicit", "JacobiBlockGaussSeidel", "JacobiBlockImplicit",
+			    "GloballyImplicit", "UnkownScheme"};
+
+    N = 5;
+    for (int i=0; i<N; ++i){
+     	strm stream;
+        stream<<schemes[i];
+	string msg("testing ");
+	msg += snames[i];
+	testtools::AssertTrue(stream.str()==snames[i], msg, "bad string");
+        SolverScheme sc = EnumifyScheme(snames[i]);
+	testtools::AssertTrue(sc==schemes[i],msg, "bad enum");
     }
 
-    {
-        stm stream;
-        str str;
-        stream<<Explicit;
-        COUT(stream.str());
-        ASSERT(stream.str()=="Explicit","");
-        int sc = EnumifyScheme("Explicit");
-        ASSERT(sc==Explicit,"");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<BlockImplicit;
-        COUT(stream.str());
-        ASSERT(stream.str()=="BlockImplicit","");
-        int sc = EnumifyScheme("BlockImplicit");
-        ASSERT(sc==BlockImplicit,"");
-    }
-
-    {
-        stm stream;
-        str str;
-        stream<<GloballyImplicit;
-        COUT(stream.str());
-        ASSERT(stream.str()=="GloballyImplicit","");
-        int sc = EnumifyScheme("GloballyImplicit");
-        ASSERT(sc==GloballyImplicit,"");
-    }
     COUT(emph<<"** EnumTest passed **"<<emph<<std::endl);
 }

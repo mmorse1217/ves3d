@@ -20,7 +20,23 @@
 #include "Repartition.h"
 #include "Monitor.h"
 
-
+/**
+ * EvolveSurface uses a simple Euler time stepping (explicit,
+ * implicit) method to update the surface. Major components of
+ * simulation (BgFlow, Interaction, Repartition, etc.) are arguments
+ * to this.
+ *
+ * The pseudocode of the Evolve method is:
+ *  \code
+ *  while ( t < time_horizon && [no_error])
+ *  {
+ *     . update surfaces
+ *     . reparametrize
+ *     . repartition
+ *     . monitor
+ *  }
+ * \endcode
+ */
 template<typename T,
          typename DT,
          const DT &DEVICE,

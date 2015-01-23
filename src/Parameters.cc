@@ -25,7 +25,7 @@ void Parameters<T>::init()
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
     time_horizon	    = 1;
     ts			    = 1;
-    scheme		    = JacobiExplicitBlock;
+    scheme		    = JacobiBlockImplicit;
     singular_stokes	    = ViaSpHarm;
     rep_maxit		    = 10;
     rep_up_freq		    = 24;
@@ -72,7 +72,7 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
       INFO("Parsing input file "<<opt.getValue('f'));
 
       if (!opt.processFile(opt.getValue('f')))
-          return ErrorEvent::InvalidParameter;
+          return ErrorEvent::InvalidParameterError;
   }
   // reporcess time commandline to override the file content
   opt.processCommandArgs( argc, argv );
@@ -85,7 +85,7 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
           opt.printUsage());
       opt.printUsage();
 
-      return ErrorEvent::InvalidParameter;
+      return ErrorEvent::InvalidParameterError;
   }
 
   // 6. GET THE VALUES

@@ -73,16 +73,25 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_);
 
     //Deciding on the updater type
-    Scheme_t updater;
+    Scheme_t updater(NULL);
     switch ( params_.scheme )
     {
-        case Explicit:
+	case JacobiBlockExplicit:
             updater = &IntVel_t::updatePositionExplicit;
             break;
 
-        case BlockImplicit:
+	case JacobiBlockGaussSeidel:
             updater = &IntVel_t::updatePositionImplicit;
             break;
+
+	case JacobiBlockImplicit:
+	    return ErrorEvent::NotImplementedError;
+
+	case GloballyImplicit:
+	    return ErrorEvent::NotImplementedError;
+
+	default:
+	    ErrorEvent::InvalidParameterError;
     }
 
     while ( ERRORSTATUS() && t < time_horizon )

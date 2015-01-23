@@ -53,7 +53,11 @@ inline T PI64(){
 enum CoordinateOrder {PointMajor, AxisMajor};
 
 ///The linear solver scheme for the vesicle evolution equation
-enum SolverScheme {Explicit, BlockImplicit, GloballyImplicit};
+enum SolverScheme {JacobiBlockExplicit,     /* Jacobi iteration + only block tension solve, explicit position */
+		   JacobiBlockGaussSeidel,  /* Jacobi iteration + tension solve + position solve              */
+		   JacobiBlockImplicit,     /* Jacobi iteration + block coupled solve                         */
+		   GloballyImplicit,        /* Fully implicit                                                 */
+		   UnkownScheme};
 
 ///DirectEagerEval gives the rotation code the freedom to precompute
 ///and cache some of the expected results

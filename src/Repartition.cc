@@ -54,7 +54,7 @@ Error_t Repartition<T>::operator()(VecContainer &coord,
     if ( g_repart_handle_ == NULL )
     {
         COUTDEBUG("No repartition handle, returning");
-        return(ErrorEvent::NoRepartition);
+        return(ErrorEvent::ReferenceError);
     }
 
     //Getting the sizes

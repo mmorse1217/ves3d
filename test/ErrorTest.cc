@@ -1,5 +1,6 @@
 #include "Error.h"
 #include "Logger.h"
+#include "TestTools.h"
 
 #include <sstream>
 #include <cassert>
@@ -28,11 +29,11 @@ int main(int argc, char** argv)
         <<"\n ==============================\n");
 
     CHK(ErrorEvent::Success);
-    CHK(ErrorEvent::InvalidParameter);
+    CHK(ErrorEvent::InvalidParameterError);
 
     SET_ERR_CALLBACK(&local_cb_a);
-    CHK(ErrorEvent::InvalidDevice);
-    CHK_CB(ErrorEvent::SetOnActiveDevice,&local_cb_b);
+    CHK(ErrorEvent::InvalidDeviceError);
+    CHK_CB(ErrorEvent::SetOnActiveDeviceError,&local_cb_b);
 
     if (ERRORSTATUS())
         COUT("There was some error");
@@ -43,7 +44,7 @@ int main(int argc, char** argv)
     int i;
     for(i=0;i<10;++i){
         if(i==3)
-            CHK(ErrorEvent::SolverDiverged);
+            CHK(ErrorEvent::DivergenceError);
 	COUT(i);
         BREAKONERROR();
     }
@@ -54,7 +55,7 @@ int main(int argc, char** argv)
         string str;
         stream<<ErrorEvent::Success;
         COUT("Overloaded streaming operator"<<stream.str());
-        ASSERT(stream.str()=="Success","");
+	testtools::AssertTrue(stream.str()=="Success","correct string", "bad string");
     }
 
     PRINTERRORLOG();

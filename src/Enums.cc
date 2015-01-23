@@ -4,12 +4,16 @@ enum SolverScheme EnumifyScheme(const char * name)
 {
   std::string ns(name);
 
-  if ( ns.compare(0,8,"Explicit") == 0 )
-    return Explicit;
-  else if ( ns.compare(0,5,"Block") == 0 )
-    return BlockImplicit;
+  if      ( ns.compare(0,12,"JacobiBlockE") == 0 )
+      return JacobiBlockExplicit;
+  else if ( ns.compare(0,12,"JacobiBlockG") == 0 )
+      return JacobiBlockGaussSeidel;
+  else if ( ns.compare(0,12,"JacobiBlockI") == 0 )
+      return JacobiBlockImplicit;
+  else if ( ns.compare(0,6 ,"Global") == 0 )
+      return GloballyImplicit;
   else
-    return GloballyImplicit;
+      return UnkownScheme;
 }
 enum SingularStokesRot EnumifyStokesRot(const char * name)
 {
@@ -42,14 +46,20 @@ std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
 {
     switch (SS)
     {
-        case Explicit:
-            output<<"Explicit";
+	case JacobiBlockExplicit:
+            output<<"JacobiBlockExplicit";
             break;
-        case BlockImplicit:
-            output<<"BlockImplicit";
+	case JacobiBlockGaussSeidel:
+            output<<"JacobiBlockGaussSeidel";
+            break;
+        case JacobiBlockImplicit:
+            output<<"JacobiBlockImplicit";
             break;
         case GloballyImplicit:
             output<<"GloballyImplicit";
+            break;
+        default:
+            output<<"UnkownScheme";
             break;
     }
 

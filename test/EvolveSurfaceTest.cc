@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     sim_par.n_surfs              = 2;
     sim_par.ts                   = 1;
     sim_par.time_horizon         = 2;
-    sim_par.scheme               = Explicit;
+    sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
     sim_par.bg_flow_param        = 0;
     sim_par.upsample_interaction = true;
