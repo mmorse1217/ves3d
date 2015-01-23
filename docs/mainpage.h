@@ -7,7 +7,7 @@
  */
 
 
-/*!@mainpage A simple manual
+/*!@mainpage Introduction
 
   Some general info.
 
@@ -58,57 +58,19 @@
   7</code>;
 
   - <b>Function Names:</b> Regular functions have mixed case;
-  accessors and mutators match the name of the variable. Functions
-  should start with a capital letter and have a capital letter for
-  each new word. No underscore, for example <code> AddTableEntry()</code>
-  or <code> DeleteUrl()</code>.
+    accessors and mutators match the name of the variable:
+    MyExcitingFunction(), MyExcitingMethod(),
+    my_exciting_member_variable(), set_my_exciting_member_variable().
+
+    Regular functions should start with a capital letter and have a
+    capital letter for each new word. No underscore, for example <code>
+    AddTableEntry()</code> or <code> DeleteUrl()</code>.
+
+    Accessors and mutators (get and set functions) should match the name
+    of the variable they are getting and setting.
 
   - <b>Namespace Names:</b> Namespace names are all lower-case, and
   based on project names and possibly their directory structure.
-
-  @section emacs Personalizing Emacs
-
-  I use emacs as the text editor and the following is the part in my
-  <code>.emacs</code> file that corresponds to presonalization for C++:
-
-  <code>(setq c-hungry-delete-key t)<br />
-  (add-hook 'c-mode-common-hook 'flyspell-prog-mode)<br />
-
-  ;; C++ mode style, space only as tab<br />
-  (require 'cc-mode)<br />
-  (defun my-build-tab-stop-list (width)<br />
-  (let ((num-tab-stops (/ 80 width))<br />
-  (counter 1)<br />
-  (ls nil))<br />
-  (while (<= counter num-tab-stops)<br />
-  (setq ls (cons (* width counter) ls))<br />
-  (setq counter (1+ counter)))<br />
-  (set (make-local-variable 'tab-stop-list) (nreverse ls))))<br />
-
-  (defun my-c-mode-common-hook ()<br />
-  (setq tab-width 4)<br />
-  (my-build-tab-stop-list tab-width)<br />
-  (setq c-basic-offset tab-width)<br />
-  (setq indent-tabs-mode nil)) ;; force only spaces for indentation<br />
-  (add-hook 'c-mode-common-hook 'my-c-mode-common-hook)<br />
-
-  ;; get the name of the symbol with C-c C-o<br />
-  (c-set-offset 'substatement-open 0)<br />
-  (c-set-offset 'case-label '+)<br />
-  (c-set-offset 'access-label '-2)<br />
-  (c-set-offset 'arglist-cont-nonempty '+)<br />
-  (c-set-offset 'arglist-intro '+)<br />
-  (c-set-offset 'topmost-intro-cont 0)<br />
-  (c-set-offset 'topmost-intro 0)<br />
-
-  ;; Doxygen<br />
-  (add-hook 'c-mode-common-hook 'doxymacs-mode) <br />
-  (defun my-doxymacs-font-lock-hook ()<br />
-  (if (or (eq major-mode 'c-mode) (eq major-mode 'c++-mode))<br />
-      (doxymacs-font-lock)))<br />
-  (add-hook 'font-lock-mode-hook 'my-doxymacs-font-lock-hook)<br />
-
-  </code>
 */
 
 ////////////////////////////////////////////////////////////
