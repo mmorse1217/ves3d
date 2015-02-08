@@ -13,6 +13,7 @@
 #include "Parameters.h"
 #include "BgFlowBase.h"
 #include "InterfacialVelocity.h"
+#include "ParallelLinSolverInterface.h"
 
 //The default arguments classes for the template
 #include "BgFlow.h"
@@ -59,6 +60,7 @@ class EvolveSurface
 
     typedef OperatorsMats<Arr_t> Mats_t;
     typedef Parameters<T> Params_t;
+    typedef ParallelLinSolver<value_type> PSolver_t;
 
     ///external function pointer types
     typedef typename Interact::InteractionFun_t InteractionFun_t;
@@ -68,8 +70,8 @@ class EvolveSurface
     typedef Error_t (IntVel_t::*Scheme_t)(const value_type &);
 
     EvolveSurface(Params_t &params, Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,
-        Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL
-        );
+		  Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,
+		  PSolver_t *parallel_solver=NULL);
 
     ~EvolveSurface();
 
@@ -80,6 +82,7 @@ class EvolveSurface
 
     Sur_t *S_;
     BgFlow_t *vInf_;
+    PSolver_t *parallel_solver_;
     Monitor_t *monitor_;
     Interaction_t *interaction_;
     Repartition_t *repartition_;

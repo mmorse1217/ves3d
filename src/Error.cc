@@ -174,13 +174,13 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
     ErrorHandler::ErrorCallBack cb)
 {
     if ( cb != NULL )
-        return ( cb(ee.err_) );
+        return ( cb(ee) );
     else if ( ErrorHandler::call_back_ != NULL )
-        return ( ErrorHandler::call_back_(ee.err_) );
+        return ( ErrorHandler::call_back_(ee) );
     else
     {
-        //not using CERR b/c of duplicate file info
-        CERR_LOC("No callback is set to handle error event:\n"<<ee,"",NULL);
+        //not using CERR_LOC b/c of duplicate file info
+        CERR("No callback is set to handle error event:\n"<<ee);
     }
 
     return ErrorEvent::UnknownError;

@@ -118,13 +118,13 @@ class ParallelLinOpPetsc : public ParallelLinOp<T>
     explicit ParallelLinOpPetsc(MPI_Comm &comm);
     Error_t SetSizes(size_type lrsz, size_type lcsz, size_type grsz=0, size_type gcsz=0);
     Error_t SetName(const char *name);
-    Error_t SetContext(void *ctx);
+    Error_t SetContext(const void *ctx);
     Error_t SetApply(apply_type app);
     Error_t Configure();
 
     // management
     Error_t GetSizes(size_type &lrsz, size_type &lcsz, size_type &grsz, size_type &gcsz) const;
-    Error_t Context(void **ctx) const;
+    Error_t Context(const void **ctx) const;
     Error_t Apply(const_iterator x, iterator y) const;
     Error_t Apply(const vec_type *x, vec_type *y) const;
 
@@ -146,7 +146,7 @@ class ParallelLinOpPetsc : public ParallelLinOp<T>
     mutable PetscErrorCode	 ierr;
     MPI_Comm			*comm_;
     Mat				 pm_;
-    void			*ctx_;
+    const void			*ctx_;
     apply_type			 apply_;
 };
 
@@ -177,8 +177,8 @@ class ParallelLinSolverPetsc : public ParallelLinSolver<T>
     Error_t SetOperator(matvec_type *mv);
     Error_t Operator(matvec_type **mv) const;
 
-    Error_t SetPrecondContext(void *ctx);
-    Error_t PrecondContext(void **ctx) const;
+    Error_t SetPrecondContext(const void *ctx);
+    Error_t PrecondContext(const void **ctx) const;
     Error_t UpdatePrecond(precond_type precond);
 
     Error_t Configure();
@@ -209,7 +209,7 @@ class ParallelLinSolverPetsc : public ParallelLinSolver<T>
     MPI_Comm			*comm_;
     KSP 			 ps_;
     petsc_matvec_type           *mv_;
-    void                        *precond_ctx_;
+    const void                  *precond_ctx_;
     precond_type                precond_;
 
     friend PetscErrorCode PetscPrecondWrapper<T>(PC A, Vec x, Vec y);

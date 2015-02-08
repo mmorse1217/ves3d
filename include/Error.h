@@ -81,7 +81,7 @@ class ErrorHandler
 {
   public:
     //! Callback function pointer type
-    typedef Error_t (*ErrorCallBack)(const Error_t &);
+    typedef Error_t (*ErrorCallBack)(const ErrorEvent &);
 
     //! Updates the currecnt callback and returns the old one
     static ErrorCallBack setErrorCallBack(ErrorCallBack call_back);
@@ -115,17 +115,25 @@ std::ostream& operator<<(std::ostream& output,
 
 // Error macros
 //! CHK(err) with err as Error_t enum, raises an error if err is not Success
-// defineing chk_expr to avoid multiple evaluation of expr
-static Error_t chk_expr(ErrorEvent::UnknownError);
 
-#define CHK(expr) (                            \
-		   ( chk_expr = expr ),	       \
-		   chk_expr &&		       \
-        ErrorHandler::submitError(chk_expr,    \
-            __FUNCTION__,                      \
-            __FILE__,                          \
-            __LINE__                           \
-                                  ))
+#define CHK(expr) {							\
+	Error_t _chk_expr_(expr); _chk_expr_ && ErrorHandler::submitError(chk_expr, \
+	    __FUNCTION__,						\
+	    __FILE__,							\
+	    __LINE__);							\
+    }
+
+// defineing chk_expr to avoid multiple evaluation of expr. This makes CHK()
+// macro thread-unsafe!
+static Error_t chk_expr(ErrorEvent::UnknownError); //maybe get deprecated
+// #define CHK(expr) (                            \
+// 		   ( chk_expr = expr ),	       \
+// 		   chk_expr &&		       \
+//         ErrorHandler::submitError(chk_expr,    \
+//             __FUNCTION__,                      \
+//             __FILE__,                          \
+//             __LINE__                           \
+//                                   ))
 
 #define CHK_CB(expr,callback) (						\
 			       ( chk_expr = expr ),			\

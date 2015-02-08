@@ -49,6 +49,7 @@ class VesInteraction
     Error_t operator()(const VecContainer &position, VecContainer &density,
         VecContainer &potential) const;
 
+    bool HasInteraction() const;
   private:
     InteractionFun_t interaction_handle_;
     Dealloc_t clear_context_;

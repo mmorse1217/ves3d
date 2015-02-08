@@ -108,13 +108,13 @@ class ParallelLinOp
     explicit ParallelLinOp();
     virtual Error_t SetSizes(size_type lrsz, size_type lcsz, size_type grsz=0, size_type gcsz=0) = 0;
     virtual Error_t SetName(const char *name) = 0;
-    virtual Error_t SetContext(void *ctx) = 0;
+    virtual Error_t SetContext(const void *ctx) = 0;
     virtual Error_t SetApply(apply_type app) = 0;
     virtual Error_t Configure() = 0;
 
     // management
     virtual Error_t GetSizes(size_type &lrsz, size_type &lcsz, size_type &grsz, size_type &gcsz) const = 0;
-    virtual Error_t Context(void **ctx) const = 0;
+    virtual Error_t Context(const void **ctx) const = 0;
     virtual Error_t Apply(const_iterator x, iterator y) const = 0;
     virtual Error_t Apply(const vec_type *x, vec_type *y) const = 0;
 
@@ -161,8 +161,8 @@ class ParallelLinSolver{
     virtual Error_t SetOperator(matvec_type *mv) = 0;
     virtual Error_t Operator(matvec_type **mv) const = 0;
 
-    virtual Error_t SetPrecondContext(void *ctx) = 0;
-    virtual Error_t PrecondContext(void **ctx) const = 0;
+    virtual Error_t SetPrecondContext(const void *ctx) = 0;
+    virtual Error_t PrecondContext(const void **ctx) const = 0;
     virtual Error_t UpdatePrecond(precond_type precond) = 0;
 
     virtual Error_t Configure() = 0;

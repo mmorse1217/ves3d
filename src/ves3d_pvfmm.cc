@@ -21,6 +21,7 @@ void run_sim(int argc, char **argv){
     typedef Evolve_t::Arr_t Arr_t;
     typedef Evolve_t::Vec_t Vec_t;
     typedef Evolve_t::Interaction_t Inter_t;
+    typedef ParallelLinSolverPetsc<real_t> PSol_t;
 
     // Setting the parameters
     Par_t sim_par;
@@ -56,7 +57,11 @@ void run_sim(int argc, char **argv){
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
+    // interaction handler
     Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real>);
+
+    // parallel solver
+    PSol_t *ksp = new PSol_t(VES3D_COMM_WORLD);
 
     //Evolve surface class
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction);

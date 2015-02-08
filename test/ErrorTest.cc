@@ -9,16 +9,16 @@ using namespace std;
 
 #ifndef Doxygen_skip
 
-Error_t local_cb_a(const Error_t &err)
+Error_t local_cb_a(const ErrorEvent &err)
 {
     COUT("CB_A: Received "<<err);
-    return err;
+    return err.err_;
 }
 
-Error_t local_cb_b(const Error_t &err)
+Error_t local_cb_b(const ErrorEvent &err)
 {
     COUT("CB_B: Received "<<err);
-    return err;
+    return err.err_;
 }
 #endif //Doxygen_skip
 

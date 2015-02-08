@@ -21,7 +21,7 @@ Repartition<T>::Repartition(GlobalRepart_t fun_ptr,
         each_thread_idx_[ii] = each_thread_nv_[ii] = 0;
 
     if (this->g_repart_handle_ && !this->clear_context_)
-      CERR("[WARNING] No deallocator is defined for the repartition_context."
+      WARN("No deallocator is defined for the repartition_context."
 	" This may cause memory leak.");
 }
 

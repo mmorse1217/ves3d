@@ -2,10 +2,11 @@ template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M,
-    Interaction_t *I, Repartition_t *R):
+    Interaction_t *I, Repartition_t *R, PSolver_t *parallel_solver):
     params_(params),
     mats_(mats),
     vInf_(vInf),
+    parallel_solver_(parallel_solver),
     monitor_(M),
     interaction_(I),
     repartition_(R),
@@ -70,25 +71,27 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     T time_horizon(params_.time_horizon);
 
     delete F_;
-    F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_);
+    F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_, parallel_solver_);
 
     //Deciding on the updater type
     Scheme_t updater(NULL);
     switch ( params_.scheme )
     {
 	case JacobiBlockExplicit:
-            updater = &IntVel_t::updatePositionExplicit;
+            updater = &IntVel_t::updateJacobiExplicit;
             break;
 
 	case JacobiBlockGaussSeidel:
-            updater = &IntVel_t::updatePositionImplicit;
+            updater = &IntVel_t::updateJacobiGaussSeidel;
             break;
 
 	case JacobiBlockImplicit:
 	    return ErrorEvent::NotImplementedError;
+	    break;
 
 	case GloballyImplicit:
-	    return ErrorEvent::NotImplementedError;
+	    updater = &IntVel_t::updateImplicit;
+	    break;
 
 	default:
 	    ErrorEvent::InvalidParameterError;

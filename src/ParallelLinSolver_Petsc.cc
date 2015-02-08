@@ -292,8 +292,9 @@ Error_t ParallelLinOpPetsc<T>::SetName(const char *name)
 }
 
 template<typename T>
-Error_t ParallelLinOpPetsc<T>::SetContext(void *ctx)
+Error_t ParallelLinOpPetsc<T>::SetContext(const void *ctx)
 {
+    COUTDEBUG("Setting the context to "<<ctx);
     ctx_ = ctx;
     return ErrorEvent::Success;
 }
@@ -301,6 +302,7 @@ Error_t ParallelLinOpPetsc<T>::SetContext(void *ctx)
 template<typename T>
 Error_t ParallelLinOpPetsc<T>::SetApply(apply_type app)
 {
+    COUTDEBUG("Setting apply function to "<<(void*) app);
     apply_ = app;
     return ErrorEvent::Success;
 }
@@ -308,6 +310,7 @@ Error_t ParallelLinOpPetsc<T>::SetApply(apply_type app)
 template<typename T>
 Error_t ParallelLinOpPetsc<T>::Configure()
 {
+    COUTDEBUG("Configuring the object");
     ierr = MatSetType(pm_, MATSHELL); CHK_PETSC(ierr);
     ierr = MatShellSetContext(pm_, static_cast<void*>(this)); CHK_PETSC(ierr);
     ierr = MatSetUp(pm_); CHK_PETSC(ierr);
@@ -330,7 +333,7 @@ Error_t ParallelLinOpPetsc<T>::GetSizes( size_type &lrsz, size_type &lcsz,
 }
 
 template<typename T>
-Error_t ParallelLinOpPetsc<T>::Context(void **ctx) const
+Error_t ParallelLinOpPetsc<T>::Context(const void **ctx) const
 {
     *ctx = ctx_;
     return ErrorEvent::Success;
@@ -492,14 +495,14 @@ Error_t  ParallelLinSolverPetsc<T>::Operator(matvec_type **mv) const
 }
 
 template<typename T>
-Error_t ParallelLinSolverPetsc<T>::SetPrecondContext(void *ctx)
+Error_t ParallelLinSolverPetsc<T>::SetPrecondContext(const void *ctx)
 {
     precond_ctx_ = ctx;
     return ErrorEvent::Success;
 }
 
 template<typename T>
-Error_t ParallelLinSolverPetsc<T>::PrecondContext(void **ctx) const
+Error_t ParallelLinSolverPetsc<T>::PrecondContext(const void **ctx) const
 {
     *ctx = precond_ctx_;
     return ErrorEvent::Success;

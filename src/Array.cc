@@ -98,19 +98,25 @@ template<typename T, typename DT, const DT &DEVICE>
 std::ostream& operator<<(std::ostream& output,
     const Array<T, DT, DEVICE> &arr)
 {
-    typedef typename Array<T, DT, DEVICE>::value_type E;
-    E *buffer(new E[arr.size()]);
-    DEVICE.Memcpy(
-        buffer,
-        arr.begin(),
-        arr.mem_size(),
-        DT::MemcpyDeviceToHost);
+    const T *buffer(arr.begin());
+
+    if (DT::IsHost()){
+	T* bb = new T[arr.size()];
+	buffer = bb;
+	DEVICE.Memcpy(
+	    bb,
+	    arr.begin(),
+	    arr.mem_size(),
+	    DT::MemcpyDeviceToHost);
+    }
 
     output<<"[";
     for(size_t ii=0; ii<arr.size(); ++ii)
         output<<buffer[ii]<<" ";
     output<<"]";
 
-    delete[] buffer;
+    if (!DT::IsHost())
+	delete[] buffer;
+
     return(output);
 }

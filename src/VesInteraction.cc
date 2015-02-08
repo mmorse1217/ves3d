@@ -14,19 +14,19 @@ VesInteraction<T>::VesInteraction(InteractionFun_t interaction_handle,
     all_pot_(NULL),
     context_(NULL)
 {
-    COUTDEBUG("creating an interaction object");
+    COUTDEBUG("Creating an interaction object");
     for(int ii=0; ii<num_threads_; ++ii)
         each_thread_idx_[ii] = each_thread_np_[ii] = 0;
 
     if (this->interaction_handle_ && !this->clear_context_)
-      CERR("[WARNING] No deallocator is defined for the interaction context."
+	WARN("No deallocator is defined for the interaction context."
 	" This may cause memory leak.");
 }
 
 template<typename T>
 VesInteraction<T>::~VesInteraction()
 {
-    COUTDEBUG("destroying the interaction object");
+    COUTDEBUG("Destroying the interaction object");
     delete[] each_thread_np_;
     delete[] each_thread_idx_;
 
@@ -35,7 +35,7 @@ VesInteraction<T>::~VesInteraction()
     delete[] all_pot_;
 
     if (this->context_){
-        COUTDEBUG("deleting the interaction context");
+        COUTDEBUG("Deleting the interaction context");
         this->clear_context_(&(this->context_));
     };
 }
@@ -55,7 +55,7 @@ Error_t VesInteraction<T>::operator()(
             0, potential.size() * sizeof(value_type));
 
         COUTDEBUG("No interaction handle, returning");
-        return ErrorEvent::NoInteraction;
+        return ErrorEvent::ReferenceError;
     }
 
     //Getting the sizes
@@ -100,7 +100,7 @@ Error_t VesInteraction<T>::operator()(
 //#pragma omp barrier
 //#pragma omp master
     assert(omp_get_num_threads()==1);
-    COUTDEBUG("computing vesicle interaction with "<<np_<< " points");
+    COUTDEBUG("Computing vesicle interaction with "<<np_<< " points");
     interaction_handle_(all_pos_, all_den_, np_, all_pot_, &(this->context_));
 //#pragma omp barrier
 
@@ -201,3 +201,9 @@ void VesInteraction<T>::checkContainersSize() const
             //             position.getDevice().Transpose(all_den_, the_dim, np_, all_pot_);
         //}
 //         directInteraction(position.getDevice());
+
+template<typename T>
+bool VesInteraction<T>::HasInteraction() const
+{
+    return this->interaction_handle_ != NULL;
+}

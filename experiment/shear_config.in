@@ -16,7 +16,7 @@ time-horizon : 1e-2
 timestep : 1e-4
 save-stride : 1e-4
 
-time-scheme : BlockImplicit
+time-scheme : JacobiBlockExplicit
 singular-stokes : Direct
 
 ##reparametrization #########################
@@ -31,7 +31,7 @@ cent-file : experiment/shear_centers.txt
 ##checkpoint/monitor ########################
 save-data
 out-file : experiment/shear.out
-error-factor : .2
+error-factor : .01
 
 ##far filed #################################
 bg-flow-param : 0

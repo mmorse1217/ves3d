@@ -192,7 +192,8 @@ static bool assert_expr(false);
 
 #define LOG(msg) (Logger::Log(msg))
 
-#define CERR(msg) (std::cerr<<alert<<msg<<alert<<std::endl)
+#define CERR(msg) (std::cerr<<alert<<"[ERROR] "<<msg<<alert<<std::endl)
+#define WARN(msg) (std::cerr<<alert<<"[WARNING] "<<msg<<alert<<std::endl)
 #define CERR_LOC(pre_msg,post_msg,action) (                             \
         std::cerr<<alert<<"[ERROR] "<<pre_msg                           \
         <<"\n    File           : "<< __FILE__                          \

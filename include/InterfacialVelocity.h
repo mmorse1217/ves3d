@@ -14,32 +14,53 @@
 #include "Enums.h"
 #include "MovePole.h"
 #include "BgFlowBase.h"
+#include "OperatorsMats.h"
+#include "ParallelLinSolverInterface.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
 {
-  private:
+  public:
     typedef typename SurfContainer::value_type value_type;
     typedef typename SurfContainer::device_type device_type;
     typedef typename SurfContainer::Arr_t Arr_t;
     typedef typename SurfContainer::Sca_t Sca_t;
     typedef typename SurfContainer::Vec_t Vec_t;
     typedef OperatorsMats<Arr_t> Mats_t;
+    typedef InterfacialVelocity Matvec_t;
+    typedef ParallelLinSolver<value_type> PSolver_t;
+    typedef typename PSolver_t::matvec_type POp_t;
+    typedef typename PSolver_t::vec_type PVec_t;
 
-  public:
     InterfacialVelocity(SurfContainer &S_in, const Interaction &inter,
         Mats_t &mats, const Parameters<value_type> &params,
-        const BgFlowBase<Vec_t> &bgFlow);
+        const BgFlowBase<Vec_t> &bgFlow,
+	PSolver_t *parallel_solver=NULL);
+
     ~InterfacialVelocity();
 
-    Error_t updatePositionExplicit(const value_type &dt);
-    Error_t updatePositionImplicit(const value_type &dt);
+    Error_t Prepare(const SolverScheme &scheme) const;
+    Error_t BgFlow(Vec_t &bg, const value_type &dt) const;
+    Error_t AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const;
+    Error_t AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
+    Error_t Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
+    Error_t ConfigureSolver(const SolverScheme &scheme) const;
+    Error_t Update(PVec_t *u0);
+
+    Error_t updateJacobiExplicit(const value_type &dt);
+    Error_t updateJacobiGaussSeidel(const value_type &dt);
+    Error_t updateJacobiImplcit(const value_type &dt);
+    Error_t updateImplicit(const value_type &dt);
+
     Error_t reparam();
 
     Error_t getTension(const Vec_t &vel_in, Sca_t &tension) const;
     Error_t stokes(const Vec_t &force, Vec_t &vel) const;
     Error_t stokes_double_layer(const Vec_t &force, Vec_t &vel) const;
-    Error_t updateInteraction() const;
+    Error_t updateFarField() const;
+
+    Error_t EvaluateFarInteraction(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const;
+    Error_t CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const;
 
     Error_t operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const;
     Error_t operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
@@ -56,7 +77,20 @@ class InterfacialVelocity
     BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
     BiCGStab<Vec_t, InterfacialVelocity> linear_solver_vec_;
 
+    // parallel solver
+    PSolver_t *parallel_solver_;
+    mutable bool psolver_configured_;
+    mutable POp_t *parallel_matvec_;
+
+    mutable PVec_t *parallel_rhs_;
+    mutable PVec_t *parallel_u_;
+    static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
+
     value_type dt_;
+
+    Error_t EvalFarInter_Imp(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const;
+    Error_t EvalFarInter_ImpUpsample(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const;
+
     //Operators
     Sca_t w_sph_, w_sph_inv_;
     Sca_t sing_quad_weights_;
@@ -83,6 +117,9 @@ class InterfacialVelocity
 
     void purgeTheWorkSpace() const;
 
+  //////////////////////////////////////////////////////////////////////////
+  /// DEBUG mode methods ///////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
 #ifndef NDEBUG
   public:
     bool benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel,

@@ -128,7 +128,7 @@ Error_t test_matvec_wrapper(const ParallelLinOp<T> *M, const T *x, T *y)
     INFO("The test matvec wrapper");
     testtools::AssertTrue(true, "matvec called properly", "");
     typename ParallelLinOp<T>::apply_type ctx(NULL);
-    CHK(M->Context((void**) &ctx));
+    CHK(M->Context((const void**) &ctx));
     testtools::AssertTrue(*ctx!=NULL, "well defined context", "bad context");
     ctx(M,x,y);
 
@@ -165,12 +165,12 @@ void TestParallelOp(ParallelLinOp<T> *A,
     MPI_Comm_size(*A->MPIComm(), &wsz);
     MPI_Comm_rank(*A->MPIComm(), &rank);
 
-    testtools::AssertTrue(lrsz==rsz    , "correct local row size"	          , "incorrect local row size");
-    testtools::AssertTrue(lcsz==csz    , "correct local column size"	  , "incorrect local column size");
-    testtools::AssertTrue(grsz==wsz*rsz, "correct local global row size"	  , "incorrect global row size");
+    testtools::AssertTrue(lrsz==rsz    , "correct local row size"           , "incorrect local row size");
+    testtools::AssertTrue(lcsz==csz    , "correct local column size"        , "incorrect local column size");
+    testtools::AssertTrue(grsz==wsz*rsz, "correct local global row size"    , "incorrect global row size");
     testtools::AssertTrue(gcsz==wsz*csz, "correct local global column size" , "incorrect global column size");
 
-    void *ctx;
+    const void *ctx;
     CHK(A->Context(&ctx));
     testtools::AssertTrue(ctx==(void*) matvec, "correct context", "incorrect context");
 

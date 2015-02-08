@@ -6,10 +6,10 @@ typedef Device<CPU> Dev;
 extern const Dev the_dev(0);
 
 // Default callback for errors
-Error_t cb_abort(const Error_t &err)
+Error_t cb_abort(const ErrorEvent &err)
 {
     CERR_LOC("Aborting, received error "<<err,"",abort());
-    return err;
+    return err.err_;
 }
 
 void run_sim(int argc, char **argv){
