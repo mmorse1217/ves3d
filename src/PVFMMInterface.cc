@@ -131,19 +131,19 @@ void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 
 
 template<typename T>
-void PVFMMBoundingBox(size_t np, const T* x, T* scale_xr, T* shift_xr, MPI_Comm comm){
+void PVFMMBoundingBox(size_t n_src, const T* x, T* scale_xr, T* shift_xr, MPI_Comm comm){
   T& scale_x=*scale_xr;
   T* shift_x= shift_xr;
 
-  if(np>0){ // Compute bounding box
+  if(n_src>0){ // Compute bounding box
     double loc_min_x[DIM];
     double loc_max_x[DIM];
-    assert(np>0);
+    assert(n_src>0);
     for(size_t k=0;k<DIM;k++){
       loc_min_x[k]=loc_max_x[k]=x[k];
     }
 
-    for(size_t i=0;i<np;i++){
+    for(size_t i=0;i<n_src;i++){
       const T* x_=&x[i*DIM];
       for(size_t k=0;k<DIM;k++){
         if(loc_min_x[k]>x_[0]) loc_min_x[k]=x_[0];
@@ -256,12 +256,17 @@ void PVFMMDestroyContext(void** ctx){
 }
 
 template<typename T>
-void PVFMMEval(const T* all_pos, const T* sl_den, size_t np, T* all_pot, void** ctx_){
-  PVFMMEval<T>(all_pos, sl_den, NULL, np, all_pot, ctx_);
+void PVFMMEval(const T* src_pos, const T* sl_den, size_t n_src, T* trg_vel, void** ctx_){
+  PVFMMEval<T>(src_pos, sl_den, NULL, n_src, trg_vel, ctx_);
 }
 
 template<typename T>
-void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T* all_pot, void** ctx_){
+void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, T* trg_vel, void** ctx_){
+  PVFMMEval(src_pos, sl_den, dl_den, n_src, src_pos, trg_vel, n_src, ctx_);
+}
+
+template<typename T>
+void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, const T* trg_pos, T* trg_vel, size_t n_trg, void** ctx_){
   PROFILESTART();
   long long prof_FLOPS=pvfmm::Profile::Add_FLOP(0);
 
@@ -275,7 +280,7 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
 
   pvfmm::Profile::Tic("FMM",&ctx->comm);
   T scale_x, shift_x[DIM];
-  PVFMMBoundingBox(np, all_pos, &scale_x, shift_x, ctx->comm);
+  PVFMMBoundingBox(n_src, src_pos, &scale_x, shift_x, ctx->comm);
 
   pvfmm::Vector<T>  src_scal;
   pvfmm::Vector<T>  trg_scal;
@@ -300,20 +305,29 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
 
   pvfmm::Vector<size_t> scatter_index;
   pvfmm::Vector<T>& trg_coord=ctx->tree_data.trg_coord;
+  pvfmm::Vector<T>& src_coord=ctx->tree_data.src_coord;
   pvfmm::Vector<T>& src_value=ctx->tree_data.src_value;
   pvfmm::Vector<T>& surf_coord=ctx->tree_data.surf_coord;
   pvfmm::Vector<T>& surf_value=ctx->tree_data.surf_value;
   { // Set tree_data
-
     // Compute MortonId and copy coordinates and values.
-    trg_coord.Resize(np*DIM);
-    src_value .Resize(sl_den?np*(ker_dim[0]    ):0);
-    surf_value.Resize(dl_den?np*(ker_dim[0]+DIM):0);
-    pvfmm::Vector<pvfmm::MortonId> trg_mid(np);
+    src_coord.Resize(n_src*DIM);
+    trg_coord.Resize(n_trg*DIM);
+    src_value .Resize(sl_den?n_src*(ker_dim[0]    ):0);
+    surf_value.Resize(dl_den?n_src*(ker_dim[0]+DIM):0);
+    pvfmm::Vector<pvfmm::MortonId> src_mid(n_src);
+    pvfmm::Vector<pvfmm::MortonId> trg_mid(n_trg);
     #pragma omp parallel for
-    for(size_t i=0;i<np;i++){
+    for(size_t i=0;i<n_src;i++){
       for(size_t j=0;j<DIM;j++){
-        trg_coord[i*DIM+j]=all_pos[i*DIM+j]*scale_x+shift_x[j];
+        src_coord[i*DIM+j]=src_pos[i*DIM+j]*scale_x+shift_x[j];
+      }
+      src_mid[i]=pvfmm::MortonId(&src_coord[i*DIM]);
+    }
+    #pragma omp parallel for
+    for(size_t i=0;i<n_trg;i++){
+      for(size_t j=0;j<DIM;j++){
+        trg_coord[i*DIM+j]=trg_pos[i*DIM+j]*scale_x+shift_x[j];
       }
       trg_mid[i]=pvfmm::MortonId(&trg_coord[i*DIM]);
     }
@@ -341,14 +355,17 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
       min_mid=n->GetMortonId();
     }
 
-    // Compute scatter_index.
-    pvfmm::par::SortScatterIndex(trg_mid  , scatter_index, ctx->comm, &min_mid);
+    // Scatter src coordinates and values.
+    pvfmm::par::SortScatterIndex( src_mid  , scatter_index, ctx->comm, &min_mid);
+    pvfmm::par::ScatterForward  ( src_mid  , scatter_index, ctx->comm);
+    pvfmm::par::ScatterForward  ( src_coord, scatter_index, ctx->comm);
+    if( src_value.Dim()) pvfmm::par::ScatterForward  ( src_value, scatter_index, ctx->comm);
+    if(surf_value.Dim()) pvfmm::par::ScatterForward  (surf_value, scatter_index, ctx->comm);
 
-    // Scatter coordinates and values.
+    // Scatter trg coordinates and values.
+    pvfmm::par::SortScatterIndex( trg_mid  , scatter_index, ctx->comm, &min_mid);
     pvfmm::par::ScatterForward  ( trg_mid  , scatter_index, ctx->comm);
     pvfmm::par::ScatterForward  ( trg_coord, scatter_index, ctx->comm);
-    pvfmm::par::ScatterForward  ( src_value, scatter_index, ctx->comm);
-    pvfmm::par::ScatterForward  (surf_value, scatter_index, ctx->comm);
 
     {// Set tree_data
       std::vector<Node_t*> nodes;
@@ -361,31 +378,35 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
         }
       }
 
-      std::vector<size_t> part_indx(nodes.size()+1);
-      part_indx[nodes.size()]=trg_mid.Dim();
+      std::vector<size_t> part_indx_src(nodes.size()+1);
+      std::vector<size_t> part_indx_trg(nodes.size()+1);
+      part_indx_src[nodes.size()]=src_mid.Dim();
+      part_indx_trg[nodes.size()]=trg_mid.Dim();
       #pragma omp parallel for
       for(size_t j=0;j<nodes.size();j++){
-        part_indx[j]=std::lower_bound(&trg_mid[0], &trg_mid[0]+trg_mid.Dim(), nodes[j]->GetMortonId())-&trg_mid[0];
+        part_indx_src[j]=std::lower_bound(&src_mid[0], &src_mid[0]+src_mid.Dim(), nodes[j]->GetMortonId())-&src_mid[0];
+        part_indx_trg[j]=std::lower_bound(&trg_mid[0], &trg_mid[0]+trg_mid.Dim(), nodes[j]->GetMortonId())-&trg_mid[0];
       }
 
       #pragma omp parallel for
       for(size_t j=0;j<nodes.size();j++){
-        size_t n_pts=part_indx[j+1]-part_indx[j];
         {
-          nodes[j]-> trg_coord.ReInit(n_pts*(           DIM),& trg_coord[0]+part_indx[j]*(           DIM),false);
+          size_t n_pts=part_indx_trg[j+1]-part_indx_trg[j];
+          nodes[j]-> trg_coord.ReInit(n_pts*(           DIM),& trg_coord[0]+part_indx_trg[j]*(           DIM),false);
         }
 
+        size_t n_pts=part_indx_src[j+1]-part_indx_src[j];
         if(src_value.Dim()){
-          nodes[j]-> src_coord.ReInit(n_pts*(           DIM),& trg_coord[0]+part_indx[j]*(           DIM),false);
-          nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]    ),& src_value[0]+part_indx[j]*(ker_dim[0]    ),false);
+          nodes[j]-> src_coord.ReInit(n_pts*(           DIM),& src_coord[0]+part_indx_src[j]*(           DIM),false);
+          nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]    ),& src_value[0]+part_indx_src[j]*(ker_dim[0]    ),false);
         }else{
           nodes[j]-> src_coord.ReInit(0,NULL,false);
           nodes[j]-> src_value.ReInit(0,NULL,false);
         }
 
         if(surf_value.Dim()){
-          nodes[j]->surf_coord.ReInit(n_pts*(           DIM),& trg_coord[0]+part_indx[j]*(           DIM),false);
-          nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+DIM),false);
+          nodes[j]->surf_coord.ReInit(n_pts*(           DIM),& src_coord[0]+part_indx_src[j]*(           DIM),false);
+          nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+DIM),&surf_value[0]+part_indx_src[j]*(ker_dim[0]+DIM),false);
         }else{
           nodes[j]->surf_coord.ReInit(0,NULL,false);
           nodes[j]->surf_value.ReInit(0,NULL,false);
@@ -417,18 +438,18 @@ void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T*
       assert(n!=NULL);
     }
     pvfmm::Vector<T> trg_value(scatter_index.Dim()*ker_dim[1],&n->trg_value[0]);
-    pvfmm::par::ScatterReverse  (trg_value, scatter_index, ctx->comm, np);
+    pvfmm::par::ScatterReverse  (trg_value, scatter_index, ctx->comm, n_trg);
     #pragma omp parallel for
-    for(size_t i=0;i<np;i++){
+    for(size_t i=0;i<n_trg;i++){
       for(size_t k=0;k<ker_dim[1];k++){
-        all_pot[i*ker_dim[1]+k]=trg_value[i*ker_dim[1]+k]*trg_scal[k];
+        trg_vel[i*ker_dim[1]+k]=trg_value[i*ker_dim[1]+k]*trg_scal[k];
       }
     }
   }
   pvfmm::Profile::Toc();
 
   prof_FLOPS=pvfmm::Profile::Add_FLOP(0)-prof_FLOPS;
-  pvfmm::Profile::print(&ctx->comm);
+  //pvfmm::Profile::print(&ctx->comm);
   //PVFMMDestroyContext<T>(ctx_);
   PROFILEEND("",prof_FLOPS);
 }
