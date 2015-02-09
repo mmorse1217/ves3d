@@ -60,7 +60,7 @@ void NearSingular<Surf_t>::SetTrgCoord(const Surf_t& T_){
 }
 
 template<typename Surf_t>
-void NearSingular<Surf_t>::SetTrgCoord(const Real_t* trg_coord, size_t N){
+void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N){ // TODO: change to const Real_t*
   T.ReInit(N*COORD_DIM,trg_coord);
 }
 
@@ -76,7 +76,7 @@ void NearSingular<Surf_t>::SetDensity(const Vec_t* force_single_, const Vec_t* f
 }
 
 template<typename Surf_t>
-NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::EvaluateNearSingular(){
+NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
   MPI_Barrier(comm);
   Real_t near=0.5; // TODO: some function of sh_order and accuracy
 
@@ -85,6 +85,8 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::EvaluateNearSingular(){
   MPI_Comm_rank(comm,&rank);
   size_t omp_p=omp_get_max_threads();
 
+  assert(S);
+  assert(S_vel);
   struct{
     const Surf_t* S;
     Real_t bbox[4]; // {s,x,y,z} : scale, shift
@@ -1036,10 +1038,9 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::EvaluateNearSingular(){
 }
 
 template<typename Surf_t>
-void NearSingular<Surf_t>::EvaluateNearSingular(Vec_t& T_vel){
+void NearSingular<Surf_t>::operator()(Vec_t& T_vel){
   size_t omp_p=omp_get_max_threads();
-
-  this->EvaluateNearSingular();
+  (*this)();
 
   const Vec_t& x=T_vel;
   size_t N_ves = x.getNumSubs(); // Number of vesicles
@@ -1697,7 +1698,7 @@ static void force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
 }
 
 template<typename Surf_t>
-void NearSingular<Surf_t>::TestNearSingular(){
+void NearSingular<Surf_t>::Test(){
   typedef typename Vec_t::scalars_type Sca_t;
   typedef typename Vec_t::array_type Arr_t;
   typedef OperatorsMats<Arr_t> Mats_t;
@@ -1835,7 +1836,7 @@ void NearSingular<Surf_t>::TestNearSingular(){
   near_singular.SetDensity(&qforce, NULL);
 
   pvfmm::Profile::Tic("NearInteractions",&comm);
-  near_singular.EvaluateNearSingular();
+  near_singular();
   pvfmm::Profile::Toc();
 }
 

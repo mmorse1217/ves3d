@@ -1,12 +1,13 @@
 #ifdef HAVE_PVFMM
-#ifndef _NEAR_SINGULAR_H_
-#define _NEAR_SINGULAR_H_
+#ifndef _STOKES_VELOCITY_H_
+#define _STOKES_VELOCITY_H_
 
 #include <mpi.h>
 #include <vector.hpp>
+#include <PVFMMInterface.h>
 
 template<typename Surf_t>
-class NearSingular{
+class StokesVelocity{
 
     typedef typename Surf_t::Vec_t Vec_t;
     typedef typename Surf_t::value_type Real_t;
@@ -14,11 +15,16 @@ class NearSingular{
 
   public:
 
-    NearSingular(MPI_Comm c=MPI_COMM_WORLD):comm(c){
+    StokesVelocity(MPI_Comm c=MPI_COMM_WORLD):comm(c),near_singular(c){
+      pvfmm_ctx=PVFMMCreateContext<Real_t>();
       S=NULL;
       force_single=NULL;
       force_double=NULL;
       S_vel=NULL;
+    }
+
+    ~StokesVelocity(){
+      PVFMMDestroyContext<Real_t>(&pvfmm_ctx);
     }
 
     void SetSrcCoord(const Surf_t& S_);
@@ -34,8 +40,8 @@ class NearSingular{
     static void Test();
 
   private:
-
-    void StokesNearSingular(Real_t r_near, const size_t* trg_cnt, const size_t* trg_dsp,  Real_t* trg_coord, Real_t* trg_veloc);
+    void* pvfmm_ctx;
+    NearSingular<Surf_t> near_singular;
 
     const Surf_t* S;
     const Vec_t* force_single;
@@ -48,7 +54,7 @@ class NearSingular{
     MPI_Comm comm;
 };
 
-#include "NearSingular.cc"
+#include "StokesVelocity.cc"
 
-#endif // _NEAR_SINGULAR_H_
+#endif // _STOKES_VELOCITY_H_
 #endif
