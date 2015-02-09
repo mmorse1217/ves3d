@@ -773,7 +773,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             break;
 
     }
-    COUTDEBUG("Total iterations = "<<ii<<"|vel| = "<<vel);
+    INFO("Iterations = "<<ii<<", |vel| = "<<vel);
 
     recycle(u1);
     recycle(u2);

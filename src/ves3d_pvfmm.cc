@@ -2,15 +2,16 @@
 #include "ves3d_common.h"
 #include "Logger.h"
 #include "EvolveSurface.h"
+#include "ParallelLinSolver_Petsc.h"
 
 typedef Device<CPU> Dev;
 extern const Dev the_dev(0);
 
 // Default callback for errors
-Error_t cb_abort(const Error_t &err)
+Error_t cb_abort(const ErrorEvent &err)
 {
     CERR_LOC("Aborting, received error "<<err,"",abort());
-    return err;
+    return err.err_;
 }
 
 void run_sim(int argc, char **argv){
@@ -58,13 +59,14 @@ void run_sim(int argc, char **argv){
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     // interaction handler
-    Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real>);
+    Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real_t>);
+    // Inter_t fmm_interaction(&StokesAlltoAll); /* for debugging -- to be removed */
 
     // parallel solver
-    PSol_t *ksp = new PSol_t(VES3D_COMM_WORLD);
+    PSol_t ksp(VES3D_COMM_WORLD);
 
     //Evolve surface class
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction);
+    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction, NULL, &ksp);
     CHK( Es.Evolve() );
 }
 
@@ -72,11 +74,11 @@ int main(int argc, char **argv)
 {
     pvfmm::Profile::Enable(true);
     PROFILESTART();
-    MPI_Init(&argc,&argv);
+    PetscInitialize(&argc, &argv, NULL, NULL);
     run_sim(argc, argv);
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortTime);
-    MPI_Finalize();
+    PetscFinalize();
     return 0;
 }
