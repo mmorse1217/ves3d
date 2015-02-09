@@ -1165,6 +1165,11 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
   int k1_max=x.getGridDim().second;
   assert(M_ves==k0_max*k1_max);
 
+  const Vec_t* normal=NULL;
+  if(force_double){
+    normal=&S->getNormal();
+  }
+
   std::vector<Real_t> pole_quad;
   { // compute quadrature to find pole
     size_t p=x.getShOrder();
@@ -1213,7 +1218,8 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
       size_t b=((tid+1)*N_ves)/omp_p;
 
       PVFMMVec_t s_coord(M_ves*COORD_DIM);
-      PVFMMVec_t s_force(M_ves*force_dim);
+      PVFMMVec_t s_slfor(M_ves*force_dim);
+      PVFMMVec_t s_dlfor(M_ves*(force_dim+COORD_DIM));
       PVFMMVec_t s_veloc(M_ves*veloc_dim);
 
       PVFMMVec_t pole_coord(2*COORD_DIM);
@@ -1225,17 +1231,27 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
       PVFMMVec_t patch_veloc_(3*3*veloc_dim);
 
       for(size_t i=a;i<b;i++){ // loop over all vesicles
-        { // Set s_coord, s_force, s_veloc
+        { // Set s_coord, s_slfor, s_dlfor, s_veloc
           // read each component of x
           const Real_t* xk=x.getSubN_begin(i)+0*M_ves;
           const Real_t* yk=x.getSubN_begin(i)+1*M_ves;
           const Real_t* zk=x.getSubN_begin(i)+2*M_ves;
 
-          // read each component of qforce
-          const Real_t* fxk=force.getSubN_begin(i)+0*M_ves;
-          const Real_t* fyk=force.getSubN_begin(i)+1*M_ves;
-          const Real_t* fzk=force.getSubN_begin(i)+2*M_ves;
+          // read each component of force_single
+          const Real_t* fxk=(force_single?force_single->getSubN_begin(i)+0*M_ves:NULL);
+          const Real_t* fyk=(force_single?force_single->getSubN_begin(i)+1*M_ves:NULL);
+          const Real_t* fzk=(force_single?force_single->getSubN_begin(i)+2*M_ves:NULL);
           assert(force_dim==3);
+
+          // read each component of force_double
+          const Real_t* dlfxk=(force_double?force_double->getSubN_begin(i)+0*M_ves:NULL);
+          const Real_t* dlfyk=(force_double?force_double->getSubN_begin(i)+1*M_ves:NULL);
+          const Real_t* dlfzk=(force_double?force_double->getSubN_begin(i)+2*M_ves:NULL);
+
+          // read each component of normal
+          const Real_t* nxk=(normal?normal->getSubN_begin(i)+0*M_ves:NULL);
+          const Real_t* nyk=(normal?normal->getSubN_begin(i)+1*M_ves:NULL);
+          const Real_t* nzk=(normal?normal->getSubN_begin(i)+2*M_ves:NULL);
 
           // read each component of veloc
           const Real_t* vsxk=S_vel->getSubN_begin(i)+0*M_ves;
@@ -1248,13 +1264,23 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
             s_coord[j*COORD_DIM+1]=yk[j];
             s_coord[j*COORD_DIM+2]=zk[j];
 
-            s_force[j*force_dim+0]=fxk[j];
-            s_force[j*force_dim+1]=fyk[j];
-            s_force[j*force_dim+2]=fzk[j];
-
             s_veloc[j*veloc_dim+0]=vsxk[j];
             s_veloc[j*veloc_dim+1]=vsyk[j];
             s_veloc[j*veloc_dim+2]=vszk[j];
+          }
+          if(force_single) for(size_t j=0;j<M_ves;j++){
+            s_slfor[j*force_dim+0]=fxk[j];
+            s_slfor[j*force_dim+1]=fyk[j];
+            s_slfor[j*force_dim+2]=fzk[j];
+          }
+          if(force_double) for(size_t j=0;j<M_ves;j++){
+            assert(normal);
+            s_dlfor[j*(force_dim+COORD_DIM)+0]=dlfxk[j];
+            s_dlfor[j*(force_dim+COORD_DIM)+1]=dlfyk[j];
+            s_dlfor[j*(force_dim+COORD_DIM)+2]=dlfzk[j];
+            s_dlfor[j*(force_dim+COORD_DIM)+3]=nxk[j];
+            s_dlfor[j*(force_dim+COORD_DIM)+4]=nyk[j];
+            s_dlfor[j*(force_dim+COORD_DIM)+5]=nzk[j];
           }
         }
         { // Set pole values: pole_coord, pole_veloc
@@ -1285,10 +1311,13 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
         PVFMMVec_t t_veloc(trg_cnt[i]*veloc_dim, &trg_veloc[trg_dsp[i]*veloc_dim], false);
         t_veloc.SetZero();
 
-        { // Subtract wrong near potential
-          stokes_sl(&s_coord[0], M_ves, &s_force[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
-          for(size_t j=0;j<t_veloc.Dim();j++) t_veloc[j]=-t_veloc[j];
+        if(force_single){ // Subtract wrong near potential
+          stokes_sl(&s_coord[0], M_ves, &s_slfor[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
+        if(force_double){ // Subtract wrong near potential
+          stokes_dl(&s_coord[0], M_ves, &s_dlfor[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+        }
+        for(size_t j=0;j<t_veloc.Dim();j++) t_veloc[j]=-t_veloc[j];
 
         // Add corrected near potential
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
@@ -1588,7 +1617,12 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
             }
 
             // Compute velocity at interpolation points
-            stokes_sl(&s_coord[0], M_ves, &s_force[0], 1, &interp_coord[1*COORD_DIM], interp_deg-1, &interp_veloc[1*veloc_dim], NULL);
+            if(force_single){
+              stokes_sl(&s_coord[0], M_ves, &s_slfor[0], 1, &interp_coord[1*COORD_DIM], interp_deg-1, &interp_veloc[1*veloc_dim], NULL);
+            }
+            if(force_double){
+              stokes_dl(&s_coord[0], M_ves, &s_dlfor[0], 1, &interp_coord[1*COORD_DIM], interp_deg-1, &interp_veloc[1*veloc_dim], NULL);
+            }
 
             // Interpolate
             for(size_t k=0;k<veloc_dim;k++){
