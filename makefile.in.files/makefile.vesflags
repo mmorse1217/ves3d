@@ -1,3 +1,4 @@
+# -*- mode: makefile -*-
 ifeq ($(VES3D_TESTING),yes)
   VES3D_DEBUG   = yes
   VES3D_PROFILE	= yes
@@ -22,4 +23,8 @@ ifeq (${VES3D_PERC},SINGLE)
   CXXFLAGS += -DSINGLE_PREC
 else
   CXXFLAGS += -DDOUBLE_PREC
+endif
+
+ifeq (${VES3D_USE_MPI},yes)
+  CXXFLAGS += -DHAS_MPI
 endif

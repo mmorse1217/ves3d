@@ -1,10 +1,12 @@
+# -*- mode: makefile -*-
 MAKE_DEP += ${VES3D_MKDIR}/makefile.cafu
 
 # flags for default
-VES3D_USE_PVFMM  = yes
+VES3D_TESTING    = yes
 VES3D_USE_GPU    = yes
-VES3D_PROFILE    = yes
-VES3D_VERBOSE    = 1
+VES3D_USE_PVFMM  = no
+VES3D_USE_PETSC  = no
+COMPILER_VENDOR  = intel
 
 include ${VES3D_MKDIR}/makefile.default
 

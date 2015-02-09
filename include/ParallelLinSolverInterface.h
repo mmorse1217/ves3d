@@ -37,7 +37,13 @@
 
 #include <cstddef> //size_t
 #include "Error.h"
+
+#ifdef HAS_MPI
 #include "mpi.h"
+#define  comm_t MPI_Comm
+#else
+#define  comm_t int
+#endif /* HAS_MPI */
 
 template<typename T>
 class ParallelVec
@@ -76,7 +82,7 @@ class ParallelVec
     virtual Error_t Norm(value_type &nrm, const enum NormType &type = NORM_2) const = 0;
     virtual Error_t View() const = 0;
     virtual Error_t axpy(value_type a, const ParallelVec *x) = 0;
-    virtual const MPI_Comm* MPIComm() const = 0;
+    virtual const comm_t* MPIComm() const = 0;
 
     // destruction
     virtual ~ParallelVec() = 0;
@@ -123,7 +129,7 @@ class ParallelLinOp
     virtual Error_t LinOpFactory(ParallelLinOp **newop) const = 0;
 
     // utility
-    virtual const MPI_Comm* MPIComm() const = 0;
+    virtual const comm_t* MPIComm() const = 0;
 
     // destruction
     virtual ~ParallelLinOp() = 0;
@@ -179,7 +185,7 @@ class ParallelLinSolver{
     virtual Error_t IterationNumber(size_t &niter) const = 0;
     virtual Error_t ViewReport() const = 0;
     virtual Error_t OperatorResidual(const vec_type *rhs, const vec_type *x, value_type &res) const = 0;
-    virtual const MPI_Comm* MPIComm() const = 0;
+    virtual const comm_t* MPIComm() const = 0;
 
     // destruction
     virtual ~ParallelLinSolver() = 0;

@@ -1,9 +1,8 @@
-module use /org/centers/ccgo/local/modulefiles/
+# -*- mode: sh; -*-
 module load sl6
 
-#module load gcc
-module load intel 
-module load mkl 
+module load intel
+module load mkl
 module load openmpi
 module load cuda
 module load matlab

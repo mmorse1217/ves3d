@@ -6,7 +6,6 @@ COMPILER_VENDOR ?= intel
 VES3D_TESTING   ?= yes
 
 include ${VES3D_MKDIR}/makefile.default
-include $(VES3D_MKDIR)/makefile.vesflags
 
 # customization ##########################################
 

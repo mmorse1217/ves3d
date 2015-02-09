@@ -14,8 +14,9 @@ VES3D_VERBOSE    ?= 2   #1=most verbose, 2=normal, 3=quiet
 VES3D_TESTING    ?= no  #equal to DEBUG, PROFILE and VERBOSE=1
 
 VES3D_USE_GPU    ?= no
+VES3D_USE_MPI    ?= no
 VES3D_USE_PVFMM  ?= no
-VES3D_USE_PETSC  ?= yes
+VES3D_USE_PETSC  ?= no
 VES3D_PREC       ?= DOUBLE #or SINGLE
 
 COMPILER_VENDOR  ?= intel  #or gnu
@@ -45,7 +46,7 @@ VES3D_INCDIR   ?= $(VES3D_DIR)/include
 VES3D_LIBDIR   ?= $(VES3D_DIR)/lib
 VES3D_SRCDIR   ?= $(VES3D_DIR)/src
 VES3D_TSTDIR   ?= $(VES3D_DIR)/test
-VES3D_VERSION   = $(shell hg -q id -n)
+VES3D_VERSION   = $(@shell hg -q id -n)
 
 # PETSC (needs to be first b/c it overwrites make variables!)
 ifeq (${VES3D_USE_PETSC},yes)
@@ -108,3 +109,5 @@ LDLIBS         += $(addprefix -l,${VES3D_LIBS})
 # misc
 ARFLAGS = r
 ARFILES = $(addprefix lib,$(addsuffix .a,${VES3D_LIBS}))
+
+include $(VES3D_MKDIR)/makefile.vesflags
