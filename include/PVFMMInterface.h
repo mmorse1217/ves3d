@@ -25,7 +25,7 @@ const pvfmm::Kernel<double> ker_stokes=pvfmm::BuildKernel<double, stokes_sl, sto
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void* PVFMMCreateContext(int n=800, int m=10, int max_d=20,
+void* PVFMMCreateContext(int n=500, int m=10, int max_d=MAX_DEPTH,
     pvfmm::BoundaryType bndry=pvfmm::FreeSpace,
     const pvfmm::Kernel<T>* ker=&ker_stokes,
     MPI_Comm comm=MPI_COMM_WORLD);

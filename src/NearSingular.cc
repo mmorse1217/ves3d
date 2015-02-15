@@ -3,82 +3,61 @@
 #include <omp.h>
 #include <iostream>
 
-#include "DataIO.h"
-#include "BgFlow.h"
-#include "Array.h"
-#include "Vectors.h"
-#include "Surface.h"
-#include "MovePole.h"
-#include "Parameters.h"
-#include "OperatorsMats.h"
-#include "VesInteraction.h"
-#include "PVFMMInterface.h"
-#include "InterfacialVelocity.h"
-
 #include <ompUtils.h>
 #include <parUtils.h>
-#include <mortonid.hpp>
-#include <mpi_tree.hpp>
-#include <legendre_rule.hpp>
 #include <profile.hpp>
+#include <mortonid.hpp>
+#include <legendre_rule.hpp>
+#include <mpi_tree.hpp>
 
 template<typename Surf_t>
 void NearSingular<Surf_t>::SetSrcCoord(const Surf_t& S_){
+  update_direct=update_direct | NearSingular::UpdateSrcCoord;
+  update_interp=update_interp | NearSingular::UpdateSrcCoord;
+  update_setup =update_setup  | NearSingular::UpdateSrcCoord;
   S=&S_;
 }
 
 template<typename Surf_t>
-void NearSingular<Surf_t>::SetTrgCoord(const Surf_t& T_){
-  size_t omp_p=omp_get_max_threads();
-
-  const Vec_t& x=T_.getPosition();
-  size_t N_ves = x.getNumSubs(); // Number of vesicles
-  size_t M_ves = x.getStride(); // Points per vesicle
-  assert(M_ves==x.getGridDim().first*x.getGridDim().second);
-
-  PVFMMVec_t& pt_coord=T;
-  pt_coord.ReInit(N_ves*M_ves*COORD_DIM);
-
-  #pragma omp parallel for
-  for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
-    size_t a=((tid+0)*N_ves)/omp_p;
-    size_t b=((tid+1)*N_ves)/omp_p;
-
-    for(size_t i=a;i<b;i++){
-      // read each component of x
-      const Real_t* xk=x.getSubN_begin(i)+0*M_ves;
-      const Real_t* yk=x.getSubN_begin(i)+1*M_ves;
-      const Real_t* zk=x.getSubN_begin(i)+2*M_ves;
-
-      for(size_t j=0;j<M_ves;j++){
-        pt_coord[(i*M_ves+j)*COORD_DIM+0]=xk[j];
-        pt_coord[(i*M_ves+j)*COORD_DIM+1]=yk[j];
-        pt_coord[(i*M_ves+j)*COORD_DIM+2]=zk[j];
-      }
-    }
-  }
-}
-
-template<typename Surf_t>
-void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N){ // TODO: change to const Real_t*
-  T.ReInit(N*COORD_DIM,trg_coord);
-}
-
-template<typename Surf_t>
 void NearSingular<Surf_t>::SetSurfaceVel(const Vec_t& S_vel_){
+  update_interp=update_interp | NearSingular::UpdateSurfaceVel;
   S_vel=&S_vel_;
 }
 
 template<typename Surf_t>
-void NearSingular<Surf_t>::SetDensity(const Vec_t* force_single_, const Vec_t* force_double_){
-  force_single=force_single_;
-  force_double=force_double_;
+void NearSingular<Surf_t>::SetDensitySL(const PVFMMVec_t* qforce_single_){
+  update_direct=update_direct | NearSingular::UpdateDensitySL;
+  update_interp=update_interp | NearSingular::UpdateDensitySL;
+  qforce_single=qforce_single_;
 }
 
 template<typename Surf_t>
-NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
-  MPI_Barrier(comm);
-  Real_t near=0.5; // TODO: some function of sh_order and accuracy
+void NearSingular<Surf_t>::SetDensityDL(const PVFMMVec_t* qforce_double_){
+  update_direct=update_direct | NearSingular::UpdateDensityDL;
+  update_interp=update_interp | NearSingular::UpdateDensityDL;
+  qforce_double=qforce_double_;
+}
+
+
+template<typename Surf_t>
+void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N){ // TODO: change to const Real_t*
+  update_direct=update_direct | NearSingular::UpdateTrgCoord;
+  update_interp=update_interp | NearSingular::UpdateTrgCoord;
+  update_setup =update_setup  | NearSingular::UpdateTrgCoord;
+  T.ReInit(N*COORD_DIM,trg_coord);
+}
+
+
+
+
+template<typename Surf_t>
+void NearSingular<Surf_t>::SetupCoordData(){
+  Real_t near=0.25; // TODO: some function of sh_order and accuracy
+  if((update_setup & (NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord))){
+    update_setup=update_setup & ~(NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord);
+  }else{
+    return;
+  }
 
   int np, rank;
   MPI_Comm_size(comm,&np);
@@ -86,12 +65,7 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
   size_t omp_p=omp_get_max_threads();
 
   assert(S);
-  assert(S_vel);
   struct{
-    const Surf_t* S;
-    Real_t bbox[4]; // {s,x,y,z} : scale, shift
-    Real_t r_near;
-
     pvfmm::Vector<pvfmm::MortonId> mid; // MortonId of leaf nodes
     pvfmm::Vector<size_t> pt_cnt;       // Point count
     pvfmm::Vector<size_t> pt_dsp;       // Point displ
@@ -103,12 +77,6 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
   } S_let;
   { // Construct S_let
     pvfmm::Profile::Tic("VesLET",&comm,true);
-    assert(S); S_let.S=S;
-
-    int np, rank;
-    MPI_Comm_size(comm,&np);
-    MPI_Comm_rank(comm,&rank);
-    size_t omp_p=omp_get_max_threads();
 
     const Vec_t& x=S->getPosition();
     size_t N_ves = x.getNumSubs(); // Number of vesicles
@@ -124,10 +92,10 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
     }
 
     size_t tree_depth=0;
-    Real_t& r_near=S_let.r_near;
+    Real_t& r_near=coord_setup.r_near;
     { // Set tree pt data
       pvfmm::Profile::Tic("PtData",&comm,true);
-      Real_t* bbox=S_let.bbox;
+      Real_t* bbox=coord_setup.bbox;
       PVFMMVec_t& pt_coord=S_let.pt_coord;
       pvfmm::Vector<size_t>& pt_vesid=S_let.pt_vesid;
       pvfmm::Vector<size_t>& pt_id   =S_let.pt_id   ;
@@ -191,7 +159,26 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
       { // Determine bbox, tree_depth
         Real_t scale_x, shift_x[COORD_DIM];
         Real_t scale_tmp;
-        PVFMMBoundingBox(N_ves*M_ves, &pt_coord[0], &scale_tmp, shift_x, comm);
+        { // determine bounding box
+          Real_t s0, x0[COORD_DIM];
+          Real_t s1, x1[COORD_DIM];
+          PVFMMBoundingBox(      N_ves*M_ves, &pt_coord[0], &s0, x0, comm);
+          PVFMMBoundingBox(T.Dim()/COORD_DIM, &       T[0], &s1, x1, comm);
+
+          Real_t c0[COORD_DIM]={(0.5-x0[0])/s0, (0.5-x0[1])/s0, (0.5-x0[2])/s0};
+          Real_t c1[COORD_DIM]={(0.5-x1[0])/s1, (0.5-x1[1])/s1, (0.5-x1[2])/s1};
+
+          scale_tmp=0;
+          scale_tmp=std::max(scale_tmp, fabs(c0[0]-c1[0]));
+          scale_tmp=std::max(scale_tmp, fabs(c0[1]-c1[1]));
+          scale_tmp=std::max(scale_tmp, fabs(c0[2]-c1[2]));
+          scale_tmp=1.0/(scale_tmp+1/s0+1/s1);
+
+          shift_x[0]=0.5-(c0[0]+c1[0])*scale_tmp/2.0;
+          shift_x[1]=0.5-(c0[1]+c1[1])*scale_tmp/2.0;
+          shift_x[2]=0.5-(c0[2]+c1[2])*scale_tmp/2.0;
+        }
+
         { // scale_x, pt_tree_depth
           if(scale_tmp==0){
             scale_tmp=1.0;
@@ -200,7 +187,7 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
           Real_t domain_length=1.0/scale_tmp+4*r_near;
           Real_t leaf_length=r_near;
           scale_x=1.0/leaf_length;
-          while(domain_length*scale_x>1.0){
+          while(domain_length*scale_x>1.0 && tree_depth<MAX_DEPTH-1){
             scale_x*=0.5;
             tree_depth++;
           }
@@ -208,10 +195,10 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
         for(size_t j=0;j<COORD_DIM;j++){ // Update shift_x
           shift_x[j]=((shift_x[j]/scale_tmp)+2*r_near)*scale_x;
         }
-        S_let.bbox[0]=shift_x[0];
-        S_let.bbox[1]=shift_x[1];
-        S_let.bbox[2]=shift_x[2];
-        S_let.bbox[3]=scale_x;
+        coord_setup.bbox[0]=shift_x[0];
+        coord_setup.bbox[1]=shift_x[1];
+        coord_setup.bbox[2]=shift_x[2];
+        coord_setup.bbox[3]=scale_x;
       }
       pvfmm::Profile::Toc();
     }
@@ -227,10 +214,10 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
       { // build pt_mid
         Real_t scale_x, shift_x[COORD_DIM];
         { // set scale_x, shift_x
-          shift_x[0]=S_let.bbox[0];
-          shift_x[1]=S_let.bbox[1];
-          shift_x[2]=S_let.bbox[2];
-          scale_x=S_let.bbox[3];
+          shift_x[0]=coord_setup.bbox[0];
+          shift_x[1]=coord_setup.bbox[1];
+          shift_x[2]=coord_setup.bbox[2];
+          scale_x=coord_setup.bbox[3];
         }
 
         #pragma omp parallel for
@@ -600,12 +587,15 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
     pvfmm::Profile::Toc();
   }
 
-  PVFMMVec_t near_trg_coord;
-  pvfmm::Vector<size_t> near_trg_cnt;
-  pvfmm::Vector<size_t> trg_scatter; // Scatter velocity to original location
-  pvfmm::Vector<size_t> trg_pt_id;   // target index at original location
   { // find vesicle, near target pairs
-    pvfmm::Profile::Tic("SetTrgCoord",&comm,true);
+    pvfmm::Profile::Tic("TrgNear",&comm,true);
+
+    PVFMMVec_t&           near_trg_coord=coord_setup.near_trg_coord;
+    pvfmm::Vector<size_t>&  near_trg_cnt=coord_setup.  near_trg_cnt;
+    pvfmm::Vector<size_t>&  near_trg_dsp=coord_setup.  near_trg_dsp;
+    pvfmm::Vector<size_t>&   trg_scatter=coord_setup.   trg_scatter;
+    pvfmm::Vector<size_t>&     trg_pt_id=coord_setup.     trg_pt_id;
+
     pvfmm::Vector<size_t> pt_id;
     PVFMMVec_t pt_coord=T;
     size_t trg_id_offset;
@@ -626,10 +616,10 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
       { // Set pt_mid
         Real_t scale_x, shift_x[COORD_DIM];
         { // set scale_x, shift_x
-          shift_x[0]=S_let.bbox[0];
-          shift_x[1]=S_let.bbox[1];
-          shift_x[2]=S_let.bbox[2];
-          scale_x=S_let.bbox[3];
+          shift_x[0]=coord_setup.bbox[0];
+          shift_x[1]=coord_setup.bbox[1];
+          shift_x[2]=coord_setup.bbox[2];
+          scale_x=coord_setup.bbox[3];
         }
         assert(S_let.mid.Dim());
         size_t tree_depth=S_let.mid[0].GetDepth();
@@ -725,7 +715,7 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
         size_t tree_depth; Real_t r2_near;
         { // Set tree_depth, r_near
           tree_depth=S_let.mid[0].GetDepth();
-          r2_near=S_let.r_near;
+          r2_near=coord_setup.r_near;
           r2_near*=r2_near;
         }
         Real_t s=std::pow(0.5,tree_depth);
@@ -856,7 +846,7 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
 
     { // Scatter trg points to vesicles
       pvfmm::Profile::Tic("ScatterTrg",&comm,true);
-      const Vec_t& x=S_let.S->getPosition();
+      const Vec_t& x=S->getPosition();
       size_t N_ves = x.getNumSubs(); // Number of vesicles
       size_t M_ves = x.getStride(); // Points per vesicle
       assert(M_ves==x.getGridDim().first*x.getGridDim().second);
@@ -894,35 +884,118 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
       pvfmm::par::SortScatterIndex(trg_pt_id, trg_scatter, comm, &trg_id_offset);
       pvfmm::par::ScatterForward  (trg_pt_id, trg_scatter, comm);
     }
-    pvfmm::Profile::Toc();
-  }
 
-  { // Compute near-singular
-    pvfmm::Profile::Tic("NearSing",&comm,true);
-    pvfmm::Vector<size_t> near_trg_dsp;
     { // Compute near_trg_dsp
       size_t N_ves=near_trg_cnt.Dim();
       near_trg_dsp.ReInit(N_ves);near_trg_dsp[0]=0;
       pvfmm::omp_par::scan(&near_trg_cnt[0], &near_trg_dsp[0], N_ves);
       assert(near_trg_dsp[N_ves-1]+near_trg_cnt[N_ves-1]==near_trg_coord.Dim()/COORD_DIM);
     }
-    trg_vel.ReInit(near_trg_coord.Dim()); trg_vel.SetZero();
-    StokesNearSingular(S_let.r_near, &near_trg_cnt[0], &near_trg_dsp[0], &near_trg_coord[0], &trg_vel[0]);
+    pvfmm::Profile::Toc();
+  }
+}
+
+template<typename Surf_t>
+void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
+
+  if(update_direct){ // Subtract direct near interaction
+    size_t omp_p=omp_get_max_threads();
+    SetupCoordData();
+
+    pvfmm::Profile::Tic("SubtractDirect",&comm,true);
+    Real_t&                  r_near=coord_setup.        r_near;
+    PVFMMVec_t&           trg_coord=coord_setup.near_trg_coord;
+    pvfmm::Vector<size_t>&  trg_cnt=coord_setup.  near_trg_cnt;
+    pvfmm::Vector<size_t>&  trg_dsp=coord_setup.  near_trg_dsp;
+    vel_direct.ReInit(trg_coord.Dim()); vel_direct.SetZero();
+
+    const int force_dim=COORD_DIM;
+    const int veloc_dim=COORD_DIM;
+
+    const Vec_t& x=S->getPosition();
+    size_t N_ves = x.getNumSubs(); // Number of vesicles
+    size_t M_ves = x.getStride(); // Points per vesicle
+    int k0_max=x.getGridDim().first;
+    int k1_max=x.getGridDim().second;
+    assert(M_ves==k0_max*k1_max);
+
+    const Vec_t* normal=NULL;
+    if(qforce_double){
+      normal=&S->getNormal();
+    }
+
+    #pragma omp parallel for
+    for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_direct.
+      size_t a=((tid+0)*N_ves)/omp_p;
+      size_t b=((tid+1)*N_ves)/omp_p;
+
+      PVFMMVec_t s_coord(M_ves*COORD_DIM);
+      PVFMMVec_t s_slfor;
+      PVFMMVec_t s_dlfor;
+
+      for(size_t i=a;i<b;i++){ // loop over all vesicles
+        { // Set s_coord, s_slfor, s_dlfor, s_veloc
+          // read each component of x
+          const Real_t* xk=x.getSubN_begin(i)+0*M_ves;
+          const Real_t* yk=x.getSubN_begin(i)+1*M_ves;
+          const Real_t* zk=x.getSubN_begin(i)+2*M_ves;
+          assert(veloc_dim==3);
+
+          for(size_t j=0;j<M_ves;j++){
+            s_coord[j*COORD_DIM+0]=xk[j];
+            s_coord[j*COORD_DIM+1]=yk[j];
+            s_coord[j*COORD_DIM+2]=zk[j];
+          }
+
+          if(qforce_single){
+            s_slfor.ReInit(M_ves*(force_dim          ), &qforce_single[0][0]+M_ves*(force_dim          )*i);
+          }
+          if(qforce_double){
+            s_dlfor.ReInit(M_ves*(force_dim+COORD_DIM), &qforce_double[0][0]+M_ves*(force_dim+COORD_DIM)*i);
+          }
+        }
+
+        PVFMMVec_t t_coord(trg_cnt[i]*COORD_DIM, &trg_coord [trg_dsp[i]*COORD_DIM], false);
+        PVFMMVec_t t_veloc(trg_cnt[i]*veloc_dim, &vel_direct[trg_dsp[i]*veloc_dim], false);
+        t_veloc.SetZero();
+
+        if(qforce_single){ // Subtract wrong near potential
+          stokes_sl(&s_coord[0], M_ves, &s_slfor[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+        }
+        if(qforce_double){ // Subtract wrong near potential
+          stokes_dl(&s_coord[0], M_ves, &s_dlfor[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+        }
+      }
+    }
+
+    VelocityScatter(vel_direct);
+    update_direct=NearSingular::UpdateNone;
     pvfmm::Profile::Toc();
   }
 
-  if(trg_pt_id.Dim()){ // Scatter trg velocity
+  assert(vel_direct.Dim()==vel_fmm.Dim());
+  #pragma omp parallel for
+  for(size_t i=0;i<vel_direct.Dim();i++){
+    vel_fmm[i]-=vel_direct[i];
+  }
+}
+
+template<typename Surf_t>
+void NearSingular<Surf_t>::VelocityScatter(PVFMMVec_t& trg_vel){
+  if(coord_setup.trg_pt_id.Dim()){ // Scatter trg velocity
     pvfmm::Profile::Tic("ScatterTrg",&comm,true);
-    size_t trg_id_offset=trg_pt_id[0];
-    size_t trg_count=trg_pt_id[trg_pt_id.Dim()-1]-trg_id_offset+1;
-    assert(T.Dim()==trg_count*COORD_DIM);
+
+    size_t omp_p=omp_get_max_threads();
+    pvfmm::Vector<size_t>& trg_scatter=coord_setup.trg_scatter;
+    pvfmm::Vector<size_t>&   trg_pt_id=coord_setup.  trg_pt_id;
 
     pvfmm::par::ScatterForward(trg_vel, trg_scatter, comm);
-    assert(trg_vel.Dim()==trg_pt_id.Dim()*COORD_DIM);
 
+    size_t trg_count=T.Dim()/COORD_DIM;
     PVFMMVec_t trg_vel_final(trg_count*COORD_DIM);
     trg_vel_final.SetZero();
 
+    size_t trg_id_offset=trg_pt_id[0];
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){
       size_t a=((tid+0)*trg_pt_id.Dim())/omp_p;
@@ -938,8 +1011,11 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
     }
     trg_vel.Swap(trg_vel_final);
     pvfmm::Profile::Toc();
+  }else{
+    size_t trg_count=T.Dim()/COORD_DIM;
+    trg_vel.ReInit(trg_count*COORD_DIM);
+    trg_vel.SetZero();
   }
-
   if(0){ // vis near-points
     pvfmm::Profile::Tic("Vis",&comm,true);
     typedef pvfmm::MPI_Node<Real_t> Node_t;
@@ -953,12 +1029,15 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
     node_data.max_pts=10000000;
 
     { // Set node_data.pt_coord, node_data.pt_value
+      PVFMMVec_t&           near_trg_coord=coord_setup.near_trg_coord;
+      pvfmm::Vector<size_t>&  near_trg_cnt=coord_setup.  near_trg_cnt;
+
       Real_t scale_x, shift_x[COORD_DIM];
       {
-        shift_x[0]=S_let.bbox[0];
-        shift_x[1]=S_let.bbox[1];
-        shift_x[2]=S_let.bbox[2];
-        scale_x=S_let.bbox[3];
+        shift_x[0]=coord_setup.bbox[0];
+        shift_x[1]=coord_setup.bbox[1];
+        shift_x[2]=coord_setup.bbox[2];
+        scale_x=coord_setup.bbox[3];
       }
 
       node_data.pt_coord=near_trg_coord;
@@ -968,7 +1047,7 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
         node_data.pt_coord[i*COORD_DIM+2]=node_data.pt_coord[i*COORD_DIM+2]*scale_x+shift_x[2];
       }
 
-      const Vec_t& x=S_let.S->getPosition();
+      const Vec_t& x=S->getPosition();
       size_t N_ves = x.getNumSubs(); // Number of vesicles
       size_t M_ves = x.getStride(); // Points per vesicle
       assert(M_ves==x.getGridDim().first*x.getGridDim().second);
@@ -976,7 +1055,7 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
       std::vector<Real_t> value;
       size_t ves_id_offset;
       { // Scatter trg points to vesicles
-        const Vec_t& x=S_let.S->getPosition();
+        const Vec_t& x=S->getPosition();
         size_t N_ves = x.getNumSubs(); // Number of vesicles
         size_t M_ves = x.getStride(); // Points per vesicle
         assert(M_ves==x.getGridDim().first*x.getGridDim().second);
@@ -1014,10 +1093,10 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
     { // Set node_data.pt_coord, node_data.pt_value
       Real_t scale_x, shift_x[COORD_DIM];
       {
-        shift_x[0]=S_let.bbox[0];
-        shift_x[1]=S_let.bbox[1];
-        shift_x[2]=S_let.bbox[2];
-        scale_x=S_let.bbox[3];
+        shift_x[0]=coord_setup.bbox[0];
+        shift_x[1]=coord_setup.bbox[1];
+        shift_x[2]=coord_setup.bbox[2];
+        scale_x=coord_setup.bbox[3];
       }
 
       node_data.pt_coord=T;
@@ -1033,40 +1112,9 @@ NearSingular<Surf_t>::Real_t* NearSingular<Surf_t>::operator()(){
     pt_tree.Write2File("trg_vel");
     pvfmm::Profile::Toc();
   }
-
-  return &trg_vel[0];
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::operator()(Vec_t& T_vel){
-  size_t omp_p=omp_get_max_threads();
-  (*this)();
 
-  const Vec_t& x=T_vel;
-  size_t N_ves = x.getNumSubs(); // Number of vesicles
-  size_t M_ves = x.getStride(); // Points per vesicle
-  assert(M_ves==x.getGridDim().first*x.getGridDim().second);
-  assert(N_ves*M_ves*COORD_DIM==trg_vel.Dim());
-
-  #pragma omp parallel for
-  for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
-    size_t a=((tid+0)*N_ves)/omp_p;
-    size_t b=((tid+1)*N_ves)/omp_p;
-
-    for(size_t i=a;i<b;i++){
-      // read each component of x
-      const Real_t* xk=x.getSubN_begin(i)+0*M_ves;
-      const Real_t* yk=x.getSubN_begin(i)+1*M_ves;
-      const Real_t* zk=x.getSubN_begin(i)+2*M_ves;
-
-      for(size_t j=0;j<M_ves;j++){
-        xk[j]=trg_vel[(i*M_ves+j)*COORD_DIM+0];
-        yk[j]=trg_vel[(i*M_ves+j)*COORD_DIM+1];
-        zk[j]=trg_vel[(i*M_ves+j)*COORD_DIM+2];
-      }
-    }
-  }
-}
 
 
 template <class Real_t>
@@ -1148,80 +1196,104 @@ static void LegPoly(const Real_t* x, size_t n, size_t q, Real_t* y){
   }
 }
 
+template <class Real_t>
+static inline Real_t InterPoints(int i, int deg){
+  return (i?1.0+(i-1.0)/(deg-2):0.0);  // Clustered points
+  //return i;                            // Equi-spaced points
+}
+
+template <class Real_t>
+static inline Real_t InterPoly(Real_t x, int j, int deg){
+  Real_t y=1.0;
+  Real_t x0=InterPoints<Real_t>(j,deg);
+  for(size_t k=0;k<deg;k++){ // Lagrange polynomial
+    Real_t xk=InterPoints<Real_t>(k,deg);
+    if(j!=k) y*=(x-xk)/(x0-xk);
+  }
+  //y=pow(x,j)                       // Polynomial basis
+  //y=pow(1.0/(1.0+x),j+1)           // Laurent polynomial
+  return y;
+}
+
 template<typename Surf_t>
-void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_cnt, const size_t* trg_dsp,  Real_t* trg_coord, Real_t* trg_veloc){
-  const Vec_t &force=*force_single;
+NearSingular<Surf_t>::PVFMMVec_t NearSingular<Surf_t>::operator()(bool update){
 
-  typedef Vec_t Vec_t;
-  typedef typename Vec_t::scalars_type Sca_t;
-  size_t omp_p=omp_get_max_threads();
+  if((update && update_interp) || (update_interp & NearSingular::UpdateSurfaceVel)){ // Compute near-singular
+    size_t omp_p=omp_get_max_threads();
+    SetupCoordData();
 
-  const int force_dim=COORD_DIM;
-  const int veloc_dim=COORD_DIM;
+    pvfmm::Profile::Tic("NearSing",&comm,true);
+    Real_t&                  r_near=coord_setup.        r_near;
+    PVFMMVec_t&           trg_coord=coord_setup.near_trg_coord;
+    pvfmm::Vector<size_t>&  trg_cnt=coord_setup.  near_trg_cnt;
+    pvfmm::Vector<size_t>&  trg_dsp=coord_setup.  near_trg_dsp;
+    assert(S_vel);
 
-  const Vec_t& x=S->getPosition();
-  size_t N_ves = x.getNumSubs(); // Number of vesicles
-  size_t M_ves = x.getStride(); // Points per vesicle
-  int k0_max=x.getGridDim().first;
-  int k1_max=x.getGridDim().second;
-  assert(M_ves==k0_max*k1_max);
+    if(update)
+    vel_interp.ReInit(trg_coord.Dim());
+    vel_surfac.ReInit(trg_coord.Dim());
 
-  const Vec_t* normal=NULL;
-  if(force_double){
-    normal=&S->getNormal();
-  }
+    const int force_dim=COORD_DIM;
+    const int veloc_dim=COORD_DIM;
 
-  std::vector<Real_t> pole_quad;
-  { // compute quadrature to find pole
-    size_t p=x.getShOrder();
+    const Vec_t& x=S->getPosition();
+    size_t N_ves = x.getNumSubs(); // Number of vesicles
+    size_t M_ves = x.getStride(); // Points per vesicle
+    int k0_max=x.getGridDim().first;
+    int k1_max=x.getGridDim().second;
+    assert(M_ves==k0_max*k1_max);
 
-    //Gauss-Legendre quadrature nodes and weights
-    std::vector<Real_t> x(p+1),w(p+1);
-    cgqf(p+1, 1, 0.0, 0.0, -1.0, 1.0, &x[0], &w[0]);
+    const Vec_t* normal=NULL;
+    if(qforce_double){
+      normal=&S->getNormal();
+    }
 
-    std::vector<Real_t> leg((p+1)*(p+1));
-    LegPoly(&x[0],x.size(),p+1,&leg[0]);
-    pole_quad.resize(p+1,0);
-    for(size_t j=0;j<p+1;j++){
+    std::vector<Real_t> pole_quad;
+    { // compute quadrature to find pole
+      size_t p=x.getShOrder();
+
+      //Gauss-Legendre quadrature nodes and weights
+      std::vector<Real_t> x(p+1),w(p+1);
+      cgqf(p+1, 1, 0.0, 0.0, -1.0, 1.0, &x[0], &w[0]);
+
+      std::vector<Real_t> leg((p+1)*(p+1));
+      LegPoly(&x[0],x.size(),p+1,&leg[0]);
+      pole_quad.resize(p+1,0);
+      for(size_t j=0;j<p+1;j++){
+        for(size_t i=0;i<p+1;i++){
+          pole_quad[i]+=leg[j*(p+1)+i]*sqrt(2.0*j+1.0);
+        }
+      }
       for(size_t i=0;i<p+1;i++){
-        pole_quad[i]+=leg[j*(p+1)+i]*sqrt(2.0*j+1.0);
+        pole_quad[i]*=w[i]*0.25/p;
       }
     }
-    for(size_t i=0;i<p+1;i++){
-      pole_quad[i]*=w[i]*0.25/p;
-    }
-  }
 
-  size_t interp_deg=8;
+    size_t interp_deg=8;
+    #define INTERP_X(i) InterPoints<Real_t>(i, interp_deg)
+    #define INTERP_Y(x,j) InterPoly(x, j, interp_deg)
+    assert(INTERP_X(0)==0);
 
-  //#define INTERP_X(i) i                                    // Equi-spaced points
-  #define INTERP_X(i) (i?1.0+(i-1.0)/(interp_deg-2):0.0)   // Clustered points
-  assert(INTERP_X(0)==0);
-
-  //#define INTERP_Y(x,j) pow(x,j)                   // Polynomial basis
-  #define INTERP_Y(x,j) pow(1.0/(1.0+x),j+1) // Laurent polynomial
-
-  pvfmm::Matrix<Real_t> M(interp_deg,interp_deg);
-  { // matrix for computing interpolation coefficients
-    for(size_t i=0;i<interp_deg;i++){
-      Real_t x=INTERP_X(i);
-      for(size_t j=0;j<interp_deg;j++){
-        M[i][j]=INTERP_Y(x,j);
+    pvfmm::Matrix<Real_t> M(interp_deg,interp_deg);
+    { // matrix for computing interpolation coefficients
+      for(size_t i=0;i<interp_deg;i++){
+        Real_t x=INTERP_X(i);
+        for(size_t j=0;j<interp_deg;j++){
+          M[i][j]=INTERP_Y(x,j);
+        }
       }
+      M=M.pinv();
     }
-    M=M.pinv();
-  }
 
-  { // Compute trg_veloc. [[ At this point we can offload. ]]
     #pragma omp parallel for
-    for(size_t tid=0;tid<omp_p;tid++){
+    for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_interp and vel_surfac. [[ At this point we can offload. ]]
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
 
       PVFMMVec_t s_coord(M_ves*COORD_DIM);
-      PVFMMVec_t s_slfor(M_ves*force_dim);
-      PVFMMVec_t s_dlfor(M_ves*(force_dim+COORD_DIM));
       PVFMMVec_t s_veloc(M_ves*veloc_dim);
+      PVFMMVec_t s_slfor;
+      PVFMMVec_t s_dlfor;
 
       PVFMMVec_t pole_coord(2*COORD_DIM);
       PVFMMVec_t pole_veloc(2*veloc_dim);
@@ -1238,22 +1310,6 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
           const Real_t* yk=x.getSubN_begin(i)+1*M_ves;
           const Real_t* zk=x.getSubN_begin(i)+2*M_ves;
 
-          // read each component of force_single
-          const Real_t* fxk=(force_single?force_single->getSubN_begin(i)+0*M_ves:NULL);
-          const Real_t* fyk=(force_single?force_single->getSubN_begin(i)+1*M_ves:NULL);
-          const Real_t* fzk=(force_single?force_single->getSubN_begin(i)+2*M_ves:NULL);
-          assert(force_dim==3);
-
-          // read each component of force_double
-          const Real_t* dlfxk=(force_double?force_double->getSubN_begin(i)+0*M_ves:NULL);
-          const Real_t* dlfyk=(force_double?force_double->getSubN_begin(i)+1*M_ves:NULL);
-          const Real_t* dlfzk=(force_double?force_double->getSubN_begin(i)+2*M_ves:NULL);
-
-          // read each component of normal
-          const Real_t* nxk=(normal?normal->getSubN_begin(i)+0*M_ves:NULL);
-          const Real_t* nyk=(normal?normal->getSubN_begin(i)+1*M_ves:NULL);
-          const Real_t* nzk=(normal?normal->getSubN_begin(i)+2*M_ves:NULL);
-
           // read each component of veloc
           const Real_t* vsxk=S_vel->getSubN_begin(i)+0*M_ves;
           const Real_t* vsyk=S_vel->getSubN_begin(i)+1*M_ves;
@@ -1269,19 +1325,12 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
             s_veloc[j*veloc_dim+1]=vsyk[j];
             s_veloc[j*veloc_dim+2]=vszk[j];
           }
-          if(force_single) for(size_t j=0;j<M_ves;j++){
-            s_slfor[j*force_dim+0]=fxk[j];
-            s_slfor[j*force_dim+1]=fyk[j];
-            s_slfor[j*force_dim+2]=fzk[j];
+
+          if(qforce_single){
+            s_slfor.ReInit(M_ves*(force_dim          ), &qforce_single[0][0]+M_ves*(force_dim          )*i);
           }
-          if(force_double) for(size_t j=0;j<M_ves;j++){
-            assert(normal);
-            s_dlfor[j*(force_dim+COORD_DIM)+0]=dlfxk[j];
-            s_dlfor[j*(force_dim+COORD_DIM)+1]=dlfyk[j];
-            s_dlfor[j*(force_dim+COORD_DIM)+2]=dlfzk[j];
-            s_dlfor[j*(force_dim+COORD_DIM)+3]=nxk[j];
-            s_dlfor[j*(force_dim+COORD_DIM)+4]=nyk[j];
-            s_dlfor[j*(force_dim+COORD_DIM)+5]=nzk[j];
+          if(qforce_double){
+            s_dlfor.ReInit(M_ves*(force_dim+COORD_DIM), &qforce_double[0][0]+M_ves*(force_dim+COORD_DIM)*i);
           }
         }
         { // Set pole values: pole_coord, pole_veloc
@@ -1308,31 +1357,25 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
           //std::cout<<pole_coord<<'\n';
         }
 
-        PVFMMVec_t t_coord(trg_cnt[i]*COORD_DIM, &trg_coord[trg_dsp[i]*COORD_DIM], false);
-        PVFMMVec_t t_veloc(trg_cnt[i]*veloc_dim, &trg_veloc[trg_dsp[i]*veloc_dim], false);
-        t_veloc.SetZero();
+        PVFMMVec_t t_coord  (trg_cnt[i]*COORD_DIM, &trg_coord [0]+trg_dsp[i]*COORD_DIM, false);
+        PVFMMVec_t trg_veloc(trg_cnt[i]*veloc_dim, &vel_interp[0]+trg_dsp[i]*veloc_dim, false);
+        PVFMMVec_t srf_veloc(trg_cnt[i]*veloc_dim, &vel_surfac[0]+trg_dsp[i]*veloc_dim, false);
 
-        if(force_single){ // Subtract wrong near potential
-          stokes_sl(&s_coord[0], M_ves, &s_slfor[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
-        }
-        if(force_double){ // Subtract wrong near potential
-          stokes_dl(&s_coord[0], M_ves, &s_dlfor[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
-        }
-        for(size_t j=0;j<t_veloc.Dim();j++) t_veloc[j]=-t_veloc[j];
-
-        // Add corrected near potential
+        // Compute near potential
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
           Real_t  t_coord_j[COORD_DIM];
-          Real_t* t_veloc_j;
+          Real_t* s_veloc_j;
 
-          { // Set t_coord, t_veloc
+          { // Set t_coord, srf_veloc
             t_coord_j[0]=t_coord[j*COORD_DIM+0];
             t_coord_j[1]=t_coord[j*COORD_DIM+1];
             t_coord_j[2]=t_coord[j*COORD_DIM+2];
-            t_veloc_j=&t_veloc[j*veloc_dim];
+            s_veloc_j=&srf_veloc[j*veloc_dim];
+            s_veloc_j[0]=0.0;
+            s_veloc_j[1]=0.0;
+            s_veloc_j[2]=0.0;
           }
-
-          { // Set t_veloc_j for surface mesh points and {continue;}
+          { // Set s_veloc_j for surface mesh points and {continue;}
             bool surface_point=false;
             for(size_t k0=0;k0<k0_max;k0++){
               for(size_t k1=0;k1<k1_max;k1++){
@@ -1341,9 +1384,9 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
                 if(t_coord_j[0]==s_coord[k*COORD_DIM+0])
                 if(t_coord_j[1]==s_coord[k*COORD_DIM+1])
                 if(t_coord_j[2]==s_coord[k*COORD_DIM+2]){
-                  t_veloc_j[0]+=s_veloc[k*veloc_dim+0];
-                  t_veloc_j[1]+=s_veloc[k*veloc_dim+1];
-                  t_veloc_j[2]+=s_veloc[k*veloc_dim+2];
+                  s_veloc_j[0]=s_veloc[k*veloc_dim+0];
+                  s_veloc_j[1]=s_veloc[k*veloc_dim+1];
+                  s_veloc_j[2]=s_veloc[k*veloc_dim+2];
                   k0=k0_max; k1=k1_max;
                   surface_point=true;
                   break;
@@ -1352,7 +1395,15 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
             }
             if(surface_point) continue;
           }
+          if(!update || !update_interp) continue;
 
+          Real_t* t_veloc_j;
+          { // Set t_coord, s_veloc
+            t_veloc_j=&trg_veloc[j*veloc_dim];
+            t_veloc_j[0]=0.0;
+            t_veloc_j[1]=0.0;
+            t_veloc_j[2]=0.0;
+          }
           { // Find nearest point on mesh and create patch
             int k0_, k1_; // mesh coordinates for nearest point
             { // Find nearest point on mesh
@@ -1618,10 +1669,10 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
             }
 
             // Compute velocity at interpolation points
-            if(force_single){
+            if(qforce_single){
               stokes_sl(&s_coord[0], M_ves, &s_slfor[0], 1, &interp_coord[1*COORD_DIM], interp_deg-1, &interp_veloc[1*veloc_dim], NULL);
             }
-            if(force_double){
+            if(qforce_double){
               stokes_dl(&s_coord[0], M_ves, &s_dlfor[0], 1, &interp_coord[1*COORD_DIM], interp_deg-1, &interp_veloc[1*veloc_dim], NULL);
             }
 
@@ -1644,200 +1695,27 @@ void NearSingular<Surf_t>::StokesNearSingular(Real_t r_near, const size_t* trg_c
         }
       }
     }
-  }
-}
+    pvfmm::Profile::Toc();
 
+    if(update)
+    VelocityScatter(vel_interp);
+    VelocityScatter(vel_surfac);
 
-
-template<typename Real_t>
-static void u_ref(const Real_t* coord, int n, Real_t* out){ //Analytical velocity for sphere
-  Real_t R0=1.0;
-  for(int i=0;i<n;i++){
-    const Real_t* c=&coord[i*COORD_DIM];
-    Real_t r_2=0;
-    r_2+=c[0]*c[0];
-    r_2+=c[1]*c[1];
-    r_2+=c[2]*c[2];
-    Real_t r=sqrt(r_2);
-
-    Real_t cos_t=c[0]/r;
-    Real_t sin_t=sqrt(1-cos_t*cos_t);
-    Real_t R0_r=R0/r;
-    Real_t ur= cos_t*(1.0-1.50*R0_r+0.50*R0_r*R0_r*R0_r);
-    Real_t ut=-sin_t*(1.0-0.75*R0_r-0.25*R0_r*R0_r*R0_r);
-    out[i*COORD_DIM+0]=cos_t*ur-sin_t*ut-1.0;
-
-    Real_t r_yz=sqrt(c[1]*c[1]+c[2]*c[2]);
-    out[i*COORD_DIM+1]=(sin_t*ur+cos_t*ut)*c[1]/r_yz;
-    out[i*COORD_DIM+2]=(sin_t*ur+cos_t*ut)*c[2]/r_yz;
-  }
-}
-
-template<typename Real_t>
-static void force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
-  Real_t R0=1.0;
-  for(int i=0;i<n;i++){
-    const Real_t* c=&coord[i*COORD_DIM];
-    Real_t r_2=0;
-    r_2+=c[0]*c[0];
-    r_2+=c[1]*c[1];
-    r_2+=c[2]*c[2];
-    Real_t r=sqrt(r_2);
-
-    Real_t cos_t=c[0]/r;
-    Real_t sin_t=sqrt(1-cos_t*cos_t);
-    Real_t R0_r=R0/r;
-    Real_t ur=-1.5*cos_t;
-    Real_t ut=+1.5*sin_t;
-    out[i*COORD_DIM+0]=cos_t*ur-sin_t*ut;
-
-    Real_t r_yz=sqrt(c[1]*c[1]+c[2]*c[2]);
-    out[i*COORD_DIM+1]=(sin_t*ur+cos_t*ut)*c[1]/r_yz;
-    out[i*COORD_DIM+2]=(sin_t*ur+cos_t*ut)*c[2]/r_yz;
-  }
-}
-
-template<typename Surf_t>
-void NearSingular<Surf_t>::Test(){
-  typedef typename Vec_t::scalars_type Sca_t;
-  typedef typename Vec_t::array_type Arr_t;
-  typedef OperatorsMats<Arr_t> Mats_t;
-  typedef VesInteraction<Real_t> Interaction_t;
-  typedef InterfacialVelocity<Surf_t, Interaction_t> IntVel_t;
-
-  int rank, size;
-  MPI_Comm comm=MPI_COMM_WORLD;
-  MPI_Comm_rank(comm,&rank);
-  MPI_Comm_size(comm,&size);
-  size_t nVec=2/size;
-  if(!nVec) nVec=1;
-  srand48(rank);
-
-  //Set parameters
-  Parameters<Real_t> sim_par;
-  sim_par.sh_order = 32;
-  sim_par.rep_up_freq = 32;
-
-  //Create vectors
-  Vec_t x0(nVec, sim_par.sh_order); // coordinates
-  Vec_t v0(nVec, sim_par.sh_order); // velocity
-  Vec_t v0_ref(nVec, sim_par.sh_order); // reference velocity
-  Vec_t f0(nVec, sim_par.sh_order); // force
-  int fLen = x0.getStride();
-  { //Set coordinate values
-    int imax(x0.getGridDim().first);
-    int jmax(x0.getGridDim().second);
-    Real_t scal=pow((Real_t)nVec*size,1.0/3.0);
-
-    std::vector<Real_t> qx;
-    { // compute legendre node points
-      size_t p=x0.getShOrder();
-      qx.resize(p+1);
-      std::vector<Real_t> qw(p+1);
-      cgqf(p+1, 1, 0.0, 0.0, -1.0, 1.0, &qx[0], &qw[0]);
+    assert(vel_interp.Dim()==T.Dim());
+    assert(vel_surfac.Dim()==T.Dim());
+    #pragma omp parallel for
+    for(size_t i=0;i<vel_surfac.Dim();i++){
+      vel_surfac[i]+=vel_interp[i];
     }
 
-    for(size_t k=0;k<nVec;k++){
-      Real_t* x_k=x0.getSubN_begin(k)+0*fLen;
-      Real_t* y_k=x0.getSubN_begin(k)+1*fLen;
-      Real_t* z_k=x0.getSubN_begin(k)+2*fLen;
-
-      Real_t* vx_k=v0.getSubN_begin(k)+0*fLen;
-      Real_t* vy_k=v0.getSubN_begin(k)+1*fLen;
-      Real_t* vz_k=v0.getSubN_begin(k)+2*fLen;
-      Real_t* fx_k=f0.getSubN_begin(k)+0*fLen;
-      Real_t* fy_k=f0.getSubN_begin(k)+1*fLen;
-      Real_t* fz_k=f0.getSubN_begin(k)+2*fLen;
-
-      Real_t coord[3];
-      coord[0]=scal*drand48();
-      coord[1]=scal*drand48();
-      coord[2]=scal*drand48();
-      for(size_t i=0;i<imax;i++){
-        Real_t cos_t=qx[i];
-        //Real_t cos_t=cos((i+1)*M_PI/(imax+1));
-        Real_t sin_t=sqrt(1.0-cos_t*cos_t);
-        for(size_t j=0;j<jmax;j++){
-
-          if(0){
-            x_k[j+i*jmax]=cos_t;
-            y_k[j+i*jmax]=sin_t*sin(j*2*M_PI/jmax);
-            z_k[j+i*jmax]=sin_t*cos(j*2*M_PI/jmax);
-            if(k){
-              x_k[j+i*jmax]*=0.49;
-              y_k[j+i*jmax]*=0.49;
-              z_k[j+i*jmax]*=0.49;
-              y_k[j+i*jmax]+=1.49+1e-4;
-            }
-          }else{
-            x_k[j+i*jmax]=coord[0]+scal*cos_t;
-            y_k[j+i*jmax]=coord[1]+scal*sin_t*sin(j*2*M_PI/jmax);
-            z_k[j+i*jmax]=coord[2]+scal*sin_t*cos(j*2*M_PI/jmax);
-          }
-
-          vx_k[j+i*jmax]=0;
-          vy_k[j+i*jmax]=0;
-          vz_k[j+i*jmax]=0;
-          fx_k[j+i*jmax]=0;
-          fy_k[j+i*jmax]=0;
-          fz_k[j+i*jmax]=0;
-
-          if(!rank && k==0){
-            Real_t c[3]={x_k[j+i*jmax],
-                       y_k[j+i*jmax],
-                       z_k[j+i*jmax]};
-            Real_t f[3]={0,0,0};
-            force(c,1,f);
-            fx_k[j+i*jmax]=f[0];
-            fy_k[j+i*jmax]=f[1];
-            fz_k[j+i*jmax]=f[2];
-          }
-        }
-      }
+    if(update){
+      update_interp=NearSingular::UpdateNone;
+    }else{
+      update_interp=(update_interp & ~(NearSingular::UpdateSurfaceVel));
     }
   }
 
-  //Reading operators from file
-  bool readFromFile = true;
-  Mats_t mats(readFromFile, sim_par);
-
-  //Creating objects
-  COUT("Creating the surface object");
-  Surf_t S(x0, mats);
-
-  //Setting the background flow
-  ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
-
-  Interaction_t interaction(NULL);
-  IntVel_t F(S, interaction, mats, sim_par, vInf);
-
-  // Compute self interaction
-  Vec_t veloc_self(nVec, sim_par.sh_order);
-  F.stokes(f0,veloc_self);
-
-  Vec_t qforce(nVec,sim_par.sh_order);
-  { //Incorporating the quadrature weights and area into the force
-    Sca_t quad_weights_;
-    { // quadrature weights
-      quad_weights_.resize(1,sim_par.sh_order);
-      quad_weights_.getDevice().Memcpy(quad_weights_.begin(),
-          mats.quad_weights_,
-          quad_weights_.size() * sizeof(Real_t),
-          Surf_t::device_type::MemcpyDeviceToDevice);
-    }
-    xv(S.getAreaElement(), f0, qforce);
-    ax<Sca_t>(quad_weights_, qforce, qforce);
-  }
-
-  NearSingular<Surf_t> near_singular(comm);
-  near_singular.SetSrcCoord(S);
-  near_singular.SetTrgCoord(S);
-  near_singular.SetSurfaceVel(veloc_self);
-  near_singular.SetDensity(&qforce, NULL);
-
-  pvfmm::Profile::Tic("NearInteractions",&comm);
-  near_singular();
-  pvfmm::Profile::Toc();
+  return vel_surfac;
 }
 
 #endif

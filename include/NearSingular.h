@@ -16,34 +16,60 @@ class NearSingular{
 
     NearSingular(MPI_Comm c=MPI_COMM_WORLD):comm(c){
       S=NULL;
-      force_single=NULL;
-      force_double=NULL;
+      qforce_single=NULL;
+      qforce_double=NULL;
       S_vel=NULL;
     }
 
-    void SetSrcCoord(const Surf_t& S_);
-    void SetSurfaceVel(const Vec_t& S_vel_);
-    void SetDensity(const Vec_t* force_single_=NULL, const Vec_t* force_double_=NULL);
+    void SetSrcCoord(const Surf_t& S);
+    void SetSurfaceVel(const Vec_t& S_vel);
+    void SetDensitySL(const PVFMMVec_t* qforce_single=NULL);
+    void SetDensityDL(const PVFMMVec_t* qforce_double=NULL);
 
-    void SetTrgCoord(const Surf_t& T_);
     void SetTrgCoord(Real_t* trg_coord, size_t N);
 
-    void operator()(Vec_t& T_vel);
-    Real_t* operator()();
-
-    static void Test();
+    void SubtractDirect(PVFMMVec_t& vel_fmm);
+    PVFMMVec_t operator()(bool update=true);
 
   private:
 
-    void StokesNearSingular(Real_t r_near, const size_t* trg_cnt, const size_t* trg_dsp,  Real_t* trg_coord, Real_t* trg_veloc);
+    void SetupCoordData();
+
+    struct{
+      Real_t r_near;
+      Real_t bbox[4]; // {s,x,y,z} : scale, shift
+
+      PVFMMVec_t near_trg_coord;
+      pvfmm::Vector<size_t> near_trg_cnt;
+      pvfmm::Vector<size_t> near_trg_dsp;
+      pvfmm::Vector<size_t> trg_scatter; // Scatter velocity to original location
+      pvfmm::Vector<size_t> trg_pt_id;   // target index at original location
+    } coord_setup;
+
+    void VelocityScatter(PVFMMVec_t& trg_vel);
 
     const Surf_t* S;
-    const Vec_t* force_single;
-    const Vec_t* force_double;
+    const PVFMMVec_t* qforce_single;
+    const PVFMMVec_t* qforce_double;
     const Vec_t* S_vel;
 
     PVFMMVec_t T;
-    PVFMMVec_t trg_vel;
+    PVFMMVec_t vel_direct;
+    PVFMMVec_t vel_interp;
+    PVFMMVec_t vel_surfac;
+
+    enum UpdateFlag{
+      UpdateNone      = 0,
+      UpdateSrcCoord  = 1,
+      UpdateTrgCoord  = 2,
+      UpdateDensitySL = 4,
+      UpdateDensityDL = 8,
+      UpdateSurfaceVel=16,
+      UpdateAll       =31
+    };
+    unsigned int update_direct;
+    unsigned int update_interp;
+    unsigned int update_setup ;
 
     MPI_Comm comm;
 };
