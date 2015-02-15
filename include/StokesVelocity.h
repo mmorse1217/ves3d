@@ -9,6 +9,7 @@
 #include "Parameters.h"
 #include "OperatorsMats.h"
 #include "PVFMMInterface.h"
+#include "NearSingular.h"
 
 #include "DataIO.h"
 #include "BgFlow.h"
