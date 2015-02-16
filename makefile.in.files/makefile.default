@@ -30,7 +30,7 @@ RANLIB  = ranlib
 RM      = rm -f
 TAGS    = etags
 
-ifeq (${COMPILER_VENDOR},intel)
+ifeq ($(strip ${COMPILER_VENDOR}),intel)
   CC  = icc
   CXX = icpc
 else
@@ -46,10 +46,10 @@ VES3D_INCDIR   ?= $(VES3D_DIR)/include
 VES3D_LIBDIR   ?= $(VES3D_DIR)/lib
 VES3D_SRCDIR   ?= $(VES3D_DIR)/src
 VES3D_TSTDIR   ?= $(VES3D_DIR)/test
-VES3D_VERSION   = $(@shell hg -q id -n)
+VES3D_VERSION  := $(shell hg -q id -n 2>/dev/null)
 
 # PETSC (needs to be first b/c it overwrites make variables!)
-ifeq (${VES3D_USE_PETSC},yes)
+ifeq ($(strip ${VES3D_USE_PETSC}),yes)
   include ${PETSC_DIR}/conf/variables
   CXXFLAGS += -I${PETSC_INC} -DHAS_PETSC
   LDLIBS   += ${PETSC_LIB_BASIC}
@@ -57,7 +57,7 @@ ifeq (${VES3D_USE_PETSC},yes)
 endif
 
 # PVFMM (should come first so that the flags are ordered properly)
-ifeq (${VES3D_USE_PVFMM},yes)
+ifeq ($(strip ${VES3D_USE_PVFMM}),yes)
   -include ${PVFMM_DIR}/MakeVariables
   ifndef CXXFLAGS_PVFMM
   -include $(VES3D_DIR)/pvfmm/MakeVariables
@@ -94,7 +94,7 @@ CUDA_LDLIBS   = -lcublas -lcudart #-Wl,-rpath ${CUDA_DIR}/lib64
 	$(NVCC) ${CUDA_FLAGS} -c -o $@ $<
 
 # GPU
-ifeq ($(VES3D_USE_GPU),yes)
+ifeq ($(strip ${VES3D_USE_GPU}),yes)
   VES3D_LIBS   += ves3dgpu
   CXXFLAGS     += -DGPU_ACTIVE ${CUDA_INCLUDE}
   LDFLAGS      += ${CUDA_LDFLAGS}
