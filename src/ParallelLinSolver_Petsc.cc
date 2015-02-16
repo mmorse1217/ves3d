@@ -66,8 +66,9 @@ ParallelVecPetsc<T>::~ParallelVecPetsc(){
 template<typename T>
 Error_t ParallelVecPetsc<T>::SetSizes(size_type lsz, size_type gsz)
 {
-    PetscInt n(lsz), N;
-    N = (gsz==0 && n>0) ? PETSC_DECIDE : gsz;
+    PetscInt n(lsz), N(PETSC_DECIDE);
+    if(gsz>0 || n==0) N=gsz;
+
     COUTDEBUG("Setting parallel vector sizes to "<<n<<" and "<<N);
     ierr = VecSetSizes(pv_, n, N);
     CHK_PETSC(ierr);
@@ -271,9 +272,9 @@ template<typename T>
 Error_t ParallelLinOpPetsc<T>::SetSizes(size_type lrsz, size_type lcsz,
     size_type grsz, size_type gcsz){
 
-    PetscInt m(lrsz), n(lcsz), M, N;
-    M = (grsz==0 && m>0) ? PETSC_DECIDE : grsz;
-    N = (gcsz==0 && n>0) ? PETSC_DECIDE : gcsz;
+    PetscInt m(lrsz), n(lcsz), M(PETSC_DECIDE), N(PETSC_DECIDE);
+    if(grsz>0 || m==0) M=grsz;
+    if(gcsz>0 || n==0) N=grsz;
 
     COUTDEBUG("Setting operator sizes to local "
 	<<m<<"/"<<n<<" and global "

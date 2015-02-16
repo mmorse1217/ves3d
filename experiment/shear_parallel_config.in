@@ -1,0 +1,38 @@
+##shape #####################################
+n-surfs : 1       #per core
+sh-order : 6
+bending-modulus : .01
+
+##solver  ###################################
+position-iter-max : 20
+tension-iter-max : 20
+position-restart : 10
+tension-restart : 10
+position-tol : 1e-6
+tension-tol : 1e-6
+
+##time stepping #############################
+time-horizon : 1e-2
+timestep : 1e-4
+save-stride : 1e-4
+
+time-scheme : GloballyImplicit
+singular-stokes : Direct
+
+##reparametrization #########################
+rep-max-iter : 20
+rep-timestep : 1e-5
+rep-tol : 1e-4
+
+##initialization ############################
+init-file : precomputed/dumbbell_%d_%s.txt
+cent-file : experiment/shear_centers.txt
+
+##checkpoint/monitor ########################
+save-data
+out-file : experiment/shear.out
+error-factor : .01
+
+##far filed #################################
+bg-flow-param : 0
+upsample-interaction

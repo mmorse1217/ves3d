@@ -54,7 +54,7 @@ ifeq ($(strip ${VES3D_USE_PETSC}),yes)
   include ${PETSC_DIR}/conf/variables
   CXXFLAGS += ${PETSC_CC_INCLUDES} -I${PETSC_INC} -DHAS_PETSC
   LDLIBS   += ${PETSC_LIB_BASIC}
-  LDFLAGS  += -L${PETSC_LIBDIR}
+  LDFLAGS  += -L${PETSC_LIB_DIR}
 endif
 
 # PVFMM (should come first so that the flags are ordered properly)

@@ -17,6 +17,10 @@ Error_t cb_abort(const ErrorEvent &err)
 void run_sim(int argc, char **argv){
     SET_ERR_CALLBACK(&cb_abort);
 
+    int nproc, rank;
+    MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
+    MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
+
     typedef EvolveSurface<real_t, Dev, the_dev> Evolve_t;
     typedef Evolve_t::Params_t Par_t;
     typedef Evolve_t::Arr_t Arr_t;
@@ -43,12 +47,18 @@ void run_sim(int argc, char **argv){
     //reading centers file
     if (sim_par.cntrs_file_name.size()){
         INFO("Reading centers from file");
-        Arr_t cntrs(DIM * sim_par.n_surfs);
+        Arr_t cntrs(DIM * sim_par.n_surfs * nproc);
         sprintf(fname, sim_par.cntrs_file_name.c_str(), sim_par.sh_order,prec.c_str());
         myIO.ReadData( FullPath(fname), cntrs, DataIO::ASCII, 0, cntrs.size());
 
         INFO("Populating the initial configuration using centers");
-        Populate(x0, cntrs);
+
+        Arr_t my_centers(DIM * sim_par.n_surfs);
+	cntrs.getDevice().Memcpy(my_centers.begin(),
+				 cntrs.begin() + rank * DIM * sim_par.n_surfs,
+				 DIM * sim_par.n_surfs * sizeof(Arr_t::value_type),
+				 Arr_t::device_type::MemcpyDeviceToDevice);
+        Populate(x0, my_centers);
     };
 
     //Reading Operators From File
@@ -59,8 +69,8 @@ void run_sim(int argc, char **argv){
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     // interaction handler
+    //Inter_t fmm_interaction(&StokesAlltoAll);
     Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real_t>);
-    // Inter_t fmm_interaction(&StokesAlltoAll); /* for debugging -- to be removed */
 
     // parallel solver
     PSol_t ksp(VES3D_COMM_WORLD);
