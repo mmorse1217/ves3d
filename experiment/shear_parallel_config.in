@@ -12,16 +12,16 @@ position-tol : 1e-6
 tension-tol : 1e-6
 
 ##time stepping #############################
-time-horizon : 1e-2
-timestep : 1e-4
-save-stride : 1e-4
+time-horizon : 20
+timestep : 2e-1
+save-stride : 1e-1
 
 time-scheme : GloballyImplicit
 singular-stokes : Direct
 
 ##reparametrization #########################
-rep-max-iter : 20
-rep-timestep : 1e-5
+rep-max-iter : 100
+rep-timestep : 1e-4
 rep-tol : 1e-4
 
 ##initialization ############################
@@ -30,9 +30,9 @@ cent-file : experiment/shear_centers.txt
 
 ##checkpoint/monitor ########################
 save-data
-out-file : experiment/shear.out
+out-file : experiment/shear_rank%d.out
 error-factor : .01
 
 ##far filed #################################
-bg-flow-param : 0
+bg-flow-param : .1
 upsample-interaction

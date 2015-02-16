@@ -31,6 +31,11 @@ void run_sim(int argc, char **argv){
     // Setting the parameters
     Par_t sim_par;
     CHK(sim_par.parseInput(argc, argv));
+
+    // hacking the out file name inside the sim_par
+    char outfile[1024];
+    sprintf(outfile, sim_par.save_file_name.c_str(), rank);
+    sim_par.save_file_name = std::string(outfile);
     COUT(sim_par);
 
     //Initial vesicle positions
@@ -38,7 +43,6 @@ void run_sim(int argc, char **argv){
 
     //reading the prototype form file
     DataIO myIO(FullPath(sim_par.save_file_name));
-
     char fname[300];
     std::string prec = (typeid(real_t) == typeid(float)) ? "float" : "double";
     sprintf(fname, sim_par.init_file_name.c_str(), sim_par.sh_order,prec.c_str());
