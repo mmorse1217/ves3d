@@ -15,8 +15,9 @@ VES3D_TESTING    ?= no  #equal to DEBUG, PROFILE and VERBOSE=1
 
 VES3D_USE_GPU    ?= no
 VES3D_USE_MPI    ?= no
-VES3D_USE_PVFMM  ?= no
-VES3D_USE_PETSC  ?= no
+VES3D_USE_PVFMM  ?= no     #turns on VES3D_USE_MPI
+VES3D_USE_PETSC  ?= no     #turns on VES3D_USE_MPI (could be avoided)
+VES3D_PETSC_VER  ?= 33     #use xx instead of x.x for easier comparison in the code (tested for 33 and 35)
 VES3D_PREC       ?= DOUBLE #or SINGLE
 
 COMPILER_VENDOR  ?= intel  #or gnu
@@ -51,7 +52,7 @@ VES3D_VERSION  := $(shell hg -q id -n 2>/dev/null)
 # PETSC (needs to be first b/c it overwrites make variables!)
 ifeq ($(strip ${VES3D_USE_PETSC}),yes)
   include ${PETSC_DIR}/conf/variables
-  CXXFLAGS += -I${PETSC_INC} -DHAS_PETSC
+  CXXFLAGS += ${PETSC_CC_INCLUDES} -I${PETSC_INC} -DHAS_PETSC
   LDLIBS   += ${PETSC_LIB_BASIC}
   LDFLAGS  += -L${PETSC_LIBDIR}
 endif

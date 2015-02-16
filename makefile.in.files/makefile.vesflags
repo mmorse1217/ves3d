@@ -25,6 +25,14 @@ else
   CXXFLAGS += -DDOUBLE_PREC
 endif
 
+ifeq (${VES3D_USE_PVFMM},yes)
+  VES3D_USE_MPI = yes
+endif
+
+ifeq (${VES3D_USE_PETSC},yes)
+  VES3D_USE_MPI = yes
+endif
+
 ifeq ($(strip ${VES3D_USE_MPI}),yes)
   CXXFLAGS += -DHAS_MPI
 endif

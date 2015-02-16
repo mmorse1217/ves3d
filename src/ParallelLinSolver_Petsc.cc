@@ -483,7 +483,12 @@ Error_t  ParallelLinSolverPetsc<T>::SetOperator(matvec_type *mv)
     ASSERT(comm_==mv->MPIComm(), "Operator should have the same MPI communicator");
 
     mv_ = static_cast<petsc_matvec_type*>(mv);
+#if PETSC_VERSION<35
+    ierr = KSPSetOperators(ps_, mv_->PetscMat(), mv_->PetscMat(), SAME_PRECONDITIONER); CHK_PETSC(ierr);
+#else
     ierr = KSPSetOperators(ps_, mv_->PetscMat(), mv_->PetscMat()); CHK_PETSC(ierr);
+#endif
+
     return ErrorEvent::Success;
 }
 

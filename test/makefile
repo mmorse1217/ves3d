@@ -33,7 +33,8 @@ ifeq (${VES3D_USE_PVFMM},yes)
 endif
 
 ifeq (${VES3D_USE_PETSC},yes)
-  TEST += ParallelLinSolverPetscTest.exe
+  TEST += ParallelLinSolverPetscTest.exe \
+          InterfacialVelocityTest.exe
 endif
 
 ifeq (${VES3D_TESTING},yes)
