@@ -259,28 +259,39 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
 {
     ASSERT(scheme==GloballyImplicit, "Unsupported scheme");
 
-    // rhs=[x+dt*u_inf;Px]
+    // rhs=[u_inf+Bx;0]
     COUTDEBUG("Evaluate background flow");
-    std::auto_ptr<Vec_t> xRhs = checkoutVec();
-    xRhs->replicate(S_.getPosition());
-    CHK(BgFlow(*xRhs, dt));
-    axpy(dt, *xRhs, S_.getPosition(), *xRhs);
+    std::auto_ptr<Vec_t> vRhs = checkoutVec();
+    vRhs->replicate(S_.getPosition());
+    CHK(BgFlow(*vRhs, dt));
 
-    COUTDEBUG("Computing div(x)");
+    COUTDEBUG("Computing the far-field interaction due to explicit traction jump");
+    std::auto_ptr<Vec_t> f  = checkoutVec();
+    std::auto_ptr<Vec_t> Sf = checkoutVec();
+    Intfcl_force_.bendingForce(S_, *f);
+    CHK(stokes(*f, *Sf));
+    axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
+
+    EvaluateFarInteraction(S_.getPosition(), *f, *Sf);
+    axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
+
+    COUTDEBUG("Computing rhs for div(u)");
     std::auto_ptr<Sca_t> tRhs = checkoutSca();
-    S_.div(S_.getPosition(), *tRhs);
+    tRhs->getDevice().Memset(tRhs->begin(), 0, tRhs->size() * sizeof(value_type));
 
     COUTDEBUG("Copy data to parallel rhs array");
-    size_t xsz(xRhs->size()), tsz(tRhs->size());
+    size_t xsz(vRhs->size()), tsz(tRhs->size());
     typename PVec_t::iterator i(NULL);
     typename PVec_t::size_type rsz;
     CHK(parallel_rhs_->GetArray(i, rsz));
     ASSERT(rsz==xsz+tsz,"Bad sizes");
-    xRhs->getDevice().Memcpy(i    , xRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    vRhs->getDevice().Memcpy(i    , vRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     tRhs->getDevice().Memcpy(i+xsz, tRhs->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     CHK(parallel_rhs_->RestoreArray(i));
 
-    recycle(xRhs);
+    recycle(vRhs);
+    recycle(f);
+    recycle(Sf);
     recycle(tRhs);
 
     return ErrorEvent::Success;
@@ -291,16 +302,15 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const
 {
     COUTDEBUG("Using current position/tension as initial guess");
-    const Vec_t &pos(S_.getPosition());
-    size_t xsz(pos.size()), tsz(tension_.size());
+    size_t vsz(velocity_.size()), tsz(tension_.size());
     typename PVec_t::iterator i(NULL);
     typename PVec_t::size_type rsz;
 
     CHK(parallel_u_->GetArray(i, rsz));
-    ASSERT(rsz==xsz+tsz,"Bad sizes");
+    ASSERT(rsz==vsz+tsz,"Bad sizes");
     COUTDEBUG("Copy data to parallel solution array");
-    pos.getDevice().Memcpy(     i    , pos.begin()     , xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    tension_.getDevice().Memcpy(i+xsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    velocity_.getDevice().Memcpy(   i, velocity_.begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    tension_.getDevice().Memcpy(i+vsz, tension_.begin() , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     CHK(parallel_u_->RestoreArray(i));
 
     return ErrorEvent::Success;
@@ -312,57 +322,56 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
 {
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
-    size_t xsz(F->velocity_.size()), tsz(F->tension_.size());
+    size_t vsz(F->velocity_.size()), tsz(F->tension_.size());
 
-    std::auto_ptr<Vec_t> pos = F->checkoutVec();
+    std::auto_ptr<Vec_t> vel = F->checkoutVec();
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
     std::auto_ptr<Vec_t> fb  = F->checkoutVec();
     std::auto_ptr<Vec_t> fs  = F->checkoutVec();
     std::auto_ptr<Vec_t> Sf  = F->checkoutVec();
-    std::auto_ptr<Sca_t> Dx  = F->checkoutSca();
-    pos->replicate(F->velocity_);
+    std::auto_ptr<Sca_t> Dv  = F->checkoutSca();
+    vel->replicate(F->velocity_);
     ten->replicate(F->tension_);
-    fb->replicate(*pos);
-    fs->replicate(*pos);
-    Sf->replicate(*pos);
-    Dx->replicate(*pos);
+    fb->replicate(*vel);
+    fs->replicate(*vel);
+    Sf->replicate(*vel);
+    Dv->replicate(*vel);
 
     COUTDEBUG("Unpacking the input parallel vector");
-    pos->getDevice().Memcpy(pos->begin(), x    , xsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    ten->getDevice().Memcpy(ten->begin(), x+xsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    vel->getDevice().Memcpy(vel->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+    COUTDEBUG("Computing the div term");
+    F->S_.div(*vel, *Dv);
 
     COUTDEBUG("Computing the interfacial forces");
-    F->Intfcl_force_.linearBendingForce(F->S_, *pos, *fb);
-    F->Intfcl_force_.tensileForce(F->S_, *ten, *fs);
-    axpy(static_cast<value_type>(1.0), *fb, *fs, *fb);
-    axpy(-F->dt_, *fb, *fb); /* confusing implementation of axpy; fb=-dt*fb */
+    F->Intfcl_force_.linearBendingForce(F->S_, *vel, *fb);
+    F->Intfcl_force_.tensileForce(      F->S_, *ten, *fs);
+    axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
 
     COUTDEBUG("Computing the self interaction");
     CHK(F->stokes(*fb, *Sf));
-    axpy(static_cast<value_type>(1.0), *Sf, *pos, *Sf);
+    axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
 
     COUTDEBUG("Computing the far-field interaction");
-    F->EvaluateFarInteraction(F->S_.getPosition(), *fb, *fs);
-    axpy(static_cast<value_type>(1.0), *fs, *Sf, *Sf);
+    F->EvaluateFarInteraction(F->S_.getPosition(), *fb, *Sf);
+    axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
 
-    COUTDEBUG("Computing the div term");
-    F->S_.div(*pos, *Dx);
+    vel->getDevice().Memcpy(y   , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    Dv->getDevice().Memcpy(y+vsz, Dv->begin() , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-    pos->getDevice().Memcpy(y    , Sf->begin(), xsz *	sizeof(value_type), device_type::MemcpyDeviceToHost);
-    ten->getDevice().Memcpy(y+xsz, Dx->begin(), tsz *	sizeof(value_type), device_type::MemcpyDeviceToHost);
-
-    F->recycle(pos);
+    F->recycle(vel);
     F->recycle(ten);
     F->recycle(fb);
     F->recycle(fs);
     F->recycle(Sf);
-    F->recycle(Dx);
+    F->recycle(Dv);
 
     return ErrorEvent::Success;
 }
 
 
-template<typename	SurfContainer, typename Interaction>
+template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const
 {
@@ -375,21 +384,21 @@ Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &s
     return ErrorEvent::Success;
 }
 
-template<typename	SurfContainer, typename Interaction>
+template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::Update(PVec_t *u0)
 {
     COUTDEBUG("Updating position and tension.");
-    Vec_t			&pos(S_.getPositionModifiable());
-    size_t			 xsz(pos.size()), tsz(tension_.size());
-    typename PVec_t::iterator	 i(NULL);
-    typename PVec_t::size_type	 rsz;
+    size_t  vsz(velocity_.size()), tsz(tension_.size());
+    typename PVec_t::iterator i(NULL);
+    typename PVec_t::size_type rsz;
 
     CHK(parallel_u_->GetArray(i, rsz));
-    ASSERT(rsz==xsz+tsz,"Bad sizes");
+    ASSERT(rsz==vsz+tsz,"Bad sizes");
     COUTDEBUG("Copy data from parallel solution array.");
-    pos.getDevice().Memcpy(     pos.begin()     , i    , xsz *	sizeof(value_type), device_type::MemcpyHostToDevice);
-    tension_.getDevice().Memcpy(tension_.begin(), i+xsz, tsz *	sizeof(value_type), device_type::MemcpyHostToDevice);
+    velocity_.getDevice().Memcpy(velocity_.begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    tension_.getDevice().Memcpy(tension_.begin()  , i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     CHK(parallel_u_->RestoreArray(i));
+    axpy(dt_, velocity_, S_.getPosition(), S_.getPositionModifiable());
 
     return ErrorEvent::Success;
 }
