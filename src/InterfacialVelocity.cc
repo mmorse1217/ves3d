@@ -269,11 +269,11 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
     COUTDEBUG("Computing the far-field interaction due to explicit traction jump");
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
-    Intfcl_force_.bendingForce(S_, *f);
-    CHK(stokes(*f, *Sf));
-    axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
 
-    EvaluateFarInteraction(S_.getPosition(), *f, *Sf);
+    stokes_.SetSrcCoord(S_);
+    stokes_.SetTrgCoord(S_);
+    stokes_.SetDensitySL(f.get());
+    stokes_(*Sf);
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
 
     COUTDEBUG("Computing rhs for div(u)");
@@ -350,12 +350,8 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
     F->Intfcl_force_.tensileForce(      F->S_, *ten, *fs);
     axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
 
-    COUTDEBUG("Computing the self interaction");
-    CHK(F->stokes(*fb, *Sf));
-    axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
-
-    COUTDEBUG("Computing the far-field interaction");
-    F->EvaluateFarInteraction(F->S_.getPosition(), *fb, *Sf);
+    F->stokes_.SetDensitySL(fb.get());
+    F->stokes_(*Sf);
     axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
 
     vel->getDevice().Memcpy(y   , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
