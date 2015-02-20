@@ -14,12 +14,7 @@ class NearSingular{
 
   public:
 
-    NearSingular(MPI_Comm c=MPI_COMM_WORLD):comm(c){
-      S=NULL;
-      qforce_single=NULL;
-      qforce_double=NULL;
-      S_vel=NULL;
-    }
+    NearSingular(MPI_Comm c=MPI_COMM_WORLD);
 
     void SetSrcCoord(const Surf_t& S);
     void SetSurfaceVel(const Vec_t& S_vel);
@@ -29,11 +24,16 @@ class NearSingular{
     void SetTrgCoord(Real_t* trg_coord, size_t N);
 
     void SubtractDirect(PVFMMVec_t& vel_fmm);
-    PVFMMVec_t operator()(bool update=true);
+    const PVFMMVec_t& operator()(bool update=true);
 
   private:
 
+    NearSingular(const NearSingular &);
+    NearSingular& operator=(const NearSingular &);
+
     void SetupCoordData();
+
+    void VelocityScatter(PVFMMVec_t& trg_vel);
 
     struct{
       Real_t r_near;
@@ -45,8 +45,6 @@ class NearSingular{
       pvfmm::Vector<size_t> trg_scatter; // Scatter velocity to original location
       pvfmm::Vector<size_t> trg_pt_id;   // target index at original location
     } coord_setup;
-
-    void VelocityScatter(PVFMMVec_t& trg_vel);
 
     const Surf_t* S;
     const PVFMMVec_t* qforce_single;

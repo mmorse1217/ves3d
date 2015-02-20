@@ -4,22 +4,12 @@
 
 #include <mpi.h>
 #include <vector.hpp>
-#include <profile.hpp>
-
 #include "Parameters.h"
 #include "OperatorsMats.h"
 #include "PVFMMInterface.h"
 #include "NearSingular.h"
-
-#include "DataIO.h"
-#include "BgFlow.h"
-#include "Array.h"
-#include "Vectors.h"
-#include "Surface.h"
-
 #include "MovePole.h"
-#include "VesInteraction.h"
-#include "InterfacialVelocity.h"
+//#include "BgFlowBase.h"
 
 template<typename Surf_t>
 class StokesVelocity{
@@ -42,56 +32,13 @@ class StokesVelocity{
       UpdateAll =7
     };
 
-
     StokesVelocity(
         OperatorsMats<Arr_t> &mats,
         const Parameters<Real_t> &sim_par_,
         //const BgFlowBase<Vec_t> &bgFlow_,
-        MPI_Comm c=MPI_COMM_WORLD):
-      move_pole(mats),
-      sim_par(sim_par_),
-      //bg_flow(bgFlow_),
-      near_singular(c),
-      comm(c)
-  {
-      pvfmm_ctx=PVFMMCreateContext<Real_t>();
-      S=NULL;
-      force_single=NULL;
-      force_double=NULL;
-      S_vel_ptr=NULL;
-      fmm_flag =StokesVelocity::UpdateNone;
-      self_flag=StokesVelocity::UpdateNone;
+        MPI_Comm c=MPI_COMM_WORLD);
 
-      sh_order=sim_par.sh_order;
-      { // quadrature weights
-        quad_weights_.resize(1,sh_order);
-        quad_weights_.getDevice().Memcpy(quad_weights_.begin(),
-            mats.quad_weights_,
-            quad_weights_.size() * sizeof(Real_t),
-            Surf_t::device_type::MemcpyDeviceToDevice);
-      }
-
-      { // Set w_sph_, w_sph_inv_, sing_quad_weights_
-        w_sph_.resize(1, sh_order);
-        w_sph_inv_.resize(1, sh_order);
-        int np = w_sph_.getStride();
-
-        w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
-            np * sizeof(Real_t), device_type::MemcpyDeviceToDevice);
-        xInv(w_sph_,w_sph_inv_);
-
-        //Singular quadrature weights
-        sing_quad_weights_.resize(1,sh_order);
-        sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(),
-            mats.sing_quad_weights_, sing_quad_weights_.size() *
-            sizeof(Real_t),
-            device_type::MemcpyDeviceToDevice);
-      }
-    }
-
-    ~StokesVelocity(){
-      PVFMMDestroyContext<Real_t>(&pvfmm_ctx);
-    }
+    ~StokesVelocity();
 
     void SetSrcCoord(const Surf_t& S_);
     void SetSurfaceVel(const Vec_t& S_vel_);
@@ -111,6 +58,11 @@ class StokesVelocity{
     StokesVelocity(const StokesVelocity &);
     StokesVelocity& operator=(const StokesVelocity &);
 
+    void ApplyQuadWeights();
+    const Vec_t& SelfInteraction(bool update_self);
+    const PVFMMVec_t& NearInteraction(bool update_near);
+    const PVFMMVec_t& FarInteraction(bool update_far);
+
     void* pvfmm_ctx;
     NearSingular<Surf_t> near_singular;
 
@@ -119,13 +71,14 @@ class StokesVelocity{
     const Vec_t* force_double;
     const Vec_t* S_vel_ptr;
 
-    PVFMMVec_t qforce_single;
-    PVFMMVec_t qforce_double;
-    Vec_t S_vel;
-
     PVFMMVec_t src_coord;
     PVFMMVec_t trg_coord;
+    PVFMMVec_t qforce_single;
+    PVFMMVec_t qforce_double;
 
+    Vec_t S_vel;
+    Vec_t SL_vel;
+    Vec_t DL_vel;
     PVFMMVec_t fmm_vel;
     PVFMMVec_t trg_vel;
 

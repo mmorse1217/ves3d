@@ -2,6 +2,71 @@
 
 #include <omp.h>
 #include <iostream>
+#include "Surface.h"
+//#include "BgFlow.h"
+#include <profile.hpp>
+
+template<typename Surf_t>
+StokesVelocity<Surf_t>::StokesVelocity(
+    OperatorsMats<Arr_t> &mats,
+    const Parameters<Real_t> &sim_par_,
+    //const BgFlowBase<Vec_t> &bgFlow_,
+    MPI_Comm c):
+  move_pole(mats),
+  sim_par(sim_par_),
+  //bg_flow(bgFlow_),
+  near_singular(c),
+  comm(c)
+{
+  S=NULL;
+  S_vel_ptr=NULL;
+  force_single=NULL;
+  force_double=NULL;
+
+  fmm_flag=fmm_flag | StokesVelocity::UpdateSrcCoord;
+  fmm_flag=fmm_flag | StokesVelocity::UpdateDensitySL;
+  fmm_flag=fmm_flag | StokesVelocity::UpdateDensityDL;
+  fmm_flag=fmm_flag | StokesVelocity::UpdateTrgCoord;
+  self_flag=self_flag | StokesVelocity::UpdateSrcCoord;
+  self_flag=self_flag | StokesVelocity::UpdateDensitySL;
+  self_flag=self_flag | StokesVelocity::UpdateDensityDL;
+  self_flag=self_flag | StokesVelocity::UpdateSurfaceVel;
+
+  sh_order=sim_par.sh_order;
+  { // quadrature weights
+    quad_weights_.resize(1,sh_order);
+    quad_weights_.getDevice().Memcpy(quad_weights_.begin(),
+        mats.quad_weights_,
+        quad_weights_.size() * sizeof(Real_t),
+        Surf_t::device_type::MemcpyDeviceToDevice);
+  }
+
+  { // Set w_sph_, w_sph_inv_, sing_quad_weights_
+    w_sph_.resize(1, sh_order);
+    w_sph_inv_.resize(1, sh_order);
+    int np = w_sph_.getStride();
+
+    w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
+        np * sizeof(Real_t), device_type::MemcpyDeviceToDevice);
+    xInv(w_sph_,w_sph_inv_);
+
+    //Singular quadrature weights
+    sing_quad_weights_.resize(1,sh_order);
+    sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(),
+        mats.sing_quad_weights_, sing_quad_weights_.size() *
+        sizeof(Real_t),
+        device_type::MemcpyDeviceToDevice);
+  }
+
+  pvfmm_ctx=PVFMMCreateContext<Real_t>();
+}
+
+template<typename Surf_t>
+StokesVelocity<Surf_t>::~StokesVelocity(){
+  PVFMMDestroyContext<Real_t>(&pvfmm_ctx);
+}
+
+
 
 template<typename Surf_t>
 void StokesVelocity<Surf_t>::SetSrcCoord(const Surf_t& S_){
@@ -14,7 +79,6 @@ void StokesVelocity<Surf_t>::SetSrcCoord(const Surf_t& S_){
 template<typename Surf_t>
 void StokesVelocity<Surf_t>::SetSurfaceVel(const Vec_t& S_vel_){
   self_flag=self_flag | StokesVelocity::UpdateSurfaceVel;
-  near_singular.SetSurfaceVel(S_vel_);
   S_vel_ptr=&S_vel_;
 }
 
@@ -75,107 +139,201 @@ void StokesVelocity<Surf_t>::SetTrgCoord(Real_t* trg_coord_, size_t N){ // TODO:
 
 
 template<typename Surf_t>
-StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int flag){
+void StokesVelocity<Surf_t>::ApplyQuadWeights(){
+  Vec_t qforce;
+  const int force_dim=COORD_DIM;
   size_t omp_p=omp_get_max_threads();
-  bool update_self=(flag & StokesVelocity::UpdateSelf);
-  bool update_near=(flag & StokesVelocity::UpdateNear);
-  bool update_far =(flag & StokesVelocity::UpdateFar );
-  assert(S);
+  if(fmm_flag & StokesVelocity::UpdateDensitySL){
+    fmm_flag=fmm_flag & ~StokesVelocity::UpdateDensitySL;
+    fmm_flag=fmm_flag | StokesVelocity::UpdateqDensitySL;
+    if(force_single){
+      size_t N_ves = force_single->getNumSubs(); // Number of vesicles
+      size_t M_ves = force_single->getStride(); // Points per vesicle
 
-  if(update_near || update_far){ // Compute qforce_single, qforce_double
-    Vec_t qforce;
-    const int force_dim=COORD_DIM;
-    if(fmm_flag & StokesVelocity::UpdateDensitySL){
-      fmm_flag=fmm_flag & ~StokesVelocity::UpdateDensitySL;
-      fmm_flag=fmm_flag | StokesVelocity::UpdateqDensitySL;
-      if(force_single){
-        size_t N_ves = force_single->getNumSubs(); // Number of vesicles
-        size_t M_ves = force_single->getStride(); // Points per vesicle
+      assert(S);
+      qforce.resize(N_ves, sh_order);
+      xv(S->getAreaElement(), *force_single, qforce);
+      ax<Sca_t>(quad_weights_, qforce, qforce);
 
-        qforce.resize(N_ves, sh_order);
-        xv(S->getAreaElement(), *force_single, qforce);
-        ax<Sca_t>(quad_weights_, qforce, qforce);
+      qforce_single.ReInit(N_ves*M_ves*(force_dim));
+      #pragma omp parallel for
+      for(size_t tid=0;tid<omp_p;tid++){
+        size_t a=((tid+0)*N_ves)/omp_p;
+        size_t b=((tid+1)*N_ves)/omp_p;
+        for(size_t i=a;i<b;i++){ // loop over all vesicles
+          // read each component of force_single
+          const Real_t* fxk=qforce.getSubN_begin(i)+0*M_ves;
+          const Real_t* fyk=qforce.getSubN_begin(i)+1*M_ves;
+          const Real_t* fzk=qforce.getSubN_begin(i)+2*M_ves;
 
-        qforce_single.ReInit(N_ves*M_ves*(force_dim));
-        #pragma omp parallel for
-        for(size_t tid=0;tid<omp_p;tid++){
-          size_t a=((tid+0)*N_ves)/omp_p;
-          size_t b=((tid+1)*N_ves)/omp_p;
-          for(size_t i=a;i<b;i++){ // loop over all vesicles
-            // read each component of force_single
-            const Real_t* fxk=qforce.getSubN_begin(i)+0*M_ves;
-            const Real_t* fyk=qforce.getSubN_begin(i)+1*M_ves;
-            const Real_t* fzk=qforce.getSubN_begin(i)+2*M_ves;
-
-            for(size_t j=0;j<M_ves;j++){
-              qforce_single[(i*M_ves+j)*force_dim+0]=fxk[j];
-              qforce_single[(i*M_ves+j)*force_dim+1]=fyk[j];
-              qforce_single[(i*M_ves+j)*force_dim+2]=fzk[j];
-            }
+          for(size_t j=0;j<M_ves;j++){
+            qforce_single[(i*M_ves+j)*force_dim+0]=fxk[j];
+            qforce_single[(i*M_ves+j)*force_dim+1]=fyk[j];
+            qforce_single[(i*M_ves+j)*force_dim+2]=fzk[j];
           }
         }
-        near_singular.SetDensitySL(&qforce_single);
-      }else{
-        qforce_single.ReInit(0);
-        near_singular.SetDensitySL(NULL);
       }
-    }
-    if(fmm_flag & StokesVelocity::UpdateDensityDL){
-      fmm_flag=fmm_flag & ~StokesVelocity::UpdateDensityDL;
-      fmm_flag=fmm_flag | StokesVelocity::UpdateqDensityDL;
-      if(force_double){
-        size_t N_ves = force_double->getNumSubs(); // Number of vesicles
-        size_t M_ves = force_double->getStride(); // Points per vesicle
-
-        qforce.resize(N_ves, sh_order);
-        xv(S->getAreaElement(), *force_double, qforce);
-        ax<Sca_t>(quad_weights_, qforce, qforce);
-
-        qforce_double.ReInit(N_ves*M_ves*(force_dim+COORD_DIM));
-        const Vec_t* normal=&S->getNormal();
-        #pragma omp parallel for
-        for(size_t tid=0;tid<omp_p;tid++){
-          size_t a=((tid+0)*N_ves)/omp_p;
-          size_t b=((tid+1)*N_ves)/omp_p;
-          for(size_t i=a;i<b;i++){ // loop over all vesicles
-            // read each component of force_double
-            const Real_t* fxk=qforce.getSubN_begin(i)+0*M_ves;
-            const Real_t* fyk=qforce.getSubN_begin(i)+1*M_ves;
-            const Real_t* fzk=qforce.getSubN_begin(i)+2*M_ves;
-
-            // read each component of normal
-            const Real_t* nxk=normal->getSubN_begin(i)+0*M_ves;
-            const Real_t* nyk=normal->getSubN_begin(i)+1*M_ves;
-            const Real_t* nzk=normal->getSubN_begin(i)+2*M_ves;
-
-            for(size_t j=0;j<M_ves;j++){
-              qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+0]=fxk[j];
-              qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+1]=fyk[j];
-              qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+2]=fzk[j];
-              qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+3]=nxk[j];
-              qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+4]=nyk[j];
-              qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+5]=nzk[j];
-            }
-          }
-        }
-        near_singular.SetDensityDL(&qforce_double);
-      }else{
-        qforce_double.ReInit(0);
-        near_singular.SetDensityDL(NULL);
-      }
+      near_singular.SetDensitySL(&qforce_single);
+    }else{
+      qforce_single.ReInit(0);
+      near_singular.SetDensitySL(NULL);
     }
   }
+  if(fmm_flag & StokesVelocity::UpdateDensityDL){
+    fmm_flag=fmm_flag & ~StokesVelocity::UpdateDensityDL;
+    fmm_flag=fmm_flag | StokesVelocity::UpdateqDensityDL;
+    if(force_double){
+      size_t N_ves = force_double->getNumSubs(); // Number of vesicles
+      size_t M_ves = force_double->getStride(); // Points per vesicle
 
+      assert(S);
+      qforce.resize(N_ves, sh_order);
+      xv(S->getAreaElement(), *force_double, qforce);
+      ax<Sca_t>(quad_weights_, qforce, qforce);
+
+      qforce_double.ReInit(N_ves*M_ves*(force_dim+COORD_DIM));
+      const Vec_t* normal=&S->getNormal();
+      #pragma omp parallel for
+      for(size_t tid=0;tid<omp_p;tid++){
+        size_t a=((tid+0)*N_ves)/omp_p;
+        size_t b=((tid+1)*N_ves)/omp_p;
+        for(size_t i=a;i<b;i++){ // loop over all vesicles
+          // read each component of force_double
+          const Real_t* fxk=qforce.getSubN_begin(i)+0*M_ves;
+          const Real_t* fyk=qforce.getSubN_begin(i)+1*M_ves;
+          const Real_t* fzk=qforce.getSubN_begin(i)+2*M_ves;
+
+          // read each component of normal
+          const Real_t* nxk=normal->getSubN_begin(i)+0*M_ves;
+          const Real_t* nyk=normal->getSubN_begin(i)+1*M_ves;
+          const Real_t* nzk=normal->getSubN_begin(i)+2*M_ves;
+
+          for(size_t j=0;j<M_ves;j++){
+            qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+0]=fxk[j];
+            qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+1]=fyk[j];
+            qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+2]=fzk[j];
+            qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+3]=nxk[j];
+            qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+4]=nyk[j];
+            qforce_double[(i*M_ves+j)*(force_dim+COORD_DIM)+5]=nzk[j];
+          }
+        }
+      }
+      near_singular.SetDensityDL(&qforce_double);
+    }else{
+      qforce_double.ReInit(0);
+      near_singular.SetDensityDL(NULL);
+    }
+  }
+}
+
+template<typename Surf_t>
+const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(bool update_self){
+  if(self_flag & StokesVelocity::UpdateSurfaceVel){
+    if(S_vel_ptr){ // Nothing to do; it has already been computed for us.
+      near_singular.SetSurfaceVel(*S_vel_ptr);
+      self_flag=StokesVelocity::UpdateNone;
+    }else{ // Compute from SL and DL density
+      self_flag=self_flag | StokesVelocity::UpdateDensitySL;
+      self_flag=self_flag | StokesVelocity::UpdateDensityDL;
+    }
+  }
+  if(update_self && self_flag){ // Compute self interaction
+    { // Compute S_vel
+      pvfmm::Profile::Tic("SelfInteraction",&comm);
+      assert(S);
+      int imax(S->getPosition().getGridDim().first);
+      int jmax(S->getPosition().getGridDim().second);
+      int np = S->getPosition().getStride();
+      int nv = S->getPosition().getNumSubs();
+      if(self_flag & (StokesVelocity::UpdateDensitySL | StokesVelocity::UpdateSrcCoord)){ // Single layer
+        SL_vel.resize(nv, sh_order);
+        if(force_single){
+          Vec_t v1(nv, sh_order);
+          Vec_t v2(nv, sh_order);
+          Vec_t v3(nv, sh_order);
+
+          xv(         w_sph_inv_, *force_single, v3);
+          xv(S->getAreaElement(),            v3, v3);
+
+          int numinputs = 2;
+          const Sca_t* inputs[] = {&S->getPosition(), &v3};
+          Sca_t*      outputs[] = {&              v1, &v2};
+          move_pole.setOperands(inputs, numinputs, sim_par.singular_stokes);
+
+          for(int ii=0;ii < imax; ++ii)
+          for(int jj=0;jj < jmax; ++jj){
+            move_pole(ii, jj, outputs);
+
+            xv(w_sph_, v2, v2);
+            S->getPosition().getDevice().DirectStokes(v1.begin(), v2.begin(),
+                sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+                ii * jmax + jj, ii * jmax + jj + 1, SL_vel.begin());
+          }
+        }else{
+          Vec_t::getDevice().Memset(SL_vel.begin(),0,SL_vel.size()*sizeof(Real_t));
+        }
+      }
+      if(self_flag & (StokesVelocity::UpdateDensityDL | StokesVelocity::UpdateSrcCoord)){ // Double layer
+        DL_vel.resize(nv, sh_order);
+        if(force_double){
+          Vec_t v1(nv, sh_order);
+          Vec_t v2(nv, sh_order);
+          Vec_t v3(nv, sh_order);
+          Vec_t v4(nv, sh_order);
+
+          xv(         w_sph_inv_, *force_double, v3);
+          xv(S->getAreaElement(),            v3, v3);
+
+          int numinputs = 4;
+          const Sca_t* inputs[] = {&S->getPosition(), &S->getNormal(), &v3};
+          Sca_t*      outputs[] = {&              v1, &            v4, &v2};
+          move_pole.setOperands(inputs, numinputs, sim_par.singular_stokes);
+
+          for(int ii=0;ii < imax; ++ii)
+          for(int jj=0;jj < jmax; ++jj){
+            move_pole(ii, jj, outputs);
+
+            xv(w_sph_, v2, v2);
+            S->getPosition().getDevice().DirectStokesDoubleLayer(v1.begin(), v4.begin(), v2.begin(),
+                sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+                ii * jmax + jj, ii * jmax + jj + 1, DL_vel.begin());
+          }
+        }else{
+          Vec_t::getDevice().Memset(DL_vel.begin(),0,DL_vel.size()*sizeof(Real_t));
+        }
+      }
+      S_vel.resize(nv, sh_order);
+      axpy(1.0,SL_vel,DL_vel,S_vel);
+      pvfmm::Profile::Toc();
+    }
+    S_vel_ptr=&S_vel;
+    near_singular.SetSurfaceVel(*S_vel_ptr);
+    self_flag=StokesVelocity::UpdateNone;
+  }
+  return *S_vel_ptr;
+}
+
+template<typename Surf_t>
+const StokesVelocity<Surf_t>::PVFMMVec_t& StokesVelocity<Surf_t>::NearInteraction(bool update_near){
+  if(update_near) ApplyQuadWeights();
+  return near_singular(update_near);
+}
+
+template<typename Surf_t>
+const StokesVelocity<Surf_t>::PVFMMVec_t& StokesVelocity<Surf_t>::FarInteraction(bool update_far){
   if(update_far && fmm_flag){ // Compute velocity with FMM
+    ApplyQuadWeights();
     if(fmm_flag & StokesVelocity::UpdateSrcCoord){ // Set src_coord
       fmm_flag=fmm_flag & ~StokesVelocity::UpdateSrcCoord;
 
+      assert(S);
       const Vec_t& x=S->getPosition();
       size_t N_ves = x.getNumSubs(); // Number of vesicles
       size_t M_ves = x.getStride(); // Points per vesicle
       assert(M_ves==x.getGridDim().first*x.getGridDim().second);
       src_coord.ReInit(N_ves*M_ves*COORD_DIM);
 
+      size_t omp_p=omp_get_max_threads();
       #pragma omp parallel for
       for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
         size_t a=((tid+0)*N_ves)/omp_p;
@@ -203,92 +361,29 @@ StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int 
     near_singular.SubtractDirect(fmm_vel);
     fmm_flag=StokesVelocity::UpdateNone;
   }
+  return fmm_vel;
+}
 
-  if(self_flag & StokesVelocity::UpdateSurfaceVel){
-    // Nothing to do; it has already been computed for us.
-    self_flag=StokesVelocity::UpdateNone;
-  }else if(update_self && self_flag){ // Compute self interaction
-    { // Compute S_vel
-      pvfmm::Profile::Tic("SelfInteraction",&comm);
-      if(force_single && (self_flag & (StokesVelocity::UpdateDensitySL | StokesVelocity::UpdateSrcCoord))){ // Single layer
-        int imax(S->getPosition().getGridDim().first);
-        int jmax(S->getPosition().getGridDim().second);
-        int np = S->getPosition().getStride();
-        int nv = S->getPosition().getNumSubs();
-        S_vel.resize(nv, sh_order);
 
-        Sca_t t1(nv, sh_order);
-        Sca_t t2(nv, sh_order);
-        Vec_t v1(nv, sh_order);
-        Vec_t v2(nv, sh_order);
 
-        ax(w_sph_inv_, S->getAreaElement(), t1);
+template<typename Surf_t>
+StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int flag){
+  bool update_self=(flag & StokesVelocity::UpdateSelf);
+  bool update_near=(flag & StokesVelocity::UpdateNear);
+  bool update_far =(flag & StokesVelocity::UpdateFar );
 
-        int numinputs = 3;
-        const Sca_t* inputs[] = {&S->getPosition(), force_single, &t1};
-        Sca_t*      outputs[] = {&              v1, &         v2, &t2};
-        move_pole.setOperands(inputs, numinputs, sim_par.singular_stokes);
-
-        for(int ii=0;ii < imax; ++ii)
-        for(int jj=0;jj < jmax; ++jj){
-          move_pole(ii, jj, outputs);
-
-          ax(w_sph_, t2, t2);
-          xv(t2, v2, v2);
-
-          S->getPosition().getDevice().DirectStokes(v1.begin(), v2.begin(),
-              sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
-              ii * jmax + jj, ii * jmax + jj + 1, S_vel.begin());
-        }
-      }
-      if(force_double && (self_flag & (StokesVelocity::UpdateDensityDL | StokesVelocity::UpdateSrcCoord))){ // Double layer
-        int imax(S->getPosition().getGridDim().first);
-        int jmax(S->getPosition().getGridDim().second);
-        int np = S->getPosition().getStride();
-        int nv = S->getPosition().getNumSubs();
-        S_vel.resize(nv, sh_order);
-
-        Sca_t t1(nv, sh_order);
-        Sca_t t2(nv, sh_order);
-        Vec_t v1(nv, sh_order);
-        Vec_t v2(nv, sh_order);
-        Vec_t v3(nv, sh_order);
-
-        ax(w_sph_inv_, S->getAreaElement(), t1);
-
-        int numinputs = 4;
-        const Sca_t* inputs[] = {&S->getPosition(), &S->getNormal(), force_single, &t1};
-        Sca_t*      outputs[] = {&              v1, &            v3, &         v2, &t2};
-        move_pole.setOperands(inputs, numinputs, sim_par.singular_stokes);
-
-        for(int ii=0;ii < imax; ++ii)
-        for(int jj=0;jj < jmax; ++jj){
-          move_pole(ii, jj, outputs);
-
-          ax(w_sph_, t2, t2);
-          xv(t2, v2, v2);
-
-          S->getPosition().getDevice().DirectStokesDoubleLayer(v1.begin(), v3.begin(), v2.begin(),
-              sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
-              ii * jmax + jj, ii * jmax + jj + 1, S_vel.begin());
-        }
-        // TODO Combine results for single and double layer
-      }
-      pvfmm::Profile::Toc();
-    }
-    near_singular.SetSurfaceVel(S_vel);
-    self_flag=StokesVelocity::UpdateNone;
-  }
-  const PVFMMVec_t& near_vel=near_singular(update_near);
-
+  SelfInteraction(update_self);
+  const PVFMMVec_t& near_vel=NearInteraction(update_near);
+  const PVFMMVec_t& far_vel=FarInteraction(update_far);
   { // Compute far + near
     trg_vel.ReInit(trg_coord.Dim());
+    assert(trg_vel.Dim()==far_vel.Dim());
+    assert(trg_vel.Dim()==near_vel.Dim());
     #pragma omp parallel for
     for(size_t i=0;i<trg_vel.Dim();i++){
       trg_vel[i]=fmm_vel[i]+near_vel[i];
     }
   }
-
   return &trg_vel[0];
 }
 
@@ -297,11 +392,15 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
   size_t omp_p=omp_get_max_threads();
   (*this)(flag);
 
-  const Vec_t& x=T_vel;
+  Vec_t& x=T_vel;
   size_t N_ves = x.getNumSubs(); // Number of vesicles
   size_t M_ves = x.getStride(); // Points per vesicle
   assert(M_ves==x.getGridDim().first*x.getGridDim().second);
   assert(N_ves*M_ves*COORD_DIM==trg_vel.Dim());
+
+  // Background velocity
+  //!@bug the time should be passed to the BgFlow handle.
+  //bg_flow_(S->getPosition(), 0, x);
 
   #pragma omp parallel for
   for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
@@ -309,9 +408,9 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
     size_t b=((tid+1)*N_ves)/omp_p;
     for(size_t i=a;i<b;i++){
       // read each component of x
-      const Real_t* xk=x.getSubN_begin(i)+0*M_ves;
-      const Real_t* yk=x.getSubN_begin(i)+1*M_ves;
-      const Real_t* zk=x.getSubN_begin(i)+2*M_ves;
+      Real_t* xk=x.getSubN_begin(i)+0*M_ves;
+      Real_t* yk=x.getSubN_begin(i)+1*M_ves;
+      Real_t* zk=x.getSubN_begin(i)+2*M_ves;
 
       for(size_t j=0;j<M_ves;j++){
         xk[j]=trg_vel[(i*M_ves+j)*COORD_DIM+0];
@@ -374,12 +473,6 @@ static void force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
 
 template<typename Surf_t>
 void StokesVelocity<Surf_t>::Test(){
-  typedef typename Vec_t::scalars_type Sca_t;
-  typedef typename Vec_t::array_type Arr_t;
-  typedef OperatorsMats<Arr_t> Mats_t;
-  typedef VesInteraction<Real_t> Interaction_t;
-  typedef InterfacialVelocity<Surf_t, Interaction_t> IntVel_t;
-
   int rank, size;
   MPI_Comm comm=MPI_COMM_WORLD;
   MPI_Comm_rank(comm,&rank);
@@ -395,6 +488,10 @@ void StokesVelocity<Surf_t>::Test(){
   bool readFromFile = true;
   Mats_t mats(readFromFile, sim_par);
 
+  //Setting the background flow
+  //ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+
+  //StokesVelocity<Surf_t> stokes_vel(mats, sim_par, vInf, comm);
   StokesVelocity<Surf_t> stokes_vel(mats, sim_par, comm);
 
   //=================================================================//

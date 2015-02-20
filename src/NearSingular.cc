@@ -8,7 +8,31 @@
 #include <profile.hpp>
 #include <mortonid.hpp>
 #include <legendre_rule.hpp>
-#include <mpi_tree.hpp>
+#include <mpi_tree.hpp> // Only for vis
+
+template<typename Surf_t>
+NearSingular<Surf_t>::NearSingular(MPI_Comm c){
+  comm=c;
+  S=NULL;
+  qforce_single=NULL;
+  qforce_double=NULL;
+  S_vel=NULL;
+
+  update_setup =update_setup  | NearSingular::UpdateSrcCoord;
+  update_setup =update_setup  | NearSingular::UpdateTrgCoord;
+
+  update_direct=update_direct | NearSingular::UpdateSrcCoord;
+  update_direct=update_direct | NearSingular::UpdateDensitySL;
+  update_direct=update_direct | NearSingular::UpdateDensityDL;
+  update_direct=update_direct | NearSingular::UpdateTrgCoord;
+
+  update_interp=update_interp | NearSingular::UpdateSrcCoord;
+  update_interp=update_interp | NearSingular::UpdateSurfaceVel;
+  update_interp=update_interp | NearSingular::UpdateDensitySL;
+  update_interp=update_interp | NearSingular::UpdateDensityDL;
+  update_interp=update_interp | NearSingular::UpdateTrgCoord;
+}
+
 
 template<typename Surf_t>
 void NearSingular<Surf_t>::SetSrcCoord(const Surf_t& S_){
@@ -49,15 +73,12 @@ void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N){ // TODO: ch
 
 
 
-
 template<typename Surf_t>
 void NearSingular<Surf_t>::SetupCoordData(){
-  Real_t near=0.25; // TODO: some function of sh_order and accuracy
-  if((update_setup & (NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord))){
-    update_setup=update_setup & ~(NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord);
-  }else{
-    return;
-  }
+  assert(S);
+  Real_t near=1.6/sqrt((Real_t)S->getShOrder()); // TODO: some function of sh_order and accuracy
+  if(!(update_setup & (NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord))) return;
+  update_setup=update_setup & ~(NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord);
 
   int np, rank;
   MPI_Comm_size(comm,&np);
@@ -897,8 +918,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
 
 template<typename Surf_t>
 void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
-
-  if(update_direct){ // Subtract direct near interaction
+  if(update_direct){ // Computee vel_direct
     size_t omp_p=omp_get_max_threads();
     SetupCoordData();
 
@@ -1116,7 +1136,6 @@ void NearSingular<Surf_t>::VelocityScatter(PVFMMVec_t& trg_vel){
 
 
 
-
 template <class Real_t>
 struct QuadraticPatch{
 
@@ -1216,8 +1235,7 @@ static inline Real_t InterPoly(Real_t x, int j, int deg){
 }
 
 template<typename Surf_t>
-NearSingular<Surf_t>::PVFMMVec_t NearSingular<Surf_t>::operator()(bool update){
-
+const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool update){
   if((update && update_interp) || (update_interp & NearSingular::UpdateSurfaceVel)){ // Compute near-singular
     size_t omp_p=omp_get_max_threads();
     SetupCoordData();
@@ -1714,7 +1732,6 @@ NearSingular<Surf_t>::PVFMMVec_t NearSingular<Surf_t>::operator()(bool update){
       update_interp=(update_interp & ~(NearSingular::UpdateSurfaceVel));
     }
   }
-
   return vel_surfac;
 }
 

@@ -1,4 +1,5 @@
 #include <StokesVelocity.h>
+#include <Vectors.h>
 
 typedef Device<CPU> DevCPU;
 extern const DevCPU the_cpu_device(0);
