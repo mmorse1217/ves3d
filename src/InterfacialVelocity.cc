@@ -21,7 +21,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     sht_upsample_(mats.p_up_, mats.mats_p_up_),
     move_pole(mats),
     checked_out_work_sca_(0),
-    checked_out_work_vec_(0)
+    checked_out_work_vec_(0),
+    stokes_(mats,params_)
 {
     velocity_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());

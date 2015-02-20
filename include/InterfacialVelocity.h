@@ -16,6 +16,7 @@
 #include "BgFlowBase.h"
 #include "OperatorsMats.h"
 #include "ParallelLinSolverInterface.h"
+#include "StokesVelocity.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -100,6 +101,7 @@ class InterfacialVelocity
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_;
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_upsample_;
 
+    mutable StokesVelocity<SurfContainer> stokes_;
     mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t velocity_;
     mutable Sca_t tension_;

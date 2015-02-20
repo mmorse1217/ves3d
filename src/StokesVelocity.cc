@@ -672,5 +672,200 @@ void StokesVelocity<Surf_t>::Test(){
   pvfmm::Profile::Toc();
 }
 
+
+
+template<typename Surf_t>
+void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=MPI_COMM_WORLD){
+  typedef typename Surf_t::value_type Real_t;
+  typedef typename Surf_t::Vec_t Vec_t;
+  typedef float VTKReal_t;
+
+  std::vector<Real_t> pole_quad;
+  { // compute quadrature to find pole
+    size_t p=S.getShOrder();
+
+    //Gauss-Legendre quadrature nodes and weights
+    std::vector<Real_t> x(p+1),w(p+1);
+    cgqf(p+1, 1, 0.0, 0.0, -1.0, 1.0, &x[0], &w[0]);
+
+    std::vector<Real_t> leg((p+1)*(p+1));
+    LegPoly(&x[0],x.size(),p+1,&leg[0]);
+    pole_quad.resize(p+1,0);
+    for(size_t j=0;j<p+1;j++){
+      for(size_t i=0;i<p+1;i++){
+        pole_quad[i]+=leg[j*(p+1)+i]*sqrt(2.0*j+1.0);
+      }
+    }
+    for(size_t i=0;i<p+1;i++){
+      pole_quad[i]*=w[i]*0.25/p;
+    }
+  }
+
+  std::vector<VTKReal_t> point_coord;
+  std::vector< int32_t> poly_connect;
+  std::vector< int32_t> poly_offset;
+  { // Set point_coord, poly_connect
+    const Vec_t& x=S.getPosition();
+    size_t N_ves = x.getNumSubs(); // Number of vesicles
+    size_t M_ves = x.getStride(); // Points per vesicle
+    int imax(x.getGridDim().first);
+    int jmax(x.getGridDim().second);
+    int fLen = x.getStride();
+    assert(fLen==M_ves);
+    for(size_t k=0;k<N_ves;k++){
+      std::vector<Real_t> pole_coord(COORD_DIM*2,0);
+
+      const Real_t* xk=x.getSubN_begin(k)+0*fLen;
+      const Real_t* yk=x.getSubN_begin(k)+1*fLen;
+      const Real_t* zk=x.getSubN_begin(k)+2*fLen;
+      for(size_t i=0;i<imax;i++){
+        for(size_t j=0;j<jmax;j++){
+          point_coord.push_back(xk[j+i*jmax]);
+          point_coord.push_back(yk[j+i*jmax]);
+          point_coord.push_back(zk[j+i*jmax]);
+
+          pole_coord[0*COORD_DIM+0]+=pole_quad[imax-1-i]*xk[j+i*jmax];
+          pole_coord[0*COORD_DIM+1]+=pole_quad[imax-1-i]*yk[j+i*jmax];
+          pole_coord[0*COORD_DIM+2]+=pole_quad[imax-1-i]*zk[j+i*jmax];
+          pole_coord[1*COORD_DIM+0]+=pole_quad[       i]*xk[j+i*jmax];
+          pole_coord[1*COORD_DIM+1]+=pole_quad[       i]*yk[j+i*jmax];
+          pole_coord[1*COORD_DIM+2]+=pole_quad[       i]*zk[j+i*jmax];
+        }
+      }
+      point_coord.push_back(pole_coord[0]);
+      point_coord.push_back(pole_coord[1]);
+      point_coord.push_back(pole_coord[2]);
+      point_coord.push_back(pole_coord[3]);
+      point_coord.push_back(pole_coord[4]);
+      point_coord.push_back(pole_coord[5]);
+    }
+
+    for(size_t k=0;k<N_ves;k++){
+      for(size_t j=0;j<jmax;j++){
+        size_t i0=     0;
+        size_t i1=imax-1;
+        size_t j0=((j+0)     );
+        size_t j1=((j+1)%jmax);
+
+        poly_connect.push_back((jmax*imax+2)*k + jmax*imax+0);
+        poly_connect.push_back((jmax*imax+2)*k + jmax*i0+j0);
+        poly_connect.push_back((jmax*imax+2)*k + jmax*i0+j1);
+        poly_offset.push_back(poly_connect.size());
+
+        poly_connect.push_back((jmax*imax+2)*k + jmax*imax+1);
+        poly_connect.push_back((jmax*imax+2)*k + jmax*i1+j0);
+        poly_connect.push_back((jmax*imax+2)*k + jmax*i1+j1);
+        poly_offset.push_back(poly_connect.size());
+      }
+      for(size_t i=0;i<imax-1;i++){
+        for(size_t j=0;j<jmax;j++){
+          size_t i0=((i+0)     );
+          size_t i1=((i+1)     );
+          size_t j0=((j+0)     );
+          size_t j1=((j+1)%jmax);
+          poly_connect.push_back((jmax*imax+2)*k + jmax*i0+j0);
+          poly_connect.push_back((jmax*imax+2)*k + jmax*i1+j0);
+          poly_connect.push_back((jmax*imax+2)*k + jmax*i1+j1);
+          poly_connect.push_back((jmax*imax+2)*k + jmax*i0+j1);
+          poly_offset.push_back(poly_connect.size());
+        }
+      }
+    }
+
+  }
+
+  int myrank, np;
+  MPI_Comm_size(comm,&np);
+  MPI_Comm_rank(comm,&myrank);
+
+  std::vector<VTKReal_t>& coord=point_coord;
+  std::vector<int32_t> connect=poly_connect;
+  std::vector<int32_t> offset=poly_offset;
+
+  int pt_cnt=coord.size()/COORD_DIM;
+  int poly_cnt=poly_offset.size();
+
+  //Open file for writing.
+  std::stringstream vtufname;
+  vtufname<<fname<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
+  std::ofstream vtufile;
+  vtufile.open(vtufname.str().c_str());
+  if(vtufile.fail()) return;
+
+  bool isLittleEndian;
+  {
+    uint16_t number = 0x1;
+    uint8_t *numPtr = (uint8_t*)&number;
+    isLittleEndian=(numPtr[0] == 1);
+  }
+
+  //Proceed to write to file.
+  size_t data_size=0;
+  vtufile<<"<?xml version=\"1.0\"?>\n";
+  if(isLittleEndian) vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+  else               vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+  //===========================================================================
+  vtufile<<"  <PolyData>\n";
+  vtufile<<"    <Piece NumberOfPoints=\""<<pt_cnt<<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""<<poly_cnt<<"\">\n";
+
+  //---------------------------------------------------------------------------
+  vtufile<<"      <Points>\n";
+  vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal_t)*8<<"\" NumberOfComponents=\""<<COORD_DIM<<"\" Name=\"Position\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+coord.size()*sizeof(VTKReal_t);
+  vtufile<<"      </Points>\n";
+  //---------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
+  vtufile<<"      <Polys>\n";
+  vtufile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+connect.size()*sizeof(int32_t);
+  vtufile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+offset.size() *sizeof(int32_t);
+  vtufile<<"      </Polys>\n";
+  //---------------------------------------------------------------------------
+
+  vtufile<<"    </Piece>\n";
+  vtufile<<"  </PolyData>\n";
+  //===========================================================================
+  vtufile<<"  <AppendedData encoding=\"raw\">\n";
+  vtufile<<"    _";
+
+  int32_t block_size;
+  block_size=coord   .size()*sizeof(VTKReal_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&coord   [0], coord   .size()*sizeof(VTKReal_t));
+  block_size=connect.size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&connect[0], connect.size()*sizeof(int32_t));
+  block_size=offset .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&offset [0], offset .size()*sizeof(int32_t));
+
+  vtufile<<"\n";
+  vtufile<<"  </AppendedData>\n";
+  //===========================================================================
+  vtufile<<"</VTKFile>\n";
+  vtufile.close();
+
+
+  if(myrank) return;
+  std::stringstream pvtufname;
+  pvtufname<<fname<<".pvtp";
+  std::ofstream pvtufile;
+  pvtufile.open(pvtufname.str().c_str());
+  if(pvtufile.fail()) return;
+  pvtufile<<"<?xml version=\"1.0\"?>\n";
+  pvtufile<<"<VTKFile type=\"PPolyData\">\n";
+  pvtufile<<"  <PPolyData GhostLevel=\"0\">\n";
+  pvtufile<<"      <PPoints>\n";
+  pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal_t)*8<<"\" NumberOfComponents=\""<<COORD_DIM<<"\" Name=\"Position\"/>\n";
+  pvtufile<<"      </PPoints>\n";
+  {
+    // Extract filename from path.
+    std::stringstream vtupath;
+    vtupath<<'/'<<fname;
+    std::string pathname = vtupath.str();
+    unsigned found = pathname.find_last_of("/\\");
+    std::string fname_ = pathname.substr(found+1);
+    for(int i=0;i<np;i++) pvtufile<<"      <Piece Source=\""<<fname_<<std::setfill('0')<<std::setw(6)<<i<<".vtp\"/>\n";
+  }
+  pvtufile<<"  </PPolyData>\n";
+  pvtufile<<"</VTKFile>\n";
+  pvtufile.close();
+}
+
 #endif
 
