@@ -252,8 +252,9 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
           Vec_t v2(nv, sh_order);
           Vec_t v3(nv, sh_order);
 
-          xv(         w_sph_inv_, *force_single, v3);
-          xv(S->getAreaElement(),            v3, v3);
+          Sca_t t1(nv, sh_order);
+          ax(w_sph_inv_, S->getAreaElement(), t1);
+          xv(        t1,       *force_single, v3);
 
           int numinputs = 2;
           const Sca_t* inputs[] = {&S->getPosition(), &v3};
@@ -264,7 +265,7 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
           for(int jj=0;jj < jmax; ++jj){
             move_pole(ii, jj, outputs);
 
-            xv(w_sph_, v2, v2);
+            ax<Sca_t>(w_sph_, v2, v2);
             S->getPosition().getDevice().DirectStokes(v1.begin(), v2.begin(),
                 sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, SL_vel.begin());
@@ -281,8 +282,9 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
           Vec_t v3(nv, sh_order);
           Vec_t v4(nv, sh_order);
 
-          xv(         w_sph_inv_, *force_double, v3);
-          xv(S->getAreaElement(),            v3, v3);
+          Sca_t t1(nv, sh_order);
+          ax(w_sph_inv_, S->getAreaElement(), t1);
+          xv(        t1,       *force_double, v3);
 
           int numinputs = 4;
           const Sca_t* inputs[] = {&S->getPosition(), &S->getNormal(), &v3};
@@ -293,7 +295,7 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
           for(int jj=0;jj < jmax; ++jj){
             move_pole(ii, jj, outputs);
 
-            xv(w_sph_, v2, v2);
+            ax<Sca_t>(w_sph_, v2, v2);
             S->getPosition().getDevice().DirectStokesDoubleLayer(v1.begin(), v4.begin(), v2.begin(),
                 sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, DL_vel.begin());
