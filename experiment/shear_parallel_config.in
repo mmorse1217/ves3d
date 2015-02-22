@@ -2,6 +2,7 @@
 n-surfs : 2       #per core
 sh-order : 6
 bending-modulus : .01
+viscosity-contrast : 5.0
 
 ##solver  ###################################
 position-iter-max : 20

@@ -23,6 +23,7 @@ public:
   int sh_order;
   int filter_freq;
   T bending_modulus;
+  T viscosity_contrast;
 
   //Solver parameters
   int position_solver_iter;

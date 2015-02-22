@@ -17,6 +17,7 @@ void Parameters<T>::init()
     sh_order		    = 12;
     filter_freq		    = 8;
     bending_modulus	    = 1e-2;
+    viscosity_contrast      = 1.0;
     position_solver_iter    = 15;
     tension_solver_iter	    = 15;
     position_solver_restart = 1;
@@ -113,6 +114,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( " -s  --save-data             Flag to save data to file" );
   opt->addUsage( "" );
   opt->addUsage( "     --bending-modulus       The bending modulus of the interfaces" );
+  opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
   opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
   opt->addUsage( "     --cent-file             The file containing the initial center points");
   opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
@@ -156,6 +158,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
 
   //an option (takes an argument), supporting only long form
   opt->setOption( "bending-modulus" );
+  opt->setOption( "viscosity-contrast" );
   opt->setOption( "bg-flow-param" );
   opt->setOption( "cent-file");
   opt->setOption( "error-factor" );
@@ -217,7 +220,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   }
 
   if( opt->getValue( "bending-modulus" ) != NULL  )
-    this->bending_modulus=  atof(opt->getValue( "bending-modulus" ));
+    this->bending_modulus = atof(opt->getValue( "bending-modulus" ));
+
+  if( opt->getValue( "viscosity-contrast" ) != NULL  )
+    this->viscosity_contrast = atof(opt->getValue( "viscosity-contrast" ));
+
 
   if( opt->getValue( "bg-flow-param" ) != NULL  )
     this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
@@ -296,6 +303,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   SH order                 : "<<par.sh_order<<std::endl;
     output<<"   Filter freq              : "<<par.filter_freq<<std::endl;
     output<<"   Bending modulus          : "<<par.bending_modulus<<std::endl;
+    output<<"   viscosity contrast       : "<<par.viscosity_contrast<<std::endl;
     output<<"------------------------------------"<<std::endl;
     output<<" Solver:"<<std::endl;
     output<<"   Position solver iter     : "<<par.position_solver_iter<<std::endl;
