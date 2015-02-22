@@ -184,6 +184,20 @@ inline void avpw(const ScalarContainer &a_in,
     //    w_in.begin(), v_in.getStride(), u_in.getNumSubs(), avpw_out.begin());
 }
 
+template<typename Arr_t, typename Vec_t>
+inline void av(const Arr_t &a_in, const Vec_t &v_in, Vec_t &av_out)
+{
+    ASSERT(a_in.size() == v_in.getNumSubs(),"Incompatible containers");
+    ASSERT(AreCompatible(v_in,av_out),"Incompatible containers");
+
+    Arr_t::getDevice().avpw<Arr_t::value_type>(a_in.begin(),
+					       v_in.begin(),
+					       NULL,
+					       v_in.getStride(),
+					       v_in.getNumSubs(),
+					       av_out.begin());
+}
+
 template<typename ScalarContainer, typename VectorContainer>
 inline void xvpw(const ScalarContainer &x_in,
     const VectorContainer &v_in, const VectorContainer &w_in,

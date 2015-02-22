@@ -60,6 +60,9 @@ inline void avpw(const ScalarContainer &a_in,
     const VectorContainer &v_in, const VectorContainer &w_in,
     VectorContainer &avpw_out);
 
+template<typename Arr_t, typename Vec_t>
+inline void av(const Arr_t &a_in, const Vec_t &v_in, Vec_t &av_out);
+
 template<typename ScalarContainer, typename VectorContainer>
 inline void xvpw(const ScalarContainer &x_in,
     const VectorContainer &v_in, const VectorContainer &w_in,
