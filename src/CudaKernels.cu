@@ -28,7 +28,7 @@ void dotProdKernel(const float* a, const float* b, int stride, int num_surfs, fl
 
   off = blockOff + threadIdx.x;
   res = resOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     aXReg = a[off];
     aYReg = a[off + stride];
@@ -89,7 +89,7 @@ void crossProdKernel(const float* a, const float* b, int stride, int num_surfs, 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
   off = blockOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     aXReg = a[off];
     aYReg = a[off + stride];
@@ -127,7 +127,7 @@ void crossProdKernel(const float* a, const float* b, int stride, int num_surfs, 
   }
 }
 
-void CrossProductGpu(const float *a, const float *b, int stride, int num_surfs, float *aCb) 
+void CrossProductGpu(const float *a, const float *b, int stride, int num_surfs, float *aCb)
 {
 #ifdef GPU_PROF
   float kernelTime, flops, gflopRate;
@@ -163,7 +163,7 @@ void xvpwKernel(const float *x, const float *a, const float *y, int stride, int 
 
   off = blockOff + threadIdx.x;
   scal = scalOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     xXReg = x[off];
     xYReg = x[off + stride];
@@ -172,7 +172,7 @@ void xvpwKernel(const float *x, const float *a, const float *y, int stride, int 
     yYReg = y[off + stride];
     yZReg = y[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + yXReg;
     AxPyYReg = aReg * xYReg + yYReg;
@@ -194,7 +194,7 @@ void xvpwKernel(const float *x, const float *a, const float *y, int stride, int 
     yYReg = y[off + stride];
     yZReg = y[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + yXReg;
     AxPyYReg = aReg * xYReg + yYReg;
@@ -244,13 +244,13 @@ void xvpbKernel(const float *x, const float *a, float y, int stride, int num_sur
 
   off = blockOff + threadIdx.x;
   scal = scalOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     xXReg = x[off];
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + y;
     AxPyYReg = aReg * xYReg + y;
@@ -269,7 +269,7 @@ void xvpbKernel(const float *x, const float *a, float y, int stride, int num_sur
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + y;
     AxPyYReg = aReg * xYReg + y;
@@ -318,13 +318,13 @@ void uyInvKernel(const float *x, const float *y, int stride, int num_surfs, floa
 
   off = blockOff + threadIdx.x;
   scal = scalOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     xXReg = x[off];
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     yReg = y[scal];
-    
+
 
     xDyXReg = xXReg / yReg;
     xDyYReg = xYReg / yReg;
@@ -343,7 +343,7 @@ void uyInvKernel(const float *x, const float *y, int stride, int num_surfs, floa
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     yReg = y[scal];
-    
+
 
     xDyXReg = xXReg / yReg;
     xDyYReg = xYReg / yReg;
@@ -630,7 +630,7 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
 
     inv_r = inv_r + (inv_r-inv_r); // if inv_r is inf then subtraction is NaN and then addition is NaN
     inv_r = (inv_r > 0.0F) ? inv_r : 0.0F; //inv_r should be positive, and comparison with NaN is always false
-    
+
     float tmp_scal = (dis_reg[0] * pot_reg[0] + dis_reg[1] * pot_reg[1]
                        + dis_reg[2] * pot_reg[2]) * inv_r * inv_r;
     pot_reg[0] += tmp_scal * dis_reg[0];
@@ -708,7 +708,7 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
 
     inv_r = inv_r + (inv_r-inv_r);
     inv_r = fmaxf(inv_r,(float)0.0F);
-    
+
     float tmp_scal = (dis_reg[0] * pot_reg[0] + dis_reg[1] * pot_reg[1]
                        + dis_reg[2] * pot_reg[2]) * inv_r * inv_r;
     pot_reg[0] += tmp_scal * dis_reg[0];
@@ -782,9 +782,7 @@ __device__ inline double rsqrt_wrapper(double y){
 
 template <typename Real_t, bool HAVE_QW>
 __global__ void stokes_double_layer(int m, int n, int t_head, const Real_t *T, const Real_t *S, const Real_t *N, const Real_t *D, Real_t *U, const Real_t *Q) {
-  const Real_t lambda=2.0; // Viscosity contrast
-  const Real_t SCAL_CONST = -3.0*(1.0-lambda)/(4.0*M_PI);
-
+  const Real_t SCAL_CONST = -3.0/(4.0*M_PI);
   Real_t trg_reg[3];
   Real_t src_reg[3];
   Real_t nor_reg[3];
@@ -1013,21 +1011,21 @@ void ScaleFreqsGpu(int p, int n_funs, const float *shc_in, const float *alpha, f
     leg_order--;
 
     // process remaining frequencies except the last cosine
-    for (; leg_order>1; leg_order--) 
+    for (; leg_order>1; leg_order--)
     {
         // first process cosine
         xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
         alpha += leg_order;
         shc_in += n_funs * leg_order;
         shc_out += n_funs * leg_order;
-        
+
         // then process sine
         xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
         alpha += leg_order;
         shc_in += n_funs * leg_order;
         shc_out += n_funs * leg_order;
     }
-    
+
     // process last cosine
     xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
     cudaThreadSynchronize();
@@ -1278,7 +1276,7 @@ void dotProdKernel(const double* a, const double* b, int stride, int num_surfs, 
 
   off = blockOff + threadIdx.x;
   res = resOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     aXReg = a[off];
     aYReg = a[off + stride];
@@ -1339,7 +1337,7 @@ void crossProdKernel(const double* a, const double* b, int stride, int num_surfs
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
   off = blockOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     aXReg = a[off];
     aYReg = a[off + stride];
@@ -1377,7 +1375,7 @@ void crossProdKernel(const double* a, const double* b, int stride, int num_surfs
   }
 }
 
-void CrossProductGpu(const double *a, const double *b, int stride, int num_surfs, double *aCb) 
+void CrossProductGpu(const double *a, const double *b, int stride, int num_surfs, double *aCb)
 {
 #ifdef GPU_PROF
   float kernelTime, flops, gflopRate;
@@ -1413,7 +1411,7 @@ void xvpwKernel(const double *x, const double *a, const double *y, int stride, i
 
   off = blockOff + threadIdx.x;
   scal = scalOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     xXReg = x[off];
     xYReg = x[off + stride];
@@ -1422,7 +1420,7 @@ void xvpwKernel(const double *x, const double *a, const double *y, int stride, i
     yYReg = y[off + stride];
     yZReg = y[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + yXReg;
     AxPyYReg = aReg * xYReg + yYReg;
@@ -1444,7 +1442,7 @@ void xvpwKernel(const double *x, const double *a, const double *y, int stride, i
     yYReg = y[off + stride];
     yZReg = y[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + yXReg;
     AxPyYReg = aReg * xYReg + yYReg;
@@ -1494,13 +1492,13 @@ void xvpbKernel(const double *x, const double *a, double y, int stride, int num_
 
   off = blockOff + threadIdx.x;
   scal = scalOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     xXReg = x[off];
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + y;
     AxPyYReg = aReg * xYReg + y;
@@ -1519,7 +1517,7 @@ void xvpbKernel(const double *x, const double *a, double y, int stride, int num_
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     aReg = a[scal];
-    
+
 
     AxPyXReg = aReg * xXReg + y;
     AxPyYReg = aReg * xYReg + y;
@@ -1568,13 +1566,13 @@ void uyInvKernel(const double *x, const double *y, int stride, int num_surfs, do
 
   off = blockOff + threadIdx.x;
   scal = scalOff + threadIdx.x;
-  
+
   for (int chunk = 0; chunk < numChunkLoop; chunk++) {
     xXReg = x[off];
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     yReg = y[scal];
-    
+
 
     xDyXReg = xXReg / yReg;
     xDyYReg = xYReg / yReg;
@@ -1593,7 +1591,7 @@ void uyInvKernel(const double *x, const double *y, int stride, int num_surfs, do
     xYReg = x[off + stride];
     xZReg = x[off + stride + stride];
     yReg = y[scal];
-    
+
 
     xDyXReg = xXReg / yReg;
     xDyYReg = xYReg / yReg;
@@ -1877,7 +1875,7 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
 
     inv_r = inv_r + (inv_r-inv_r);
     inv_r = fmaxf(inv_r,(double)0.0F);
-    
+
     double tmp_scal = (dis_reg[0] * pot_reg[0] + dis_reg[1] * pot_reg[1]
                        + dis_reg[2] * pot_reg[2]) * inv_r * inv_r;
     pot_reg[0] += tmp_scal * dis_reg[0];
@@ -1955,7 +1953,7 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
 
     inv_r = inv_r + (inv_r-inv_r);
     inv_r = fmaxf(inv_r,(double)0.0F);
-    
+
     double tmp_scal = (dis_reg[0] * pot_reg[0] + dis_reg[1] * pot_reg[1]
                        + dis_reg[2] * pot_reg[2]) * inv_r * inv_r;
     pot_reg[0] += tmp_scal * dis_reg[0];
@@ -2100,21 +2098,21 @@ void ScaleFreqsGpu(int p, int n_funs, const double *shc_in, const double *alpha,
     leg_order--;
 
     // process remaining frequencies except the last cosine
-    for (; leg_order>1; leg_order--) 
+    for (; leg_order>1; leg_order--)
     {
         // first process cosine
         xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
         alpha += leg_order;
         shc_in += n_funs * leg_order;
         shc_out += n_funs * leg_order;
-        
+
         // then process sine
         xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
         alpha += leg_order;
         shc_in += n_funs * leg_order;
         shc_out += n_funs * leg_order;
     }
-    
+
     // process last cosine
     xyMGpu(shc_in, alpha, leg_order, n_funs, shc_out);
     cudaThreadSynchronize();

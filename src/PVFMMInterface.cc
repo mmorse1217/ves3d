@@ -90,8 +90,7 @@ void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 #ifndef __MIC__
   pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(27*dof));
 #endif
-  const T lambda=2.0; // Viscosity contrast
-  const T SCAL_CONST = -3.0*(1.0-lambda)/(4.0*const_pi<T>());
+  const T SCAL_CONST = -3.0/(4.0*const_pi<T>());
   for(int t=0;t<trg_cnt;t++){
     for(int i=0;i<dof;i++){
       T p[3]={0,0,0};

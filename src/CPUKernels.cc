@@ -1063,8 +1063,7 @@ void DirectStokesDoubleLayerKernel_Template(int stride, int n_surfs, int trg_idx
     const Real_t *den, Real_t *pot)
 {
     Real_t tx, ty, tz, px, py, pz, dx, dy, dz, nx, ny, nz, invR, invR5, cpx, cpy, cpz, cc;
-    const Real_t lambda=2.0; // Viscosity contrast
-    const Real_t SCAL_CONST = -3.0*(1.0-lambda)/(4.0*M_PI);
+    const Real_t SCAL_CONST = -3.0/(4.0*M_PI);
 
 #pragma omp parallel for private(tx, ty, tz, px, py, pz, dx, dy, dz, nx, ny, nz, invR, invR5, cpx, cpy, cpz, cc)
     for (int vt=0; vt<n_surfs; vt++)
