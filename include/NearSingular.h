@@ -19,7 +19,7 @@ class NearSingular{
     void SetSrcCoord(const Surf_t& S);
     void SetSurfaceVel(const Vec_t& S_vel);
     void SetDensitySL(const PVFMMVec_t* qforce_single=NULL);
-    void SetDensityDL(const PVFMMVec_t* qforce_double=NULL);
+    void SetDensityDL(const PVFMMVec_t* qforce_double=NULL, const Vec_t* force_double=NULL);
 
     void SetTrgCoord(Real_t* trg_coord, size_t N);
 
@@ -42,14 +42,18 @@ class NearSingular{
       PVFMMVec_t near_trg_coord;
       pvfmm::Vector<size_t> near_trg_cnt;
       pvfmm::Vector<size_t> near_trg_dsp;
-      pvfmm::Vector<size_t> trg_scatter; // Scatter velocity to original location
-      pvfmm::Vector<size_t> trg_pt_id;   // target index at original location
+
+      pvfmm::Vector<size_t> near_ves_pt_id;   // vesicle point index
+      pvfmm::Vector<size_t> near_trg_pt_id;   // target index at original location
+      pvfmm::Vector<size_t> near_trg_scatter; // Scatter velocity to original location
     } coord_setup;
 
     const Surf_t* S;
     const PVFMMVec_t* qforce_single;
     const PVFMMVec_t* qforce_double;
+    const Vec_t* force_double;
     const Vec_t* S_vel;
+    MPI_Comm comm;
 
     PVFMMVec_t T;
     PVFMMVec_t vel_direct;
@@ -69,7 +73,7 @@ class NearSingular{
     unsigned int update_interp;
     unsigned int update_setup ;
 
-    MPI_Comm comm;
+    static const size_t INTERP_DEG=8;
 };
 
 #include "NearSingular.cc"

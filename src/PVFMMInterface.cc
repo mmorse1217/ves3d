@@ -192,6 +192,8 @@ void* PVFMMCreateContext(int n, int m, int max_d,
     pvfmm::BoundaryType bndry,
     const pvfmm::Kernel<T>* ker,
     MPI_Comm comm){
+  pvfmm::Profile::Tic("FMMContext",&comm,true);
+  bool prof_state=pvfmm::Profile::Enable(false);
 
   // Create new context.
   PVFMMContext<T>* ctx=new PVFMMContext<T>;
@@ -236,6 +238,8 @@ void* PVFMMCreateContext(int n, int m, int max_d,
   ctx->tree->Initialize(&ctx->tree_data);
   ctx->tree->InitFMM_Tree(adap,ctx->bndry);
 
+  pvfmm::Profile::Enable(prof_state);
+  pvfmm::Profile::Toc();
   return ctx;
 }
 
