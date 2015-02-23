@@ -59,6 +59,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             INFO("Writing data to file.");
             IO.Append(state->S_->getPosition());
             IO.Append(state->F_->tension());
+	    IO.FlushBuffer<value_type>();
             last_save++;
         }
     }

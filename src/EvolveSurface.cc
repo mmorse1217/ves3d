@@ -31,6 +31,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
         repartition_ = new Repartition_t();
         objsOnHeap_[2] = true;
     }
+    INFO("Created a new object");
 }
 
 // template<typename T, typename DT, const DT &DEVICE,
@@ -94,9 +95,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 	    break;
 
 	default:
-	    ErrorEvent::InvalidParameterError;
+	  return ErrorEvent::InvalidParameterError;
     }
 
+    CHK( (*monitor_)( this, 0, dt) );
+    INFO("Stepping with "<<params_.scheme);
     while ( ERRORSTATUS() && t < time_horizon )
     {
         CHK( (F_->*updater)(dt) );

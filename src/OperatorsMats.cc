@@ -103,6 +103,10 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
         sprintf(buffer,"precomputed/d2legTrans%u_%s.txt", p_up_,tname.c_str());
         fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_up_.dlt_inv_d2_ - data_.begin(),
             mats_p_up_.getDLTLength());
+
+	INFO("Matrices are loaded from file");
+    } else {
+      INFO("Object created with no data");
     }
 }
 
