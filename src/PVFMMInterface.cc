@@ -481,31 +481,32 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         }
       }
 
-      if(!myrank) std::cout<<"All  Nodes: ";
+      std::stringstream os1,os2;
+      os1<<"All Nodes";
       for(int i=0;i<MAX_DEPTH;i++){
         int local_size=all_nodes[i];
         int global_size;
         MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, ctx->comm);
-        if(!myrank) std::cout<<global_size<<' ';
+	os1<<global_size<<' ';
       }
-      if(!myrank) std::cout<<'\n';
+      if(!myrank) COUTDEBUG(os1.str());
 
-      if(!myrank) std::cout<<"Leaf Nodes: ";
+      os2<<"Leaf Nodes: ";
       for(int i=0;i<MAX_DEPTH;i++){
         int local_size=leaf_nodes[i];
         int global_size;
         MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, ctx->comm);
-        if(!myrank) std::cout<<global_size<<' ';
+        os2<<global_size<<' ';
       }
-      if(!myrank) std::cout<<'\n';
+      if(!myrank) COUTDEBUG(os2.str());
 
       long nleaf_glb=0, maxdepth_glb=0;
       { // MPI_Reduce
         MPI_Allreduce(&nleaf, &nleaf_glb, 1, MPI_INT, MPI_SUM, ctx->comm);
         MPI_Allreduce(&maxdepth, &maxdepth_glb, 1, MPI_INT, MPI_MAX, ctx->comm);
       }
-      if(!myrank) std::cout<<"Number of Leaf Nodes: "<<nleaf_glb<<'\n';
-      if(!myrank) std::cout<<"Tree Depth: "<<maxdepth_glb<<'\n';
+      if(!myrank) COUTDEBUG("Number of Leaf Nodes: "<<nleaf_glb);
+      if(!myrank) COUTDEBUG("Tree Depth: "<<maxdepth_glb);
     }
     bool adap=true;
     ctx->tree->InitFMM_Tree(adap,ctx->bndry);
@@ -528,31 +529,32 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         }
       }
 
-      if(!myrank) std::cout<<"All  Nodes: ";
+      std::stringstream os1,os2;
+      os1<<"All  Nodes: ";
       for(int i=0;i<MAX_DEPTH;i++){
         int local_size=all_nodes[i];
         int global_size;
         MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, ctx->comm);
-        if(!myrank) std::cout<<global_size<<' ';
+        os1<<global_size<<' ';
       }
-      if(!myrank) std::cout<<'\n';
+      if(!myrank) COUTDEBUG(os1.str());
 
-      if(!myrank) std::cout<<"Leaf Nodes: ";
+      os2<<"Leaf Nodes: ";
       for(int i=0;i<MAX_DEPTH;i++){
         int local_size=leaf_nodes[i];
         int global_size;
         MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, ctx->comm);
-        if(!myrank) std::cout<<global_size<<' ';
+        os2<<global_size<<' ';
       }
-      if(!myrank) std::cout<<'\n';
+      if(!myrank) COUTDEBUG(os2.str());
 
       long nleaf_glb=0, maxdepth_glb=0;
       { // MPI_Reduce
         MPI_Allreduce(&nleaf, &nleaf_glb, 1, MPI_INT, MPI_SUM, ctx->comm);
         MPI_Allreduce(&maxdepth, &maxdepth_glb, 1, MPI_INT, MPI_MAX, ctx->comm);
       }
-      if(!myrank) std::cout<<"Number of Leaf Nodes: "<<nleaf_glb<<'\n';
-      if(!myrank) std::cout<<"Tree Depth: "<<maxdepth_glb<<'\n';
+      if(!myrank) COUTDEBUG("Number of Leaf Nodes: "<<nleaf_glb);
+      if(!myrank) COUTDEBUG("Tree Depth: "<<maxdepth_glb);
     }
   }
 
