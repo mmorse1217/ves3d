@@ -5,7 +5,6 @@
 #include "ParallelLinSolver_Petsc.h"
 #include <map>
 
-
 typedef Device<CPU> Dev;
 typedef std::map<std::string,std::string> Dict_t;
 extern const Dev the_dev(0);
@@ -55,9 +54,11 @@ void run_sim(int argc, char **argv){
 
     // hacking the out file name inside the sim_par
     Dict_t dict;
-    dict["rank"]      = std::to_string(rank);
-    dict["n_surfs"]   = std::to_string(sim_par.n_surfs);
-    dict["sh_order"]  = std::to_string(sim_par.sh_order);
+    std::stringstream sr, sn, sp;
+    sr<<rank; sn<<sim_par.n_surfs; sp<<sim_par.sh_order;
+    dict["rank"]      = sr.str();
+    dict["n_surfs"]   = sr.str();
+    dict["sh_order"]  = sp.str();
     dict["precision"] = (typeid(real_t) == typeid(float)) ? "float" : "double";
 
     expand_template(&sim_par.save_file_name, &dict);
