@@ -189,7 +189,7 @@ updateImplicit(const value_type &dt)
 {
     this->dt_ = dt;
     SolverScheme scheme(GloballyImplicit);
-
+    INFO("Updating using a step with "<<scheme);
     CHK(Prepare(scheme));
     CHK(AssembleRhs(parallel_rhs_, dt_, scheme));
     CHK(AssembleInitial(parallel_u_, dt_, scheme));
@@ -209,6 +209,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
 
       velocity_.replicate(S_.getPosition());
       tension_.replicate(S_.getPosition());
+
+      INFO("zeroing content of velocity and tension arrays");
+      velocity_.getDevice().Memset(velocity_.begin(), 0, sizeof(value_type)*velocity_.size());
+      tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
 
       //Permitting the viscosity constrast to be different for each vesicle
       size_t     nves(velocity_.getNumSubs());
@@ -300,14 +304,21 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
     Intfcl_force_.bendingForce(S_, *f);
+
+    //debug code for stokes_ @todo: remove
+    COUT("Fb "<<*(Arr_t *) f.get());
     stokes_.SetDensitySL(f.get());
     stokes_.SetDensityDL(NULL);
     stokes_(*Sf);
+    COUT("Sf "<<*(Arr_t *) Sf.get());
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
 
     COUTDEBUG("Computing rhs for div(u)");
     std::auto_ptr<Sca_t> tRhs = checkoutSca();
     tRhs->getDevice().Memset(tRhs->begin(), 0, tRhs->size() * sizeof(value_type));
+
+    ASSERT( vRhs->getDevice().isNumeric(vRhs->begin(), vRhs->size()), "Non-numeric rhs");
+    ASSERT( tRhs->getDevice().isNumeric(tRhs->begin(), tRhs->size()), "Non-numeric rhs");
 
     COUTDEBUG("Copy data to parallel rhs array");
     size_t xsz(vRhs->size()), tsz(tRhs->size());
@@ -335,6 +346,9 @@ AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) co
     size_t vsz(velocity_.size()), tsz(tension_.size());
     typename PVec_t::iterator i(NULL);
     typename PVec_t::size_type rsz;
+
+    ASSERT( velocity_.getDevice().isNumeric(velocity_.begin(), velocity_.size()), "Non-numeric velocity");
+    ASSERT( tension_.getDevice().isNumeric(tension_.begin(), tension_.size()), "Non-numeric tension");
 
     CHK(parallel_u_->GetArray(i, rsz));
     ASSERT(rsz==vsz+tsz,"Bad sizes");
@@ -380,13 +394,20 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
     axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
     F->stokes_.SetDensitySL(fb.get());
 
-    COUTDEBUG("Setting the double layer density");
-    av(F->dl_coeff_, *vel, *fs);
-    F->stokes_.SetDensityDL(fs.get());
+    if( fabs(F->params_.viscosity_contrast-1.0)>1e-12){
+      COUTDEBUG("Setting the double layer density");
+      av(F->dl_coeff_, *vel, *fs);
+      F->stokes_.SetDensityDL(fs.get());
+    };
 
     F->stokes_(*Sf);
-    av(F->vel_coeff_, *vel, *vel);
+    if( fabs(F->params_.viscosity_contrast-1.0)>1e-12)
+      av(F->vel_coeff_, *vel, *vel);
+
     axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
+
+    ASSERT(vel->getDevice().isNumeric(vel->begin(), vel->size()), "Non-numeric velocity");
+    ASSERT(Dv->getDevice().isNumeric(Dv->begin(), Dv->size()), "Non-numeric divergence");
 
     vel->getDevice().Memcpy(y   , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     Dv->getDevice().Memcpy(y+vsz, Dv->begin() , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
@@ -406,12 +427,16 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const
 {
-    COUTDEBUG("Solving for position and tension using "<<scheme<<" scheme.");
+    INFO("Solving for position and tension using "<<scheme<<" scheme.");
+    //parallel_rhs_->View();
+    //parallel_u_->View();
+
     CHK(parallel_solver_->Solve(parallel_rhs_, parallel_u_));
     typename PVec_t::size_type	iter;
     CHK(parallel_solver_->IterationNumber(iter));
     INFO("Parallel solver returned after "<<iter<<" iteration(s).");
-    WHENVERBOSE(parallel_solver_->ViewReport());
+    INFO("Parallal solver report:");
+    parallel_solver_->ViewReport();
     return ErrorEvent::Success;
 }
 
