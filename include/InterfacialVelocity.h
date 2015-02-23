@@ -32,6 +32,7 @@ class InterfacialVelocity
     typedef ParallelLinSolver<value_type> PSolver_t;
     typedef typename PSolver_t::matvec_type POp_t;
     typedef typename PSolver_t::vec_type PVec_t;
+    typedef StokesVelocity<SurfContainer> Stokes_t;
 
     InterfacialVelocity(SurfContainer &S_in, const Interaction &inter,
         Mats_t &mats, const Parameters<value_type> &params,
@@ -101,10 +102,11 @@ class InterfacialVelocity
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_;
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_upsample_;
 
-    mutable StokesVelocity<SurfContainer> stokes_;
+    mutable Stokes_t stokes_;
     mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t velocity_;
     mutable Sca_t tension_;
+    mutable Arr_t vel_coeff_, dl_coeff_;
 
     //Workspace
     mutable std::queue<Sca_t*> scalar_work_q_;

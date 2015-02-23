@@ -203,11 +203,41 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverScheme &scheme) const
 {
     COUTDEBUG("Resizing the containers");
-    velocity_.replicate(S_.getPosition());
-    tension_.replicate(S_.getPosition());
+
+    if (velocity_.size() != S_.getPosition().size() ||
+	dl_coeff_.size() != S_.getPosition().getNumSubs() ){
+
+      velocity_.replicate(S_.getPosition());
+      tension_.replicate(S_.getPosition());
+
+      //Permitting the viscosity constrast to be different for each vesicle
+      size_t     nves(velocity_.getNumSubs());
+      value_type lambda(params_.viscosity_contrast);
+      value_type *buffer = new  value_type[nves];
+
+      dl_coeff_.resize(nves);
+      for (size_t iV(0); iV<nves; ++iV) buffer[iV] = (1.0 - lambda);
+      dl_coeff_.getDevice().Memcpy(dl_coeff_.begin(),
+				   buffer,
+				   nves * sizeof(value_type),
+				   device_type::MemcpyHostToDevice);
+
+      vel_coeff_.resize(nves);
+      for (size_t iV(0); iV<nves; ++iV) buffer[iV] = 0.5*(1.0 + lambda);
+      vel_coeff_.getDevice().Memcpy(vel_coeff_.begin(),
+				    buffer,
+				    nves * sizeof(value_type),
+				    device_type::MemcpyHostToDevice);
+      delete[] buffer;
+    }
 
     ASSERT(  velocity_.size() ==   S_.getPosition().size(), "inccorrect size");
-    ASSERT(3*tension_.size()  ==   S_.getPosition().size(), "inccorrect size");
+    ASSERT( 3*tension_.size() ==   S_.getPosition().size(), "inccorrect size");
+    ASSERT(  dl_coeff_.size() ==   S_.getPosition().getNumSubs(), "inccorrect size");
+    ASSERT( vel_coeff_.size() ==   S_.getPosition().getNumSubs(), "inccorrect size");
+
+    stokes_.SetSrcCoord(S_);
+    stokes_.SetTrgCoord(S_);
 
     if (scheme==GloballyImplicit){
 	ASSERT(parallel_solver_ != NULL, "need a working parallel solver");
@@ -269,10 +299,9 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
     COUTDEBUG("Computing the far-field interaction due to explicit traction jump");
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
-
-    stokes_.SetSrcCoord(S_);
-    stokes_.SetTrgCoord(S_);
+    Intfcl_force_.bendingForce(S_, *f);
     stokes_.SetDensitySL(f.get());
+    stokes_.SetDensityDL(NULL);
     stokes_(*Sf);
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
 
@@ -347,11 +376,16 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
 
     COUTDEBUG("Computing the interfacial forces");
     F->Intfcl_force_.linearBendingForce(F->S_, *vel, *fb);
-    F->Intfcl_force_.tensileForce(      F->S_, *ten, *fs);
+    F->Intfcl_force_.tensileForce(F->S_, *ten, *fs);
     axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
-
     F->stokes_.SetDensitySL(fb.get());
+
+    COUTDEBUG("Setting the double layer density");
+    av(F->dl_coeff_, *vel, *fs);
+    F->stokes_.SetDensityDL(fs.get());
+
     F->stokes_(*Sf);
+    av(F->vel_coeff_, *vel, *vel);
     axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
 
     vel->getDevice().Memcpy(y   , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
