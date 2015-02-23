@@ -157,6 +157,9 @@ template<typename T>
 PetscErrorCode PetscPrecondWrapper(PC A, Vec x, Vec y);
 
 template<typename T>
+PetscErrorCode PetscKSPMonitor(KSP K,PetscInt n, PetscReal rnorm, void *dummy);
+
+template<typename T>
 class ParallelLinSolverPetsc : public ParallelLinSolver<T>
 {
   public:
