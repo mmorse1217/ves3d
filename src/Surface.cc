@@ -20,11 +20,11 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
 {
-    COUTDEBUG("Initializing with upsample_freq="<<upsample_freq_
+    INFO("Initializing with upsample_freq="<<upsample_freq_
         <<", rep_filter_freq="<<rep_filter_freq_
-        <<", sht_="<<sht_.getShOrder()
-        <<", sht_rep_filter_="<<sht_rep_filter_.getShOrder()
-        <<", sht_rep_upsample_="<<sht_rep_upsample_.getShOrder()
+        <<", sh order="<<sht_.getShOrder()
+        <<", sht_rep_filter="<<sht_rep_filter_.getShOrder()
+        <<", sht_rep_upsample="<<sht_rep_upsample_.getShOrder()
               );
     setPosition(x_in);
 }
