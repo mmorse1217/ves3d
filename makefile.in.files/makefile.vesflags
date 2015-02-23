@@ -2,7 +2,6 @@
 ifeq ($(strip $(VES3D_TESTING)),yes)
   VES3D_DEBUG   = yes
   VES3D_PROFILE	= yes
-  VES3D_VERBOSE	= 1
 endif
 
 ifeq ($(strip ${VES3D_PROFILE}),yes)

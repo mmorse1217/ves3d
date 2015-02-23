@@ -11,7 +11,7 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.default
 VES3D_DEBUG      ?= no  #affects only compiler flags (not printing)
 VES3D_PROFILE    ?= no  #turns on profiling macros
 VES3D_VERBOSE    ?= 2   #1=most verbose, 2=normal, 3=quiet
-VES3D_TESTING    ?= no  #equal to DEBUG, PROFILE and VERBOSE=1
+VES3D_TESTING    ?= no  #equal to DEBUG and PROFILE
 
 VES3D_USE_GPU    ?= no
 VES3D_USE_MPI    ?= no
