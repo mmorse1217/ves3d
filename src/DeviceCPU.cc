@@ -625,17 +625,19 @@ T Device<CPU>::AlgebraicDot(const T* x, const T* y, size_t length) const
 
 template<>
 template<typename T>
-bool Device<CPU>::isNan(const T* x, size_t length) const
+bool Device<CPU>::isNumeric(const T* x, size_t length) const
 {
     PROFILESTART();
     bool is_nan(false);
 
 #pragma omp parallel for reduction(&&:is_nan)
-    for(size_t idx=0;idx<length; ++idx)
-        is_nan = is_nan && ( x[idx] != x[idx] );
+    for(size_t idx=0;idx<length; ++idx){
+      is_nan = is_nan && isnan(x[idx]);
+      is_nan = is_nan && isinf(x[idx]);
+    }
 
     PROFILEEND("CPU", 0);
-    return is_nan;
+    return !is_nan;
 }
 
 template<>

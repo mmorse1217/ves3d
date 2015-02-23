@@ -208,7 +208,7 @@ class Device
     T AlgebraicDot(const T* x, const T* y, size_t length) const;
 
     template<typename T>
-    bool isNan(const T* x, size_t length) const;
+    bool isNumeric(const T* x, size_t length) const;
 
     template<typename T>
     void AggregateRotation(int sh_order, int nlat, int nlong,
