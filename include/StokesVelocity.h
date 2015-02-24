@@ -63,6 +63,9 @@ class StokesVelocity{
     const PVFMMVec_t& NearInteraction(bool update_near);
     const PVFMMVec_t& FarInteraction(bool update_far);
 
+    static void u_ref(const Real_t* coord, int n, Real_t* out);
+    static void force(const Real_t* coord, int n, Real_t* out);
+
     void* pvfmm_ctx;
     NearSingular<Surf_t> near_singular;
 

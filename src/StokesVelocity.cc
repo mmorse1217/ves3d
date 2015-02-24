@@ -472,8 +472,8 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
 
 
 
-template<typename Real_t>
-static void u_ref(const Real_t* coord, int n, Real_t* out){ //Analytical velocity for sphere
+template<typename Surf_t>
+void StokesVelocity<Surf_t>::u_ref(const Real_t* coord, int n, Real_t* out){ //Analytical velocity for sphere
   Real_t R0=1.0;
   for(int i=0;i<n;i++){
     const Real_t* c=&coord[i*COORD_DIM];
@@ -496,8 +496,8 @@ static void u_ref(const Real_t* coord, int n, Real_t* out){ //Analytical velocit
   }
 }
 
-template<typename Real_t>
-static void force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
+template<typename Surf_t>
+void StokesVelocity<Surf_t>::force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
   Real_t R0=1.0;
   for(int i=0;i<n;i++){
     const Real_t* c=&coord[i*COORD_DIM];
