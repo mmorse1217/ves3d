@@ -959,7 +959,7 @@ void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
         t_veloc.SetZero();
 
         if(qforce_single){ // Subtract wrong near potential
-          stokes_sl(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*2)*i, 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+          stokes_sl(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
           stokes_dl(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
@@ -1854,6 +1854,7 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
                 #else
                 pvfmm::Matrix<Real_t>& coeff=y;
                 #endif
+                t_veloc_j[k]=0;
                 for(size_t l=0;l<INTERP_DEG;l++) t_veloc_j[k]+=y[l][0]*x[l][0];
               }
             }
