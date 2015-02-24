@@ -893,12 +893,15 @@ void NearSingular<Surf_t>::SetupCoordData(){
         for(size_t tid=0;tid<omp_p;tid++){
           size_t a=(near_trg_pt_id.Dim()*(tid+0))/omp_p;
           size_t b=(near_trg_pt_id.Dim()*(tid+1))/omp_p;
+          for(size_t i=a;i<b;i++) near_ves_pt_id[i]-=ves_pt_id_offset;
+        }
+        #pragma omp parallel for
+        for(size_t tid=0;tid<omp_p;tid++){
+          size_t a=(near_trg_pt_id.Dim()*(tid+0))/omp_p;
+          size_t b=(near_trg_pt_id.Dim()*(tid+1))/omp_p;
           while(a>0 && a<near_trg_pt_id.Dim() && near_ves_pt_id[a-1]/M_ves==near_ves_pt_id[a]/M_ves) a++;
           while(b>0 && b<near_trg_pt_id.Dim() && near_ves_pt_id[b-1]/M_ves==near_ves_pt_id[b]/M_ves) b++;
-          for(size_t i=a;i<b;i++){
-            near_ves_pt_id[i]-=ves_pt_id_offset;
-            near_trg_cnt[near_ves_pt_id[i]/M_ves]++;
-          }
+          for(size_t i=a;i<b;i++) near_trg_cnt[near_ves_pt_id[i]/M_ves]++;
         }
         pvfmm::omp_par::scan(&near_trg_cnt[0], &near_trg_dsp[0], N_ves);
         assert(near_trg_dsp[N_ves-1]+near_trg_cnt[N_ves-1]==near_trg_coord.Dim()/COORD_DIM);
