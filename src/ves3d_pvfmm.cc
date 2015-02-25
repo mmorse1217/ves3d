@@ -51,8 +51,9 @@ void run_sim(int argc, char **argv){
     // Setting the parameters
     Par_t sim_par;
     CHK(sim_par.parseInput(argc, argv));
+    omp_set_num_threads(sim_par.num_threads);
 
-    // hacking the out file name inside the sim_par
+    // hacking the output file name inside the sim_par
     Dict_t dict;
     std::stringstream snp, sr, sn, sp;
     snp<<nproc; sr<<rank; sn<<sim_par.n_surfs; sp<<sim_par.sh_order;

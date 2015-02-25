@@ -13,31 +13,33 @@ Parameters<T>::Parameters(int argc, char** argv)
 template<typename T>
 void Parameters<T>::init()
 {
-    n_surfs		    = 1;
-    sh_order		    = 12;
-    filter_freq		    = 8;
+    // ordered alphabetically
     bending_modulus	    = 1e-2;
-    viscosity_contrast      = 1.0;
+    bg_flow_param	    = 1e-1;
+    error_factor	    = 1;
+    filter_freq		    = 8;
+    n_surfs		    = 1;
+    num_threads             = 4;
     position_solver_iter    = 15;
-    tension_solver_iter	    = 15;
     position_solver_restart = 1;
-    tension_solver_restart  = 1;
     position_solver_tol	    = (typeid(T) == typeid(float)) ? 1e-4: 1e-8;
+    rep_filter_freq	    = 4;
+    rep_maxit		    = 10;
+    rep_tol		    = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
+    rep_ts		    = 1;
+    rep_up_freq		    = 24;
+    save_data		    = false;
+    save_stride		    = -1;
+    scheme		    = JacobiBlockImplicit;
+    sh_order		    = 12;
+    singular_stokes	    = ViaSpHarm;
+    tension_solver_iter	    = 15;
+    tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
     time_horizon	    = 1;
     ts			    = 1;
-    scheme		    = JacobiBlockImplicit;
-    singular_stokes	    = ViaSpHarm;
-    rep_maxit		    = 10;
-    rep_up_freq		    = 24;
-    rep_filter_freq	    = 4;
-    rep_ts		    = 1;
-    rep_tol		    = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
-    bg_flow_param	    = 1e-1;
     upsample_interaction    = false;
-    save_data		    = false;
-    save_stride		    = -1;
-    error_factor	    = 1;
+    viscosity_contrast      = 1.0;
 }
 
 
@@ -113,13 +115,15 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( " -o  --out-file              The output file");
   opt->addUsage( " -s  --save-data             Flag to save data to file" );
   opt->addUsage( "" );
+
+  // ordered alphabetically
   opt->addUsage( "     --bending-modulus       The bending modulus of the interfaces" );
-  opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
   opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
   opt->addUsage( "     --cent-file             The file containing the initial center points");
   opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
   opt->addUsage( "     --filter-freq           The differentiation filter frequency" );
   opt->addUsage( "     --n-surfs               The number of surfaces" );
+  opt->addUsage( "     --num-threads           The number OpenMP threads" );
   opt->addUsage( "     --position-iter-max     Maximum number of iterations for the position solver" );
   opt->addUsage( "     --position-restart      Maximum number of restarts for the position solver" );
   opt->addUsage( "     --position-tol          The tolerence for the position solver" );
@@ -129,15 +133,16 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --rep-tol               The absolute value tol on the velocity of reparametrization" );
   opt->addUsage( "     --rep-up-freq           The upsampling frequency for the reparametrization" );
   opt->addUsage( "     --save-stride           The frequency of saving to file (in time scale)" );
-  opt->addUsage( "     --time-scheme           The time stepping scheme {Explicit | BlockImplicit}" );
   opt->addUsage( "     --sh-order              The spherical harmonics order" );
   opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
   opt->addUsage( "     --tension-restart       Maximum number of restarts for the tension solver" );
   opt->addUsage( "     --tension-tol           The tolerence for the tension solver" );
   opt->addUsage( "     --time-horizon          The time horizon of the simulation" );
+  opt->addUsage( "     --time-scheme           The time stepping scheme {Explicit | BlockImplicit}" );
   opt->addUsage( "     --timestep              The time step size" );
   opt->addUsage( "     --upsample-interaction  Flag to whether upsample (and filter) the interaction force" );
+  opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
 }
 
 template<typename T>
@@ -157,13 +162,14 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "out-file", 'o');
 
   //an option (takes an argument), supporting only long form
+  //ordered alphabetically
   opt->setOption( "bending-modulus" );
-  opt->setOption( "viscosity-contrast" );
   opt->setOption( "bg-flow-param" );
   opt->setOption( "cent-file");
   opt->setOption( "error-factor" );
   opt->setOption( "filter-freq" );
   opt->setOption( "n-surfs" );
+  opt->setOption( "num-threads" );
   opt->setOption( "position-iter-max" );
   opt->setOption( "position-restart" );
   opt->setOption( "position-tol" );
@@ -173,14 +179,15 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "rep-tol" );
   opt->setOption( "rep-up-freq" );
   opt->setOption( "save-stride" );
-  opt->setOption( "time-scheme" );
   opt->setOption( "sh-order" );
   opt->setOption( "singular-stokes" );
   opt->setOption( "tension-iter-max" );
   opt->setOption( "tension-restart" );
   opt->setOption( "tension-tol" );
   opt->setOption( "time-horizon" );
+  opt->setOption( "time-scheme" );
   opt->setOption( "timestep" );
+  opt->setOption( "viscosity-contrast" );
 
   //for options that will be checked only on the command and line not
   //in option/resource file
@@ -240,6 +247,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "n-surfs" ) != NULL  )
     this->n_surfs =  atoi(opt->getValue( "n-surfs" ));
+
+  if( opt->getValue( "num-threads" ) != NULL  )
+    this->num_threads =  atoi(opt->getValue( "num-threads" ));
 
   if( opt->getValue( "position-iter-max" ) != NULL  )
     this->position_solver_iter =  atoi(opt->getValue( "position-iter-max" ));
@@ -340,6 +350,10 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" Background flow:"<<std::endl;
     output<<"   Background flow parameter: "<<par.bg_flow_param<<std::endl;
     output<<"   Upsample Interaction     : "<<std::boolalpha<<par.upsample_interaction<<std::endl;
+
+    output<<"------------------------------------"<<std::endl;
+    output<<" Misc:"<<std::endl;
+    output<<"   OpenMP num threads       : "<<par.num_threads<<std::endl;
     output<<"====================================";
 
     return output;

@@ -57,6 +57,7 @@ public:
   std::string cntrs_file_name;
   std::string save_file_name;
   T error_factor;
+  int num_threads;
 
   //parsing
   Error_t parseInput(int argc, char** argv);
