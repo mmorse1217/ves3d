@@ -40,6 +40,7 @@
 #include <stack>
 #include <string>
 #include <cassert>
+#include  <ctime>
 // #include <sys/time.h>
 
 #include "ves3d_common.h"
@@ -173,7 +174,7 @@ static bool assert_expr(false);
 #define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
 
 #ifdef VERBOSE
-#define COUTDEBUG(str) (std::cout<<"[DEBUG]["<<__FUNCTION__<<"] "<<str<<std::endl)
+#define COUTDEBUG(str) (std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<" ]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #define WHENVERBOSE(expr) expr
 #else
 #define COUTDEBUG(str)
@@ -187,13 +188,13 @@ static bool assert_expr(false);
 #define WHENQUIET(expr)
 #else
 #define WHENQUIET(expr) expr
-#define INFO(str) (std::cout<<"[INFO]["<<__FUNCTION__<<"] "<<str<<std::endl)
+#define INFO(str) (std::cout<<"[INFO - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #endif //QUIET
 
 #define LOG(msg) (Logger::Log(msg))
 
-#define CERR(msg) (std::cerr<<alert<<"[ERROR] "<<msg<<alert<<std::endl)
-#define WARN(msg) (std::cerr<<alert<<"[WARNING] "<<msg<<alert<<std::endl)
+#define CERR(msg) (std::cerr<<alert<<"[ERROR - "<<(long) GETSECONDS()<<"] "<<msg<<alert<<std::endl)
+#define WARN(msg) (std::cerr<<alert<<"[WARNING - "<<(long) GETSECONDS()<<"] "<<msg<<alert<<std::endl)
 #define CERR_LOC(pre_msg,post_msg,action) (                             \
         std::cerr<<alert<<"[ERROR] "<<pre_msg                           \
         <<"\n    File           : "<< __FILE__                          \
