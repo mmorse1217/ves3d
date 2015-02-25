@@ -54,10 +54,11 @@ void run_sim(int argc, char **argv){
 
     // hacking the out file name inside the sim_par
     Dict_t dict;
-    std::stringstream sr, sn, sp;
-    sr<<rank; sn<<sim_par.n_surfs; sp<<sim_par.sh_order;
+    std::stringstream snp, sr, sn, sp;
+    snp<<nproc; sr<<rank; sn<<sim_par.n_surfs; sp<<sim_par.sh_order;
+    dict["nprocs"]    = snp.str();
     dict["rank"]      = sr.str();
-    dict["n_surfs"]   = sr.str();
+    dict["n_surfs"]   = sn.str();
     dict["sh_order"]  = sp.str();
     dict["precision"] = (typeid(real_t) == typeid(float)) ? "float" : "double";
 

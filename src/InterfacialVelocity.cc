@@ -304,13 +304,9 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
     Intfcl_force_.bendingForce(S_, *f);
-
-    //debug code for stokes_ @todo: remove
-    COUT("Fb "<<*(Arr_t *) f.get());
     stokes_.SetDensitySL(f.get());
     stokes_.SetDensityDL(NULL);
     stokes_(*Sf);
-    COUT("Sf "<<*(Arr_t *) Sf.get());
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
 
     COUTDEBUG("Computing rhs for div(u)");
