@@ -12,4 +12,4 @@ export CUDA_DIR=${CUDA_LIB}/../
 export CUDA_PATH=${CUDA_LIB}/../
 
 export FFTW_ROOT=/org/groups/padas/lula_packages/fftw
-
+export OMP_NUM_THREADS=2
