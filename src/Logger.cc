@@ -23,10 +23,8 @@ void PrintLogEvent(const std::pair<T, LogEvent> &ev)
     printstr= "  " + printstr +
         "%-8u \t %-4.3e \t %-4.3e \t %-4.3e \n";
 
-#ifdef VERBOSE
     printf(printstr.c_str(), ev.second.num_calls, ev.second.time,
         ev.second.flop/1e9, ev.second.flop_rate);
-#endif
 }
 
 double Logger::Now()

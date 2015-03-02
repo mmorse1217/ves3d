@@ -183,11 +183,12 @@ static bool assert_expr(false);
 
 #define COUT(str) (std::cout<<str<<std::endl)
 #define COUTMASTER(str) (std::cout<<str<<std::endl)
+
 #ifdef QUIET
 #define INFO(str)
-#define WHENQUIET(expr)
-#else
 #define WHENQUIET(expr) expr
+#else
+#define WHENQUIET(expr)
 #define INFO(str) (std::cout<<"[INFO - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #endif //QUIET
 
