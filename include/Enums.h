@@ -57,7 +57,12 @@ enum SolverScheme {JacobiBlockExplicit,     /* Jacobi iteration + only block ten
 		   JacobiBlockGaussSeidel,  /* Jacobi iteration + tension solve + position solve              */
 		   JacobiBlockImplicit,     /* Jacobi iteration + block coupled solve                         */
 		   GloballyImplicit,        /* Fully implicit                                                 */
-		   UnkownScheme};
+		   UnkownScheme};           /* Used to signal parsing errors                                  */
+
+///The linear solver scheme for the vesicle evolution equation
+enum PrecondScheme {DiagonalSpectral,       /* Only the self preconditioner; diagonal in SH basis */
+		    NoPrecond,              /* No preconditioner at all                           */
+		    UnkownPrecond};         /* Used to signal parsing errors                      */
 
 ///DirectEagerEval gives the rotation code the freedom to precompute
 ///and cache some of the expected results
@@ -65,6 +70,7 @@ enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 
 ///String to enums functions
 enum SolverScheme EnumifyScheme(const char * name);
+enum PrecondScheme EnumifyPrecond(const char * name);
 enum SingularStokesRot EnumifyStokesRot(const char * name);
 
 std::ostream& operator<<(
@@ -74,6 +80,10 @@ std::ostream& operator<<(
 std::ostream& operator<<(
     std::ostream& output,
     const enum SolverScheme &MR);
+
+std::ostream& operator<<(
+    std::ostream& output,
+    const enum PrecondScheme &MR);
 
 std::ostream& operator<<(
     std::ostream& output,

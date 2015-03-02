@@ -15,6 +15,19 @@ enum SolverScheme EnumifyScheme(const char * name)
   else
       return UnkownScheme;
 }
+
+enum PrecondScheme EnumifyPrecond(const char * name)
+{
+  std::string ns(name);
+
+  if      ( ns.compare(0,8,"Diagonal") == 0 )
+      return DiagonalSpectral;
+  else if ( ns.compare(0,9,"NoPrecond") == 0 )
+      return NoPrecond;
+  else
+      return UnkownPrecond;
+}
+
 enum SingularStokesRot EnumifyStokesRot(const char * name)
 {
   std::string ns(name);
@@ -60,6 +73,24 @@ std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
             break;
         default:
             output<<"UnkownScheme";
+            break;
+    }
+
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const enum PrecondScheme &PS)
+{
+    switch (PS)
+    {
+	case DiagonalSpectral:
+            output<<"DiagonalSpectral";
+            break;
+	case NoPrecond:
+            output<<"NoPrecond";
+            break;
+        default:
+            output<<"UnkownPrecond";
             break;
     }
 
