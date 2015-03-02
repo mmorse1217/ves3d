@@ -37,6 +37,9 @@ void Parameters<T>::init()
     tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
     time_horizon	    = 1;
+    time_iter_max           = 100;
+    time_precond            = NoPrecond;
+    time_tol                = 1e-6;
     ts			    = 1;
     upsample_interaction    = false;
     viscosity_contrast      = 1.0;
@@ -139,7 +142,10 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --tension-restart       Maximum number of restarts for the tension solver" );
   opt->addUsage( "     --tension-tol           The tolerence for the tension solver" );
   opt->addUsage( "     --time-horizon          The time horizon of the simulation" );
-  opt->addUsage( "     --time-scheme           The time stepping scheme {Explicit | BlockImplicit}" );
+  opt->addUsage( "     --time-iter-max         Maximum number of iteration for the choice of time stepper" );
+  opt->addUsage( "     --time-precond          The type of preconditioner to use" );
+  opt->addUsage( "     --time-scheme           The time stepping scheme" );
+  opt->addUsage( "     --time-tol              The desired error tolerance in the time stepping" );
   opt->addUsage( "     --timestep              The time step size" );
   opt->addUsage( "     --upsample-interaction  Flag to whether upsample (and filter) the interaction force" );
   opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
@@ -185,7 +191,10 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "tension-restart" );
   opt->setOption( "tension-tol" );
   opt->setOption( "time-horizon" );
+  opt->setOption( "time-iter-max" );
+  opt->setOption( "time-precond" );
   opt->setOption( "time-scheme" );
+  opt->setOption( "time-tol" );
   opt->setOption( "timestep" );
   opt->setOption( "viscosity-contrast" );
 
@@ -278,8 +287,15 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "save-stride" ) != NULL  )
     this->save_stride =  atof(opt->getValue( "save-stride" ));
 
-  if( opt->getValue( "time-scheme" ) != NULL  )
+  if( opt->getValue( "time-scheme" ) != NULL  ){
     this->scheme = EnumifyScheme(opt->getValue( "time-scheme" ));
+    ASSERT(this->scheme != UnkownScheme, "Failed to parse the time scheme name");
+  }
+
+  if( opt->getValue( "time-precond" ) != NULL  ){
+    this->time_precond = EnumifyPrecond(opt->getValue( "time-precond" ));
+    ASSERT(this->time_precond != UnkownPrecond, "Failed to parse the preconditioner name" );
+  }
 
   if( opt->getValue( "singular-stokes" ) != NULL  )
     this->singular_stokes = EnumifyStokesRot(opt->getValue( "singular-stokes" ));
@@ -298,6 +314,13 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "timestep" ) != NULL  )
     this->ts =  atof(opt->getValue( "timestep" ));
+
+  if( opt->getValue( "time-tol" ) != NULL  )
+    this->time_tol =  atof(opt->getValue( "time-tol" ));
+
+  if( opt->getValue( "time-iter-max" ) != NULL  )
+    this->time_iter_max =  atof(opt->getValue( "time-iter-max" ));
+
 
 //   other methods: (bool) opt.getFlag( ... long or short ... )
 }
@@ -326,8 +349,11 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"------------------------------------"<<std::endl;
     output<<" Time stepper:"<<std::endl;
     output<<"   Time horizon             : "<<par.time_horizon<<std::endl;
-    output<<"   Step size                : "<<par.ts<<std::endl;
+    output<<"   Time step                : "<<par.ts<<std::endl;
     output<<"   Scheme                   : "<<par.scheme<<std::endl;
+    output<<"   Time tol                 : "<<par.time_tol<<std::endl;
+    output<<"   Time iter max            : "<<par.time_iter_max<<std::endl;
+    output<<"   Precond                  : "<<par.time_precond<<std::endl;
     output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
     output<<"------------------------------------"<<std::endl;
     output<<" Reparametrization:"<<std::endl;

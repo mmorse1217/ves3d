@@ -36,7 +36,11 @@ public:
   //Time stepper
   T time_horizon;
   T ts;
+  T time_tol;
+  int time_iter_max;
+
   enum SolverScheme scheme;
+  enum PrecondScheme time_precond;
   enum SingularStokesRot singular_stokes;
 
   //Reparametrization
