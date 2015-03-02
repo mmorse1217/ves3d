@@ -29,6 +29,9 @@ class SHTrans
      * The Synthesis method. The input is in real space and the output
      * is the spherical harmonics coefficients (shc).  The input,
      * work, and shc are all of the same size.
+     *
+     * The shc has the real spherical harmonic's coefficent:
+     *  [Y_0,0 Y_1,0... Y_p,0 Y1,-1 Y_2,-1 ... Y_p,-1 Y_1,1 ... Y_p,1 ...]
      */
     void forward(const Container &in, Container &work, Container &shc) const;
 
