@@ -12,11 +12,11 @@ class ShearFlow : public BgFlowBase<VecContainer>
     typedef typename VecContainer::value_type value_type;
 
   public:
-    ShearFlow(value_type shear_rate);  
-    
+    ShearFlow(value_type shear_rate);
+
     virtual void operator()(const VecContainer &pos, const value_type time,
         VecContainer &vel_inf) const;
-    
+
   private:
     value_type shear_rate_;
 };
@@ -30,12 +30,12 @@ class ParabolicFlow : public BgFlowBase<VecContainer>
 
   public:
     ParabolicFlow(value_type radius, value_type center_vel,
-        value_type flow_dir_x = 1, value_type flow_dir_y = 0, 
+        value_type flow_dir_x = 1, value_type flow_dir_y = 0,
         value_type flow_dir_z = 0);
-    
-    virtual void operator()(const VecContainer &pos, const value_type time, 
+
+    virtual void operator()(const VecContainer &pos, const value_type time,
         VecContainer &vel_inf) const;
-    
+
   private:
     void CheckContainers(const VecContainer &ref) const;
 
@@ -43,6 +43,23 @@ class ParabolicFlow : public BgFlowBase<VecContainer>
     value_type flow_dir_x_, flow_dir_y_, flow_dir_z_;
     mutable VecContainer flow_direction_;
     mutable ScalarContainer s_wrk_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename Vec_t>
+class ExtensionalFlow : public BgFlowBase<Vec_t>
+{
+  public:
+    typedef typename Vec_t::value_type value_type;
+
+    ExtensionalFlow(value_type rate);
+
+    virtual void operator()(const Vec_t &pos,
+			    const value_type time,
+			    Vec_t &vel_inf) const;
+  private:
+    value_type rate_;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,10 +72,10 @@ class TaylorVortex : public BgFlowBase<VecContainer>
   public:
     explicit TaylorVortex(value_type strength = 1, value_type x_period = BGPI,
         value_type y_period = BGPI);
-    
+
     virtual void operator()(const VecContainer &pos, const value_type time,
         VecContainer &vel_inf) const;
-    
+
   private:
     value_type strength_, x_period_, y_period_;
     mutable VecContainer wrk_vec1_, wrk_vec2_;

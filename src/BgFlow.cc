@@ -93,8 +93,34 @@ void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
     axpy(inv_radius2_, s_wrk_, s_wrk_);
     xvpw(s_wrk_, flow_direction_, flow_direction_, vel_inf);
     axpy(center_vel_, vel_inf, vel_inf);
-		//  cout<<"Max Vel :"<<MaxAbs(vel_inf)<<" "<<center_vel_<<endl;
+    //  cout<<"Max Vel :"<<MaxAbs(vel_inf)<<" "<<center_vel_<<endl;
 };
+
+// Extensional flow /////////////////////////////////////////////////////////////
+template<typename Vec_t>
+ExtensionalFlow<Vec_t>::ExtensionalFLow(value_type rate) :
+    rate_(rate) {}
+
+template<typename Vec_t>
+void ExtensionalFlow<Vec_t>::operator()(const Vec_t &pos,
+					const value_type time,
+					Vec_t &vel_inf) const
+{
+    int n_surfs = pos.getNumSubs();
+    int stride = pos.getStride();
+    int idx;
+
+    axpy(0.0, pos, vel_inf);
+    for(int ii=0;ii<n_surfs;ii++)
+    {
+        idx = pos.getTheDim() * ii * stride;
+        pos.getDevice().Memcpy(vel_inf.begin() + idx,
+            pos.begin() + idx + stride + stride
+            ,stride * sizeof(typename VecContainer::value_type),
+            pos.getDevice().MemcpyDeviceToDevice);
+    }
+    axpy(shear_rate_, vel_inf, vel_inf);
+}
 
 // Taylor vortex ////////////////////////////////////////////////////////////////
 /**
