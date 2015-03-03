@@ -53,6 +53,9 @@ class SHTrans
     void collectSameOrder(const Container &in, Container &out) const;
     void collectSameFreq(const Container &in, Container &out) const;
 
+    void ScaleFreq(const value_type *shc_in, int n_funs,
+        const value_type* scaling_coeff, value_type *shc_out) const;
+
   private:
     typedef typename Container::device_type device_type;
     const typename Container::device_type &device_;
@@ -91,9 +94,6 @@ class SHTrans
     void back(const value_type *inputs, value_type *work_arr,
         int n_funs, value_type *outputs, value_type *trans,
         value_type *dft) const;
-
-    void ScaleFreq(const value_type *shc_in, int n_funs,
-        const value_type* scaling_coeff, value_type *shc_out) const;
 
     value_type* filter_coeff_;
 };
