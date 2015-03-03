@@ -87,6 +87,7 @@ class InterfacialVelocity
     mutable PVec_t *parallel_rhs_;
     mutable PVec_t *parallel_u_;
     static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
+    static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
 
     value_type dt_;
 
@@ -106,6 +107,7 @@ class InterfacialVelocity
     mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t velocity_;
     mutable Sca_t tension_;
+    mutable Sca_t precond_data;
     mutable Arr_t vel_coeff_, dl_coeff_;
 
     //Workspace
