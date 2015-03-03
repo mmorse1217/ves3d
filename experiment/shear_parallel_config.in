@@ -2,7 +2,7 @@
 n-surfs : 2       #per core
 sh-order : 6
 bending-modulus : .01
-viscosity-contrast : 1
+viscosity-contrast : 1.0
 
 ##solver  ###################################
 position-iter-max : 20
@@ -15,9 +15,11 @@ tension-tol : 1e-6
 ##time stepping #############################
 time-horizon : 60
 timestep : 2e-1
-save-stride : 5e-1
-
 time-scheme : GloballyImplicit
+time-precond : DiagonalSpectral
+time-iter-max : 100
+time-tol : 1e-6
+save-stride : 5e-1
 singular-stokes : Direct
 
 ##reparametrization #########################
@@ -31,9 +33,12 @@ cent-file : experiment/centers_64.txt
 
 ##checkpoint/monitor ########################
 save-data
-out-file : experiment/shear_parallel_rank{{rank}}.out
+out-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}.out
 error-factor : .01
 
 ##far filed #################################
 bg-flow-param : 0.1
 upsample-interaction
+
+##misc ######################################
+num-threads : 2
