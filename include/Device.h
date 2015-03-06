@@ -132,38 +132,47 @@ class Device
     template<typename T>
     T* Sqrt(const T* x_in, size_t length, T* sqrt_out) const;
 
+    //! a[i]*x[i,j], i is point index and j is field index
     template<typename T>
     T* ax(const T* a, const T* x, size_t length, size_t n_vecs, T* ax_out) const;
 
     //! Element-wise multiplication of scalar fields.
+    //! x[i]*y[i]
     template<typename T>
     T* xy(const T* x_in, const T* y_in, size_t length, T* xy_out) const;
 
     //! Element-wise division of scalar fields.
+    //! x[i]/y[i]
     template<typename T>
     T* xyInv(const T* x_in, const T* y_in, size_t length,
         T* xyInv_out) const;
 
     //! Element-wise scaling of a vector field by a scalar fields.
+    //! u[i,j,k]/y[i,k], i is point index j is vector component index and k is field index
     template<typename T>
     T* uyInv(const T* u_in, const T* y_in, size_t stride, size_t n_vecs,
         T* uyInv_out) const;
 
     //! Scaling and addition of an scalar field to another field.
+    //! a*x[i]+y[i]
     template<typename T>
     T* axpy(T a_in, const T* x_in, const T* y_in, size_t length,
         T* axpy_out) const;
 
+    //! translation of a set of points
+    //! a[j]+x[i,j], i is point index and j is field index
     template<typename T>
     T* apx(const T* a_in, const T* x_in, size_t stride,
         size_t n_subs, T* axpy_out) const;
 
     //! Element-wise scaling and addition.
+    //! a[j]*v[i,j,k]+w[i,j,k] where i is point index, j is vector component and k is field index
     template<typename T>
     T* avpw(const T* a_in, const T* v_in, const T* w_in,
         size_t stride, size_t n_vecs, T*  avpw_out) const;
 
     //! Element-wise scaling and addition.
+    //! x[i,k]*v[i,j,k]+w[i,j,k] where i is point index, j is vector component and k is field index
     template<typename T>
     T* xvpw(const T* x_in, const T*  v_in, const T*  w_in,
         size_t stride, size_t n_vecs, T*  xvpw_out) const;
