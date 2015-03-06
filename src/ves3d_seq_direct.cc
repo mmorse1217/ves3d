@@ -7,6 +7,7 @@
 #endif
 
 typedef Device<CPU> Dev;
+typedef std::map<std::string,std::string> Dict_t;
 extern const Dev the_dev(0);
 
 // Default callback for errors
@@ -14,6 +15,24 @@ Error_t cb_abort(const ErrorEvent &err)
 {
     CERR_LOC("Aborting, received error "<<err,"",abort());
     return err.err_;
+}
+
+void expand_template(std::string *pattern, Dict_t *dict){
+
+    Dict_t::iterator iter(dict->begin());
+    for (;iter != dict->end(); ++iter)
+    {
+	std::size_t idx(0);
+	do{
+	    idx = pattern->find("{{"+iter->first+"}}",idx);
+	    if (idx!=std::string::npos){
+		pattern->replace(idx,iter->first.length()+4,iter->second);
+		++idx;
+	    } else {
+		break;
+	    }
+	} while (true);
+    }
 }
 
 void run_sim(int argc, char **argv){
@@ -26,6 +45,19 @@ void run_sim(int argc, char **argv){
     // Setting the parameters
     Par_t sim_par;
     CHK(sim_par.parseInput(argc, argv));
+    omp_set_num_threads(sim_par.num_threads);
+
+    // hacking the output file name inside the sim_par
+    Dict_t dict;
+    std::stringstream snp, sr, sn, sp;
+    sn<<sim_par.n_surfs; sp<<sim_par.sh_order;
+    dict["n_surfs"]   = sn.str();
+    dict["sh_order"]  = sp.str();
+    dict["precision"] = (typeid(real_t) == typeid(float)) ? "float" : "double";
+
+    expand_template(&sim_par.save_file_name, &dict);
+    expand_template(&sim_par.init_file_name, &dict);
+    expand_template(&sim_par.cntrs_file_name, &dict);
     COUT(sim_par);
 
     //Initial vesicle positions
@@ -33,18 +65,13 @@ void run_sim(int argc, char **argv){
 
     //reading the prototype form file
     DataIO myIO(FullPath(sim_par.save_file_name));
-
-    char fname[300];
-    std::string prec = (typeid(real_t) == typeid(float)) ? "float" : "double";
-    sprintf(fname, sim_par.init_file_name.c_str(), sim_par.sh_order,prec.c_str());
-    myIO.ReadData( FullPath(fname), x0, DataIO::ASCII, 0, x0.getSubLength());
+    myIO.ReadData( FullPath(sim_par.init_file_name), x0, DataIO::ASCII, 0, x0.getSubLength());
 
     //reading centers file
     if (sim_par.cntrs_file_name.size()){
         INFO("Reading centers from file");
         Arr_t cntrs(DIM * sim_par.n_surfs);
-        sprintf(fname, sim_par.cntrs_file_name.c_str(), sim_par.sh_order,prec.c_str());
-        myIO.ReadData( FullPath(fname), cntrs, DataIO::ASCII, 0, cntrs.size());
+        myIO.ReadData( FullPath(sim_par.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
 
         INFO("Populating the initial configuration using centers");
         Populate(x0, cntrs);
@@ -54,7 +81,8 @@ void run_sim(int argc, char **argv){
     Evolve_t::Mats_t Mats(true /*readFromFile*/, sim_par);
 
     //Setting the background flow
-    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    BgFlowBase<Vec_t> *vInf(NULL);
+    CHK(BgFlowFactory(sim_par, &vInf));
 
 #ifdef HAS_PETSC
     ParallelLinSolverPetsc<real_t> ksp(VES3D_COMM_WORLD);
@@ -66,8 +94,10 @@ void run_sim(int argc, char **argv){
     Inter_t direct_interaction(&StokesAlltoAll);
 
     //Evolve surface class
-Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &direct_interaction, NULL, pksp);
+    Evolve_t Es(sim_par, Mats, x0, vInf, NULL, &direct_interaction, NULL, pksp);
     CHK( Es.Evolve() );
+
+    delete vInf;
 }
 
 int main(int argc, char **argv)

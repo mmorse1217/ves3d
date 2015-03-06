@@ -1,15 +1,51 @@
 #include <Enums.h>
 #include <Device.h>
 
+template<typename Vec_t>
+Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase<Vec_t> **vInf){
+
+    ASSERT(*vInf==NULL, "Non-null pointer passed");
+
+    switch (params.bg_flow)
+    {
+	case ShearFlow:
+	    *vInf = new ShearFlowImp<Vec_t>(params.bg_flow_param);
+	    break;
+
+	case ExtensionalFlow:
+	    *vInf = new ExtensionalFlowImp<Vec_t>(params.bg_flow_param);
+	    break;
+
+	case ParabolicFlow:
+	    //! @bug hard-coding the extra arguments of parabolic flow; should be fixed
+	    *vInf = new ParabolicFlowImp<Vec_t>(10.0, params.bg_flow_param);
+	    break;
+
+	case PeriodicFlow:
+	    return ErrorEvent::NotImplementedError;
+	    break;
+
+	case UserDefinedFlow:
+	    //don't do anything
+	    break;
+
+	default:
+	    return ErrorEvent::InvalidParameterError;
+    }
+
+    return ErrorEvent::Success;
+}
+
+
+
 // Shear flow /////////////////////////////////////////////////////////////////
-template<typename VecContainer>
-ShearFlow<VecContainer>::ShearFlow(value_type shear_rate) :
+template<typename Vec_t>
+ShearFlowImp<Vec_t>::ShearFlowImp(value_type shear_rate) :
     shear_rate_(shear_rate) {}
 
-
-template<typename VecContainer>
-void ShearFlow<VecContainer>::operator()(const VecContainer &pos, const value_type time,
-        VecContainer &vel_inf) const
+template<typename Vec_t>
+void ShearFlowImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
+        Vec_t &vel_inf) const
 {
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();
@@ -21,15 +57,15 @@ void ShearFlow<VecContainer>::operator()(const VecContainer &pos, const value_ty
         idx = pos.getTheDim() * ii * stride;
         pos.getDevice().Memcpy(vel_inf.begin() + idx,
             pos.begin() + idx + stride + stride
-            ,stride * sizeof(typename VecContainer::value_type),
+            ,stride * sizeof(typename Vec_t::value_type),
             pos.getDevice().MemcpyDeviceToDevice);
     }
     axpy(shear_rate_, vel_inf, vel_inf);
 }
 
 // Parabolic flow ///////////////////////////////////////////////////////////////
-template<typename ScalarContainer, typename VecContainer>
-ParabolicFlow<ScalarContainer, VecContainer>::ParabolicFlow(value_type radius,
+template<typename Vec_t>
+ParabolicFlowImp<Vec_t>::ParabolicFlowImp(value_type radius,
     value_type center_vel, value_type flow_dir_x, value_type flow_dir_y,
         value_type flow_dir_z) :
     inv_radius2_( - 1.0 / radius / radius),
@@ -47,9 +83,9 @@ ParabolicFlow<ScalarContainer, VecContainer>::ParabolicFlow(value_type radius,
     flow_dir_z_ /= norm;
 }
 
-template<typename ScalarContainer, typename VecContainer>
-void ParabolicFlow<ScalarContainer, VecContainer>::CheckContainers(
-    const VecContainer &ref) const
+template<typename Vec_t>
+void ParabolicFlowImp<Vec_t>::CheckContainers(
+    const Vec_t &ref) const
 {
     int ns = flow_direction_.getNumSubs();
     flow_direction_.replicate(ref);
@@ -67,22 +103,22 @@ void ParabolicFlow<ScalarContainer, VecContainer>::CheckContainers(
             buffer[2*ll + jj] = flow_dir_z_;
         }
 
-        VecContainer::getDevice().Memcpy(flow_direction_.begin(),
+        Vec_t::getDevice().Memcpy(flow_direction_.begin(),
             buffer, DIM *ll * sizeof(value_type),
-            VecContainer::getDevice().MemcpyHostToDevice);
+            Vec_t::getDevice().MemcpyHostToDevice);
         delete[] buffer;
     }
 
     for(int ii=ns; ii<flow_direction_.getNumSubs(); ++ii)
-        VecContainer::getDevice().Memcpy(flow_direction_.getSubN(ii),
+        Vec_t::getDevice().Memcpy(flow_direction_.getSubN_begin(ii),
             flow_direction_.begin(), flow_direction_.getSubLength() *
             sizeof(value_type),
-            VecContainer::getDevice().MemcpyDeviceToDevice);
+            Vec_t::getDevice().MemcpyDeviceToDevice);
 }
 
-template<typename ScalarContainer, typename VecContainer>
-void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
-    VecContainer &pos, const value_type time, VecContainer &vel_inf) const
+template<typename Vec_t>
+void ParabolicFlowImp<Vec_t>::operator()(const
+    Vec_t &pos, const value_type time, Vec_t &vel_inf) const
 {
     this->CheckContainers(pos);
 
@@ -93,33 +129,42 @@ void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
     axpy(inv_radius2_, s_wrk_, s_wrk_);
     xvpw(s_wrk_, flow_direction_, flow_direction_, vel_inf);
     axpy(center_vel_, vel_inf, vel_inf);
-    //  cout<<"Max Vel :"<<MaxAbs(vel_inf)<<" "<<center_vel_<<endl;
 };
 
 // Extensional flow /////////////////////////////////////////////////////////////
 template<typename Vec_t>
-ExtensionalFlow<Vec_t>::ExtensionalFlow(value_type rate) :
+ExtensionalFlowImp<Vec_t>::ExtensionalFlowImp(value_type rate) :
     rate_(rate) {}
 
 template<typename Vec_t>
-void ExtensionalFlow<Vec_t>::operator()(const Vec_t &pos,
+void ExtensionalFlowImp<Vec_t>::operator()(const Vec_t &pos,
 					const value_type time,
 					Vec_t &vel_inf) const
 {
-    int n_surfs = pos.getNumSubs();
-    int stride = pos.getStride();
-    int idx;
+    //! u=(-x,y/2,z/2)
+    if (pos.getStride() != coeffs_.getStride())
+	AdjustCoeffs(pos.getShOrder());
 
-    axpy(0.0, pos, vel_inf);
-    for(int ii=0;ii<n_surfs;ii++)
-    {
-        idx = pos.getTheDim() * ii * stride;
-        pos.getDevice().Memcpy(vel_inf.begin() + idx,
-            pos.begin() + idx + stride + stride
-            ,stride * sizeof(typename Vec_t::value_type),
-            pos.getDevice().MemcpyDeviceToDevice);
+    Vec_t::getDevice().ax(coeffs_.begin(), pos.begin(), pos.getSubLength(),
+     	pos.getNumSubs(), vel_inf.begin());
+}
+
+template<typename Vec_t>
+void ExtensionalFlowImp<Vec_t>::AdjustCoeffs(int p) const
+{
+    COUTDEBUG("Adjusting the coefficient vector size");
+    coeffs_.resize(1,p);
+    int sz(coeffs_.size()), stride(coeffs_.getStride());
+
+    value_type *buffer = new value_type[sz];
+    for(int i(0); i<stride; ++i){
+	buffer[i              ]	= -rate_;
+	buffer[i+stride       ]	= rate_/2;
+	buffer[i+stride+stride]	= rate_/2;
     }
-    axpy(rate_, vel_inf, vel_inf);
+
+    Vec_t::getDevice().Memcpy(coeffs_.begin(), buffer, sizeof(value_type)*sz, DT::MemcpyHostToDevice);
+    delete[] buffer;
 }
 
 // Taylor vortex ////////////////////////////////////////////////////////////////
@@ -127,17 +172,17 @@ void ExtensionalFlow<Vec_t>::operator()(const Vec_t &pos,
  * @bug The data is manipulated directly that causes segmentation
  * fault on any device other than CPU.
  */
-template<typename VecContainer>
-TaylorVortex<VecContainer>::TaylorVortex(value_type strength, value_type x_period,
+template<typename Vec_t>
+TaylorVortexImp<Vec_t>::TaylorVortexImp(value_type strength, value_type x_period,
     value_type y_period) :
     strength_(strength), x_period_(x_period), y_period_(y_period)
 {
-    assert( VecContainer::getDeviceType() == CPU );
+    assert( Vec_t::getDeviceType() == CPU );
 }
 
-template<typename VecContainer>
-void TaylorVortex<VecContainer>::operator()(const VecContainer &pos, const value_type time,
-    VecContainer &vel_inf) const
+template<typename Vec_t>
+void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
+    Vec_t &vel_inf) const
 {
     int n_surfs = pos.getNumSubs();
     int stride = pos.getStride();

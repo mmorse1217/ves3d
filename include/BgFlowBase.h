@@ -14,8 +14,7 @@ class BgFlowBase
 {
   public:
     /// The assumed interface.
-    virtual void operator()(const VecContainer &position, const typename 
-        VecContainer::value_type time, VecContainer &v_inf) const = 0;
+    virtual void operator()(const VecContainer &position, const typename
+	VecContainer::value_type time, VecContainer &v_inf) const = 0;
 };
-
 #endif

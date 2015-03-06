@@ -28,6 +28,24 @@ enum PrecondScheme EnumifyPrecond(const char * name)
       return UnkownPrecond;
 }
 
+enum BgFlowType EnumifyBgFlow(const char * name)
+{
+  std::string ns(name);
+
+  if      ( ns.compare(0,5,"Shear") == 0 )
+      return ShearFlow;
+  else if ( ns.compare(0,9,"Extension") == 0 )
+      return ExtensionalFlow;
+  else if ( ns.compare(0,9,"Parabolic") == 0 )
+      return ParabolicFlow;
+  else if ( ns.compare(0,6,"Period") == 0 )
+      return PeriodicFlow;
+  else if ( ns.compare(0,4,"User") == 0 )
+      return UserDefinedFlow;
+  else
+      return UnkownFlow;
+}
+
 enum SingularStokesRot EnumifyStokesRot(const char * name)
 {
   std::string ns(name);
@@ -92,6 +110,32 @@ std::ostream& operator<<(std::ostream& output, const enum PrecondScheme &PS)
         default:
             output<<"UnkownPrecond";
             break;
+    }
+
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const enum BgFlowType &BG)
+{
+    switch (BG)
+    {
+	case ShearFlow:
+	    output<<"ShearFlow";
+	    break;
+	case ExtensionalFlow:
+	    output<<"ExtensionalFlow";
+	    break;
+	case ParabolicFlow:
+	    output<<"ParabolicFlow";
+	    break;
+	case PeriodicFlow:
+	    output<<"PeriodicFlow";
+	    break;
+	case UserDefinedFlow:
+	    output<<"UserDefinedFlow";
+	    break;
+	default:
+	    output<<"UnkownFlow";
     }
 
     return output;

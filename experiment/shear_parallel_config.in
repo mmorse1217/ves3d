@@ -37,6 +37,7 @@ out-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}.
 error-factor : .01
 
 ##far filed #################################
+bg-flow-type : ShearFlow
 bg-flow-param : 0.1
 upsample-interaction
 

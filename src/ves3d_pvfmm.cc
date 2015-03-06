@@ -91,11 +91,11 @@ void run_sim(int argc, char **argv){
     };
 
     // Reading Operators From File
-    bool readFromFile = true;
-    Evolve_t::Mats_t Mats(readFromFile, sim_par);
+    Evolve_t::Mats_t Mats(true /*readFromFile*/, sim_par);
 
     //Setting the background flow
-    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    BgFlowBase<Vec_t> *vInf(NULL);
+    CHK(BgFlowFactory(sim_par, &vInf));
 
     // interaction handler
     Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real_t>);
@@ -106,6 +106,8 @@ void run_sim(int argc, char **argv){
     // Evolve surface class
     Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction, NULL, &ksp);
     CHK( Es.Evolve() );
+
+    delete vInf;
 }
 
 int main(int argc, char **argv)

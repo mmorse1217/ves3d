@@ -64,6 +64,14 @@ enum PrecondScheme {DiagonalSpectral,       /* Only the self preconditioner; dia
 		    NoPrecond,              /* No preconditioner at all                           */
 		    UnkownPrecond};         /* Used to signal parsing errors                      */
 
+///The types of background flow that are supported
+enum BgFlowType {ShearFlow,
+		 ExtensionalFlow,
+		 ParabolicFlow,
+		 PeriodicFlow,
+		 UserDefinedFlow,        /* Mostly for testing purposes   */
+		 UnkownFlow};            /* Used to signal parsing errors */
+
 ///DirectEagerEval gives the rotation code the freedom to precompute
 ///and cache some of the expected results
 enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
@@ -71,6 +79,7 @@ enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 ///String to enums functions
 enum SolverScheme EnumifyScheme(const char * name);
 enum PrecondScheme EnumifyPrecond(const char * name);
+enum BgFlowType EnumifyBgFlow(const char * name);
 enum SingularStokesRot EnumifyStokesRot(const char * name);
 
 std::ostream& operator<<(
@@ -79,11 +88,15 @@ std::ostream& operator<<(
 
 std::ostream& operator<<(
     std::ostream& output,
-    const enum SolverScheme &MR);
+    const enum SolverScheme &SS);
 
 std::ostream& operator<<(
     std::ostream& output,
-    const enum PrecondScheme &MR);
+    const enum PrecondScheme &PR);
+
+std::ostream& operator<<(
+    std::ostream& output,
+    const enum BgFlowType &BG);
 
 std::ostream& operator<<(
     std::ostream& output,

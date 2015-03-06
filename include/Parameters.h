@@ -41,6 +41,7 @@ public:
 
   enum SolverScheme scheme;
   enum PrecondScheme time_precond;
+  enum BgFlowType bg_flow;
   enum SingularStokesRot singular_stokes;
 
   //Reparametrization

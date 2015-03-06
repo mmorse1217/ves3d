@@ -15,6 +15,7 @@ void Parameters<T>::init()
 {
     // ordered alphabetically
     bending_modulus	    = 1e-2;
+    bg_flow                 = ShearFlow;
     bg_flow_param	    = 1e-1;
     error_factor	    = 1;
     filter_freq		    = 8;
@@ -122,6 +123,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   // ordered alphabetically
   opt->addUsage( "     --bending-modulus       The bending modulus of the interfaces" );
   opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
+  opt->addUsage( "     --bg-flow-type          Type of the background flow" );
   opt->addUsage( "     --cent-file             The file containing the initial center points");
   opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
   opt->addUsage( "     --filter-freq           The differentiation filter frequency" );
@@ -171,6 +173,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   //ordered alphabetically
   opt->setOption( "bending-modulus" );
   opt->setOption( "bg-flow-param" );
+  opt->setOption( "bg-flow-type" );
   opt->setOption( "cent-file");
   opt->setOption( "error-factor" );
   opt->setOption( "filter-freq" );
@@ -241,6 +244,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "viscosity-contrast" ) != NULL  )
     this->viscosity_contrast = atof(opt->getValue( "viscosity-contrast" ));
 
+  if( opt->getValue( "bg-flow-type" ) != NULL  )
+    this->bg_flow = EnumifyBgFlow(opt->getValue( "bg-flow-type" ));
+    ASSERT(this->bg_flow != UnkownFlow, "Failed to parse the background flow name");
 
   if( opt->getValue( "bg-flow-param" ) != NULL  )
     this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
@@ -374,6 +380,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Error Factor             : "<<par.error_factor<<std::endl;
     output<<"------------------------------------"<<std::endl;
     output<<" Background flow:"<<std::endl;
+    output<<"   Background flow type     : "<<par.bg_flow<<std::endl;
     output<<"   Background flow parameter: "<<par.bg_flow_param<<std::endl;
     output<<"   Upsample Interaction     : "<<std::boolalpha<<par.upsample_interaction<<std::endl;
 
