@@ -16,7 +16,12 @@
 #include "BgFlowBase.h"
 #include "OperatorsMats.h"
 #include "ParallelLinSolverInterface.h"
+
+#ifdef HAVE_PVFMM
 #include "StokesVelocity.h"
+#else
+#include "StokesVelocitySeq.h"
+#endif
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity

@@ -1,4 +1,3 @@
-#ifdef HAVE_PVFMM
 #ifndef _STOKES_VELOCITY_H_
 #define _STOKES_VELOCITY_H_
 
@@ -9,7 +8,6 @@
 #include "PVFMMInterface.h"
 #include "NearSingular.h"
 #include "MovePole.h"
-//#include "BgFlowBase.h"
 
 template<typename Surf_t>
 class StokesVelocity{
@@ -35,7 +33,6 @@ class StokesVelocity{
     StokesVelocity(
         OperatorsMats<Arr_t> &mats,
         const Parameters<Real_t> &sim_par_,
-        //const BgFlowBase<Vec_t> &bgFlow_,
         MPI_Comm c=MPI_COMM_WORLD);
 
     ~StokesVelocity();
@@ -103,7 +100,6 @@ class StokesVelocity{
 
     MovePole<Sca_t,Mats_t> move_pole;
     const Parameters<Real_t> &sim_par;
-    //const BgFlowBase<Vec_t> &bg_flow;
 
     MPI_Comm comm;
 };
@@ -111,4 +107,3 @@ class StokesVelocity{
 #include "StokesVelocity.cc"
 
 #endif // _STOKES_VELOCITY_H_
-#endif

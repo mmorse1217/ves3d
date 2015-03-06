@@ -89,14 +89,14 @@ void testSurface(const Device &dev)
     S.area(Area);
     real area(MaxAbs(Area));
     COUT("Area = "<<area);
-    ASSERT( fabs(area/16.21793733-1)<1e-8,"Expected area for dumbell");
+    ASSERT( fabs(area/16.2179377312307-1)<1e-8,"Expected area for dumbell");
 
     COUT("Computing volume");
     Sca Vol(nVec, sim_par.sh_order, std::make_pair(1,1));
     S.volume(Vol);
     real vol(MaxAbs(Vol));
     COUT("Volume = "<<vol);
-    ASSERT( fabs(vol/5.24886478864-1)<1e-8,"Expected area for dumbell");
+    ASSERT( fabs(vol/5.24886489292959-1)<1e-8,"Expected area for dumbell");
 
     COUT("Computing centers");
     Vec Cntrs(nVec, 0, std::make_pair(1,1));

@@ -7,7 +7,7 @@
 #include <vector>
 
 template<typename Surf_t>
-class StokesVelocitySeq{
+class StokesVelocity{
 
     typedef typename Surf_t::Vec_t Vec_t;
     typedef typename Vec_t::scalars_type Sca_t;
@@ -26,11 +26,11 @@ class StokesVelocitySeq{
       UpdateAll =7
     };
 
-    StokesVelocitySeq(
+    StokesVelocity(
         OperatorsMats<Arr_t> &mats,
         const Parameters<Real_t> &sim_par_);
 
-    ~StokesVelocitySeq();
+    ~StokesVelocity();
 
     void SetSrcCoord(const Surf_t& S_);
     void SetDensitySL(const Vec_t* force_single_=NULL);
@@ -38,15 +38,15 @@ class StokesVelocitySeq{
 
     void SetTrgCoord(const Surf_t& T_);
 
-    void operator()(Vec_t& T_vel, unsigned int flag=StokesVelocitySeq::UpdateAll);
-    Real_t* operator()(unsigned int flag=StokesVelocitySeq::UpdateAll);
+    void operator()(Vec_t& T_vel, unsigned int flag=StokesVelocity::UpdateAll);
+    Real_t* operator()(unsigned int flag=StokesVelocity::UpdateAll);
 
     static void Test();
 
   private:
 
-    StokesVelocitySeq(const StokesVelocitySeq &);
-    StokesVelocitySeq& operator=(const StokesVelocitySeq &);
+    StokesVelocity(const StokesVelocity &);
+    StokesVelocity& operator=(const StokesVelocity &);
 
     static void u_ref(const Real_t* coord, int n, Real_t* out);
     static void force(const Real_t* coord, int n, Real_t* out);

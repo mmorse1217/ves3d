@@ -1,11 +1,9 @@
-#ifdef HAVE_PVFMM
-
 #include <omp.h>
 #include <iostream>
 #include "Surface.h"
 
 template<typename Surf_t>
-StokesVelocitySeq<Surf_t>::StokesVelocitySeq(
+StokesVelocity<Surf_t>::StokesVelocity(
     OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_):
   move_pole(mats),
@@ -43,29 +41,29 @@ StokesVelocitySeq<Surf_t>::StokesVelocitySeq(
 }
 
 template<typename Surf_t>
-StokesVelocitySeq<Surf_t>::~StokesVelocitySeq(){
+StokesVelocity<Surf_t>::~StokesVelocity(){
 }
 
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::SetSrcCoord(const Surf_t& S_){
+void StokesVelocity<Surf_t>::SetSrcCoord(const Surf_t& S_){
   S=&S_;
 }
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::SetDensitySL(const Vec_t* force_single_){
+void StokesVelocity<Surf_t>::SetDensitySL(const Vec_t* force_single_){
   force_single=force_single_;
 }
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::SetDensityDL(const Vec_t* force_double_){
+void StokesVelocity<Surf_t>::SetDensityDL(const Vec_t* force_double_){
   force_double=force_double_;
 }
 
 
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::SetTrgCoord(const Surf_t& T_){
+void StokesVelocity<Surf_t>::SetTrgCoord(const Surf_t& T_){
   T=&T_;
 }
 
@@ -73,7 +71,7 @@ void StokesVelocitySeq<Surf_t>::SetTrgCoord(const Surf_t& T_){
 
 
 template<typename Surf_t>
-StokesVelocitySeq<Surf_t>::Real_t* StokesVelocitySeq<Surf_t>::operator()(unsigned int flag){
+StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int flag){
   Vec_t T_vel;
   (*this)(T_vel, flag);
 
@@ -108,7 +106,7 @@ StokesVelocitySeq<Surf_t>::Real_t* StokesVelocitySeq<Surf_t>::operator()(unsigne
 }
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
+void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
   assert(S==T);
   assert(S);
 
@@ -241,7 +239,7 @@ void StokesVelocitySeq<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
 
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::u_ref(const Real_t* coord, int n, Real_t* out){ //Analytical velocity for sphere
+void StokesVelocity<Surf_t>::u_ref(const Real_t* coord, int n, Real_t* out){ //Analytical velocity for sphere
   Real_t R0=1.0;
   for(int i=0;i<n;i++){
     const Real_t* c=&coord[i*3];
@@ -271,7 +269,7 @@ void StokesVelocitySeq<Surf_t>::u_ref(const Real_t* coord, int n, Real_t* out){ 
 }
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
+void StokesVelocity<Surf_t>::force(const Real_t* coord, int n, Real_t* out){ // Force on sphere
   Real_t R0=1.0;
   for(int i=0;i<n;i++){
     const Real_t* c=&coord[i*3];
@@ -294,11 +292,11 @@ void StokesVelocitySeq<Surf_t>::force(const Real_t* coord, int n, Real_t* out){ 
   }
 }
 
-
-#include <legendre_rule.hpp>
+// #include <legendre_rule.hpp>
+// ABT: legendre_rule seems like code from pvfmm. Not sure why we need it
 
 template<typename Surf_t>
-void StokesVelocitySeq<Surf_t>::Test(){
+void StokesVelocity<Surf_t>::Test(){
 
   // Set parameters
   Parameters<Real_t> sim_par;
@@ -309,7 +307,7 @@ void StokesVelocitySeq<Surf_t>::Test(){
   bool readFromFile = true;
   Mats_t mats(readFromFile, sim_par);
 
-  StokesVelocitySeq<Surf_t> stokes_vel(mats, sim_par);
+  StokesVelocity<Surf_t> stokes_vel(mats, sim_par);
 
   //=================================================================//
 
@@ -433,6 +431,3 @@ void StokesVelocitySeq<Surf_t>::Test(){
 
   }
 }
-
-#endif
-

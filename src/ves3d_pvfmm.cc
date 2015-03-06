@@ -98,7 +98,6 @@ void run_sim(int argc, char **argv){
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
     // interaction handler
-    // Inter_t fmm_interaction(&StokesAlltoAll);
     Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real_t>);
 
     // parallel solver
@@ -111,7 +110,6 @@ void run_sim(int argc, char **argv){
 
 int main(int argc, char **argv)
 {
-    //pvfmm::Profile::Enable(true);
     PROFILESTART();
     PetscInitialize(&argc, &argv, NULL, NULL);
     run_sim(argc, argv);

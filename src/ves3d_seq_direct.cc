@@ -2,6 +2,10 @@
 #include "Logger.h"
 #include "EvolveSurface.h"
 
+#ifdef HAS_PETSC
+#include "ParallelLinSolver_Petsc.h"
+#endif
+
 typedef Device<CPU> Dev;
 extern const Dev the_dev(0);
 
@@ -52,19 +56,34 @@ void run_sim(int argc, char **argv){
     //Setting the background flow
     ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
+#ifdef HAS_PETSC
+    ParallelLinSolverPetsc<real_t> ksp(VES3D_COMM_WORLD);
+    ParallelLinSolver<real_t> *pksp(&ksp);
+#else
+    ParallelLinSolver<real_t> *pksp(NULL);
+#endif
+
     Inter_t direct_interaction(&StokesAlltoAll);
 
     //Evolve surface class
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &direct_interaction);
+Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &direct_interaction, NULL, pksp);
     CHK( Es.Evolve() );
 }
 
 int main(int argc, char **argv)
 {
+#ifdef HAS_PETSC
+    PetscInitialize(&argc, &argv, NULL, NULL);
+#endif
+
     SET_ERR_CALLBACK(&cb_abort);
     PROFILESTART();
     run_sim(argc, argv);
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortTime);
+
+#ifdef HAS_PETSC
+    PetscFinalize();
+#endif
 }

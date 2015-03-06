@@ -98,7 +98,7 @@ void ParabolicFlow<ScalarContainer, VecContainer>::operator()(const
 
 // Extensional flow /////////////////////////////////////////////////////////////
 template<typename Vec_t>
-ExtensionalFlow<Vec_t>::ExtensionalFLow(value_type rate) :
+ExtensionalFlow<Vec_t>::ExtensionalFlow(value_type rate) :
     rate_(rate) {}
 
 template<typename Vec_t>
@@ -116,10 +116,10 @@ void ExtensionalFlow<Vec_t>::operator()(const Vec_t &pos,
         idx = pos.getTheDim() * ii * stride;
         pos.getDevice().Memcpy(vel_inf.begin() + idx,
             pos.begin() + idx + stride + stride
-            ,stride * sizeof(typename VecContainer::value_type),
+            ,stride * sizeof(typename Vec_t::value_type),
             pos.getDevice().MemcpyDeviceToDevice);
     }
-    axpy(shear_rate_, vel_inf, vel_inf);
+    axpy(rate_, vel_inf, vel_inf);
 }
 
 // Taylor vortex ////////////////////////////////////////////////////////////////

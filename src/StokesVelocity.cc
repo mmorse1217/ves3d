@@ -1,20 +1,15 @@
-#ifdef HAVE_PVFMM
-
 #include <omp.h>
 #include <iostream>
 #include "Surface.h"
-//#include "BgFlow.h"
 #include <profile.hpp>
 
 template<typename Surf_t>
 StokesVelocity<Surf_t>::StokesVelocity(
     OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_,
-    //const BgFlowBase<Vec_t> &bgFlow_,
     MPI_Comm c):
   move_pole(mats),
   sim_par(sim_par_),
-  //bg_flow(bgFlow_),
   near_singular(c),
   comm(c)
 {
@@ -446,10 +441,6 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
   size_t M_ves = x.getStride(); // Points per vesicle
   assert(M_ves==x.getGridDim().first*x.getGridDim().second);
   assert(N_ves*M_ves*COORD_DIM==trg_vel.Dim());
-
-  // Background velocity
-  //!@bug the time should be passed to the BgFlow handle.
-  //bg_flow_(S->getPosition(), 0, x);
 
   #pragma omp parallel for
   for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
@@ -929,6 +920,3 @@ void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=MPI_COMM_WORLD){
   pvtufile<<"</VTKFile>\n";
   pvtufile.close();
 }
-
-#endif
-
