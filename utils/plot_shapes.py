@@ -49,25 +49,31 @@ def parse_args():
     p.add_argument('-p', help='spherical harmonics order', type=int)
     p.add_argument('-n', help='number of surfaces', default=1, type=int)
     p.add_argument('--out-template', '-o', help='output file name', default=None)
-    p.add_argument('--file', '-f', help='file name')
     p.add_argument('--animate', '-a', help='animate the plot', action='store_true')
     p.add_argument('--increment', '-i', help='animate the plot', default=1, type=int)
+    p.add_argument('files', nargs=ap.REMAINDER, help='list of files')
 
     args = p.parse_args()
     return vars(args)
 
-def load_file(fname):
-    data = np.genfromtxt(fname, dtype=None)
+def load_file(fnames):
+
+    data = list()
+    for f in fnames:
+        data.append(np.genfromtxt(f, dtype=None).reshape((-1,1)))
+    data = np.hstack(data)
     return data
 
 def plot_series( data, p, n, out_template, animate,
                  increment, **kwargs):
 
-    sz   = 2*p*(p+1)
-    data = data.reshape((-1,4*n*sz))
+    sz  = 2*p*(p+1)
+    ds  = data.size
+    nT  = int(ds/sz/n/4)
+    nC  = data.shape[1]
+    nR  = sz*n/nC
 
     fig = plt.figure()
-    nT  = data.shape[0]
     for iT in range(0,nT,increment):
         print('step %d/%d' % (iT, nT))
         ax=plt.gca(projection='3d')
@@ -78,14 +84,19 @@ def plot_series( data, p, n, out_template, animate,
             az=120+160*iT/nT
             ax.view_init(elev=el,azim=az)
 
-        d = data[iT,:].reshape((-1,sz))
+        d   = data[4*iT*nR:4*(iT+1)*nR,:]
+        xyz = d[0:3*nR,:].reshape((3*sz,-1), order="F")
+        s   = d[3*nR:,:].reshape((sz,-1), order="F")
+
         for iN in range(n):
-            xyz = d[3*iN:3*iN+3, :].reshape((3,sz))
-            s   = d[3*n+iN,:]
-            plot(p=p, x = xyz[0,:], y = xyz[1,:], z = xyz[2,:], s=s)
+            plot(p=p,
+                 x = xyz[   0:  sz,iN],
+                 y = xyz[  sz:2*sz,iN],
+                 z = xyz[2*sz:    ,iN],
+                 s = s[:,iN])
 
         plt.draw()
-        ax.axis('equal')
+        ax.axis('tight')
         plt.pause(.05)
 
         if out_template:
@@ -110,11 +121,11 @@ def plot(p,x,y,z,s):
     ax.set_zticks([])
 
     surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, color='r',
-                           linewidth=.5, antialiased=False)
+                           linewidth=.1, antialiased=False)
 
 def main():
     opts = parse_args()
-    data = load_file(opts['file'])
+    data = load_file(opts['files'])
     plot_series(data=data,**opts)
 
 if __name__ == '__main__':
