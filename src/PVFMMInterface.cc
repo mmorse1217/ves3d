@@ -185,13 +185,13 @@ void PVFMMBoundingBox(size_t n_src, const T* x, T* scale_xr, T* shift_xr, MPI_Co
     MPI_Allreduce(loc_min_x, min_x, DIM, MPI_DOUBLE, MPI_MIN, comm);
     MPI_Allreduce(loc_max_x, max_x, DIM, MPI_DOUBLE, MPI_MAX, comm);
 
-    T eps=0.01; // Points should be well within the box.
-    scale_x=1.0/(max_x[0]-min_x[0]);
+    T eps=1; // Points should be well within the box.
+    while(eps*(T)0.5+(T)1.0>1.0) eps*=0.5; eps*=64;
+    scale_x=1.0/(max_x[0]-min_x[0]+2*eps);
     for(size_t k=0;k<DIM;k++){
-      scale_x=std::min(scale_x,(T)(1.0/(max_x[k]-min_x[k])));
+      scale_x=std::min(scale_x,(T)(1.0/(max_x[k]-min_x[k]+2*eps)));
     }
     if(scale_x*0.0!=0.0) scale_x=1.0; // fix for scal_x=inf
-    scale_x*=(1.0-2*eps);
     for(size_t k=0;k<DIM;k++){
       shift_x[k]=-min_x[k]*scale_x+eps;
     }
@@ -204,6 +204,7 @@ struct PVFMMContext{
   typedef pvfmm::FMM_Pts<Node_t> Mat_t;
   typedef pvfmm::FMM_Tree<Mat_t> Tree_t;
 
+  T box_size;
   int max_pts;
   int mult_order;
   int max_depth;
@@ -217,8 +218,7 @@ struct PVFMMContext{
 };
 
 template<typename T>
-void* PVFMMCreateContext(int n, int m, int max_d,
-    pvfmm::BoundaryType bndry,
+void* PVFMMCreateContext(T box_size, int n, int m, int max_d,
     const pvfmm::Kernel<T>* ker,
     MPI_Comm comm){
   pvfmm::Profile::Tic("FMMContext",&comm,true);
@@ -228,10 +228,11 @@ void* PVFMMCreateContext(int n, int m, int max_d,
   PVFMMContext<T>* ctx=new PVFMMContext<T>;
 
   // Set member variables.
+  ctx->box_size=box_size;
   ctx->max_pts=n;
   ctx->mult_order=m;
   ctx->max_depth=max_d;
-  ctx->bndry=bndry;
+  ctx->bndry=(box_size<=0?pvfmm::FreeSpace:pvfmm::Periodic);
   ctx->ker=ker;
   ctx->comm=comm;
 
@@ -313,7 +314,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
 
   pvfmm::Profile::Tic("FMM",&ctx->comm);
   T scale_x, shift_x[DIM];
-  { // determine bounding box
+  if(ctx->box_size<=0){ // determine bounding box
     T s0, x0[COORD_DIM];
     T s1, x1[COORD_DIM];
     PVFMMBoundingBox(n_src, src_pos, &s0, x0, ctx->comm);
@@ -331,6 +332,11 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
     shift_x[0]=0.5-(c0[0]+c1[0])*scale_x/2.0;
     shift_x[1]=0.5-(c0[1]+c1[1])*scale_x/2.0;
     shift_x[2]=0.5-(c0[2]+c1[2])*scale_x/2.0;
+  }else{
+    scale_x=1.0/ctx->box_size;
+    shift_x[0]=0;
+    shift_x[1]=0;
+    shift_x[2]=0;
   }
 
   pvfmm::Vector<T>  src_scal;
@@ -397,6 +403,8 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           for(size_t i=a;i<b;i++){
             for(size_t j=0;j<DIM;j++){
               src_coord[i*DIM+j]=src_pos[i*DIM+j]*scale_x+shift_x[j];
+              while(src_coord[i*DIM+j]< 0.0) src_coord[i*DIM+j]+=1.0;
+              while(src_coord[i*DIM+j]>=1.0) src_coord[i*DIM+j]-=1.0;
             }
             pt_mid[i]=pvfmm::MortonId(&src_coord[i*DIM]);
           }
@@ -461,6 +469,8 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           for(size_t i=a;i<b;i++){
             for(size_t j=0;j<DIM;j++){
               trg_coord[i*DIM+j]=trg_pos[i*DIM+j]*scale_x+shift_x[j];
+              while(trg_coord[i*DIM+j]< 0.0) trg_coord[i*DIM+j]+=1.0;
+              while(trg_coord[i*DIM+j]>=1.0) trg_coord[i*DIM+j]-=1.0;
             }
             pt_mid[i]=pvfmm::MortonId(&trg_coord[i*DIM]);
           }
@@ -516,7 +526,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         int local_size=all_nodes[i];
         int global_size;
         MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, ctx->comm);
-	os1<<global_size<<' ';
+        os1<<global_size<<' ';
       }
       if(!myrank) COUTDEBUG(os1.str());
 
@@ -639,6 +649,8 @@ template<typename T>
 void PVFMM_GlobalRepart(size_t nv, size_t stride,
     const T* x, const T* tension, size_t* nvr, T** xr,
     T** tensionr, void* user_ptr){
+  assert(false); // I think this doesn't work
+  exit(0);
 
   MPI_Comm comm=MPI_COMM_WORLD;
 

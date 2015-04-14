@@ -64,7 +64,6 @@ int main(int argc, char** argv){
   int max_pts=600;
   int mult_order=10;
   int max_depth=20;
-  pvfmm::BoundaryType bndry=pvfmm::FreeSpace;
   const pvfmm::Kernel<Real_t>* ker=&ker_stokes;
 
   std::vector<Real_t> coord   (N*(DIM                ));
@@ -76,7 +75,7 @@ int main(int argc, char** argv){
   for(size_t i=0;i<force_sl.size();i++) force_sl[i]=drand48();
   for(size_t i=0;i<force_dl.size();i++) force_dl[i]=drand48();
 
-  void* ctx=PVFMMCreateContext(max_pts, mult_order, max_depth, bndry, ker, comm);
+  void* ctx=PVFMMCreateContext<Real_t>(-1,max_pts, mult_order, max_depth, ker, comm);
 
   PVFMMEval(&coord[0], &force_sl[0], &force_dl[0], N, &fmm_v[0], &ctx);
   PVFMMEval(&coord[0], &force_sl[0], &force_dl[0], N, &fmm_v[0], &ctx);
