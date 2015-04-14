@@ -87,5 +87,22 @@ class TaylorVortexImp : public BgFlowBase<Vec_t>
     mutable Vec_t wrk_vec1_, wrk_vec2_;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+template<typename Vec_t>
+class PeriodicFlowImp : public BgFlowBase<Vec_t>
+{
+  public:
+    typedef typename Vec_t::value_type value_type;
+
+    PeriodicFlowImp(value_type strength, value_type period=12);
+
+    virtual void operator()(const Vec_t &pos, const value_type time,
+        Vec_t &vel_inf) const;
+
+  private:
+    value_type period_;
+    value_type strength_;
+};
+
 #include "BgFlow.cc"
 #endif

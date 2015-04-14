@@ -22,7 +22,8 @@ Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase
 	    break;
 
 	case PeriodicFlow:
-	    return ErrorEvent::NotImplementedError;
+	    //return ErrorEvent::NotImplementedError;
+	    *vInf = new PeriodicFlowImp<Vec_t>(params.bg_flow_param);
 	    break;
 
 	case UserDefinedFlow:
@@ -211,3 +212,35 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
         }
     axpy(strength_, vel_inf, vel_inf);
 }
+
+
+
+// Periodic flow /////////////////////////////////////////////////////////////////
+template<typename Vec_t>
+PeriodicFlowImp<Vec_t>::PeriodicFlowImp(value_type strength, value_type period) :
+    period_(period),
+    strength_(strength)
+{
+    assert( Vec_t::getDevice().type() == CPU );
+}
+
+template<typename Vec_t>
+void PeriodicFlowImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
+        Vec_t &vel_inf) const
+{
+    int n_surfs = pos.getNumSubs();
+    int stride = pos.getStride();
+    int idx;
+
+    axpy(0.0, pos, vel_inf);
+    for(int ii=0;ii<n_surfs;ii++){
+        idx = pos.getTheDim() * ii * stride;
+        const value_type* pos_=pos.begin() + idx;
+        value_type* vel_=vel_inf.begin() + idx;
+        for(size_t jj=0;jj<stride;jj++){
+            vel_[jj+0*stride]=sin(pos_[jj+2*stride]*2.0*M_PI/period_);
+        }
+    }
+    axpy(strength_, vel_inf, vel_inf);
+}
+
