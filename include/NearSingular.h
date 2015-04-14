@@ -14,7 +14,7 @@ class NearSingular{
 
   public:
 
-    NearSingular(MPI_Comm c=MPI_COMM_WORLD);
+    NearSingular(Real_t box_size=-1, MPI_Comm c=MPI_COMM_WORLD);
 
     void SetSrcCoord(const Surf_t& S);
     void SetSurfaceVel(const Vec_t& S_vel);
@@ -53,6 +53,7 @@ class NearSingular{
     const PVFMMVec_t* qforce_double;
     const Vec_t* force_double;
     const Vec_t* S_vel;
+    Real_t box_size_;
     MPI_Comm comm;
 
     PVFMMVec_t T;

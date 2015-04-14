@@ -33,7 +33,7 @@ class StokesVelocity{
     StokesVelocity(
         OperatorsMats<Arr_t> &mats,
         const Parameters<Real_t> &sim_par_,
-        MPI_Comm c=MPI_COMM_WORLD);
+        Real_t box_size=-1, MPI_Comm c=MPI_COMM_WORLD);
 
     ~StokesVelocity();
 
@@ -101,6 +101,7 @@ class StokesVelocity{
     MovePole<Sca_t,Mats_t> move_pole;
     const Parameters<Real_t> &sim_par;
 
+    Real_t box_size_;
     MPI_Comm comm;
 };
 

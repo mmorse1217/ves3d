@@ -104,7 +104,7 @@ void run_sim(int argc, char **argv){
     PSol_t ksp(VES3D_COMM_WORLD);
 
     // Evolve surface class
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &fmm_interaction, NULL, &ksp);
+    Evolve_t Es(sim_par, Mats, x0, vInf, NULL, &fmm_interaction, NULL, &ksp);
     CHK( Es.Evolve() );
 
     delete vInf;

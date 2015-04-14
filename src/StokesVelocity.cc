@@ -7,10 +7,12 @@ template<typename Surf_t>
 StokesVelocity<Surf_t>::StokesVelocity(
     OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_,
+    Real_t box_size,
     MPI_Comm c):
   move_pole(mats),
   sim_par(sim_par_),
-  near_singular(c),
+  near_singular(box_size,c),
+  box_size_(box_size),
   comm(c)
 {
   S=NULL;
@@ -53,7 +55,7 @@ StokesVelocity<Surf_t>::StokesVelocity(
         device_type::MemcpyDeviceToDevice);
   }
 
-  pvfmm_ctx=PVFMMCreateContext<Real_t>();
+  pvfmm_ctx=PVFMMCreateContext<Real_t>(box_size_);
 }
 
 template<typename Surf_t>
@@ -532,7 +534,7 @@ void StokesVelocity<Surf_t>::Test(){
   //ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
   //StokesVelocity<Surf_t> stokes_vel(mats, sim_par, vInf, comm);
-  StokesVelocity<Surf_t> stokes_vel(mats, sim_par, comm);
+  StokesVelocity<Surf_t> stokes_vel(mats, sim_par, -5, comm);
 
   //=================================================================//
 
