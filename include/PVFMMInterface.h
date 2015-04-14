@@ -11,7 +11,11 @@
 template <class T>
 void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
 
-const pvfmm::Kernel<double> ker_stokes_m2l=pvfmm::BuildKernel<double, stokes_sl_m2l>("stokes_m2l", 3, std::pair<int,int>(4,3));
+template <class T>
+void stokes_m2l_vol_poten(const T* coord, int n, T* out);
+
+const pvfmm::Kernel<double> ker_stokes_m2l=pvfmm::BuildKernel<double, stokes_sl_m2l>("stokes_m2l", 3, std::pair<int,int>(4,3),
+    NULL,NULL,NULL, NULL,NULL,NULL, NULL,NULL, stokes_m2l_vol_poten);
 
 template <class T>
 void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
@@ -19,8 +23,11 @@ void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 template <class T>
 void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr);
 
+template <class T>
+void stokes_vol_poten(const T* coord, int n, T* out);
+
 const pvfmm::Kernel<double> ker_stokes=pvfmm::BuildKernel<double, stokes_sl, stokes_dl>("stokes_vel", 3, std::pair<int,int>(3,3),
-    NULL, NULL, NULL, &ker_stokes_m2l, &ker_stokes_m2l, &ker_stokes_m2l, NULL, NULL);
+    NULL, NULL, NULL, &ker_stokes_m2l, &ker_stokes_m2l, &ker_stokes_m2l, NULL, NULL, stokes_vol_poten);
 
 ///////////////////////////////////////////////////////////////////////////////
 

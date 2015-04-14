@@ -21,6 +21,8 @@ void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_c
 #ifndef __MIC__
   pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(28*dof));
 #endif
+  const T mu=1.0;
+  const T SCAL_CONST = 1.0/(8.0*pvfmm::const_pi<T>()*mu);
   for(int t=0;t<trg_cnt;t++){
     T p[3]={0,0,0};
     for(int s=0;s<src_cnt;s++){
@@ -45,9 +47,23 @@ void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_c
         p[2] += f[2]*invR + dR[2]*inner_prod_plus_f3_invR3;
       }
     }
-    k_out[t*3+0] += p[0];
-    k_out[t*3+1] += p[1];
-    k_out[t*3+2] += p[2];
+    k_out[t*3+0] += p[0]*SCAL_CONST;
+    k_out[t*3+1] += p[1]*SCAL_CONST;
+    k_out[t*3+2] += p[2]*SCAL_CONST;
+  }
+}
+
+template <class T>
+void stokes_m2l_vol_poten(const T* coord, int n, T* out){
+  for(int i=0;i<n;i++){
+    const T* c=&coord[i*COORD_DIM];
+    T rx_2=c[1]*c[1]+c[2]*c[2];
+    T ry_2=c[0]*c[0]+c[2]*c[2];
+    T rz_2=c[0]*c[0]+c[1]*c[1];
+    out[n*3*0+i*3+0]=-rx_2/6; out[n*3*0+i*3+1]=      0; out[n*3*0+i*3+2]=      0;
+    out[n*3*1+i*3+0]=      0; out[n*3*1+i*3+1]=-ry_2/6; out[n*3*1+i*3+2]=      0;
+    out[n*3*2+i*3+0]=      0; out[n*3*2+i*3+1]=      0; out[n*3*2+i*3+2]=-rz_2/6;
+    out[n*3*3+i*3+0]= c[0]/6; out[n*3*3+i*3+1]= c[1]/6; out[n*3*3+i*3+2]= c[2]/6;
   }
 }
 
@@ -57,7 +73,7 @@ void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
   pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(26*dof));
 #endif
   const T mu=1.0;
-  const T SCAL_CONST = 1.0/(8.0*const_pi<T>()*mu);
+  const T SCAL_CONST = 1.0/(8.0*pvfmm::const_pi<T>()*mu);
   for(int t=0;t<trg_cnt;t++){
     T p[3]={0,0,0};
     for(int s=0;s<src_cnt;s++){
@@ -90,7 +106,7 @@ void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 #ifndef __MIC__
   pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(27*dof));
 #endif
-  const T SCAL_CONST = -3.0/(4.0*const_pi<T>());
+  const T SCAL_CONST = -3.0/(4.0*pvfmm::const_pi<T>());
   for(int t=0;t<trg_cnt;t++){
     for(int i=0;i<dof;i++){
       T p[3]={0,0,0};
@@ -122,6 +138,19 @@ void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
       k_out[(t*dof+i)*3+1] += p[1]*SCAL_CONST;
       k_out[(t*dof+i)*3+2] += p[2]*SCAL_CONST;
     }
+  }
+}
+
+template <class T>
+void stokes_vol_poten(const T* coord, int n, T* out){
+  for(int i=0;i<n;i++){
+    const T* c=&coord[i*COORD_DIM];
+    T rx_2=c[1]*c[1]+c[2]*c[2];
+    T ry_2=c[0]*c[0]+c[2]*c[2];
+    T rz_2=c[0]*c[0]+c[1]*c[1];
+    out[n*3*0+i*3+0]=-rx_2/6; out[n*3*0+i*3+1]=      0; out[n*3*0+i*3+2]=      0;
+    out[n*3*1+i*3+0]=      0; out[n*3*1+i*3+1]=-ry_2/6; out[n*3*1+i*3+2]=      0;
+    out[n*3*2+i*3+0]=      0; out[n*3*2+i*3+1]=      0; out[n*3*2+i*3+2]=-rz_2/6;
   }
 }
 
