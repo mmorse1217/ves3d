@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     Mats_t Mats(readFromFile, sim_par);
 
     //Making The Surface, And Time Stepper
-    Sur_t S(x, Mats);
+    Sur_t S(Mats, &x);
 
     {
         //Setting the background flow

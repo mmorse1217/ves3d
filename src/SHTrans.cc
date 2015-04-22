@@ -5,7 +5,7 @@ template<typename Container, typename Mats>
 const typename Container::value_type SHTrans<Container, Mats>::beta_;
 
 template<typename Container, typename Mats>
-SHTrans<Container, Mats>::SHTrans(int p_in, Mats &mats, int filter_freq) :
+SHTrans<Container, Mats>::SHTrans(int p_in, const Mats &mats, int filter_freq) :
     device_(Container::getDevice()),
     mats_(mats),
     p(p_in),

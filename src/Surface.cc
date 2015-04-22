@@ -7,12 +7,12 @@
  */
 template <typename ScalarContainer, typename VectorContainer>
 Surface<ScalarContainer, VectorContainer>::Surface(
-    const Vec_t& x_in, OperatorsMats<Arr_t> &mats,
+    const OperatorsMats<Arr_t> &mats, const Vec_t *x_in,
     int upsample, int filter) :
-    upsample_freq_((upsample == -1) ? x_in.getShOrder() : upsample),
-    rep_filter_freq_((filter == -1) ? x_in.getShOrder()/3 : filter),
-    sht_(x_in.getShOrder(), mats.mats_p_), ///@todo make sht_ autonomous
-    sht_rep_filter_(x_in.getShOrder(), mats.mats_p_, rep_filter_freq_),
+    upsample_freq_((upsample == -1) ? mats.p_ : upsample),
+    rep_filter_freq_((filter == -1) ? mats.p_/3 : filter),
+    sht_(mats.p_, mats.mats_p_), ///@todo make sht_ autonomous
+    sht_rep_filter_(mats.p_, mats.mats_p_, rep_filter_freq_),
     sht_rep_upsample_(upsample_freq_, mats.mats_p_up_),
     containers_are_stale_(true),
     first_forms_are_stale_(true),
@@ -25,8 +25,9 @@ Surface<ScalarContainer, VectorContainer>::Surface(
         <<", sh order="<<sht_.getShOrder()
         <<", sht_rep_filter="<<sht_rep_filter_.getShOrder()
         <<", sht_rep_upsample="<<sht_rep_upsample_.getShOrder()
-              );
-    setPosition(x_in);
+	 );
+
+    if (x_in != NULL) setPosition(*x_in);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -501,6 +502,69 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
     recycle(dif);
     recycle(scw);
 }
+
+template <typename S, typename V>
+Error_t Surface<S, V>::pack(std::ostream &os, Format format) const{
+
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+
+    os<<"SURFACE\n";
+    os<<"name: "<<Streamable::name_<<"\n";
+    os<<"sh_order: "<<x_.getShOrder()<<"\n";
+    os<<"SHT_order: "<<sht_.getShOrder()<<"\n";
+    os<<"SHT_rep_order: "<<sht_rep_filter_.getShOrder()<<"\n";
+    os<<"SHT_rep_up_order: "<<sht_rep_upsample_.getShOrder()<<"\n";
+    os<<"upsample_freq: "<<upsample_freq_<<"\n";
+    os<<"rep_filter_freq: "<<rep_filter_freq_<<"\n";
+    x_.pack(os,format);
+    os<<"/SURFACE\n";
+
+    return ErrorEvent::Success;
+}
+template <typename S, typename V>
+Error_t Surface<S, V>::unpack(std::istream &is, Format format){
+
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+    std::string s,key;
+    int ii;
+
+    is>>s;
+    ASSERT(s=="SURFACE", "Bad input string (missing header).");
+
+    is>>key>>Streamable::name_;
+
+    is>>key>>ii;
+    ASSERT(key=="sh_order:", "bad key sh_order");
+
+    is>>key>>ii;
+    ASSERT(key=="SHT_order:", "bad key SHT_order");
+    ASSERT(ii==sht_.getShOrder(), "incompatible data, cannot unpack");
+
+    is>>key>>ii;
+    ASSERT(key=="SHT_rep_order:", "bad key SHT_rep_order");
+    ASSERT(ii==sht_rep_filter_.getShOrder(), "incompatible data, cannot unpack");
+
+    is>>key>>ii;
+    ASSERT(key=="SHT_rep_up_order:", "bad key SHT_rep_up_order");
+    ASSERT(ii==sht_rep_upsample_.getShOrder(), "incompatible data, cannot unpack");
+
+    is>>key>>ii;
+    ASSERT(key=="upsample_freq:", "bad key upsample_freq");
+    ASSERT(ii==upsample_freq_, "incompatible data, cannot unpack");
+
+    is>>key>>ii;
+    ASSERT(key=="rep_filter_freq:", "bad key rep_filter_freq");
+    ASSERT(ii==rep_filter_freq_, "incompatible data, cannot unpack");
+
+    x_.unpack(is, format);
+    is>>s;
+    ASSERT(s=="/SURFACE", "Bad input string (missing footer).");
+
+    return ErrorEvent::Success;
+}
+
+
+
 
 /////////////////////////////////////////////////////////////////////////////////
 template <typename S, typename V>

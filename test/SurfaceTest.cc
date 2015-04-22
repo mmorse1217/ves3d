@@ -57,7 +57,7 @@ void testSurface(const Device &dev)
 
     //Creating objects
     COUT("Creating the surface object");
-    Surface<Sca, Vec> S(x0, mats);
+    Surface<Sca, Vec> S(mats, &x0);
 
     COUT("Extracting X, Y, and Z coordindate functions");
     Sca X(nVec,sim_par.sh_order);
@@ -80,7 +80,7 @@ void testSurface(const Device &dev)
             x0.getSubN_begin(ii) + 2*fLen,
             fLen * sizeof(real),
             Device::MemcpyDeviceToDevice);
-     }
+    }
 
     //Area and volume
     real err;
@@ -181,16 +181,28 @@ void testSurface(const Device &dev)
         Device::MemcpyDeviceToDevice);
     S.mapToTangentSpace(grad);
     ASSERT(MaxAbs(grad)<1e-14,"Normal map to tangent space");
- }
- #endif //Doxygen_skip
 
- int main(int argc, char ** argv)
- {
-     COUT("Surface test:\n=============");
-     COUT("CPU device:\n------------");
+    test_streaming(S, mats);
+}
+#endif //Doxygen_skip
 
-     typedef Scalars<real, DevCPU, the_cpu_device> ScaCPU_t;
-     typedef Vectors<real, DevCPU, the_cpu_device> VecCPU_t;
+template<typename ST, typename MT>
+void test_streaming(const ST &S, const MT &mats){
+    std::stringstream s1,s2;
+    S.pack(s1, Streamable::ASCII);
+    ST S2(mats, NULL,  S.upsampleFreq(), S.filterFreq());
+    S2.unpack(s1, Streamable::ASCII);
+    S2.pack(s2, Streamable::ASCII);
+    ASSERT(s1.str()==s2.str(), "bad streaming");
+}
+
+int main(int argc, char ** argv)
+{
+    COUT("Surface test:\n=============");
+    COUT("CPU device:\n------------");
+
+    typedef Scalars<real, DevCPU, the_cpu_device> ScaCPU_t;
+    typedef Vectors<real, DevCPU, the_cpu_device> VecCPU_t;
 
     testSurface<ScaCPU_t, VecCPU_t, DevCPU>(the_cpu_device);
     PROFILEREPORT(SortTime);

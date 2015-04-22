@@ -20,7 +20,7 @@ class SHTrans
     typedef typename Container::value_type value_type;
 
   public:
-     SHTrans(int sh_order_in, Mats &mats, int filter_freq = -1);
+     SHTrans(int sh_order_in, const Mats &mats, int filter_freq = -1);
     ~SHTrans();
 
     int getShOrder() const {return(p);}
@@ -60,7 +60,7 @@ class SHTrans
     typedef typename Container::device_type device_type;
     const typename Container::device_type &device_;
 
-    Mats &mats_;
+    const Mats &mats_;
 
     static const value_type alpha_ = (value_type) 1.0;
     static const value_type beta_  = (value_type) 0.0;

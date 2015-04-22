@@ -78,7 +78,7 @@ void testStokesDoubleLayer(const Device &dev){
 
   //Creating objects
   COUT("Creating the surface object");
-  Surf_t S(x0, mats);
+  Surf_t S(mats,&x0);
 
   Sca_t w_sph_, w_sph_inv_, sing_quad_weights_;
   { // Set w_sph_, w_sph_inv_, sing_quad_weights_

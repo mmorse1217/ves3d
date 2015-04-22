@@ -12,8 +12,10 @@
 #include "HelperFuns.h"
 #include "SHTrans.h"
 #include "GLIntegrator.h"
-#include <queue>
 #include "OperatorsMats.h"
+#include "Streamable.h"
+
+#include <queue>
 #include <memory>
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -23,7 +25,7 @@ template <typename S, typename V>
 std::ostream& operator<<(std::ostream& output, const Surface<S, V> &sur);
 
 template <typename ScalarContainer, typename VectorContainer>
-class Surface
+class Surface : public Streamable
 {
   public:
     typedef typename ScalarContainer::array_type Arr_t;
@@ -33,8 +35,9 @@ class Surface
     typedef ScalarContainer Sca_t;
 
     ///@todo add a default constructor
-    Surface(const Vec_t& x_in, OperatorsMats<Arr_t> &mats,
+    Surface(const OperatorsMats<Arr_t> &mats, const Vec_t *x_in,
         int upsample = -1, int filter = -1);
+
     ~Surface();
 
     void setPosition(const Vec_t& x_in);
@@ -60,6 +63,13 @@ class Surface
     void mapToTangentSpace(Vec_t &vec_fld) const;
     void linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const;
 
+    // From streamable class --------------------------------------------------
+    // ------------------------------------------------------------------------
+    virtual Error_t pack(std::ostream &os, Format format) const;
+    virtual Error_t unpack(std::istream &is, Format format);
+
+    int upsampleFreq() const {return upsample_freq_;}
+    int filterFreq() const {return rep_filter_freq_;}
   private:
     Vec_t x_;
     mutable Vec_t normal_;

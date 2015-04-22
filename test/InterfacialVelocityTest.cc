@@ -45,14 +45,6 @@ typedef Device<DT> Dev;
 
 extern const Dev the_device(0);
 
-// Default callback for errors
-Error_t cb_abort(const ErrorEvent &ee)
-{
-    CERR("Received error:\n"<<ee);
-    CERR_LOC("Aborting ...","", abort());
-    return ee.err_;
-}
-
 int main(int argc, char** argv){
     PetscInitialize(&argc, &argv, NULL, NULL);
 
@@ -93,7 +85,7 @@ int main(int argc, char** argv){
     Mats_t Mats(true /* readFromFile */, sim_par);
 
     //Making The Surface, And Time Stepper
-    Sur_t S(x, Mats);
+    Sur_t S(Mats, &x);
 
     //Setting the background flow
     BgFlowBase<Vec_t> *vInf(NULL);
