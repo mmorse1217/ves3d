@@ -91,11 +91,11 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.rep_tol == pc->rep_tol					, "incorrect rep_tol");
     ASSERT(p.bg_flow_param == pc->bg_flow_param				, "incorrect bg_flow_param");
     ASSERT(p.upsample_interaction == pc->upsample_interaction		, "incorrect upsample_interaction");
-    ASSERT(p.save_data == pc->save_data					, "incorrect save_data");
-    ASSERT(p.save_stride == pc->save_stride				, "incorrect save_stride");
+    ASSERT(p.checkpoint == pc->checkpoint        			, "incorrect checkpoint");
+    ASSERT(p.checkpoint_stride == pc->checkpoint_stride			, "incorrect checkpoint_stride");
     ASSERT(p.init_file_name == pc->init_file_name			, "incorrect init_file_name");
     ASSERT(p.cntrs_file_name == pc->cntrs_file_name			, "incorrect cntrs_file_name");
-    ASSERT(p.save_file_name == pc->save_file_name			, "incorrect save_file_name");
+    ASSERT(p.checkpoint_file_name == pc->checkpoint_file_name		, "incorrect checkpoint_file_name");
     ASSERT(p.error_factor == pc->error_factor				, "incorrect error_factor");
     ASSERT(p.num_threads == pc->num_threads				, "incorrect num_threads");
 

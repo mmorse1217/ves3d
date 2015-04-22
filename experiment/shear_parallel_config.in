@@ -19,7 +19,7 @@ time-scheme : GloballyImplicit
 time-precond : DiagonalSpectral
 time-iter-max : 100
 time-tol : 1e-6
-save-stride : 5e-1
+checkpoint-stride : 5e-1
 singular-stokes : Direct
 
 ##reparametrization #########################
@@ -32,8 +32,8 @@ init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
 cent-file : experiment/centers_64.txt
 
 ##checkpoint/monitor ########################
-save-data
-out-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}.out
+checkpoint
+checkpoint-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}.out
 error-factor : .01
 
 ##far filed #################################

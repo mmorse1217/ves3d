@@ -59,11 +59,12 @@ class Parameters : public Streamable
     bool upsample_interaction;
 
     //Startup and Monitoring
-    bool save_data;
-    T save_stride;
+    bool checkpoint;
+    T checkpoint_stride;
     std::string init_file_name;
     std::string cntrs_file_name;
-    std::string save_file_name;
+    std::string checkpoint_file_name;
+    std::string load_checkpoint;
     T error_factor;
     int num_threads;
 

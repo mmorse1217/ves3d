@@ -14,8 +14,7 @@ tension-tol : 1e-6
 ##time stepping #############################
 time-horizon : 1e-2
 timestep : 1e-4
-save-stride : 1e-4
-
+checkpoint-stride : 1e-4
 time-scheme : JacobiBlockExplicit
 singular-stokes : Direct
 
@@ -29,8 +28,8 @@ init-file : precomputed/dumbbell_%d_%s.txt
 cent-file : experiment/shear_centers.txt
 
 ##checkpoint/monitor ########################
-save-data
-out-file : experiment/shear.out
+checkpoint
+checkpoint-file : experiment/shear.out
 error-factor : .01
 
 ##far filed #################################

@@ -34,8 +34,8 @@ void Parameters<T>::init()
     rep_tol		    = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
     rep_ts		    = 1;
     rep_up_freq		    = 24;
-    save_data		    = false;
-    save_stride		    = -1;
+    checkpoint		    = false;
+    checkpoint_stride	    = -1;
     scheme		    = JacobiBlockImplicit;
     sh_order		    = 12;
     singular_stokes	    = ViaSpHarm;
@@ -118,11 +118,13 @@ void Parameters<T>::setUsage(AnyOption *opt)
 {
   opt->addUsage( "List of options: " );
   opt->addUsage( "" );
-  opt->addUsage( " -f  --opt-file              The name of the options file to be parsed.");
-  opt->addUsage( " -h  --help                  Prints this help " );
+  opt->addUsage( " -f  --opt-file              The name of the options file to be parsed");
+  opt->addUsage( " -h  --help                  Prints this help" );
   opt->addUsage( " -i  --init-file             The file containing the initial shape of vesicles");
-  opt->addUsage( " -o  --out-file              The output file");
-  opt->addUsage( " -s  --save-data             Flag to save data to file" );
+  opt->addUsage( " -o  --checkpoint-file       The output file *template*");
+  opt->addUsage( " -s  --checkpoint            Flag to save data to file" );
+  opt->addUsage( " -l  --load-checkpoint       Name of the checkpoint file to load and start with" );
+
   opt->addUsage( "" );
 
   // ordered alphabetically
@@ -142,7 +144,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --rep-timestep          The Time step for the reparametrization" );
   opt->addUsage( "     --rep-tol               The absolute value tol on the velocity of reparametrization" );
   opt->addUsage( "     --rep-up-freq           The upsampling frequency for the reparametrization" );
-  opt->addUsage( "     --save-stride           The frequency of saving to file (in time scale)" );
+  opt->addUsage( "     --checkpoint-stride     The frequency of saving to file (in time scale)" );
   opt->addUsage( "     --sh-order              The spherical harmonics order" );
   opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
@@ -166,13 +168,14 @@ void Parameters<T>::setOptions(AnyOption *opt)
 
   // a flag (takes no argument), supporting long and short forms
   opt->setCommandFlag( "help", 'h');
-  opt->setFlag( "save-data", 's' );
+  opt->setFlag( "checkpoint", 's' );
   opt->setFlag( "upsample-interaction");
 
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
-  opt->setOption( "out-file", 'o');
+  opt->setOption( "checkpoint-file", 'o');
+  opt->setOption( "load-checkpoint", 'l');
 
   //an option (takes an argument), supporting only long form
   //ordered alphabetically
@@ -192,7 +195,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "rep-timestep" );
   opt->setOption( "rep-tol" );
   opt->setOption( "rep-up-freq" );
-  opt->setOption( "save-stride" );
+  opt->setOption( "checkpoint-stride" );
   opt->setOption( "sh-order" );
   opt->setOption( "singular-stokes" );
   opt->setOption( "tension-iter-max" );
@@ -218,10 +221,10 @@ void Parameters<T>::setOptions(AnyOption *opt)
 template<typename T>
 void Parameters<T>::getOptionValues(AnyOption *opt)
 {
-  if( opt->getFlag( "save-data" ) || opt->getFlag( 's' ) )
-      this->save_data = true;
+  if( opt->getFlag( "checkpoint" ) || opt->getFlag( 's' ) )
+      this->checkpoint = true;
   else
-      this->save_data = false;
+      this->checkpoint = false;
 
   if( opt->getFlag( "upsample-interaction" ) )
       this->upsample_interaction = true;
@@ -232,9 +235,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "init-file" ) != NULL || opt->getValue( 'i' ) !=NULL )
     this->init_file_name = opt->getValue( 'i' );
 
-  if( opt->getValue( 'o' ) !=NULL || opt->getValue( "out-file") !=NULL )
-    this->save_file_name = opt->getValue( 'o' );
+  if( opt->getValue( 'o' ) !=NULL || opt->getValue( "checkpoint-file") !=NULL )
+    this->checkpoint_file_name = opt->getValue( 'o' );
 
+  if( opt->getValue( 'l' ) !=NULL || opt->getValue( "load-checkpoint") !=NULL )
+    this->load_checkpoint = opt->getValue( 'l' );
 
   //shOrder set first so that the adjusted frequencies can be overridden
   if( opt->getValue( "sh-order" ) != NULL  )
@@ -295,8 +300,8 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "rep-up-freq" ) != NULL  )
     this->rep_up_freq =  atoi(opt->getValue( "rep-up-freq" ));
 
-  if( opt->getValue( "save-stride" ) != NULL  )
-    this->save_stride =  atof(opt->getValue( "save-stride" ));
+  if( opt->getValue( "checkpoint-stride" ) != NULL  )
+    this->checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
 
   if( opt->getValue( "time-scheme" ) != NULL  ){
     this->scheme = EnumifyScheme(opt->getValue( "time-scheme" ));
@@ -367,11 +372,12 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"rep_tol: "<<rep_tol<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
     os<<"upsample_interaction: "<<upsample_interaction<<"\n";
-    os<<"save_data: "<<save_data<<"\n";
-    os<<"save_stride: "<<save_stride<<"\n";
+    os<<"checkpoint: "<<checkpoint<<"\n";
+    os<<"checkpoint_stride: "<<checkpoint_stride<<"\n";
     os<<"init_file_name: "<<init_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"cntrs_file_name: "<<cntrs_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
-    os<<"save_file_name: "<<save_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
+    os<<"checkpoint_file_name: "<<checkpoint_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
+    os<<"load_checkpoint: "<<load_checkpoint<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"error_factor: "<<error_factor<<"\n";
     os<<"num_threads: "<<num_threads<<"\n";
     os<<"/PARAMETERS\n";
@@ -419,15 +425,17 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>rep_tol;			ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
     is>>key>>bg_flow_param;		ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
     is>>key>>upsample_interaction;	ASSERT(key=="upsample_interaction:", "Unexpected key (expected upsample_interaction)");
-    is>>key>>save_data;			ASSERT(key=="save_data:", "Unexpected key (expected save_data)");
-    is>>key>>save_stride;		ASSERT(key=="save_stride:", "Unexpected key (expected save_stride)");
+    is>>key>>checkpoint;		ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
+    is>>key>>checkpoint_stride;		ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
 
     is>>key>>s;		                ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
-    if (s!="|"){init_file_name=s; is>>s;}; //conume |
+    if (s!="|"){init_file_name=s; is>>s; /* conume | */}else{init_file_name="";}
     is>>key>>s;          		ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
-    if (s!="|"){cntrs_file_name=s; is>>s;}; //conume |
-    is>>key>>s;         		ASSERT(key=="save_file_name:", "Unexpected key (expected save_file_name)");
-    if (s!="|"){save_file_name=s; is>>s;}; //conume |
+    if (s!="|"){cntrs_file_name=s; is>>s; /* conume | */}else{cntrs_file_name="";}
+    is>>key>>s;         		ASSERT(key=="checkpoint_file_name:", "Unexpected key (expected checkpoint_file_name)");
+    if (s!="|"){checkpoint_file_name=s; is>>s;/* conume | */}else{checkpoint_file_name="";}
+    is>>key>>s;         		ASSERT(key=="load_checkpoint:", "Unexpected key (expected load_checkpoint)");
+    if (s!="|"){load_checkpoint=s; is>>s; /* conume | */}else{load_checkpoint="";}
     is>>key>>error_factor;		ASSERT(key=="error_factor:", "Unexpected key (expected error_factor)");
     is>>key>>num_threads;		ASSERT(key=="num_threads:", "Unexpected key (expected num_threads)");
     is>>s;
@@ -457,6 +465,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Tension solver restart   : "<<par.tension_solver_restart<<std::endl;
     output<<"   Position solver tol      : "<<par.position_solver_tol<<std::endl;
     output<<"   Tension solver tol       : "<<par.tension_solver_tol<<std::endl;
+    output<<"   Error Factor             : "<<par.error_factor<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Time stepper:"<<std::endl;
@@ -479,11 +488,12 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Init file name           : "<<par.init_file_name<<std::endl;
     output<<"   Centers file name        : "<<par.cntrs_file_name<<std::endl;
     output<<"------------------------------------"<<std::endl;
-    output<<" Saving:"<<std::endl;
-    output<<"   Save data                : "<<std::boolalpha<<par.save_data<<std::endl;
-    output<<"   Save file name           : "<<par.save_file_name<<std::endl;
-    output<<"   Save stride              : "<<par.save_stride<<std::endl;
-    output<<"   Error Factor             : "<<par.error_factor<<std::endl;
+    output<<" Checkpointing:"<<std::endl;
+    output<<"   Checkpoint               : "<<std::boolalpha<<par.checkpoint<<std::endl;
+    output<<"   Checkpoint file name     : "<<par.checkpoint_file_name<<std::endl;
+    output<<"   Checkpoint stride        : "<<par.checkpoint_stride<<std::endl;
+    output<<"   Load checkpoint          : "<<par.load_checkpoint<<std::endl;
+
     output<<"------------------------------------"<<std::endl;
     output<<" Background flow:"<<std::endl;
     output<<"   Background flow type     : "<<par.bg_flow<<std::endl;

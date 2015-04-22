@@ -63,7 +63,7 @@ void run_sim(int argc, char **argv){
     dict["sh_order"]  = sp.str();
     dict["precision"] = (typeid(real_t) == typeid(float)) ? "float" : "double";
 
-    expand_template(&sim_par.save_file_name, &dict);
+    expand_template(&sim_par.checkpoint_file_name, &dict);
     expand_template(&sim_par.init_file_name, &dict);
     expand_template(&sim_par.cntrs_file_name, &dict);
     COUT(sim_par);
@@ -72,7 +72,7 @@ void run_sim(int argc, char **argv){
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
 
     //reading the prototype form file
-    DataIO myIO(FullPath(sim_par.save_file_name));
+    DataIO myIO(FullPath(sim_par.checkpoint_file_name));
     myIO.ReadData( FullPath(sim_par.init_file_name), x0, DataIO::ASCII, 0, x0.getSubLength());
 
     //reading centers file

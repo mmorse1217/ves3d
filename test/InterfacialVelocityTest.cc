@@ -79,7 +79,7 @@ int main(int argc, char** argv){
     sim_par.ts              = ts;
     COUT(sim_par);
 
-    DataIO myIO(sim_par.save_file_name, DataIO::ASCII);
+    DataIO myIO(sim_par.checkpoint_file_name, DataIO::ASCII);
     char fname[300];
     std::string prec = (typeid(real_t) == typeid(float)) ? "float" : "double";
     //sprintf(fname, "precomputed/dumbbell_%u_%s.txt", sim_par.sh_order, prec.c_str());

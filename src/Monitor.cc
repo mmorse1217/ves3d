@@ -6,9 +6,9 @@ MonitorBase<EvolveSurface>::~MonitorBase()
 ///@todo move the buffer size to the parameters
 template<typename EvolveSurface>
 Monitor<EvolveSurface>::Monitor(const Parameters<value_type> &params) :
-    save_flag_(params.save_data),
-    save_stride_(params.save_stride),
-    IO(params.save_file_name, DataIO::ASCII,
+    save_flag_(params.checkpoint),
+    save_stride_(params.checkpoint_stride),
+    IO(params.checkpoint_file_name, DataIO::ASCII,
         5 * (DIM + 1) * /* position + tension */
         SpharmGridDim(params.sh_order).first *
         SpharmGridDim(params.sh_order).second * sizeof(value_type)),

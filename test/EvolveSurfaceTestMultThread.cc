@@ -141,7 +141,7 @@ void TestEvolveSurfMT(){
     sim_par.bg_flow_param        = 0;
     sim_par.upsample_interaction = true;
     sim_par.rep_maxit            = 20;
-    sim_par.save_data            = false;
+    sim_par.checkpoint           = false;
     COUT(sim_par);
 
     // Making multiple threads

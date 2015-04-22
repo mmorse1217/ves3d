@@ -20,7 +20,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
 
     //reading the prototype form file
-    DataIO myIO(sim_par.save_file_name,DataIO::ASCII);
+    DataIO myIO(sim_par.checkpoint_file_name,DataIO::ASCII);
     char fname[300];
     std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
     sprintf(fname,"precomputed/dumbbell_%u_%s.txt",sim_par.sh_order,prec.c_str());
@@ -78,13 +78,13 @@ int main(int argc, char **argv)
     sim_par.bg_flow_param        = 0;
     sim_par.upsample_interaction = true;
     sim_par.rep_maxit            = 20;
-    sim_par.save_data            = true;
-    sim_par.save_stride          = 1;
-    sim_par.save_file_name = "EvolveSurf.out";
+    sim_par.checkpoint           = true;
+    sim_par.checkpoint_stride    = 1;
+    sim_par.checkpoint_file_name = "EvolveSurf.out";
     COUT(sim_par);
 
     //Cleaning the slate
-    remove(sim_par.save_file_name.c_str());
+    remove(sim_par.checkpoint_file_name.c_str());
 
     CLEARERRORHIST();
     PROFILESTART();
