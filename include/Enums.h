@@ -50,19 +50,19 @@ inline T PI64(){
 ///The enum type for the reordering of the points
 ///PointMajor means [x_1,y_1,z_1,...] ordering
 ///AxisMajor means [x_1,x_2,...,x_N,...,z_1,...,z_N] ordering
-enum CoordinateOrder {PointMajor, AxisMajor};
+enum CoordinateOrder {PointMajor, AxisMajor, UnknownOrder};
 
 ///The linear solver scheme for the vesicle evolution equation
 enum SolverScheme {JacobiBlockExplicit,     /* Jacobi iteration + only block tension solve, explicit position */
 		   JacobiBlockGaussSeidel,  /* Jacobi iteration + tension solve + position solve              */
 		   JacobiBlockImplicit,     /* Jacobi iteration + block coupled solve                         */
 		   GloballyImplicit,        /* Fully implicit                                                 */
-		   UnkownScheme};           /* Used to signal parsing errors                                  */
+		   UnknownScheme};          /* Used to signal parsing errors                                  */
 
 ///The linear solver scheme for the vesicle evolution equation
 enum PrecondScheme {DiagonalSpectral,       /* Only the self preconditioner; diagonal in SH basis */
 		    NoPrecond,              /* No preconditioner at all                           */
-		    UnkownPrecond};         /* Used to signal parsing errors                      */
+		    UnknownPrecond};        /* Used to signal parsing errors                      */
 
 ///The types of background flow that are supported
 enum BgFlowType {ShearFlow,
@@ -70,13 +70,14 @@ enum BgFlowType {ShearFlow,
 		 ParabolicFlow,
 		 PeriodicFlow,
 		 UserDefinedFlow,        /* Mostly for testing purposes   */
-		 UnkownFlow};            /* Used to signal parsing errors */
+		 UnknownFlow};           /* Used to signal parsing errors */
 
 ///DirectEagerEval gives the rotation code the freedom to precompute
 ///and cache some of the expected results
 enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 
 ///String to enums functions
+enum CoordinateOrder EnumifyCoordinateOrder(const char * co);
 enum SolverScheme EnumifyScheme(const char * name);
 enum PrecondScheme EnumifyPrecond(const char * name);
 enum BgFlowType EnumifyBgFlow(const char * name);

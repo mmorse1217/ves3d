@@ -1,5 +1,17 @@
 #include "Enums.h"
 
+enum CoordinateOrder EnumifyCoordinateOrder(const char * co)
+{
+  std::string ns(co);
+
+  if ( ns.compare(0,4,"Poin") == 0 )
+      return PointMajor;
+  else if ( ns.compare(0,4,"Axis") == 0 )
+      return AxisMajor;
+  else
+      return UnknownOrder;
+}
+
 enum SolverScheme EnumifyScheme(const char * name)
 {
   std::string ns(name);
@@ -13,7 +25,7 @@ enum SolverScheme EnumifyScheme(const char * name)
   else if ( ns.compare(0,6 ,"Global") == 0 )
       return GloballyImplicit;
   else
-      return UnkownScheme;
+      return UnknownScheme;
 }
 
 enum PrecondScheme EnumifyPrecond(const char * name)
@@ -25,7 +37,7 @@ enum PrecondScheme EnumifyPrecond(const char * name)
   else if ( ns.compare(0,9,"NoPrecond") == 0 )
       return NoPrecond;
   else
-      return UnkownPrecond;
+      return UnknownPrecond;
 }
 
 enum BgFlowType EnumifyBgFlow(const char * name)
@@ -43,7 +55,7 @@ enum BgFlowType EnumifyBgFlow(const char * name)
   else if ( ns.compare(0,4,"User") == 0 )
       return UserDefinedFlow;
   else
-      return UnkownFlow;
+      return UnknownFlow;
 }
 
 enum SingularStokesRot EnumifyStokesRot(const char * name)
@@ -68,6 +80,9 @@ std::ostream& operator<<(std::ostream& output,
         case AxisMajor:
             output<<"AxisMajor";
             break;
+        case UnknownOrder:
+            output<<"UnknownOrder";
+            break;
     }
 
     return output;
@@ -90,7 +105,7 @@ std::ostream& operator<<(std::ostream& output, const enum SolverScheme &SS)
             output<<"GloballyImplicit";
             break;
         default:
-            output<<"UnkownScheme";
+            output<<"UnknownScheme";
             break;
     }
 
@@ -108,7 +123,7 @@ std::ostream& operator<<(std::ostream& output, const enum PrecondScheme &PS)
             output<<"NoPrecond";
             break;
         default:
-            output<<"UnkownPrecond";
+            output<<"UnknownPrecond";
             break;
     }
 
@@ -135,7 +150,7 @@ std::ostream& operator<<(std::ostream& output, const enum BgFlowType &BG)
 	    output<<"UserDefinedFlow";
 	    break;
 	default:
-	    output<<"UnkownFlow";
+	    output<<"UnknownFlow";
     }
 
     return output;

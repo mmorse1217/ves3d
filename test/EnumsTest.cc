@@ -27,10 +27,10 @@ int main(int argc, char** argv)
     }
 
     SolverScheme schemes [] = {JacobiBlockExplicit, JacobiBlockGaussSeidel, JacobiBlockImplicit,
-			       GloballyImplicit, UnkownScheme};
+			       GloballyImplicit, UnknownScheme};
 
     const char* snames[] = {"JacobiBlockExplicit", "JacobiBlockGaussSeidel", "JacobiBlockImplicit",
-			    "GloballyImplicit", "UnkownScheme"};
+			    "GloballyImplicit", "UnknownScheme"};
 
     N = 5;
     for (int i=0; i<N; ++i){
