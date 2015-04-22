@@ -43,14 +43,6 @@ std::string Streamable::name()
     return name_;
 }
 
-template<typename D>
-Error_t Streamable::factory(std::istream &is, Format format, D **obj)
-{
-    ASSERT(*obj == NULL, "initial pointer should be null");
-    *obj = new D(is, format);
-    return ErrorEvent::Success;
-}
-
 template<typename T>
 Error_t Streamable::pack_array(std::ostream &os, Format format, const T* arr, size_t n, const char *sep) const
 {

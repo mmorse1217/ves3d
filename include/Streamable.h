@@ -55,11 +55,6 @@ class Streamable{
     Error_t set_name(std::string newname);
     std::string name();
 
-    //! Relies on (and intend to enforce) the fact that the derived
-    //! classed D have a constructor from stream
-    template<typename D>
-    static Error_t factory(std::istream &is, Format format, D **obj);
-
     //! converts the streamable to a stream depending on format. This
     //! appends its data to the stream. It is expected that derived
     //! classes do (1) do not change stream flags such as precision

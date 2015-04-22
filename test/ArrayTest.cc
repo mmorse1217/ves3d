@@ -84,11 +84,6 @@ void test_array(){
 	d.pack(s3, Streamable::ASCII);
 	ASSERT(s3.str()==ref, "bad stream d");
 
-	Arr *e(NULL);
-	Streamable::factory(s3, Streamable::ASCII, &e);
-	e->pack(s4, Streamable::ASCII);
-	ASSERT(s4.str()==ref, "bad stream e");
-
 	delete[] c;
     }
 }

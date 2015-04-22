@@ -432,14 +432,13 @@ bool VectorsTest<V>::TestStream()
     std::stringstream s1,s2;
     v.pack(s1, V::Streamable::ASCII);
 
-    V *vc(NULL);
-    V::Streamable::factory(s1, V::Streamable::ASCII, &vc);
-    vc->pack(s2, V::Streamable::ASCII);
+    V vc(s1, V::Streamable::ASCII);
+    vc.pack(s2, V::Streamable::ASCII);
 
     ASSERT(s1.str()==s2.str(),"bad streaming");
-    ASSERT(vc->getShOrder()==p, "bad streaming p");
-    ASSERT(vc->getNumSubs()==ns, "bad streaming NumSubs");
-    ASSERT(vc->getNumSubFuncs()==ns*v.getTheDim(), "bad streaming NumSubs");
+    ASSERT(vc.getShOrder()==p, "bad streaming p");
+    ASSERT(vc.getNumSubs()==ns, "bad streaming NumSubs");
+    ASSERT(vc.getNumSubFuncs()==ns*v.getTheDim(), "bad streaming NumSubs");
     return true;
 }
 
