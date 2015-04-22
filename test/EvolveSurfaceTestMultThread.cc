@@ -76,10 +76,11 @@ void EvolveEachObj(Parameters<T> &sim_par,
     Mats.reset(new Mats_t(readFromFile, sim_par));
 
     //Setting the background flow
-    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    BgFlowBase<Vec_t> *vInf(NULL);
+    CHK(BgFlowFactory(sim_par, &vInf));
 
     // Evolver
-    Evolve_t Es(sim_par, *Mats, x0, &vInf, NULL, interaction, repartition);
+    Evolve_t Es(sim_par, *Mats, x0, vInf, NULL, interaction, repartition);
 
     CHK ( Es.Evolve() );
 

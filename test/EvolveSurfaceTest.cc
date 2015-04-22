@@ -45,11 +45,13 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     typename Evolve_t::Mats_t Mats(readFromFile, sim_par);
 
     //Setting the background flow
-    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    BgFlowBase<Vec_t> *vInf(NULL);
+    CHK(BgFlowFactory(sim_par, &vInf));
 
     typename Evolve_t::Interaction_t interaction(&StokesAlltoAll);
+
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, &vInf, NULL, &interaction);
+    Evolve_t Es(sim_par, Mats, x0, vInf, NULL, &interaction, NULL, NULL);
 
     CHK ( Es.Evolve() );
 }

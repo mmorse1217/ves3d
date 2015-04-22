@@ -78,10 +78,12 @@ int main(int argc, char** argv)
 
     {
         //Setting the background flow
-        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+	BgFlowBase<Vec_t> *vInf(NULL);
+	CHK(BgFlowFactory(sim_par, &vInf));
+
 
         Interaction_t interaction(NULL);
-        IntVel_t F(S, interaction, Mats, sim_par, vInf);
+        IntVel_t F(S, interaction, Mats, sim_par, *vInf);
 
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
@@ -99,10 +101,11 @@ int main(int argc, char** argv)
 
     {
         //Setting the background flow
-        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+	BgFlowBase<Vec_t> *vInf(NULL);
+	CHK(BgFlowFactory(sim_par, &vInf));
 
         Interaction_t Interaction(NULL);
-        IntVel_t F(S, Interaction, Mats, sim_par,vInf);
+        IntVel_t F(S, Interaction, Mats, sim_par, *vInf);
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
     }
@@ -126,10 +129,11 @@ int main(int argc, char** argv)
     S.setPosition(x);
     {
         //Setting the background flow
-        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+	BgFlowBase<Vec_t> *vInf(NULL);
+	CHK(BgFlowFactory(sim_par, &vInf));
 
         Interaction_t Interaction(StokesAlltoAll);
-        IntVel_t F(S, Interaction, Mats, sim_par,vInf);
+        IntVel_t F(S, Interaction, Mats, sim_par, *vInf);
         // b-marking
         F.benchmarkExplicit(Fb, SFb, vel, tension, xnew, tol);
     }
@@ -143,10 +147,11 @@ int main(int argc, char** argv)
     S.setPosition(x);
     {
         //Setting the background flow
-        ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+	BgFlowBase<Vec_t> *vInf(NULL);
+	CHK(BgFlowFactory(sim_par, &vInf));
 
         Interaction_t Interaction(StokesAlltoAll);
-        IntVel_t F(S, Interaction, Mats, sim_par,vInf);
+        IntVel_t F(S, Interaction, Mats, sim_par, *vInf);
         // b-marking
         F.benchmarkImplicit(tension, vel, xnew, tol);
     }

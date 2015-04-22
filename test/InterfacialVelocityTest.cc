@@ -96,11 +96,12 @@ int main(int argc, char** argv){
     Sur_t S(x, Mats);
 
     //Setting the background flow
-    ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
+    BgFlowBase<Vec_t> *vInf(NULL);
+    CHK(BgFlowFactory(sim_par, &vInf));
 
     Interaction_t interaction(&StokesAlltoAll);
     PSol_t *ksp = new PSol_t(VES3D_COMM_WORLD);
-    IntVel_t *F = new IntVel_t(S, interaction, Mats, sim_par, vInf, ksp);
+    IntVel_t *F = new IntVel_t(S, interaction, Mats, sim_par, *vInf, ksp);
 
     // testing
     // INFO("Explicit update");
