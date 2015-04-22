@@ -104,16 +104,14 @@ int main(int, char**){
     	testtools::AssertAlmostEqual<float>(c.z[i], d.z[i], 1e-7, "bad (un)packed z");
 
     std::stringstream s2(ss.str());
-    Foo *e(NULL);
-    Streamable::factory(s2, Streamable::ASCII, &e);
-    testtools::AssertAlmostEqual(c.x, e->x, 1e-10, "bad (un)packed x");
-    testtools::AssertAlmostEqual(c.y, e->y, 1e-10, "bad (un)packed y");
-    testtools::AssertEqual(c.r, e->r, "bad (un)packed r");
-    testtools::AssertEqual(c.n, e->n, "bad (un)packed n");
+    Foo e(s2, Streamable::ASCII);
+    testtools::AssertAlmostEqual(c.x, e.x, 1e-10, "bad (un)packed x");
+    testtools::AssertAlmostEqual(c.y, e.y, 1e-10, "bad (un)packed y");
+    testtools::AssertEqual(c.r, e.r, "bad (un)packed r");
+    testtools::AssertEqual(c.n, e.n, "bad (un)packed n");
 
-    for (int i=0; i<e->n; ++i)
-    	testtools::AssertAlmostEqual<float>(c.z[i], e->z[i], 1e-7, "bad (un)packed z");
+    for (int i=0; i<e.n; ++i)
+    	testtools::AssertAlmostEqual<float>(c.z[i], e.z[i], 1e-7, "bad (un)packed z");
 
-    COUT("e:\n"<<std::scientific<<std::setprecision(16)<<e<<"-------\nc:\n"<<&c);
-    delete e;
+    COUT("e:\n"<<std::scientific<<std::setprecision(16)<<&e<<"-------\nc:\n"<<&c);
 }
