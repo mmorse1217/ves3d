@@ -6,10 +6,15 @@
 #include "Logger.h"
 #include "anyoption.h"
 #include "Streamable.h"
+#include "ves3d_common.h"
 
 #include <typeinfo>
 #include <iostream>
 #include <string>
+#include <map>
+
+
+typedef std::map<std::string,std::string> DictString_t;
 
 template <typename T>
 class Parameters : public Streamable
@@ -69,7 +74,8 @@ class Parameters : public Streamable
     int num_threads;
 
     //parsing
-    Error_t parseInput(int argc, char** argv);
+    Error_t parseInput(int argc, char** argv, const DictString_t *dict=NULL);
+    Error_t expand_templates(const DictString_t *dict=NULL);
 
     //Adjust the frequencies according to the sh_order
     void adjustFreqs();
@@ -91,6 +97,11 @@ class Parameters : public Streamable
 
 template<typename T>
 std::ostream& operator<<(std::ostream& output, const Parameters<T>& par);
+
+//! Expands the templates in pattern marked by their key in dict to
+//! the value in dict. For example user_{{name}}} with dict
+//! {name:'JohnDoe'} expands to user_JohnDoe.
+Error_t expand_template(std::string *pattern, const DictString_t &dict);
 
 #include "Parameters.cc"
 

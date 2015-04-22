@@ -38,6 +38,22 @@
 #include <stdlib.h> //getenv
 #include <string>
 
+#ifdef HAS_MPI
+#include "mpi.h"
+#define COUTMASTER(str) (std::cout<<str<<std::endl)
+#else
+#define COUTMASTER(str) (std::cout<<str<<std::endl)
+#endif //HAS_MPI
+
+#ifdef HAS_PETSC
+#include "petscksp.h"
+#define VES3D_COMM_WORLD PETSC_COMM_WORLD
+#define CHK_PETSC(expr) expr;
+#define PRINTF(comm, ... ) PetscPrintf(comm, __VA_ARGS__);
+#define PRINTF_ERR(comm, ... ) PetscFPrintf(comm, PETSC_STDERR, __VA_ARGS__);
+#define ABORT(ierr, msg) SETERRABORT(PETSC_COMM_WORLD, ierr, msg)
+#endif //HAS_PETSC
+
 #define STR_EXPAND(tok) #tok
 #define STR(tok) STR_EXPAND(tok)
 

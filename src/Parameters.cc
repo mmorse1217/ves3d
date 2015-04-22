@@ -57,7 +57,7 @@ Parameters<T>::~Parameters()
 {}
 
 template<typename T>
-Error_t Parameters<T>::parseInput(int argc, char** argv)
+Error_t Parameters<T>::parseInput(int argc, char** argv, const DictString_t *dict)
 {
   // 1. CREATE AN OBJECT
   AnyOption opt;
@@ -102,7 +102,31 @@ Error_t Parameters<T>::parseInput(int argc, char** argv)
 
   // 6. GET THE VALUES
   this->getOptionValues(&opt);
+  expand_templates(dict);
   return ErrorEvent::Success;
+}
+
+template<typename T>
+Error_t Parameters<T>::expand_templates(const DictString_t *dict){
+
+    DictString_t d;
+    std::stringstream sn, sp;
+    sn<<n_surfs;  d["n_surfs"] = sn.str();
+    sp<<sh_order; d["sh_order"]= sp.str();
+    d["precision"] = (typeid(T) == typeid(float)) ? "float" : "double";
+
+    //overwriting the defaults
+    if (dict != NULL){
+	DictString_t::const_iterator iter(dict->begin());
+	for (;iter != dict->end(); ++iter)
+	    d[iter->first] = iter->second;
+    }
+    CHK(::expand_template(&init_file_name      , d));
+    CHK(::expand_template(&cntrs_file_name     , d));
+    CHK(::expand_template(&checkpoint_file_name, d));
+    CHK(::expand_template(&load_checkpoint     , d));
+
+    return ErrorEvent::Success;
 }
 
 template<typename T>
@@ -506,4 +530,23 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"====================================";
 
     return output;
+}
+
+Error_t expand_template(std::string *pattern, const DictString_t &dict){
+
+    DictString_t::const_iterator iter(dict.begin());
+    for (;iter != dict.end(); ++iter)
+    {
+	std::size_t idx(0);
+	do{
+	    idx = pattern->find("{{"+iter->first+"}}",idx);
+	    if (idx!=std::string::npos){
+		pattern->replace(idx,iter->first.length()+4,iter->second);
+		++idx;
+	    } else {
+		break;
+	    }
+	} while (true);
+    }
+    return ErrorEvent::Success;
 }

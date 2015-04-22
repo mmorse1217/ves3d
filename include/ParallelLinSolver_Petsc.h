@@ -36,15 +36,9 @@
 #define _PARALLELLINSOLVERINTERFACE_PETSC_H_
 
 #include "ParallelLinSolverInterface.h"
+#include "ves3d_common.h"
 #include "petscksp.h"
 #include "Logger.h"
-
-#define VES3D_COMM_WORLD PETSC_COMM_WORLD
-#define CHK_PETSC(expr) expr;
-#define PRINTF(comm, ... ) PetscPrintf(comm, __VA_ARGS__);
-#define PRINTF_ERR(comm, ... ) PetscFPrintf(comm, PETSC_STDERR, __VA_ARGS__);
-#define ABORT(ierr, msg) SETERRABORT(VES3D_COMM_WORLD, ierr, msg)
-#define COUTMASTER(str) (std::cout<<str<<std::endl)
 
 template<typename T>
 class ParallelVecPetsc : public ParallelVec<T>

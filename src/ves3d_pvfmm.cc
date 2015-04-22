@@ -3,10 +3,8 @@
 #include "Logger.h"
 #include "EvolveSurface.h"
 #include "ParallelLinSolver_Petsc.h"
-#include <map>
 
 typedef Device<CPU> Dev;
-typedef std::map<std::string,std::string> Dict_t;
 extern const Dev the_dev(0);
 
 // Default callback for errors
@@ -14,24 +12,6 @@ Error_t cb_abort(const ErrorEvent &err)
 {
     CERR_LOC("Aborting, received error "<<err,"",abort());
     return err.err_;
-}
-
-void expand_template(std::string *pattern, Dict_t *dict){
-
-    Dict_t::iterator iter(dict->begin());
-    for (;iter != dict->end(); ++iter)
-    {
-	std::size_t idx(0);
-	do{
-	    idx = pattern->find("{{"+iter->first+"}}",idx);
-	    if (idx!=std::string::npos){
-		pattern->replace(idx,iter->first.length()+4,iter->second);
-		++idx;
-	    } else {
-		break;
-	    }
-	} while (true);
-    }
 }
 
 void run_sim(int argc, char **argv){
@@ -50,22 +30,14 @@ void run_sim(int argc, char **argv){
 
     // Setting the parameters
     Par_t sim_par;
-    CHK(sim_par.parseInput(argc, argv));
-    omp_set_num_threads(sim_par.num_threads);
-
-    // hacking the output file name inside the sim_par
     Dict_t dict;
-    std::stringstream snp, sr, sn, sp;
-    snp<<nproc; sr<<rank; sn<<sim_par.n_surfs; sp<<sim_par.sh_order;
-    dict["nprocs"]    = snp.str();
-    dict["rank"]      = sr.str();
-    dict["n_surfs"]   = sn.str();
-    dict["sh_order"]  = sp.str();
-    dict["precision"] = (typeid(real_t) == typeid(float)) ? "float" : "double";
+    std::stringstream snp, sr;
+    snp<<nproc; sr<<rank;
+    dict["nprocs"] = snp.str();
+    dict["rank"]   = sr.str();
 
-    expand_template(&sim_par.checkpoint_file_name, &dict);
-    expand_template(&sim_par.init_file_name, &dict);
-    expand_template(&sim_par.cntrs_file_name, &dict);
+    CHK(sim_par.parseInput(argc, argv, &dict));
+    omp_set_num_threads(sim_par.num_threads);
     COUT(sim_par);
 
     //Initial vesicle positions

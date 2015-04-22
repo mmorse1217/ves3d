@@ -96,6 +96,7 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.init_file_name == pc->init_file_name			, "incorrect init_file_name");
     ASSERT(p.cntrs_file_name == pc->cntrs_file_name			, "incorrect cntrs_file_name");
     ASSERT(p.checkpoint_file_name == pc->checkpoint_file_name		, "incorrect checkpoint_file_name");
+    ASSERT(p.load_checkpoint == pc->load_checkpoint      		, "incorrect load_checkpoint");
     ASSERT(p.error_factor == pc->error_factor				, "incorrect error_factor");
     ASSERT(p.num_threads == pc->num_threads				, "incorrect num_threads");
 
@@ -104,8 +105,8 @@ bool ParametersTest<P>::TestStream(const P &p)
 
 int main(int, char**){
 
-    int argc(7);
-    char *argv[] = {"execname", "--n-surfs", "5", "--sh-order","13","-o","out.txt"};
+    int argc(9);
+    char *argv[] = {"execname", "--n-surfs", "5", "--sh-order","13","-o","out.txt", "-l", "a.txt"};
     Parameters<double> p(argc, argv);
     ParametersTest<Parameters<double> > PT;
     PT(p);

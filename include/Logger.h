@@ -33,6 +33,8 @@
 #ifndef _LOGGER_H_
 #define _LOGGER_H_
 
+#include "ves3d_common.h"
+
 #include <iostream>
 #include <iomanip>  //for setpercision
 #include <map>
@@ -40,10 +42,7 @@
 #include <stack>
 #include <string>
 #include <cassert>
-#include  <ctime>
-// #include <sys/time.h>
-
-#include "ves3d_common.h"
+#include <ctime>
 
 //! A log event recorded by the Logger class.
 struct LogEvent
@@ -182,7 +181,6 @@ static bool assert_expr(false);
 #endif //VERBOSE
 
 #define COUT(str) (std::cout<<str<<std::endl)
-#define COUTMASTER(str) (std::cout<<str<<std::endl)
 
 #ifdef QUIET
 #define INFO(str)

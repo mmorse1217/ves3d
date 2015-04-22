@@ -29,6 +29,7 @@ ifeq (${VES3D_USE_PVFMM},yes)
 endif
 
 ifeq (${VES3D_USE_PETSC},yes)
+  CXXFLAGS += -DHAS_PETSC
   VES3D_USE_MPI = yes
 endif
 
@@ -38,8 +39,4 @@ endif
 
 ifeq ($(strip ${VES3D_USE_MPI}),yes)
   CXXFLAGS += -DHAS_MPI
-endif
-
-ifeq (${VES3D_USE_PETSC},yes)
-  CXXFLAGS += -DHAS_PETSC
 endif
