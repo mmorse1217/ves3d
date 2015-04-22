@@ -72,6 +72,13 @@ std::ostream& operator<<(std::ostream& output, const Error_t &err_t)
 	case ErrorEvent::RepartitioningError:
             output<<"RepartitioningError";
             break;
+	case ErrorEvent::IOError:
+            output<<"IOError";
+            break;
+	case ErrorEvent::IOBadStream:
+            output<<"IOBadStream";
+            break;
+
         default:
             output<<err_t
                   <<" [The string for the given enum type is not known"
@@ -184,4 +191,10 @@ Error_t ErrorHandler::ringTheCallBack(ErrorEvent &ee,
     }
 
     return ErrorEvent::UnknownError;
+}
+
+Error_t cb_abort(const ErrorEvent &err)
+{
+    CERR_LOC("Aborting, received error "<<err,"",abort());
+    return err.err_;
 }

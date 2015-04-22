@@ -33,6 +33,8 @@
 #ifndef _ERROR_H_
 #define _ERROR_H_
 
+#include "Logger.h"
+
 #include <iostream>
 #include <stack>
 #include <string>
@@ -154,5 +156,8 @@ static Error_t chk_expr(ErrorEvent::UnknownError); //maybe get deprecated
 #define BREAKONERROR() ( {if( !ErrorHandler::errorStatus() ) break;} )
 #define PRINTERRORLOG() (ErrorHandler::printErrorLog() )
 #define CLEARERRORHIST() (ErrorHandler::clearErrorHist() )
+
+// Default callback for errors
+Error_t cb_abort(const ErrorEvent &err);
 
 #endif //_ERROR_H_
