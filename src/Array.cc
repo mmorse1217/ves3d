@@ -10,6 +10,16 @@ Array<T, DT, DEVICE>::Array(size_t size) :
 }
 
 template<typename T, typename DT, const DT &DEVICE>
+Array<T, DT, DEVICE>::Array(std::istream &is, Format format) :
+    size_(0), capacity_(0), data_(NULL)
+{
+    //to count the number of calls
+    PROFILESTART();
+    Array<T, DT, DEVICE>::unpack(is, format);
+    PROFILEEND("",0);
+}
+
+template<typename T, typename DT, const DT &DEVICE>
 Array<T, DT, DEVICE>::~Array()
 {
     //mostly for counting the # of calls
@@ -93,30 +103,64 @@ typename Array<T, DT, DEVICE>::const_iterator Array<T, DT, DEVICE>::end() const
     return(this->data_ + this->size());
 }
 
+template<typename T, typename DT, const DT &DEVICE>
+Error_t Array<T, DT, DEVICE>::pack(std::ostream &os, Format format) const
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+
+    const T *buffer(begin());
+
+    if (DT::IsHost()){
+	T* bb = new T[size()];
+	buffer = bb;
+	DEVICE.Memcpy(
+	    bb,
+	    begin(),
+	    mem_size(),
+	    DT::MemcpyDeviceToHost);
+    }
+
+    os<<"ARRAY\n";
+    os<<"name: "<<name_<<"\n";
+    os<<"size: "<<size()<<"\n";
+    os<<"data: ";
+    pack_array(os, format, buffer, size());
+    os<<"\n/ARRAY\n";
+
+    if (!DT::IsHost())
+	delete[] buffer;
+
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE>
+Error_t Array<T, DT, DEVICE>::unpack(std::istream &is, Format format)
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+    std::string s, key;
+    is>>s;
+    ASSERT(s=="ARRAY", "Bad input string (missing header).");
+
+    size_t sz(0);
+    is>>key>>name_;
+    ASSERT(key=="name:", "bad key");
+    is>>key>>sz;
+    ASSERT(key=="size:", "bad key");
+    resize(sz);
+    is>>key;
+    ASSERT(key=="data:", "bad key");
+    unpack_array(is, format, begin(), sz);
+    is>>s;
+    ASSERT(s=="/ARRAY", "Bad input string (missing footer).");
+
+    return ErrorEvent::Success;
+}
+
 //////////////////////////////////////////////////////////////////////
 template<typename T, typename DT, const DT &DEVICE>
 std::ostream& operator<<(std::ostream& output,
     const Array<T, DT, DEVICE> &arr)
 {
-    const T *buffer(arr.begin());
-
-    if (DT::IsHost()){
-	T* bb = new T[arr.size()];
-	buffer = bb;
-	DEVICE.Memcpy(
-	    bb,
-	    arr.begin(),
-	    arr.mem_size(),
-	    DT::MemcpyDeviceToHost);
-    }
-
-    output<<"[";
-    for(size_t ii=0; ii<arr.size(); ++ii)
-        output<<buffer[ii]<<" ";
-    output<<"]";
-
-    if (!DT::IsHost())
-	delete[] buffer;
-
-    return(output);
+    arr.pack(output, Streamable::ASCII);
+    return output;
 }

@@ -45,6 +45,16 @@ Scalars<T, DT, DEVICE>::Scalars(size_t num_subs, int sh_order,
 }
 
 template <typename T, typename DT, const DT &DEVICE>
+Scalars<T, DT, DEVICE>::Scalars(std::istream &is, Streamable::Format format) :
+    sh_order_(0),
+    grid_dim_(EMPTY_GRID),
+    stride_(0),
+    num_sub_funcs_(0)
+{
+    Scalars<T, DT, DEVICE>::unpack(is, format);
+}
+
+template <typename T, typename DT, const DT &DEVICE>
 Scalars<T, DT, DEVICE>::~Scalars()
 {}
 
@@ -204,6 +214,61 @@ Scalars<T, DT, DEVICE>::getSubFuncN_end(size_t n) const
     ASSERT(n<=this->getNumSubFuncs(),
         "Index exceeds the number of subfunctions");
     return(array_type::begin() + (n+1) * this->getSubFuncLength());
+}
+
+template<typename T, typename DT, const DT &DEVICE>
+Error_t Scalars<T, DT, DEVICE>::pack(std::ostream &os, Streamable::Format format) const
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+
+    os<<"SCALARS\n";
+    os<<"name: "<<Streamable::name_<<"\n";
+    os<<"nsubs: "<<getNumSubs()<<"\n";
+    os<<"shorder: "<<sh_order_<<"\n";
+    os<<"gridx: "<<grid_dim_.first<<"\n";
+    os<<"gridy: "<<grid_dim_.second<<"\n";
+    os<<"stride: "<<stride_<<"\n";
+    array_type::pack(os, format);
+    os<<"/SCALARS\n";
+
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE>
+Error_t Scalars<T, DT, DEVICE>::unpack(std::istream &is, Streamable::Format format)
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+    std::string s,key;
+    is>>s;
+    ASSERT(s=="SCALARS", "Bad input string (missing header).");
+
+    size_t nsub, stride;
+    int shorder, gridx, gridy;
+
+    is>>key>>Streamable::name_;
+    ASSERT(key=="name:", "bad key");
+    is>>key>>nsub;
+    ASSERT(key=="nsubs:", "bad key");
+    is>>key>>shorder;
+    ASSERT(key=="shorder:", "bad key");
+    is>>key>>gridx;
+    ASSERT(key=="gridx:", "bad key");
+    is>>key>>gridy;
+    ASSERT(key=="gridy:", "bad key");
+    is>>key>>stride;
+    ASSERT(key=="stride:", "bad key");
+    resize(nsub, shorder, std::make_pair<int,int>(gridx,gridy));
+    ASSERT(getNumSubs()     == nsub	, "Incorrect resizing nsub");
+    ASSERT(sh_order_	    == shorder	, "Incorrect resizing shorder");
+    ASSERT(grid_dim_.first  == gridx  	, "Incorrect resizing grid.first");
+    ASSERT(grid_dim_.second == gridy	, "Incorrect resizing grid.second");
+    ASSERT(stride_          == stride	, "Incorrect resizing stride");
+
+    array_type::unpack(is, format);
+    is>>s;
+    ASSERT(s=="/SCALARS", "Bad input string (missing footer).");
+
+    return ErrorEvent::Success;
 }
 
 /////////////////////////////////////////////////////////////////////

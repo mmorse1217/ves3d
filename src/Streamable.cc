@@ -32,30 +32,50 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "Logger.h"
-
-namespace testtools
+Error_t Streamable::set_name(const std::string n)
 {
-    void AssertTrue(bool cond, const std::string &pass_msg, const std::string &fail_msg)
-    {
-	if (cond)
-	    INFO(emph<<pass_msg<<emph);
-	else{
-	    CERR(fail_msg);
-	    abort();
-	}
-    }
+    name_=n;
+    return ErrorEvent::Success;
+}
 
-    template<typename T>
-    void AssertAlmostEqual(T &x, T &y, const T& eps, const std::string &fail_msg)
-    {
-	ASSERT(x<=(y+y*eps) && x>=(y-y*eps), fail_msg);
-    }
+std::string Streamable::name()
+{
+    return name_;
+}
 
-    template<typename T>
-    void AssertEqual(T &x, T &y, const std::string &fail_msg)
-    {
-	ASSERT(x==y, fail_msg);
-    }
+template<typename D>
+Error_t Streamable::factory(std::istream &is, Format format, D **obj)
+{
+    ASSERT(*obj == NULL, "initial pointer should be null");
+    *obj = new D(is, format);
+    return ErrorEvent::Success;
+}
 
+template<typename T>
+Error_t Streamable::pack_array(std::ostream &os, Format format, const T* arr, size_t n, const char *sep) const
+{
+    ASSERT(sep=="\n" || sep=="\t" || sep==" ", "unsupported separator");
+    if(n>0) {
+	for (size_t ii=0; ii+1<n; ++ii) os<<arr[ii]<<sep;
+	os<<arr[n-1]; //to skip the separator for the last one
+    }
+    return ErrorEvent::Success;
+}
+
+template<typename T>
+Error_t Streamable::unpack_array(std::istream &is, Format format, T* arr, size_t &n, const char* sep) const
+{
+    ASSERT(sep=="\n" || sep=="\t" || sep==" ", "unsupported separator");
+    size_t N(n);
+    for (n=0; n<N; ++n){
+	if(!is.good()) return ErrorEvent::IOBadStream;
+	is>>arr[n];
+    }
+    return ErrorEvent::Success;
+}
+
+std::ostream& operator<<(std::ostream& os, const Streamable *o)
+{
+    o->pack(os, Streamable::ASCII);
+    return os;
 }

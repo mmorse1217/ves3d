@@ -33,8 +33,9 @@
 #ifndef _ARRAY_H_
 #define _ARRAY_H_
 
-#include <iostream> //also has size_t
 #include "Logger.h"
+#include "Streamable.h"
+#include <iostream> //also has size_t
 
 /**
  * @class Array
@@ -54,7 +55,7 @@
 template <typename T,       // content type
           typename DT,      // device class
           const DT &DEVICE>
-class Array
+class Array : public Streamable
 {
   public:
     typedef T value_type;
@@ -63,6 +64,8 @@ class Array
     typedef const T* const_iterator;
 
     explicit Array(size_t size = 0);
+    explicit Array(std::istream &is, Format format);
+
     virtual ~Array();
 
     static const device_type& getDevice();
@@ -80,6 +83,11 @@ class Array
 
     inline iterator end();
     inline const_iterator end() const;
+
+    // From streamable class --------------------------------------------------
+    // ------------------------------------------------------------------------
+    virtual Error_t pack(std::ostream &os, Format format) const;
+    virtual Error_t unpack(std::istream &is, Format format);
 
   protected:
     size_t size_;

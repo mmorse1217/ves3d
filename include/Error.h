@@ -59,7 +59,11 @@ class ErrorEvent
                   DivergenceError	 = 31,
 		  //
                   InteractionError	 = 40,
-		  RepartitioningError	 = 41};
+		  RepartitioningError	 = 41,
+		  //
+		  IOError                = 50,
+		  IOBadStream            = 51
+                  };
 
     //! lightweight error event that can be handled by
     //! ErrorHandler

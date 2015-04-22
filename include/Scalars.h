@@ -69,6 +69,9 @@ class Scalars : public Array<T, DT, DEVICE>
     //! value throgh sh_
     explicit Scalars(size_t num_subs = 0, int sh_order = -1,
         std::pair<int, int> grid_dim = EMPTY_GRID);
+
+    explicit Scalars(std::istream &is, Streamable::Format format);
+
     virtual ~Scalars();
 
     //! The number of dimensions of the field
@@ -128,6 +131,11 @@ class Scalars : public Array<T, DT, DEVICE>
     inline const_iterator getSubFuncN_begin(size_t n) const;
     //! tail of each sub function
     inline const_iterator getSubFuncN_end(size_t n) const;
+
+    // From streamable class --------------------------------------------------
+    // ------------------------------------------------------------------------
+    virtual Error_t pack(std::ostream &os, Streamable::Format format) const;
+    virtual Error_t unpack(std::istream &is, Streamable::Format format);
 
   protected:
     //! set number of sub-components

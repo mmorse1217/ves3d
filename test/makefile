@@ -16,13 +16,16 @@ TEST = 	ArrayTest.exe			\
 	EvolveSurfaceTest.exe		\
 	EvolveSurfaceTestMultThread.exe \
 	LoggerTest.exe			\
+	MemoryManagerTest.exe		\
 	MovePoleTest.exe		\
+	ParametersTest.exe		\
 	ParsingTest.exe			\
 	RepartitionTest.exe		\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
-	StokesTest.exe			\
 	StokesDoubleLayerTest.exe	\
+	StokesTest.exe			\
+	StreamableTest.exe 		\
         SurfaceTest.exe			\
         Tr1Test.exe			\
         VectorsTest.exe			\

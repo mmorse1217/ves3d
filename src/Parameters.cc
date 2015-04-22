@@ -1,13 +1,18 @@
 template<typename T>
 Parameters<T>::Parameters(){
-    this->init();
+    init();
 }
 
 template<typename T>
 Parameters<T>::Parameters(int argc, char** argv)
 {
-    this->init();
-    this->parseInput(argc, argv);
+    init();
+    parseInput(argc, argv);
+}
+
+template<typename T>
+Parameters<T>::Parameters(std::istream &is, Format format){
+    unpack(is, format);
 }
 
 template<typename T>
@@ -246,7 +251,7 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "bg-flow-type" ) != NULL  )
     this->bg_flow = EnumifyBgFlow(opt->getValue( "bg-flow-type" ));
-    ASSERT(this->bg_flow != UnkownFlow, "Failed to parse the background flow name");
+    ASSERT(this->bg_flow != UnknownFlow, "Failed to parse the background flow name");
 
   if( opt->getValue( "bg-flow-param" ) != NULL  )
     this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
@@ -295,12 +300,12 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "time-scheme" ) != NULL  ){
     this->scheme = EnumifyScheme(opt->getValue( "time-scheme" ));
-    ASSERT(this->scheme != UnkownScheme, "Failed to parse the time scheme name");
+    ASSERT(this->scheme != UnknownScheme, "Failed to parse the time scheme name");
   }
 
   if( opt->getValue( "time-precond" ) != NULL  ){
     this->time_precond = EnumifyPrecond(opt->getValue( "time-precond" ));
-    ASSERT(this->time_precond != UnkownPrecond, "Failed to parse the preconditioner name" );
+    ASSERT(this->time_precond != UnknownPrecond, "Failed to parse the preconditioner name" );
   }
 
   if( opt->getValue( "singular-stokes" ) != NULL  )
@@ -327,9 +332,110 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "time-iter-max" ) != NULL  )
     this->time_iter_max =  atof(opt->getValue( "time-iter-max" ));
 
-
 //   other methods: (bool) opt.getFlag( ... long or short ... )
 }
+
+template<typename T>
+Error_t Parameters<T>::pack(std::ostream &os, Format format) const
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+
+    os<<"PARAMETERS\n";
+    os<<"n_surfs: "<<n_surfs<<"\n";
+    os<<"sh_order: "<<sh_order<<"\n";
+    os<<"filter_freq: "<<filter_freq<<"\n";
+    os<<"bending_modulus: "<<bending_modulus<<"\n";
+    os<<"viscosity_contrast: "<<viscosity_contrast<<"\n";
+    os<<"position_solver_iter: "<<position_solver_iter<<"\n";
+    os<<"tension_solver_iter: "<<tension_solver_iter<<"\n";
+    os<<"position_solver_restart: "<<position_solver_restart<<"\n";
+    os<<"tension_solver_restart: "<<tension_solver_restart<<"\n";
+    os<<"position_solver_tol: "<<position_solver_tol<<"\n";
+    os<<"tension_solver_tol: "<<tension_solver_tol<<"\n";
+    os<<"time_horizon: "<<time_horizon<<"\n";
+    os<<"ts: "<<ts<<"\n";
+    os<<"time_tol: "<<time_tol<<"\n";
+    os<<"time_iter_max: "<<time_iter_max<<"\n";
+    os<<"scheme: "<<scheme<<"\n";
+    os<<"time_precond: "<<time_precond<<"\n";
+    os<<"bg_flow: "<< bg_flow<<"\n";
+    os<<"singular_stokes: "<< singular_stokes<<"\n";
+    os<<"rep_maxit: "<<rep_maxit<<"\n";
+    os<<"rep_up_freq: "<<rep_up_freq<<"\n";
+    os<<"rep_filter_freq: "<<rep_filter_freq<<"\n";
+    os<<"rep_ts: "<<rep_ts<<"\n";
+    os<<"rep_tol: "<<rep_tol<<"\n";
+    os<<"bg_flow_param: "<<bg_flow_param<<"\n";
+    os<<"upsample_interaction: "<<upsample_interaction<<"\n";
+    os<<"save_data: "<<save_data<<"\n";
+    os<<"save_stride: "<<save_stride<<"\n";
+    os<<"init_file_name: "<<init_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
+    os<<"cntrs_file_name: "<<cntrs_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
+    os<<"save_file_name: "<<save_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
+    os<<"error_factor: "<<error_factor<<"\n";
+    os<<"num_threads: "<<num_threads<<"\n";
+    os<<"/PARAMETERS\n";
+    return ErrorEvent::Success;
+}
+
+template<typename T>
+Error_t Parameters<T>::unpack(std::istream &is, Format format)
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+    std::string s, key;
+    is>>s;
+    ASSERT(s=="PARAMETERS", "Bad input string (missing header).");
+
+    is>>key>>n_surfs;			ASSERT(key=="n_surfs:", "Unexpected key (expeded n_surfs)");
+    is>>key>>sh_order;			ASSERT(key=="sh_order:", "Unexpected key (expected sh_order)");
+    is>>key>>filter_freq;		ASSERT(key=="filter_freq:", "Unexpected key (expected filter_freq)");
+    is>>key>>bending_modulus;		ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
+    is>>key>>viscosity_contrast;	ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
+    is>>key>>position_solver_iter;	ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
+    is>>key>>tension_solver_iter;	ASSERT(key=="tension_solver_iter:", "Unexpected key (expected tension_solver_iter)");
+    is>>key>>position_solver_restart;	ASSERT(key=="position_solver_restart:", "Unexpected key (expected position_solver_restart)");
+    is>>key>>tension_solver_restart;	ASSERT(key=="tension_solver_restart:", "Unexpected key (expected tension_solver_restart)");
+    is>>key>>position_solver_tol;	ASSERT(key=="position_solver_tol:", "Unexpected key (expected position_solver_tol)");
+    is>>key>>tension_solver_tol;	ASSERT(key=="tension_solver_tol:", "Unexpected key (expected tension_solver_tol)");
+    is>>key>>time_horizon;		ASSERT(key=="time_horizon:", "Unexpected key (expected time_horizon)");
+    is>>key>>ts;			ASSERT(key=="ts:", "Unexpected key (expected ts)");
+    is>>key>>time_tol;			ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
+    is>>key>>time_iter_max;		ASSERT(key=="time_iter_max:", "Unexpected key (expected time_iter_max)");
+
+    //enums
+    is>>key>>s; 			ASSERT(key=="scheme:", "Unexpected key (expected scheme)");
+    scheme=EnumifyScheme(s.c_str());
+    is>>key>>s;          		ASSERT(key=="time_precond:", "Unexpected key (expected time_precond)");
+    time_precond=EnumifyPrecond(s.c_str());
+    is>>key>>s; 			ASSERT(key=="bg_flow:", "Unexpected key (expected  bg_flow)");
+    bg_flow=EnumifyBgFlow(s.c_str());
+    is>>key>>s;          		ASSERT(key=="singular_stokes:", "Unexpected key (expected  singular_stokes)");
+    singular_stokes=EnumifyStokesRot(s.c_str());
+
+    is>>key>>rep_maxit;			ASSERT(key=="rep_maxit:", "Unexpected key (expected rep_maxit)");
+    is>>key>>rep_up_freq;		ASSERT(key=="rep_up_freq:", "Unexpected key (expected rep_up_freq)");
+    is>>key>>rep_filter_freq;		ASSERT(key=="rep_filter_freq:", "Unexpected key (expected rep_filter_freq)");
+    is>>key>>rep_ts;			ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
+    is>>key>>rep_tol;			ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
+    is>>key>>bg_flow_param;		ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
+    is>>key>>upsample_interaction;	ASSERT(key=="upsample_interaction:", "Unexpected key (expected upsample_interaction)");
+    is>>key>>save_data;			ASSERT(key=="save_data:", "Unexpected key (expected save_data)");
+    is>>key>>save_stride;		ASSERT(key=="save_stride:", "Unexpected key (expected save_stride)");
+
+    is>>key>>s;		                ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
+    if (s!="|"){init_file_name=s; is>>s;}; //conume |
+    is>>key>>s;          		ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
+    if (s!="|"){cntrs_file_name=s; is>>s;}; //conume |
+    is>>key>>s;         		ASSERT(key=="save_file_name:", "Unexpected key (expected save_file_name)");
+    if (s!="|"){save_file_name=s; is>>s;}; //conume |
+    is>>key>>error_factor;		ASSERT(key=="error_factor:", "Unexpected key (expected error_factor)");
+    is>>key>>num_threads;		ASSERT(key=="num_threads:", "Unexpected key (expected num_threads)");
+    is>>s;
+    ASSERT(s=="/PARAMETERS", "Bad input string (missing footer).");
+
+    return ErrorEvent::Success;
+}
+
 
 template<typename T>
 std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)

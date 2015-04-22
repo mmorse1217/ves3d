@@ -34,10 +34,16 @@ template <typename T, typename DT, const DT &DEVICE>
 Vectors<T, DT, DEVICE>::Vectors(size_t num_sub_vecs, int sh_order,
     std::pair<int, int> grid_dim, CoordinateOrder po) :
     Scalars<T, DT, DEVICE>(num_sub_vecs * this->vector_dim_,
-                           sh_order,
-                           grid_dim),
+	sh_order,
+	grid_dim),
     point_order_(po)
 {}
+
+template <typename T, typename DT, const DT &DEVICE>
+Vectors<T, DT, DEVICE>::Vectors(std::istream &is, Streamable::Format format)
+{
+    Vectors<T, DT, DEVICE>::unpack(is, format);
+}
 
 template <typename T, typename DT, const DT &DEVICE>
 int Vectors<T, DT, DEVICE>::getTheDim()
@@ -66,6 +72,7 @@ size_t Vectors<T, DT, DEVICE>::getSubLength() const
 template <typename T, typename DT, const DT &DEVICE>
 void Vectors<T, DT, DEVICE>::setPointOrder(enum CoordinateOrder new_order)
 {
+    ASSERT(new_order != UnknownOrder, "Can't set the order to unknown");
     point_order_ = new_order;
 }
 
@@ -73,4 +80,38 @@ template <typename T, typename DT, const DT &DEVICE>
 enum CoordinateOrder Vectors<T, DT, DEVICE>::getPointOrder() const
 {
     return(point_order_);
+}
+
+template<typename T, typename DT, const DT &DEVICE>
+Error_t Vectors<T, DT, DEVICE>::pack(std::ostream &os, Streamable::Format format) const
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+
+    os<<"VECTORS\n";
+    os<<"name: "<<Streamable::name_<<"\n";
+    os<<"CoordinateOrder: "<<point_order_<<"\n";
+    scalars_type::pack(os, format);
+    os<<"/VECTORS\n";
+
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE>
+Error_t Vectors<T, DT, DEVICE>::unpack(std::istream &is, Streamable::Format format)
+{
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+    std::string s, key;
+    is>>s;
+    ASSERT(s=="VECTORS", "Bad input string (missing header).");
+
+    is>>key>>Streamable::name_;
+    ASSERT(key=="name:", "bad key");
+    is>>key>>s;
+    ASSERT(key=="CoordinateOrder:", "bad key");
+    setPointOrder(EnumifyCoordinateOrder(s.c_str()));
+    scalars_type::unpack(is, format);
+    is>>s;
+    ASSERT(s=="/VECTORS", "Bad input string (missing footer).");
+
+    return ErrorEvent::Success;
 }

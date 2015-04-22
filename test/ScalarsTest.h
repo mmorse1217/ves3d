@@ -9,6 +9,7 @@
 #include "Logger.h"
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <typeinfo> //for typeid
 #include <cstdlib>  //for abs
 
@@ -19,14 +20,16 @@ class ScalarsTest
     bool PerformAll();
     bool TestResize();
     bool TestReplicate();
+    bool TestStream();
 };
 
 template<typename Container>
 bool ScalarsTest<Container>::PerformAll()
 {
     bool test_result;
-    test_result = TestResize()
-        && TestReplicate();
+    test_result = TestResize() &&
+        TestReplicate() &&
+	TestStream();
 
     if (test_result){
         COUT(emph<<" *** The container "
@@ -98,4 +101,55 @@ bool ScalarsTest<Container>::TestReplicate()
     ASSERT(res,"Copying form to and from the container");
 
     return res;
+}
+
+template<typename Container>
+bool ScalarsTest<Container>::TestStream()
+{
+    COUT(". Stream");
+    int p(3), nsubs(5);
+
+    Container sc(nsubs, p, std::make_pair<int,int>(p+5, 3*p));
+    sc.set_name("XYZ");
+    typedef typename Container::value_type T;
+    T* buffer = new T[sc.size()];
+
+    for(size_t ii=0; ii<sc.size(); ++ii)
+        buffer[ii] = ii;
+
+    sc.getDevice().Memcpy(sc.begin(),
+	buffer,
+	sc.size() * sizeof(T),
+	Container::device_type::MemcpyHostToDevice);
+    memset(buffer, 0, sc.size() * sizeof(T));
+
+    std::stringstream s1;
+    sc.pack(s1, Container::Streamable::ASCII);
+    Container cc;
+    cc.unpack(s1, Container::Streamable::ASCII);
+
+    ASSERT(cc.getShOrder()	== sc.getShOrder()	, "bad streaming");
+    ASSERT(cc.getGridDim()	== sc.getGridDim()	, "bad streaming");
+    ASSERT(cc.getStride()	== sc.getStride()	, "bad streaming");
+    ASSERT(cc.getNumSubFuncs()	== sc.getNumSubFuncs()	, "bad streaming");
+    ASSERT(cc.name()		== sc.name()		, "bad streaming");
+
+    cc.getDevice().Memcpy(buffer,
+	cc.begin(),
+	cc.size() * sizeof(T),
+	Container::device_type::MemcpyDeviceToHost);
+
+    T err = 0;
+    for(size_t ii=0; ii<sc.size(); ++ii)
+        err = (err > abs(buffer[ii]-ii)) ? err : abs(buffer[ii]-ii);
+    ASSERT(err==0, "bad streaming for the data");
+
+    //constructor
+    std::stringstream s2,s3;
+    sc.pack(s2, Container::Streamable::ASCII);
+    Container cx(s2,Container::Streamable::ASCII);
+    cx.pack(s3, Container::Streamable::ASCII);
+    ASSERT(s2.str()==s3.str(), "bad constructor from stream");
+
+    return true;
 }

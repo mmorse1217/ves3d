@@ -57,6 +57,8 @@ class Vectors : public Scalars<T, DT, DEVICE>
         std::pair<int, int> grid_dim = EMPTY_GRID,
         CoordinateOrder po = AxisMajor);
 
+    explicit Vectors(std::istream &is, Streamable::Format format);
+
     //! The number of dimensions of the field
     static inline int getTheDim();
 
@@ -72,6 +74,11 @@ class Vectors : public Scalars<T, DT, DEVICE>
     //! the info and iterate on points with stride
     inline void setPointOrder(enum CoordinateOrder new_order);
     inline enum CoordinateOrder getPointOrder() const;
+
+    // From streamable class --------------------------------------------------
+    // ------------------------------------------------------------------------
+    virtual Error_t pack(std::ostream &os, Streamable::Format format) const;
+    virtual Error_t unpack(std::istream &is, Streamable::Format format);
 
   protected:
     //! set number of sub-components

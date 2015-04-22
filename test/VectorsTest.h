@@ -32,9 +32,10 @@
 #ifndef _VECTORSTEST_H_
 #define _VECTORSTEST_H_
 
-#include <string>
 #include "Logger.h"
 #include "Enums.h"
+#include <string>
+#include <sstream>
 
 template<typename V>
 class VectorsTest
@@ -52,6 +53,7 @@ class VectorsTest
     bool TestIterators();
     bool TestReplicate();
     bool TestPointOrder();
+    bool TestStream();
 };
 
 template<typename V>
@@ -69,6 +71,7 @@ bool VectorsTest<V>::PerformAll()
         && TestIterators()
         && TestReplicate()
         && TestPointOrder()
+	&& TestStream()
         ;
 
     if (test_result)
@@ -415,6 +418,29 @@ bool VectorsTest<V>::TestPointOrder()
     ASSERT(res &= v.getPointOrder() == PointMajor,"");
 
     return res;
+}
+
+template<typename V>
+bool VectorsTest<V>::TestStream()
+{
+    COUT(". TestStream");
+    int ns(3), p(7);
+    int sl(grid_size(p));
+    V v(ns,p);
+    v.set_name("VVV");
+
+    std::stringstream s1,s2;
+    v.pack(s1, V::Streamable::ASCII);
+
+    V *vc(NULL);
+    V::Streamable::factory(s1, V::Streamable::ASCII, &vc);
+    vc->pack(s2, V::Streamable::ASCII);
+
+    ASSERT(s1.str()==s2.str(),"bad streaming");
+    ASSERT(vc->getShOrder()==p, "bad streaming p");
+    ASSERT(vc->getNumSubs()==ns, "bad streaming NumSubs");
+    ASSERT(vc->getNumSubFuncs()==ns*v.getTheDim(), "bad streaming NumSubs");
+    return true;
 }
 
 #endif

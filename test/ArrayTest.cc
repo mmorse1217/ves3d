@@ -1,8 +1,7 @@
 #include "Array.h"
-#include <unistd.h>  //for sleep()
-#include <iostream>
 #include "Logger.h"
 #include "Device.h"
+#include <sstream>
 
 using namespace std;
 
@@ -53,6 +52,45 @@ void test_array(){
         for(size_t i=0;i<sz;++i)
             ASSERT(d[i]==i*i,"memcpy");
     }
+
+    { //streaming
+        size_t sz(11);
+        COUT(" . Test streaming");
+
+        Arr a(sz),b;
+        T *c =  new T[sz];
+        for(size_t i=0;i<sz;++i)
+            c[i]=i*i*i;
+
+        a.getDevice().Memcpy(
+            a.begin(),
+            c,
+            a.mem_size(),
+            DT::MemcpyHostToDevice);
+
+	a.set_name("AAA");
+
+	std::stringstream s1,s2,s3,s4;
+	std::string ref("ARRAY\nname: AAA\nsize: 11\ndata: 0 1 8 27 64 125 216 343 512 729 1000\n/ARRAY\n");
+	a.pack(s1, Streamable::ASCII);
+
+	ASSERT(s1.str()==ref, "bad stream a");
+	b.unpack(s1, Streamable::ASCII);
+
+	b.pack(s2, Streamable::ASCII);
+	ASSERT(s2.str()==ref, "bad stream b");
+
+	Arr d(s2, Streamable::ASCII);
+	d.pack(s3, Streamable::ASCII);
+	ASSERT(s3.str()==ref, "bad stream d");
+
+	Arr *e(NULL);
+	Streamable::factory(s3, Streamable::ASCII, &e);
+	e->pack(s4, Streamable::ASCII);
+	ASSERT(s4.str()==ref, "bad stream e");
+
+	delete[] c;
+    }
 }
 
 typedef Device<CPU> C;
@@ -70,7 +108,6 @@ int main(int argc, char** argv)
     COUT("\n ==============================\n"
         <<"  Array Test:"
         <<"\n ==============================");
-    sleep(1);
 
     PROFILESTART();
     test_array<CArr>();
@@ -82,6 +119,5 @@ int main(int argc, char** argv)
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);
 
-    sleep(1);
     return 0;
 }
