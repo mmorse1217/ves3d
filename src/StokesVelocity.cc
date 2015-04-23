@@ -5,7 +5,7 @@
 
 template<typename Surf_t>
 StokesVelocity<Surf_t>::StokesVelocity(
-    OperatorsMats<Arr_t> &mats,
+    const OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_,
     Real_t box_size,
     MPI_Comm c):

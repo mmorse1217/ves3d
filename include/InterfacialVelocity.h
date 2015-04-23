@@ -40,7 +40,7 @@ class InterfacialVelocity
     typedef StokesVelocity<SurfContainer> Stokes_t;
 
     InterfacialVelocity(SurfContainer &S_in, const Interaction &inter,
-        Mats_t &mats, const Parameters<value_type> &params,
+        const Mats_t &mats, const Parameters<value_type> &params,
         const BgFlowBase<Vec_t> &bgFlow,
 	PSolver_t *parallel_solver=NULL);
 

@@ -27,6 +27,7 @@ Surface<ScalarContainer, VectorContainer>::Surface(
         <<", sht_rep_upsample="<<sht_rep_upsample_.getShOrder()
 	 );
 
+    x_.set_name("position");
     if (x_in != NULL) setPosition(*x_in);
 }
 
@@ -504,7 +505,7 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
 }
 
 template <typename S, typename V>
-Error_t Surface<S, V>::pack(std::ostream &os, Format format) const{
+Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
 
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
@@ -522,7 +523,7 @@ Error_t Surface<S, V>::pack(std::ostream &os, Format format) const{
     return ErrorEvent::Success;
 }
 template <typename S, typename V>
-Error_t Surface<S, V>::unpack(std::istream &is, Format format){
+Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
 
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s,key;

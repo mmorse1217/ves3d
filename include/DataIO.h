@@ -18,6 +18,7 @@
 #include <memory>
 
 #include "Logger.h"
+#include "Error.h"
 #include "ves3d_common.h"
 
 /**
@@ -52,6 +53,9 @@ class DataIO
 
     template<typename T>
     bool FlushBuffer() const;
+
+    static Error_t SlurpFile(const char* fname, std::ostream &content);
+    static Error_t DumpFile(const char* fname, std::ostream &content);
 
   private:
     // Basic type IO

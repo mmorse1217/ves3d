@@ -13,7 +13,7 @@ class MovePole
     typedef SHTMats<value_type, typename Container::device_type> Mats_t;
 
   public:
-    MovePole(Operators &mats);
+    MovePole(const Operators &mats);
     ~MovePole();
 
     void setOperands(const Container** arr, int num,

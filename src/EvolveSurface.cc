@@ -1,8 +1,8 @@
 template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
-EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
-    Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,  Monitor_t *M,
-    Interaction_t *I, Repartition_t *R, PSolver_t *parallel_solver):
+EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
+    const Mats_t &mats, BgFlow_t *vInf,  Monitor_t *M,
+    Interaction_t *I, Repartition_t *R, PSolver_t *parallel_solver, Vec_t *x0):
     params_(params),
     mats_(mats),
     vInf_(vInf),
@@ -13,7 +13,9 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     F_(NULL)
 {
     objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
-    S_ = new Sur_t(x0, mats_, params_.rep_up_freq, params_.rep_filter_freq);
+    S_ = new Sur_t(mats_, x0, params_->rep_up_freq, params_->rep_filter_freq);
+    S_->set_name("surface");
+
     if ( monitor_ == NULL)
     {
         monitor_ = new Monitor<EvolveSurface>(params_);
@@ -34,22 +36,6 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params,
     INFO("Created a new object");
 }
 
-// template<typename T, typename DT, const DT &DEVICE,
-//          typename Interact, typename Repart>
-// EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t &params, Mats_t &mats,
-//     Sur_t *S, BgFlow_t *vInf, Monitor_t *M, Interaction_t *I, Repartition_t *R, void* user_ptr) :
-//     params_(params),
-//     mats_(mats),
-//     S_(S),
-//     vInf_(vInf),
-//     monitor_(M),
-//     interaction_(I),
-//     repartition_(R),
-//     user_ptr_(user_ptr),
-//     F_(NULL),
-//     ownsObjOnHeap_(false)
-// {}
-
 template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
@@ -60,7 +46,6 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
     if ( objsOnHeap_[0] ) delete monitor_;
     if ( objsOnHeap_[1] ) delete interaction_;
     if ( objsOnHeap_[2] ) delete repartition_;
-
 }
 
 template<typename T, typename DT, const DT &DEVICE,
@@ -68,15 +53,15 @@ template<typename T, typename DT, const DT &DEVICE,
 Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
     T t(0);
-    T dt(params_.ts);
-    T time_horizon(params_.time_horizon);
+    T dt(params_->ts);
+    T time_horizon(params_->time_horizon);
 
     delete F_;
-    F_ = new IntVel_t(*S_, *interaction_, mats_, params_, *vInf_, parallel_solver_);
+    F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *vInf_, parallel_solver_);
 
     //Deciding on the updater type
     Scheme_t updater(NULL);
-    switch ( params_.scheme )
+    switch ( params_->scheme )
     {
 	case JacobiBlockExplicit:
             updater = &IntVel_t::updateJacobiExplicit;
@@ -99,7 +84,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     }
 
     CHK( (*monitor_)( this, 0, dt) );
-    INFO("Stepping with "<<params_.scheme);
+    INFO("Stepping with "<<params_->scheme);
     while ( ERRORSTATUS() && t < time_horizon )
     {
         CHK( (F_->*updater)(dt) );
@@ -109,6 +94,43 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
     }
+
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE,
+         typename Interact, typename Repart>
+Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::pack(
+    std::ostream &os, Streamable::Format format) const{
+
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+
+    os<<"EVOLVE\n";
+    os<<"name: "<<Streamable::name_<<"\n";
+    //params_->pack(os,format);
+    S_->pack(os,format);
+    os<<"/EVOLVE\n";
+
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE,
+         typename Interact, typename Repart>
+Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
+    std::istream &is, Streamable::Format format){
+
+    ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
+    std::string s,key;
+    int ii;
+
+    is>>s;
+    ASSERT(s=="EVOLVE", "Bad input string (missing header).");
+
+    is>>key>>Streamable::name_;
+    //params_->unpack(is,format);
+    S_->unpack(is,format);
+    is>>s;
+    ASSERT(s=="/EVOLVE", "Bad input string (missing footer).");
 
     return ErrorEvent::Success;
 }

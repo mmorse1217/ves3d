@@ -33,7 +33,7 @@ cent-file : experiment/centers_extensional.txt
 
 ##checkpoint/monitor ########################
 checkpoint
-checkpoint-file : experiment/extensional_ns{{n_surfs}}_p{{sh_order}}.out
+checkpoint-file : experiment/extensional_ns{{n_surfs}}_p{{sh_order}}_{{time_idx}}.chk
 error-factor : .01
 
 ##far filed #################################

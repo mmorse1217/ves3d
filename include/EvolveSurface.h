@@ -20,6 +20,7 @@
 #include "VesInteraction.h"
 #include "Repartition.h"
 #include "Monitor.h"
+#include "Streamable.h"
 
 /**
  * EvolveSurface uses a simple Euler time stepping (explicit,
@@ -43,7 +44,7 @@ template<typename T,
          const DT &DEVICE,
          typename Interact = VesInteraction<T>,
          typename Repart   = Repartition<T> >
-class EvolveSurface
+class EvolveSurface : public Streamable
 {
   public:
     typedef T value_type;
@@ -69,16 +70,19 @@ class EvolveSurface
     typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
     typedef Error_t (IntVel_t::*Scheme_t)(const value_type &);
 
-    EvolveSurface(Params_t &params, Mats_t &mats, Vec_t &x0, BgFlow_t *vInf,
-		  Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,
-		  PSolver_t *parallel_solver=NULL);
+    EvolveSurface(Params_t *params, const Mats_t &mats, BgFlow_t *vInf,
+	Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,
+	PSolver_t *parallel_solver=NULL, Vec_t *x0=NULL);
 
     ~EvolveSurface();
 
+    Error_t pack(std::ostream &os, Streamable::Format format) const;
+    Error_t unpack(std::istream &is, Streamable::Format format);
+
     Error_t Evolve();
 
-    Params_t &params_;
-    Mats_t &mats_;
+    Params_t *params_;
+    const Mats_t &mats_;
 
     Sur_t *S_;
     BgFlow_t *vInf_;

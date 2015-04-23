@@ -33,7 +33,7 @@ cent-file : experiment/centers_64.txt
 
 ##checkpoint/monitor ########################
 checkpoint
-checkpoint-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}.out
+checkpoint-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
 error-factor : .01
 
 ##far filed #################################

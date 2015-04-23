@@ -27,7 +27,7 @@ class StokesVelocity{
     };
 
     StokesVelocity(
-        OperatorsMats<Arr_t> &mats,
+        const OperatorsMats<Arr_t> &mats,
         const Parameters<Real_t> &sim_par_);
 
     ~StokesVelocity();

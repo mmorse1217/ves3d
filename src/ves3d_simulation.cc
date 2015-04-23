@@ -1,0 +1,150 @@
+/**
+ * @file
+ * @author Rahimian, Abtin <arahimian@acm.org>
+ * @revision $Revision$
+ * @tags $Tags$
+ * @date $Date$
+ *
+ * @brief
+ */
+
+/*
+ * Copyright (c) 2014, Abtin Rahimian
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+template<typename DT, const DT &DEVICE>
+Simulation<DT,DEVICE>::Simulation(const Param_t &ip) :
+    input_params_(ip),
+    load_checkpoint_(false),
+    Mats_(NULL),
+    vInf_(NULL),
+    ksp_(NULL),
+    interaction_(NULL),
+    timestepper_(NULL)
+{
+    CHK(prepare_run_params());
+    INFO("Run options:\n"<<run_params_);
+}
+
+template<typename DT, const DT &DEVICE>
+Simulation<DT,DEVICE>::~Simulation()
+{
+    cleanup_run();
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::Run()
+{
+    setup_basics();
+    if (load_checkpoint_)
+	setup_from_checkpoint();
+    else
+	setup_from_options();
+
+    CHK(timestepper_->Evolve());
+    cleanup_run();
+    return ErrorEvent::Success;
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::setup_basics(){
+    INFO("Setting OMP num thread to "<<run_params_.num_threads);
+    omp_set_num_threads(run_params_.num_threads);
+
+    //Reading Operators From File
+    Mats_ = new Mats_t(true /*readFromFile*/, run_params_);
+
+    //Setting the background flow
+    CHK(BgFlowFactory(run_params_, &vInf_));
+
+#ifdef HAS_PETSC
+    ksp_ = new ParallelLinSolverPetsc<real_t>(VES3D_COMM_WORLD);
+#endif
+
+    interaction_ = new Inter_t(&StokesAlltoAll);
+    return ErrorEvent::Success;
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::setup_from_checkpoint(){
+
+    timestepper_ = new Evolve_t(&run_params_, *Mats_, vInf_, NULL, interaction_, NULL, ksp_);
+    timestepper_->unpack(checkpoint_data_, Streamable::ASCII);
+    return ErrorEvent::Success;
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::setup_from_options(){
+    //Initial vesicle positions
+    Vec_t x0(run_params_.n_surfs, run_params_.sh_order);
+
+    //reading the prototype form file
+    DataIO myIO;
+    myIO.ReadData( FullPath(run_params_.init_file_name), x0, DataIO::ASCII, 0, x0.getSubLength());
+
+    //reading centers file
+    if (run_params_.cntrs_file_name.size()){
+	INFO("Reading centers from file");
+	Arr_t cntrs(DIM * run_params_.n_surfs);
+	myIO.ReadData( FullPath(run_params_.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
+
+	INFO("Populating the initial configuration using centers");
+	Populate(x0, cntrs);
+    };
+    timestepper_ = new Evolve_t(&run_params_, *Mats_, vInf_, NULL, interaction_, NULL, ksp_, &x0);
+
+    return ErrorEvent::Success;
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::cleanup_run()
+{
+    INFO("Cleaning up after run");
+    delete Mats_;        Mats_	  = NULL;
+    delete vInf_;        vInf_	  = NULL;
+    delete ksp_;         ksp_	  = NULL;
+    delete interaction_; interaction_ = NULL;
+    delete timestepper_; timestepper_ = NULL;
+
+    load_checkpoint_ = false;
+    checkpoint_data_.str("");
+    checkpoint_data_.clear();
+    return ErrorEvent::Success;
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::prepare_run_params()
+{
+    if (input_params_.load_checkpoint != ""){
+	std::string fname = FullPath(input_params_.load_checkpoint);
+	INFO("Loading checkpoint file "<<fname);
+	DataIO::SlurpFile(fname.c_str(), checkpoint_data_);
+	load_checkpoint_ = true;
+    } else {
+	input_params_.pack(checkpoint_data_, Streamable::ASCII);
+	load_checkpoint_ = false;
+    }
+
+    run_params_.unpack(checkpoint_data_, Streamable::ASCII);
+    return ErrorEvent::Success;
+}

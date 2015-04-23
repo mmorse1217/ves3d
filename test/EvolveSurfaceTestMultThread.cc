@@ -80,8 +80,7 @@ void EvolveEachObj(Parameters<T> &sim_par,
     CHK(BgFlowFactory(sim_par, &vInf));
 
     // Evolver
-    Evolve_t Es(sim_par, *Mats, x0, vInf, NULL, interaction, repartition);
-
+    Evolve_t Es(&sim_par, *Mats, vInf, NULL, interaction, repartition, NULL, &x0);
     CHK ( Es.Evolve() );
 
 #pragma omp barrier

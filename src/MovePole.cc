@@ -1,5 +1,5 @@
 template<typename Container, typename Operators>
-MovePole<Container, Operators>::MovePole(Operators &mats) :
+MovePole<Container, Operators>::MovePole(const Operators &mats) :
     p_(mats.p_),
     np_(SpharmGridDim(p_).first * SpharmGridDim(p_).second),
     sp_harm_mats_(SpharmGridDim(p_).first, 1,

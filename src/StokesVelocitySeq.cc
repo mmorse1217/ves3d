@@ -4,7 +4,7 @@
 
 template<typename Surf_t>
 StokesVelocity<Surf_t>::StokesVelocity(
-    OperatorsMats<Arr_t> &mats,
+    const OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_):
   move_pole(mats),
   sim_par(sim_par_)

@@ -51,9 +51,17 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     typename Evolve_t::Interaction_t interaction(&StokesAlltoAll);
 
     //Finally, Evolve surface
-    Evolve_t Es(sim_par, Mats, x0, vInf, NULL, &interaction, NULL, NULL);
+    Evolve_t Es(&sim_par, Mats, vInf, NULL, &interaction, NULL, NULL, &x0);
 
     CHK ( Es.Evolve() );
+
+    //testing streaming
+    std::stringstream s1,s2;
+    Es.pack(s1, Streamable::ASCII);
+    Evolve_t E2(&sim_par, Mats, vInf, NULL, &interaction);
+    E2.unpack(s1, Streamable::ASCII);
+    E2.pack(s2, Streamable::ASCII);
+    ASSERT(s1.str()==s2.str(), "bad streaming");
 }
 
 int main(int argc, char **argv)

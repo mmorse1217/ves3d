@@ -74,6 +74,33 @@ bool DataIO::ResizeOutBuffer(size_t buffer_size) const
     return(true);
 }
 
+Error_t DataIO::SlurpFile(const char* fname, std::ostream &content)
+{
+    std::ifstream fh(fname, std::ios::in);
+
+    if(!fh)
+	CERR_LOC("Cannot open file for reading: "<<fname, "", exit(1));
+
+    content<<fh.rdbuf();
+    fh.close();
+
+    return ErrorEvent::Success;
+}
+
+Error_t DataIO::DumpFile(const char* fname, std::ostream &content)
+{
+    std::ofstream fh(fname, std::ios::out);
+
+    COUT(fname);
+    if(!fh)
+	CERR_LOC("Cannot open file for writing: "<<fname, "", exit(1));
+
+    fh<<content.rdbuf();
+    fh.close();
+
+    return ErrorEvent::Success;
+}
+
 std::string FullPath(const std::string fname){
     std::string base(VES3D_PATH);
     base += "/" + fname;

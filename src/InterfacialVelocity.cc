@@ -1,7 +1,7 @@
 template<typename SurfContainer, typename Interaction>
 InterfacialVelocity<SurfContainer, Interaction>::
 InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
-    OperatorsMats<Arr_t> &mats,
+    const OperatorsMats<Arr_t> &mats,
     const Parameters<value_type> &params, const BgFlowBase<Vec_t> &bgFlow,
     PSolver_t *parallel_solver) :
     S_(S_in),
