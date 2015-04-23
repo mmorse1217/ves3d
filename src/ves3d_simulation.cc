@@ -62,7 +62,6 @@ Error_t Simulation<DT,DEVICE>::Run()
 	setup_from_options();
 
     CHK(timestepper_->Evolve());
-    cleanup_run();
     return ErrorEvent::Success;
 }
 

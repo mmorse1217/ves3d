@@ -11,6 +11,7 @@ Monitor<EvolveSurface>::Monitor(const Parameters<value_type> *params) :
     A0_(-1),
     V0_(-1),
     last_checkpoint_(-1),
+    time_idx_(-1),
     params_(params)
 {}
 
@@ -62,7 +63,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
 	    params_->pack(ss, Streamable::ASCII);
 	    state->pack(ss, Streamable::ASCII);
 
-	    INFO("Writing data to file."<<fname);
+	    INFO("Writing data to file "<<fname);
 	    IO_.DumpFile(fname.c_str(), ss);
             ++last_checkpoint_;
         }

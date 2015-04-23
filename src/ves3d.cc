@@ -15,16 +15,16 @@ int main(int argc, char **argv)
 #endif
 
     DictString_t dict;
+    int nproc(1), rank(0);
 #ifdef HAS_MPI
     // Adding nproc and rank to template expansion dictionary
-    int nproc, rank;
     MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
     MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
+#endif
     std::stringstream snp, sr;
     snp<<nproc; sr<<rank;
     dict["nprocs"] = snp.str();
     dict["rank"]   = sr.str();
-#endif
 
     Param_t input_params;
     CHK(input_params.parseInput(argc, argv, &dict));

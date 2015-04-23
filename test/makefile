@@ -23,6 +23,7 @@ TEST = 	ArrayTest.exe			\
 	RepartitionTest.exe		\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
+	SimulationTest.exe		\
 	StokesDoubleLayerTest.exe	\
 	StokesTest.exe			\
 	StreamableTest.exe 		\

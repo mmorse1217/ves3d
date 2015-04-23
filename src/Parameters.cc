@@ -475,12 +475,19 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"===================================="<<std::endl;
     output<<" Simulator parameters"<<std::endl;
     output<<"===================================="<<std::endl;
+    output<<" Spherical harmonics:"<<std::endl;
+    output<<"   Surface SH order         : "<<par.sh_order<<std::endl;
+    output<<"   Filter freq              : "<<par.filter_freq<<std::endl;
+    output<<"   Rep upsample freq        : "<<par.rep_up_freq<<std::endl;
+    output<<"   Rep filter freq          : "<<par.rep_filter_freq<<std::endl;
+
+    output<<"------------------------------------"<<std::endl;
     output<<" Surface:"<<std::endl;
     output<<"   Number of surfaces       : "<<par.n_surfs<<std::endl;
-    output<<"   SH order                 : "<<par.sh_order<<std::endl;
-    output<<"   Filter freq              : "<<par.filter_freq<<std::endl;
     output<<"   Bending modulus          : "<<par.bending_modulus<<std::endl;
     output<<"   viscosity contrast       : "<<par.viscosity_contrast<<std::endl;
+    output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
+
     output<<"------------------------------------"<<std::endl;
     output<<" Solver:"<<std::endl;
     output<<"   Position solver iter     : "<<par.position_solver_iter<<std::endl;
@@ -499,18 +506,18 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Time tol                 : "<<par.time_tol<<std::endl;
     output<<"   Time iter max            : "<<par.time_iter_max<<std::endl;
     output<<"   Precond                  : "<<par.time_precond<<std::endl;
-    output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
+
     output<<"------------------------------------"<<std::endl;
     output<<" Reparametrization:"<<std::endl;
     output<<"   Rep maxit                : "<<par.rep_maxit<<std::endl;
-    output<<"   Rep upsample freq        : "<<par.rep_up_freq<<std::endl;
-    output<<"   Rep filter freq          : "<<par.rep_filter_freq<<std::endl;
     output<<"   Rep step size            : "<<par.rep_ts<<std::endl;
     output<<"   Rep tol                  : "<<par.rep_tol<<std::endl;
+
     output<<"------------------------------------"<<std::endl;
     output<<" Initialization:"<<std::endl;
     output<<"   Init file name           : "<<par.init_file_name<<std::endl;
     output<<"   Centers file name        : "<<par.cntrs_file_name<<std::endl;
+
     output<<"------------------------------------"<<std::endl;
     output<<" Checkpointing:"<<std::endl;
     output<<"   Checkpoint               : "<<std::boolalpha<<par.checkpoint<<std::endl;

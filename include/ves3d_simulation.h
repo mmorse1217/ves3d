@@ -70,6 +70,9 @@ class Simulation{
 
     Error_t Run();
 
+    Evolve_t* time_stepper(){ return timestepper_;}
+    Param_t* run_params(){ return &run_params_;}
+
   private:
     const Param_t &input_params_;
     Param_t run_params_;
