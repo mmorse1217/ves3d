@@ -1230,8 +1230,15 @@ struct QuadraticPatch{
   }
 
   void project(Real_t* t_coord_j, Real_t& x, Real_t&y){ // Find nearest point on patch
-    x=0; y=0;
+    static Real_t eps=-1;
+    if(eps<0){
+      eps=1.0;
+      while(eps+(Real_t)1.0>1.0) eps*=0.5;
+    }
+
+    assert(dof==COORD_DIM);
     Real_t sc[COORD_DIM];
+    x=0; y=0;
     eval(x,y,sc);
     while(1){
       Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
@@ -1247,7 +1254,7 @@ struct QuadraticPatch{
       Real_t dxdy=sgrad[0]*sgrad[3]+sgrad[1]*sgrad[4]+sgrad[2]*sgrad[5];
       Real_t dxdR=sgrad[0]*   dR[0]+sgrad[1]*   dR[1]+sgrad[2]*   dR[2];
       Real_t dydR=sgrad[3]*   dR[0]+sgrad[4]*   dR[1]+sgrad[5]*   dR[2];
-      if(dxdR*dxdR/dxdx+dydR*dydR/dydy < dR2*1e-6) break;
+      if(dxdR*dxdR/dxdx+dydR*dydR/dydy < dR2*(dxdx+dydy)*1e-6) break;
 
       Real_t dx, dy;
       if(dxdy){
@@ -1257,44 +1264,74 @@ struct QuadraticPatch{
         dx=dxdR/dxdx;
         dy=dydR/dydy;
       }
-
-      if((x<=-1 && dx<0) || (x>=1 && dx>0) || (y<=-1 && dy<0) || (y>=1 && dy>0)){
-        break;
-      }
-      if(dx>0 && x+dx>1){
-        Real_t scal=(1.01-x)/dx;
-        dx*=scal;
-        dy*=scal;
-      }
-      if(dx<0 && x+dx<-1){
-        Real_t scal=(-1.01-x)/dx;
-        dx*=scal;
-        dy*=scal;
-      }
-      if(dy>0 && y+dy>1){
-        Real_t scal=(1.01-y)/dy;
-        dx*=scal;
-        dy*=scal;
-      }
-      if(dy<0 && y+dy<-1){
-        Real_t scal=(-1.01-y)/dy;
-        dx*=scal;
-        dy*=scal;
-      }
-
-      while(1){
-        eval(x+dx,y+dy,sc);
-        Real_t dR_[COORD_DIM]={t_coord_j[0]-sc[0],
-                               t_coord_j[1]-sc[1],
-                               t_coord_j[2]-sc[2]};
-        Real_t dR2_=dR_[0]*dR_[0]+dR_[1]*dR_[1]+dR_[2]*dR_[2];
-        if(dR2_<=dR2){
-          x+=dx*2.0/3.0; y+=dy*2.0/3.0;
-          eval(x,y,sc);
+      { // Check for cases which should not happen and break;
+        if((x<=-1.0 && dx<0.0) ||
+           (x>= 1.0 && dx>0.0) ||
+           (y<=-1.0 && dy<0.0) ||
+           (y>= 1.0 && dy>0.0)){
           break;
-        }else{
-          dx*=0.5;
-          dy*=0.5;
+        }
+      }
+      { // if x+dx or y+dy are outsize [-1,1]
+        if(x>-1.0 && x+dx<-1.0){
+          Real_t s=(-1.0-x)/dx;
+          dx*=s; dy*=s;
+        }
+        if(x< 1.0 && x+dx> 1.0){
+          Real_t s=( 1.0-x)/dx;
+          dx*=s; dy*=s;
+        }
+        if(y>-1.0 && y+dy<-1.0){
+          Real_t s=(-1.0-y)/dy;
+          dx*=s; dy*=s;
+        }
+        if(y< 1.0 && y+dy> 1.0){
+          Real_t s=( 1.0-y)/dy;
+          dx*=s; dy*=s;
+        }
+      }
+
+      while(1){ // increment x,y
+        { // Account for curvature.
+          Real_t dR2_[3]={dR2,0,0};
+          { // x+dx*0.5,y+dy*0.5
+            Real_t sc[COORD_DIM];
+            eval(x+dx*0.5,y+dy*0.5,sc);
+            Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
+                                  t_coord_j[1]-sc[1],
+                                  t_coord_j[2]-sc[2]};
+            dR2_[1]=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
+          }
+          { // x+dx*1.0,y+dy*1.0
+            Real_t sc[COORD_DIM];
+            eval(x+dx*1.0,y+dy*1.0,sc);
+            Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
+                                  t_coord_j[1]-sc[1],
+                                  t_coord_j[2]-sc[2]};
+            dR2_[2]=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
+          }
+
+          Real_t coeff[3];
+          coeff[0]=                         dR2_[0]    ;
+          coeff[1]=-dR2_[2]    +dR2_[1]*4.0-dR2_[0]*3.0;
+          coeff[2]= dR2_[2]*2.0-dR2_[1]*4.0+dR2_[0]*2.0;
+          if(coeff[2]>0){
+            Real_t s=-0.5*coeff[1]/coeff[2];
+            if(s>0.0 && s<1.0){
+              dx*=s; dy*=s;
+            }
+          }
+        }
+        { // check if dx, dy reduce dR2
+          Real_t dR2_;
+          eval(x+dx,y+dy,sc);
+          Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
+                                t_coord_j[1]-sc[1],
+                                t_coord_j[2]-sc[2]};
+          dR2_=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
+          if(dR2_!=dR2_) assert(false); // Check NaN
+          if(dR2_<dR2 || dx*dx*dxdx+dy*dy*dydy<64*eps){ x+=dx; y+=dy; break;}
+          else {dx*=0.5; dy*=0.5;}
         }
       }
     }
@@ -1361,6 +1398,294 @@ static inline Real_t InterPoly(Real_t x, int j, int deg){
 }
 
 
+
+template <class Real_t>
+void patch_mesh(Real_t* patch_value_, size_t sph_order, size_t k0_, size_t k1_,
+    const Real_t* sx_coord, const Real_t* sy_coord, const Real_t* sz_coord, const Real_t* pole_coord, const Real_t* tcoord,
+    const Real_t* sx_value, const Real_t* sy_value, const Real_t* sz_value, const Real_t* pole_value){
+
+  size_t k0_max=1+sph_order;
+  size_t k1_max=2*sph_order;
+  size_t M_ves=k0_max*k1_max;
+
+  Real_t dR2, dR2_p0, dR2_p1;
+  { // dR2
+    int k=k1_+k0_*k1_max;
+    Real_t dR[COORD_DIM]={sx_coord[k]-tcoord[0],
+                          sy_coord[k]-tcoord[1],
+                          sz_coord[k]-tcoord[2]};
+    dR2=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
+  }
+  { // dR2_p0
+    Real_t dR[COORD_DIM]={pole_coord[0*COORD_DIM+0]-tcoord[0],
+                          pole_coord[0*COORD_DIM+1]-tcoord[1],
+                          pole_coord[0*COORD_DIM+2]-tcoord[2]};
+    dR2_p0=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
+  }
+  { // dR2_p1
+    Real_t dR[COORD_DIM]={pole_coord[1*COORD_DIM+0]-tcoord[0],
+                          pole_coord[1*COORD_DIM+1]-tcoord[1],
+                          pole_coord[1*COORD_DIM+2]-tcoord[2]};
+    dR2_p1=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
+  }
+
+  static pvfmm::Matrix<Real_t> M_interp;
+  if(!(M_interp.Dim(0)*M_interp.Dim(1))){ // Set M_interp
+    #pragma omp critical
+    if(!(M_interp.Dim(0)*M_interp.Dim(1))){
+      M_interp.ReInit(k1_max,8);
+      M_interp.SetZero();
+      size_t sph_order=k1_max/2;
+      assert(2*sph_order==k1_max);
+      for(size_t k0=0;k0<8;k0++)
+      for(size_t k1=0;k1<k1_max;k1++)
+      for(size_t k2=0;k2<=sph_order;k2++){
+        M_interp[k1][k0]+=(!k2 || k2==sph_order?1.0:2.0)*sin(2.0*M_PI*k2*(k0*1.0/8.0))*sin(2.0*M_PI*k2*(k1*1.0/k1_max))*1.0/k1_max;
+        M_interp[k1][k0]+=(!k2 || k2==sph_order?1.0:2.0)*cos(2.0*M_PI*k2*(k0*1.0/8.0))*cos(2.0*M_PI*k2*(k1*1.0/k1_max))*1.0/k1_max;
+      }
+    }
+  }
+
+  if(dR2_p0<dR2){ // Create patch
+    Real_t tmp[3*8];
+    pvfmm::Matrix<Real_t> value(3,8,tmp,false);
+    { // Set value
+      int k=0*k1_max;
+      pvfmm::Matrix<Real_t> X_in, X_out;
+
+      X_in .ReInit(1,k1_max,(Real_t*)&sx_value[k],false);
+      X_out.ReInit(1,     8,             value[0],false);
+      X_out=X_in*M_interp;
+
+      X_in .ReInit(1,k1_max,(Real_t*)&sy_value[k],false);
+      X_out.ReInit(1,     8,             value[1],false);
+      X_out=X_in*M_interp;
+
+      X_in .ReInit(1,k1_max,(Real_t*)&sz_value[k],false);
+      X_out.ReInit(1,     8,             value[2],false);
+      X_out=X_in*M_interp;
+    }
+
+    { // (0,0)
+      patch_value_[(0*3+0)*COORD_DIM+0]+=value[0][0];
+      patch_value_[(0*3+0)*COORD_DIM+1]+=value[1][0];
+      patch_value_[(0*3+0)*COORD_DIM+2]+=value[2][0];
+    }
+    { // (0,1)
+      patch_value_[(0*3+1)*COORD_DIM+0]+=value[0][1];
+      patch_value_[(0*3+1)*COORD_DIM+1]+=value[1][1];
+      patch_value_[(0*3+1)*COORD_DIM+2]+=value[2][1];
+    }
+    { // (0,2)
+      patch_value_[(0*3+2)*COORD_DIM+0]+=value[0][2];
+      patch_value_[(0*3+2)*COORD_DIM+1]+=value[1][2];
+      patch_value_[(0*3+2)*COORD_DIM+2]+=value[2][2];
+    }
+
+    { // (1,0)
+      patch_value_[(1*3+0)*COORD_DIM+0]+=value[0][7];
+      patch_value_[(1*3+0)*COORD_DIM+1]+=value[1][7];
+      patch_value_[(1*3+0)*COORD_DIM+2]+=value[2][7];
+    }
+    { // (1,1)
+      patch_value_[(1*3+1)*COORD_DIM+0]+=pole_value[0*COORD_DIM+0];
+      patch_value_[(1*3+1)*COORD_DIM+1]+=pole_value[0*COORD_DIM+1];
+      patch_value_[(1*3+1)*COORD_DIM+2]+=pole_value[0*COORD_DIM+2];
+    }
+    { // (1,2)
+      patch_value_[(1*3+2)*COORD_DIM+0]+=value[0][3];
+      patch_value_[(1*3+2)*COORD_DIM+1]+=value[1][3];
+      patch_value_[(1*3+2)*COORD_DIM+2]+=value[2][3];
+    }
+
+    { // (2,0)
+      patch_value_[(2*3+0)*COORD_DIM+0]+=value[0][6];
+      patch_value_[(2*3+0)*COORD_DIM+1]+=value[1][6];
+      patch_value_[(2*3+0)*COORD_DIM+2]+=value[2][6];
+    }
+    { // (2,1)
+      patch_value_[(2*3+1)*COORD_DIM+0]+=value[0][5];
+      patch_value_[(2*3+1)*COORD_DIM+1]+=value[1][5];
+      patch_value_[(2*3+1)*COORD_DIM+2]+=value[2][5];
+    }
+    { // (2,2)
+      patch_value_[(2*3+2)*COORD_DIM+0]+=value[0][4];
+      patch_value_[(2*3+2)*COORD_DIM+1]+=value[1][4];
+      patch_value_[(2*3+2)*COORD_DIM+2]+=value[2][4];
+    }
+  }else if(dR2_p1<dR2){
+    Real_t tmp[3*8];
+    pvfmm::Matrix<Real_t> value(3,8,tmp,false);
+    { // Set value
+      int k=(k0_max-1)*k1_max;
+      pvfmm::Matrix<Real_t> X_in, X_out;
+
+      X_in .ReInit(1,k1_max,(Real_t*)&sx_value[k],false);
+      X_out.ReInit(1,     8,             value[0],false);
+      X_out=X_in*M_interp;
+
+      X_in .ReInit(1,k1_max,(Real_t*)&sy_value[k],false);
+      X_out.ReInit(1,     8,             value[1],false);
+      X_out=X_in*M_interp;
+
+      X_in .ReInit(1,k1_max,(Real_t*)&sz_value[k],false);
+      X_out.ReInit(1,     8,             value[2],false);
+      X_out=X_in*M_interp;
+    }
+
+    { // (0,0)
+      patch_value_[(0*3+0)*COORD_DIM+0]+=value[0][0];
+      patch_value_[(0*3+0)*COORD_DIM+1]+=value[1][0];
+      patch_value_[(0*3+0)*COORD_DIM+2]+=value[2][0];
+    }
+    { // (0,1)
+      patch_value_[(0*3+1)*COORD_DIM+0]+=value[0][1];
+      patch_value_[(0*3+1)*COORD_DIM+1]+=value[1][1];
+      patch_value_[(0*3+1)*COORD_DIM+2]+=value[2][1];
+    }
+    { // (0,2)
+      patch_value_[(0*3+2)*COORD_DIM+0]+=value[0][2];
+      patch_value_[(0*3+2)*COORD_DIM+1]+=value[1][2];
+      patch_value_[(0*3+2)*COORD_DIM+2]+=value[2][2];
+    }
+
+    { // (1,0)
+      patch_value_[(1*3+0)*COORD_DIM+0]+=value[0][7];
+      patch_value_[(1*3+0)*COORD_DIM+1]+=value[1][7];
+      patch_value_[(1*3+0)*COORD_DIM+2]+=value[2][7];
+    }
+    { // (1,1)
+      patch_value_[(1*3+1)*COORD_DIM+0]+=pole_value[1*COORD_DIM+0];
+      patch_value_[(1*3+1)*COORD_DIM+1]+=pole_value[1*COORD_DIM+1];
+      patch_value_[(1*3+1)*COORD_DIM+2]+=pole_value[1*COORD_DIM+2];
+    }
+    { // (1,2)
+      patch_value_[(1*3+2)*COORD_DIM+0]+=value[0][3];
+      patch_value_[(1*3+2)*COORD_DIM+1]+=value[1][3];
+      patch_value_[(1*3+2)*COORD_DIM+2]+=value[2][3];
+    }
+
+    { // (2,0)
+      patch_value_[(2*3+0)*COORD_DIM+0]+=value[0][6];
+      patch_value_[(2*3+0)*COORD_DIM+1]+=value[1][6];
+      patch_value_[(2*3+0)*COORD_DIM+2]+=value[2][6];
+    }
+    { // (2,1)
+      patch_value_[(2*3+1)*COORD_DIM+0]+=value[0][5];
+      patch_value_[(2*3+1)*COORD_DIM+1]+=value[1][5];
+      patch_value_[(2*3+1)*COORD_DIM+2]+=value[2][5];
+    }
+    { // (2,2)
+      patch_value_[(2*3+2)*COORD_DIM+0]+=value[0][4];
+      patch_value_[(2*3+2)*COORD_DIM+1]+=value[1][4];
+      patch_value_[(2*3+2)*COORD_DIM+2]+=value[2][4];
+    }
+  }else{
+    { // (0,0)
+      if(k0_>0){
+        int k=((k1_+k1_max-1)%k1_max)+(k0_-1)*k1_max;
+        assert(k>=0 && k<M_ves);
+        patch_value_[(0*3+0)*COORD_DIM+0]+=sx_value[k];
+        patch_value_[(0*3+0)*COORD_DIM+1]+=sy_value[k];
+        patch_value_[(0*3+0)*COORD_DIM+2]+=sz_value[k];
+      }else{
+        patch_value_[(0*3+0)*COORD_DIM+0]+=pole_value[0*COORD_DIM+0];
+        patch_value_[(0*3+0)*COORD_DIM+1]+=pole_value[0*COORD_DIM+1];
+        patch_value_[(0*3+0)*COORD_DIM+2]+=pole_value[0*COORD_DIM+2];
+      }
+    }
+    { // (0,1)
+      if(k0_>0){
+        int k=  k1_                  +(k0_-1)*k1_max;
+        assert(k>=0 && k<M_ves);
+        patch_value_[(0*3+1)*COORD_DIM+0]+=sx_value[k];
+        patch_value_[(0*3+1)*COORD_DIM+1]+=sy_value[k];
+        patch_value_[(0*3+1)*COORD_DIM+2]+=sz_value[k];
+      }else{
+        patch_value_[(0*3+1)*COORD_DIM+0]+=pole_value[0*COORD_DIM+0];
+        patch_value_[(0*3+1)*COORD_DIM+1]+=pole_value[0*COORD_DIM+1];
+        patch_value_[(0*3+1)*COORD_DIM+2]+=pole_value[0*COORD_DIM+2];
+      }
+    }
+    { // (0,2)
+      if(k0_>0){
+        int k=((k1_       +1)%k1_max)+(k0_-1)*k1_max;
+        assert(k>=0 && k<M_ves);
+        patch_value_[(0*3+2)*COORD_DIM+0]+=sx_value[k];
+        patch_value_[(0*3+2)*COORD_DIM+1]+=sy_value[k];
+        patch_value_[(0*3+2)*COORD_DIM+2]+=sz_value[k];
+      }else{
+        patch_value_[(0*3+2)*COORD_DIM+0]+=pole_value[0*COORD_DIM+0];
+        patch_value_[(0*3+2)*COORD_DIM+1]+=pole_value[0*COORD_DIM+1];
+        patch_value_[(0*3+2)*COORD_DIM+2]+=pole_value[0*COORD_DIM+2];
+      }
+    }
+
+    { // (1,0)
+      int k=((k1_+k1_max-1)%k1_max)+k0_*k1_max;
+      assert(k>=0 && k<M_ves);
+      patch_value_[(1*3+0)*COORD_DIM+0]+=sx_value[k];
+      patch_value_[(1*3+0)*COORD_DIM+1]+=sy_value[k];
+      patch_value_[(1*3+0)*COORD_DIM+2]+=sz_value[k];
+    }
+    { // (1,1)
+      int k=  k1_                  +k0_*k1_max;
+      assert(k>=0 && k<M_ves);
+      patch_value_[(1*3+1)*COORD_DIM+0]+=sx_value[k];
+      patch_value_[(1*3+1)*COORD_DIM+1]+=sy_value[k];
+      patch_value_[(1*3+1)*COORD_DIM+2]+=sz_value[k];
+    }
+    { // (1,2)
+      int k=((k1_       +1)%k1_max)+k0_*k1_max;
+      assert(k>=0 && k<M_ves);
+      patch_value_[(1*3+2)*COORD_DIM+0]+=sx_value[k];
+      patch_value_[(1*3+2)*COORD_DIM+1]+=sy_value[k];
+      patch_value_[(1*3+2)*COORD_DIM+2]+=sz_value[k];
+    }
+
+    { // (2,0)
+      if(k0_<k0_max-1){
+        int k=((k1_+k1_max-1)%k1_max)+(k0_+1)*k1_max;
+        assert(k>=0 && k<M_ves);
+        patch_value_[(2*3+0)*COORD_DIM+0]+=sx_value[k];
+        patch_value_[(2*3+0)*COORD_DIM+1]+=sy_value[k];
+        patch_value_[(2*3+0)*COORD_DIM+2]+=sz_value[k];
+      }else{
+        patch_value_[(2*3+0)*COORD_DIM+0]+=pole_value[1*COORD_DIM+0];
+        patch_value_[(2*3+0)*COORD_DIM+1]+=pole_value[1*COORD_DIM+1];
+        patch_value_[(2*3+0)*COORD_DIM+2]+=pole_value[1*COORD_DIM+2];
+      }
+    }
+    { // (2,1)
+      if(k0_<k0_max-1){
+        int k=  k1_                  +(k0_+1)*k1_max;
+        assert(k>=0 && k<M_ves);
+        patch_value_[(2*3+1)*COORD_DIM+0]+=sx_value[k];
+        patch_value_[(2*3+1)*COORD_DIM+1]+=sy_value[k];
+        patch_value_[(2*3+1)*COORD_DIM+2]+=sz_value[k];
+      }else{
+        patch_value_[(2*3+1)*COORD_DIM+0]+=pole_value[1*COORD_DIM+0];
+        patch_value_[(2*3+1)*COORD_DIM+1]+=pole_value[1*COORD_DIM+1];
+        patch_value_[(2*3+1)*COORD_DIM+2]+=pole_value[1*COORD_DIM+2];
+      }
+    }
+    { // (2,2)
+      if(k0_<k0_max-1){
+        int k=((k1_       +1)%k1_max)+(k0_+1)*k1_max;
+        assert(k>=0 && k<M_ves);
+        patch_value_[(2*3+2)*COORD_DIM+0]+=sx_value[k];
+        patch_value_[(2*3+2)*COORD_DIM+1]+=sy_value[k];
+        patch_value_[(2*3+2)*COORD_DIM+2]+=sz_value[k];
+      }else{
+        patch_value_[(2*3+2)*COORD_DIM+0]+=pole_value[1*COORD_DIM+0];
+        patch_value_[(2*3+2)*COORD_DIM+1]+=pole_value[1*COORD_DIM+1];
+        patch_value_[(2*3+2)*COORD_DIM+2]+=pole_value[1*COORD_DIM+2];
+      }
+    }
+  }
+}
+
+
 template<typename Surf_t>
 const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool update){
   if((update && update_interp) || (update_interp & NearSingular::UpdateSurfaceVel)){ // Compute near-singular
@@ -1407,10 +1732,11 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
       }
     }
 
-    pvfmm::Profile::Tic("CoordProj",&comm,true);
+    pvfmm::Profile::Tic("Proj",&comm,true);
     size_t N_trg=trg_coord.Dim()/COORD_DIM;
     std::vector<char>   is_surf_pt      (N_trg);           // If a target point is a surface point
     std::vector<Real_t> proj_coord      (N_trg*COORD_DIM); // Projection coordinates (x,y,z)
+    std::vector<Real_t> proj_veloc      (N_trg*COORD_DIM); // Velocity at projection coordinates
     std::vector<Real_t> proj_patch_param(N_trg*        2); // Projection patch prameter coordinates
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Setup
@@ -1423,7 +1749,6 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
         const Real_t* sz_coord=x.getSubN_begin(i)+2*M_ves;
 
         Real_t pole_coord[2*COORD_DIM];
-        Real_t patch_coord_[3*3*COORD_DIM];
         { // Set pole values: pole_coord, pole_veloc
           for(size_t j=0;j<2*COORD_DIM;j++) pole_coord[j]=0;
           for(size_t k0=0;k0<k0_max;k0++){
@@ -1462,111 +1787,15 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
               k0_=k/k1_max;
               k1_=k%k1_max;
             }
-            { // Create patch
-              { // (0,0)
-                if(k0_>0){
-                  int k=((k1_+k1_max-1)%k1_max)+(k0_-1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_coord_[(0*3+0)*COORD_DIM+0]=sx_coord[k];
-                  patch_coord_[(0*3+0)*COORD_DIM+1]=sy_coord[k];
-                  patch_coord_[(0*3+0)*COORD_DIM+2]=sz_coord[k];
-                }else{
-                  patch_coord_[(0*3+0)*COORD_DIM+0]=pole_coord[0*COORD_DIM+0];
-                  patch_coord_[(0*3+0)*COORD_DIM+1]=pole_coord[0*COORD_DIM+1];
-                  patch_coord_[(0*3+0)*COORD_DIM+2]=pole_coord[0*COORD_DIM+2];
-                }
-              }
-              { // (0,1)
-                if(k0_>0){
-                  int k=  k1_                  +(k0_-1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_coord_[(0*3+1)*COORD_DIM+0]=sx_coord[k];
-                  patch_coord_[(0*3+1)*COORD_DIM+1]=sy_coord[k];
-                  patch_coord_[(0*3+1)*COORD_DIM+2]=sz_coord[k];
-                }else{
-                  patch_coord_[(0*3+1)*COORD_DIM+0]=pole_coord[0*COORD_DIM+0];
-                  patch_coord_[(0*3+1)*COORD_DIM+1]=pole_coord[0*COORD_DIM+1];
-                  patch_coord_[(0*3+1)*COORD_DIM+2]=pole_coord[0*COORD_DIM+2];
-                }
-              }
-              { // (0,2)
-                if(k0_>0){
-                  int k=((k1_       +1)%k1_max)+(k0_-1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_coord_[(0*3+2)*COORD_DIM+0]=sx_coord[k];
-                  patch_coord_[(0*3+2)*COORD_DIM+1]=sy_coord[k];
-                  patch_coord_[(0*3+2)*COORD_DIM+2]=sz_coord[k];
-                }else{
-                  patch_coord_[(0*3+2)*COORD_DIM+0]=pole_coord[0*COORD_DIM+0];
-                  patch_coord_[(0*3+2)*COORD_DIM+1]=pole_coord[0*COORD_DIM+1];
-                  patch_coord_[(0*3+2)*COORD_DIM+2]=pole_coord[0*COORD_DIM+2];
-                }
-              }
 
-              { // (1,0)
-                int k=((k1_+k1_max-1)%k1_max)+k0_*k1_max;
-                assert(k>=0 && k<M_ves);
-                patch_coord_[(1*3+0)*COORD_DIM+0]=sx_coord[k];
-                patch_coord_[(1*3+0)*COORD_DIM+1]=sy_coord[k];
-                patch_coord_[(1*3+0)*COORD_DIM+2]=sz_coord[k];
-              }
-              { // (1,1)
-                int k=  k1_                  +k0_*k1_max;
-                assert(k>=0 && k<M_ves);
-                patch_coord_[(1*3+1)*COORD_DIM+0]=sx_coord[k];
-                patch_coord_[(1*3+1)*COORD_DIM+1]=sy_coord[k];
-                patch_coord_[(1*3+1)*COORD_DIM+2]=sz_coord[k];
-              }
-              { // (1,2)
-                int k=((k1_       +1)%k1_max)+k0_*k1_max;
-                assert(k>=0 && k<M_ves);
-                patch_coord_[(1*3+2)*COORD_DIM+0]=sx_coord[k];
-                patch_coord_[(1*3+2)*COORD_DIM+1]=sy_coord[k];
-                patch_coord_[(1*3+2)*COORD_DIM+2]=sz_coord[k];
-              }
-
-              { // (2,0)
-                if(k0_<k0_max-1){
-                  int k=((k1_+k1_max-1)%k1_max)+(k0_+1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_coord_[(2*3+0)*COORD_DIM+0]=sx_coord[k];
-                  patch_coord_[(2*3+0)*COORD_DIM+1]=sy_coord[k];
-                  patch_coord_[(2*3+0)*COORD_DIM+2]=sz_coord[k];
-                }else{
-                  patch_coord_[(2*3+0)*COORD_DIM+0]=pole_coord[1*COORD_DIM+0];
-                  patch_coord_[(2*3+0)*COORD_DIM+1]=pole_coord[1*COORD_DIM+1];
-                  patch_coord_[(2*3+0)*COORD_DIM+2]=pole_coord[1*COORD_DIM+2];
-                }
-              }
-              { // (2,1)
-                if(k0_<k0_max-1){
-                  int k=  k1_                  +(k0_+1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_coord_[(2*3+1)*COORD_DIM+0]=sx_coord[k];
-                  patch_coord_[(2*3+1)*COORD_DIM+1]=sy_coord[k];
-                  patch_coord_[(2*3+1)*COORD_DIM+2]=sz_coord[k];
-                }else{
-                  patch_coord_[(2*3+1)*COORD_DIM+0]=pole_coord[1*COORD_DIM+0];
-                  patch_coord_[(2*3+1)*COORD_DIM+1]=pole_coord[1*COORD_DIM+1];
-                  patch_coord_[(2*3+1)*COORD_DIM+2]=pole_coord[1*COORD_DIM+2];
-                }
-              }
-              { // (2,2)
-                if(k0_<k0_max-1){
-                  int k=((k1_       +1)%k1_max)+(k0_+1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_coord_[(2*3+2)*COORD_DIM+0]=sx_coord[k];
-                  patch_coord_[(2*3+2)*COORD_DIM+1]=sy_coord[k];
-                  patch_coord_[(2*3+2)*COORD_DIM+2]=sz_coord[k];
-                }else{
-                  patch_coord_[(2*3+2)*COORD_DIM+0]=pole_coord[1*COORD_DIM+0];
-                  patch_coord_[(2*3+2)*COORD_DIM+1]=pole_coord[1*COORD_DIM+1];
-                  patch_coord_[(2*3+2)*COORD_DIM+2]=pole_coord[1*COORD_DIM+2];
-                }
-              }
-
-              patch_coord=QuadraticPatch<Real_t>(&patch_coord_[0],COORD_DIM);
+            Real_t patch_coord_[3*3*COORD_DIM];
+            { // compute patch_coord_
+              for(size_t k=0;k<3*3*COORD_DIM;k++) patch_coord_[k]=0;
+              patch_mesh<Real_t>(patch_coord_, k0_max-1, k0_, k1_,
+                                 sx_coord, sy_coord, sz_coord, pole_coord, &trg_coord[trg_idx*COORD_DIM],
+                                 sx_coord, sy_coord, sz_coord, pole_coord);
             }
+            patch_coord=QuadraticPatch<Real_t>(&patch_coord_[0],COORD_DIM);
           }
 
           { // Find nearest point on patch (first interpolation point)
@@ -1576,32 +1805,26 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
             patch_coord.eval(x,y,&proj_coord[trg_idx*COORD_DIM]);
           }
         }
-      }
-    }
-    pvfmm::Profile::Toc();
 
-    pvfmm::Profile::Tic("VelocProj",&comm,true);
-    std::vector<Real_t> proj_veloc      (N_trg*COORD_DIM); // Velocity at projection coordinates
-    #pragma omp parallel for
-    for(size_t tid=0;tid<omp_p;tid++){ // Setup
-      size_t a=((tid+0)*N_ves)/omp_p;
-      size_t b=((tid+1)*N_ves)/omp_p;
-      if(update && update_interp)
-      for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
+
+        if(!update || !update_interp) continue; ///////////////////////////////
+
+
         // read each component of S_vel
         const Real_t* sx_veloc=S_vel->getSubN_begin(i)+0*M_ves;
         const Real_t* sy_veloc=S_vel->getSubN_begin(i)+1*M_ves;
         const Real_t* sz_veloc=S_vel->getSubN_begin(i)+2*M_ves;
 
         // read each component of force_double
-        const Real_t* fdx_veloc=(force_double?force_double->getSubN_begin(i)+0*M_ves:NULL);
-        const Real_t* fdy_veloc=(force_double?force_double->getSubN_begin(i)+1*M_ves:NULL);
-        const Real_t* fdz_veloc=(force_double?force_double->getSubN_begin(i)+2*M_ves:NULL);
+        const Real_t* sx_dforce=(force_double?force_double->getSubN_begin(i)+0*M_ves:NULL);
+        const Real_t* sy_dforce=(force_double?force_double->getSubN_begin(i)+1*M_ves:NULL);
+        const Real_t* sz_dforce=(force_double?force_double->getSubN_begin(i)+2*M_ves:NULL);
 
         Real_t pole_veloc[2*COORD_DIM];
-        Real_t patch_veloc_[3*3*COORD_DIM];
+        Real_t pole_force_dbl[2*COORD_DIM];
         { // Set pole values: pole_coord, pole_veloc
           for(size_t j=0;j<2*COORD_DIM;j++) pole_veloc[j]=0;
+          for(size_t j=0;j<2*COORD_DIM;j++) pole_force_dbl[j]=0;
           for(size_t k0=0;k0<k0_max;k0++){
             for(size_t k1=0;k1<k1_max;k1++){
               size_t k=k1+k0*k1_max;
@@ -1613,12 +1836,12 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
               pole_veloc[1*COORD_DIM+2]+=pole_quad[         k0]*sz_veloc[k];
 
               if(force_double){
-                pole_veloc[0*COORD_DIM+0]-=0.5*pole_quad[k0_max-1-k0]*fdx_veloc[k];
-                pole_veloc[0*COORD_DIM+1]-=0.5*pole_quad[k0_max-1-k0]*fdy_veloc[k];
-                pole_veloc[0*COORD_DIM+2]-=0.5*pole_quad[k0_max-1-k0]*fdz_veloc[k];
-                pole_veloc[1*COORD_DIM+0]-=0.5*pole_quad[         k0]*fdx_veloc[k];
-                pole_veloc[1*COORD_DIM+1]-=0.5*pole_quad[         k0]*fdy_veloc[k];
-                pole_veloc[1*COORD_DIM+2]-=0.5*pole_quad[         k0]*fdz_veloc[k];
+                pole_force_dbl[0*COORD_DIM+0]+=pole_quad[k0_max-1-k0]*sx_dforce[k];
+                pole_force_dbl[0*COORD_DIM+1]+=pole_quad[k0_max-1-k0]*sy_dforce[k];
+                pole_force_dbl[0*COORD_DIM+2]+=pole_quad[k0_max-1-k0]*sz_dforce[k];
+                pole_force_dbl[1*COORD_DIM+0]+=pole_quad[         k0]*sx_dforce[k];
+                pole_force_dbl[1*COORD_DIM+1]+=pole_quad[         k0]*sy_dforce[k];
+                pole_force_dbl[1*COORD_DIM+2]+=pole_quad[         k0]*sz_dforce[k];
               }
             }
           }
@@ -1637,191 +1860,23 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
               k0_=k/k1_max;
               k1_=k%k1_max;
             }
-            { // Create patch
-              { // (0,0)
-                if(k0_>0){
-                  int k=((k1_+k1_max-1)%k1_max)+(k0_-1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(0*3+0)*COORD_DIM+0]=sx_veloc[k];
-                  patch_veloc_[(0*3+0)*COORD_DIM+1]=sy_veloc[k];
-                  patch_veloc_[(0*3+0)*COORD_DIM+2]=sz_veloc[k];
-                }else{
-                  patch_veloc_[(0*3+0)*COORD_DIM+0]=pole_veloc[0*COORD_DIM+0];
-                  patch_veloc_[(0*3+0)*COORD_DIM+1]=pole_veloc[0*COORD_DIM+1];
-                  patch_veloc_[(0*3+0)*COORD_DIM+2]=pole_veloc[0*COORD_DIM+2];
-                }
-              }
-              { // (0,1)
-                if(k0_>0){
-                  int k=  k1_                  +(k0_-1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(0*3+1)*COORD_DIM+0]=sx_veloc[k];
-                  patch_veloc_[(0*3+1)*COORD_DIM+1]=sy_veloc[k];
-                  patch_veloc_[(0*3+1)*COORD_DIM+2]=sz_veloc[k];
-                }else{
-                  patch_veloc_[(0*3+1)*COORD_DIM+0]=pole_veloc[0*COORD_DIM+0];
-                  patch_veloc_[(0*3+1)*COORD_DIM+1]=pole_veloc[0*COORD_DIM+1];
-                  patch_veloc_[(0*3+1)*COORD_DIM+2]=pole_veloc[0*COORD_DIM+2];
-                }
-              }
-              { // (0,2)
-                if(k0_>0){
-                  int k=((k1_       +1)%k1_max)+(k0_-1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(0*3+2)*COORD_DIM+0]=sx_veloc[k];
-                  patch_veloc_[(0*3+2)*COORD_DIM+1]=sy_veloc[k];
-                  patch_veloc_[(0*3+2)*COORD_DIM+2]=sz_veloc[k];
-                }else{
-                  patch_veloc_[(0*3+2)*COORD_DIM+0]=pole_veloc[0*COORD_DIM+0];
-                  patch_veloc_[(0*3+2)*COORD_DIM+1]=pole_veloc[0*COORD_DIM+1];
-                  patch_veloc_[(0*3+2)*COORD_DIM+2]=pole_veloc[0*COORD_DIM+2];
-                }
-              }
 
-              { // (1,0)
-                int k=((k1_+k1_max-1)%k1_max)+k0_*k1_max;
-                assert(k>=0 && k<M_ves);
-                patch_veloc_[(1*3+0)*COORD_DIM+0]=sx_veloc[k];
-                patch_veloc_[(1*3+0)*COORD_DIM+1]=sy_veloc[k];
-                patch_veloc_[(1*3+0)*COORD_DIM+2]=sz_veloc[k];
-              }
-              { // (1,1)
-                int k=  k1_                  +k0_*k1_max;
-                assert(k>=0 && k<M_ves);
-                patch_veloc_[(1*3+1)*COORD_DIM+0]=sx_veloc[k];
-                patch_veloc_[(1*3+1)*COORD_DIM+1]=sy_veloc[k];
-                patch_veloc_[(1*3+1)*COORD_DIM+2]=sz_veloc[k];
-              }
-              { // (1,2)
-                int k=((k1_       +1)%k1_max)+k0_*k1_max;
-                assert(k>=0 && k<M_ves);
-                patch_veloc_[(1*3+2)*COORD_DIM+0]=sx_veloc[k];
-                patch_veloc_[(1*3+2)*COORD_DIM+1]=sy_veloc[k];
-                patch_veloc_[(1*3+2)*COORD_DIM+2]=sz_veloc[k];
-              }
-
-              { // (2,0)
-                if(k0_<k0_max-1){
-                  int k=((k1_+k1_max-1)%k1_max)+(k0_+1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(2*3+0)*COORD_DIM+0]=sx_veloc[k];
-                  patch_veloc_[(2*3+0)*COORD_DIM+1]=sy_veloc[k];
-                  patch_veloc_[(2*3+0)*COORD_DIM+2]=sz_veloc[k];
-                }else{
-                  patch_veloc_[(2*3+0)*COORD_DIM+0]=pole_veloc[1*COORD_DIM+0];
-                  patch_veloc_[(2*3+0)*COORD_DIM+1]=pole_veloc[1*COORD_DIM+1];
-                  patch_veloc_[(2*3+0)*COORD_DIM+2]=pole_veloc[1*COORD_DIM+2];
-                }
-              }
-              { // (2,1)
-                if(k0_<k0_max-1){
-                  int k=  k1_                  +(k0_+1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(2*3+1)*COORD_DIM+0]=sx_veloc[k];
-                  patch_veloc_[(2*3+1)*COORD_DIM+1]=sy_veloc[k];
-                  patch_veloc_[(2*3+1)*COORD_DIM+2]=sz_veloc[k];
-                }else{
-                  patch_veloc_[(2*3+1)*COORD_DIM+0]=pole_veloc[1*COORD_DIM+0];
-                  patch_veloc_[(2*3+1)*COORD_DIM+1]=pole_veloc[1*COORD_DIM+1];
-                  patch_veloc_[(2*3+1)*COORD_DIM+2]=pole_veloc[1*COORD_DIM+2];
-                }
-              }
-              { // (2,2)
-                if(k0_<k0_max-1){
-                  int k=((k1_       +1)%k1_max)+(k0_+1)*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(2*3+2)*COORD_DIM+0]=sx_veloc[k];
-                  patch_veloc_[(2*3+2)*COORD_DIM+1]=sy_veloc[k];
-                  patch_veloc_[(2*3+2)*COORD_DIM+2]=sz_veloc[k];
-                }else{
-                  patch_veloc_[(2*3+2)*COORD_DIM+0]=pole_veloc[1*COORD_DIM+0];
-                  patch_veloc_[(2*3+2)*COORD_DIM+1]=pole_veloc[1*COORD_DIM+1];
-                  patch_veloc_[(2*3+2)*COORD_DIM+2]=pole_veloc[1*COORD_DIM+2];
-                }
-              }
-
-              if(force_double){
-                { // (0,0)
-                  if(k0_>0){
-                    int k=((k1_+k1_max-1)%k1_max)+(k0_-1)*k1_max;
-                    assert(k>=0 && k<M_ves);
-                    patch_veloc_[(0*3+0)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                    patch_veloc_[(0*3+0)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                    patch_veloc_[(0*3+0)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                  }
-                }
-                { // (0,1)
-                  if(k0_>0){
-                    int k=  k1_                  +(k0_-1)*k1_max;
-                    assert(k>=0 && k<M_ves);
-                    patch_veloc_[(0*3+1)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                    patch_veloc_[(0*3+1)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                    patch_veloc_[(0*3+1)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                  }
-                }
-                { // (0,2)
-                  if(k0_>0){
-                    int k=((k1_       +1)%k1_max)+(k0_-1)*k1_max;
-                    assert(k>=0 && k<M_ves);
-                    patch_veloc_[(0*3+2)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                    patch_veloc_[(0*3+2)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                    patch_veloc_[(0*3+2)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                  }
-                }
-
-                { // (1,0)
-                  int k=((k1_+k1_max-1)%k1_max)+k0_*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(1*3+0)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                  patch_veloc_[(1*3+0)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                  patch_veloc_[(1*3+0)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                }
-                { // (1,1)
-                  int k=  k1_                  +k0_*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(1*3+1)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                  patch_veloc_[(1*3+1)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                  patch_veloc_[(1*3+1)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                }
-                { // (1,2)
-                  int k=((k1_       +1)%k1_max)+k0_*k1_max;
-                  assert(k>=0 && k<M_ves);
-                  patch_veloc_[(1*3+2)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                  patch_veloc_[(1*3+2)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                  patch_veloc_[(1*3+2)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                }
-
-                { // (2,0)
-                  if(k0_<k0_max-1){
-                    int k=((k1_+k1_max-1)%k1_max)+(k0_+1)*k1_max;
-                    assert(k>=0 && k<M_ves);
-                    patch_veloc_[(2*3+0)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                    patch_veloc_[(2*3+0)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                    patch_veloc_[(2*3+0)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                  }
-                }
-                { // (2,1)
-                  if(k0_<k0_max-1){
-                    int k=  k1_                  +(k0_+1)*k1_max;
-                    assert(k>=0 && k<M_ves);
-                    patch_veloc_[(2*3+1)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                    patch_veloc_[(2*3+1)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                    patch_veloc_[(2*3+1)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                  }
-                }
-                { // (2,2)
-                  if(k0_<k0_max-1){
-                    int k=((k1_       +1)%k1_max)+(k0_+1)*k1_max;
-                    assert(k>=0 && k<M_ves);
-                    patch_veloc_[(2*3+2)*COORD_DIM+0]-=0.5*fdx_veloc[k];
-                    patch_veloc_[(2*3+2)*COORD_DIM+1]-=0.5*fdy_veloc[k];
-                    patch_veloc_[(2*3+2)*COORD_DIM+2]-=0.5*fdz_veloc[k];
-                  }
-                }
-              }
-
-              patch_veloc=QuadraticPatch<Real_t>(&patch_veloc_[0],COORD_DIM);
+            Real_t patch_veloc_[3*3*COORD_DIM];
+            { // compute patch_veloc_
+              for(size_t k=0;k<3*3*COORD_DIM;k++) patch_veloc_[k]=0;
+              patch_mesh<Real_t>(patch_veloc_, k0_max-1, k0_, k1_,
+                                 sx_coord, sy_coord, sz_coord, pole_coord, &trg_coord[trg_idx*COORD_DIM],
+                                 sx_veloc, sy_veloc, sz_veloc, pole_veloc);
             }
+            if(force_double){ // add contribution from double layer to patch_veloc
+              Real_t patch_force_dbl_[3*3*COORD_DIM];
+              for(size_t k=0;k<3*3*COORD_DIM;k++) patch_force_dbl_[k]=0;
+              patch_mesh<Real_t>(patch_force_dbl_, k0_max-1, k0_, k1_,
+                                 sx_coord, sy_coord, sz_coord, pole_coord, &trg_coord[trg_idx*COORD_DIM],
+                                 sx_dforce, sy_dforce, sz_dforce, pole_force_dbl);
+              for(size_t k=0;k<3*3*COORD_DIM;k++) patch_veloc_[k]-=0.5*patch_force_dbl_[k];
+            }
+            patch_veloc=QuadraticPatch<Real_t>(&patch_veloc_[0],COORD_DIM);
           }
 
           { // Find nearest point on patch (first interpolation point)
