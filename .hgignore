@@ -4,6 +4,7 @@ syntax: glob
 *.exe
 *.pbs
 *.txt
+*.chk
 *.tar
 *.bk
 *.d

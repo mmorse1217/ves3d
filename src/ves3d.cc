@@ -9,17 +9,23 @@ int main(int argc, char **argv)
 {
     SET_ERR_CALLBACK(&cb_abort);
     PROFILESTART();
-    PetscInitialize(&argc, &argv, NULL, NULL);
 
+#ifdef HAS_PETSC
+    PetscInitialize(&argc, &argv, NULL, NULL);
+#endif
+
+    DictString_t dict;
+#ifdef HAS_MPI
     // Adding nproc and rank to template expansion dictionary
     int nproc, rank;
     MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
     MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
-    DictString_t dict;
     std::stringstream snp, sr;
     snp<<nproc; sr<<rank;
     dict["nprocs"] = snp.str();
     dict["rank"]   = sr.str();
+#endif
+
     Param_t input_params;
     CHK(input_params.parseInput(argc, argv, &dict));
 
@@ -29,7 +35,10 @@ int main(int argc, char **argv)
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortTime);
+
+#ifdef HAS_PETSC
     PetscFinalize();
+#endif
 
     return 0;
 }
