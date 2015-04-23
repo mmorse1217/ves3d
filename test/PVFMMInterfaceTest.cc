@@ -64,7 +64,7 @@ int main(int argc, char** argv){
   int max_pts=600;
   int mult_order=10;
   int max_depth=20;
-  const pvfmm::Kernel<Real_t>* ker=&ker_stokes;
+  const pvfmm::Kernel<Real_t>* ker=&StokesKernel<Real_t>::Kernel();
 
   std::vector<Real_t> coord   (N*(DIM                ));
   std::vector<Real_t> force_sl(N*(    ker->ker_dim[0]));

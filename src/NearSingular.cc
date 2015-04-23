@@ -1430,9 +1430,9 @@ void patch_mesh(Real_t* patch_value_, size_t sph_order, size_t k0_, size_t k1_,
   }
 
   static pvfmm::Matrix<Real_t> M_interp;
-  if(!(M_interp.Dim(0)*M_interp.Dim(1))){ // Set M_interp
+  if(M_interp.Dim(0)!=k1_max || M_interp.Dim(1)!=8){ // Set M_interp
     #pragma omp critical
-    if(!(M_interp.Dim(0)*M_interp.Dim(1))){
+    if(M_interp.Dim(0)!=k1_max || M_interp.Dim(1)!=8){
       M_interp.ReInit(k1_max,8);
       M_interp.SetZero();
       size_t sph_order=k1_max/2;

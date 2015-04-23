@@ -249,15 +249,15 @@ void* PVFMMCreateContext(T box_size, int n, int m, int max_d,
     MPI_Comm_size(ctx->comm, &np);
     MPI_Comm_rank(ctx->comm, &myrank);
 
-    std::vector<double> coord;
-    size_t NN=ceil(pow((double)np*ctx->max_pts,1.0/3.0));
+    std::vector<T> coord;
+    size_t NN=ceil(pow((T)np*ctx->max_pts,1.0/3.0));
     size_t N_total=NN*NN*NN;
     size_t start= myrank   *N_total/np;
     size_t end  =(myrank+1)*N_total/np;
     for(size_t i=start;i<end;i++){
-      coord.push_back(((double)((i/  1    )%NN)+0.5)/NN);
-      coord.push_back(((double)((i/ NN    )%NN)+0.5)/NN);
-      coord.push_back(((double)((i/(NN*NN))%NN)+0.5)/NN);
+      coord.push_back(((T)((i/  1    )%NN)+0.5)/NN);
+      coord.push_back(((T)((i/ NN    )%NN)+0.5)/NN);
+      coord.push_back(((T)((i/(NN*NN))%NN)+0.5)/NN);
     }
     ctx->tree_data.pt_coord=coord;
   }
