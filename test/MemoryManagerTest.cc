@@ -36,6 +36,8 @@
 #include "Device.h"
 #include "Logger.h"
 
+#include <typeinfo>
+
 typedef Device<CPU> DevCPU;
 extern const DevCPU cpu_dev(0);
 typedef memory::MemoryManager<DevCPU, cpu_dev> CPUMem;

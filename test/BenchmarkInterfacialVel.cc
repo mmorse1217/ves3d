@@ -12,7 +12,7 @@
 #include "CPUKernels.h"
 
 #define DT CPU
-typedef float real;
+typedef float value_t;
 typedef Device<DT> Dev;
 
 extern const Dev the_device(0);
@@ -32,18 +32,18 @@ void populateByFirst(Container &x)
 
 int main(int argc, char** argv)
 {
-    typedef Scalars<real, Dev, the_device> Sca_t;
-    typedef Vectors<real, Dev, the_device> Vec_t;
+    typedef Scalars<value_t, Dev, the_device> Sca_t;
+    typedef Vectors<value_t, Dev, the_device> Vec_t;
     typedef typename Sca_t::array_type Arr_t;
     typedef OperatorsMats<Arr_t> Mats_t;
     typedef Surface<Sca_t,Vec_t> Sur_t;
-    typedef VesInteraction<real> Interaction_t;
+    typedef VesInteraction<value_t> Interaction_t;
     typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
 
     // Parameter
     int p(12), nvec(1);
-    real tol(4e-5);
-    Parameters<real> sim_par;
+    value_t tol(4e-5);
+    Parameters<value_t> sim_par;
     sim_par.n_surfs              = nvec;
     sim_par.sh_order             = p;
     sim_par.filter_freq          = 8;

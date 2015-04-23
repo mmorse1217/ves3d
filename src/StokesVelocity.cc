@@ -608,7 +608,7 @@ void StokesVelocity<Surf_t>::Test(){
   }
 
   // Creating surface objects
-  Surf_t S(x0, mats);
+  Surf_t S(mats,&x0);
 
   Vec_t vel_surf(nVec, sim_par.sh_order);
   { // Set analytical surface velocity

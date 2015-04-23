@@ -143,7 +143,7 @@ namespace memory{
     template<typename T>
     Error_t MemoryManager<DT,DEVICE>::deallocate(const ResourcePtr<T, MemoryManager> *p) const
     {
-	DEVICE.Free(const_cast<raw_pointer>((const raw_pointer) p->get()));
+	DEVICE.Free(const_cast<raw_pointer>((raw_pointer) p->get()));
 	return ErrorEvent::Success;
     }
 
