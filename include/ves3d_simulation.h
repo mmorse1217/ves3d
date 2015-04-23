@@ -49,6 +49,10 @@
 #include "ParallelLinSolver_Petsc.h"
 #endif
 
+#ifdef HAVE_PVFMM
+#include "PVFMMInterface.h"
+#endif
+
 template<typename DT, const DT &DEVICE>
 class Simulation{
   public:

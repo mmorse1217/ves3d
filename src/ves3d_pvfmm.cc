@@ -1,95 +1,35 @@
-#include "PVFMMInterface.h"
-#include "ves3d_common.h"
-#include "Logger.h"
-#include "EvolveSurface.h"
-#include "ParallelLinSolver_Petsc.h"
+#include "ves3d_simulation.h"
 
 typedef Device<CPU> Dev;
-extern const Dev the_dev(0);
+extern const Dev cpu(0);
+typedef Simulation<Dev, cpu> Sim_t;
+typedef Sim_t::Param_t Param_t;
 
-// Default callback for errors
-Error_t cb_abort(const ErrorEvent &err)
+int main(int argc, char **argv)
 {
-    CERR_LOC("Aborting, received error "<<err,"",abort());
-    return err.err_;
-}
-
-void run_sim(int argc, char **argv){
     SET_ERR_CALLBACK(&cb_abort);
+    PROFILESTART();
+    PetscInitialize(&argc, &argv, NULL, NULL);
 
+    // Adding nproc and rank to template expansion dictionary
     int nproc, rank;
     MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
     MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
-
-    typedef EvolveSurface<real_t, Dev, the_dev> Evolve_t;
-    typedef Evolve_t::Params_t Par_t;
-    typedef Evolve_t::Arr_t Arr_t;
-    typedef Evolve_t::Vec_t Vec_t;
-    typedef Evolve_t::Interaction_t Inter_t;
-    typedef ParallelLinSolverPetsc<real_t> PSol_t;
-
-    // Setting the parameters
-    Par_t sim_par;
-    Dict_t dict;
+    DictString_t dict;
     std::stringstream snp, sr;
     snp<<nproc; sr<<rank;
     dict["nprocs"] = snp.str();
     dict["rank"]   = sr.str();
+    Param_t input_params;
+    CHK(input_params.parseInput(argc, argv, &dict));
 
-    CHK(sim_par.parseInput(argc, argv, &dict));
-    omp_set_num_threads(sim_par.num_threads);
-    COUT(sim_par);
+    Sim_t sim(input_params);
+    CHK(sim.Run());
 
-    //Initial vesicle positions
-    Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
-
-    //reading the prototype form file
-    DataIO myIO(FullPath(sim_par.checkpoint_file_name));
-    myIO.ReadData( FullPath(sim_par.init_file_name), x0, DataIO::ASCII, 0, x0.getSubLength());
-
-    //reading centers file
-    if (sim_par.cntrs_file_name.size()){
-        INFO("Reading centers from file");
-        Arr_t cntrs(DIM * sim_par.n_surfs * nproc);
-        myIO.ReadData( FullPath(sim_par.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
-
-        INFO("Populating the initial configuration using centers");
-        Arr_t my_centers(DIM * sim_par.n_surfs);
-	cntrs.getDevice().Memcpy(my_centers.begin(),
-				 cntrs.begin() + rank * DIM * sim_par.n_surfs,
-				 DIM * sim_par.n_surfs * sizeof(Arr_t::value_type),
-				 Arr_t::device_type::MemcpyDeviceToDevice);
-        Populate(x0, my_centers);
-    };
-
-    // Reading Operators From File
-    Evolve_t::Mats_t Mats(true /*readFromFile*/, sim_par);
-
-    //Setting the background flow
-    BgFlowBase<Vec_t> *vInf(NULL);
-    CHK(BgFlowFactory(sim_par, &vInf));
-
-    // interaction handler
-    Inter_t fmm_interaction(&PVFMMEval, &PVFMMDestroyContext<real_t>);
-
-    // parallel solver
-    PSol_t ksp(VES3D_COMM_WORLD);
-
-    // Evolve surface class
-    Evolve_t Es(sim_par, Mats, x0, vInf, NULL, &fmm_interaction, NULL, &ksp);
-    CHK( Es.Evolve() );
-
-    delete vInf;
-}
-
-int main(int argc, char **argv)
-{
-    PROFILESTART();
-    PetscInitialize(&argc, &argv, NULL, NULL);
-    run_sim(argc, argv);
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortTime);
     PetscFinalize();
+
     return 0;
 }

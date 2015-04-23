@@ -81,7 +81,12 @@ Error_t Simulation<DT,DEVICE>::setup_basics(){
     ksp_ = new ParallelLinSolverPetsc<real_t>(VES3D_COMM_WORLD);
 #endif
 
+#ifdef HAVE_PVFMM
+    interaction_ = new Inter_t(&PVFMMEval, &PVFMMDestroyContext<real_t>);
+#else
     interaction_ = new Inter_t(&StokesAlltoAll);
+#endif
+
     return ErrorEvent::Success;
 }
 
@@ -102,15 +107,28 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
     DataIO myIO;
     myIO.ReadData( FullPath(run_params_.init_file_name), x0, DataIO::ASCII, 0, x0.getSubLength());
 
+    int nproc(1), rank(0);
+#ifdef HAVE_PVFMM
+    MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
+    MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
+#endif
+
     //reading centers file
     if (run_params_.cntrs_file_name.size()){
 	INFO("Reading centers from file");
-	Arr_t cntrs(DIM * run_params_.n_surfs);
+	Arr_t cntrs(DIM * run_params_.n_surfs * nproc);
+
 	myIO.ReadData( FullPath(run_params_.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
 
 	INFO("Populating the initial configuration using centers");
-	Populate(x0, cntrs);
+	Arr_t my_centers(DIM * run_params_.n_surfs);
+    	cntrs.getDevice().Memcpy(my_centers.begin(),
+	    cntrs.begin() + rank * DIM * run_params_.n_surfs,
+	    DIM * run_params_.n_surfs * sizeof(Arr_t::value_type),
+	    Arr_t::device_type::MemcpyDeviceToDevice);
+        Populate(x0, my_centers);
     };
+
     timestepper_ = new Evolve_t(&run_params_, *Mats_, vInf_, NULL, interaction_, NULL, ksp_, &x0);
 
     return ErrorEvent::Success;
