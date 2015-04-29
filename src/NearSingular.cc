@@ -78,7 +78,7 @@ void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N){ // TODO: ch
 template<typename Surf_t>
 void NearSingular<Surf_t>::SetupCoordData(){
   assert(S);
-  Real_t near=1.6/sqrt((Real_t)S->getShOrder()); // TODO: some function of sh_order and accuracy
+  Real_t near=2.0/sqrt((Real_t)S->getShOrder()); // TODO: some function of sh_order and accuracy
   if(!(update_setup & (NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord))) return;
   update_setup=update_setup & ~(NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord);
 
@@ -985,7 +985,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
 
 template<typename Surf_t>
 void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
-  if(update_direct){ // Computee vel_direct
+  if(update_direct){ // Compute vel_direct
     size_t omp_p=omp_get_max_threads();
     SetupCoordData();
 
@@ -1062,7 +1062,14 @@ void NearSingular<Surf_t>::VelocityScatter(PVFMMVec_t& trg_vel){
     PVFMMVec_t trg_vel_final(trg_count*COORD_DIM);
     trg_vel_final.SetZero();
 
-    size_t trg_id_offset=trg_pt_id[0];
+    size_t trg_id_offset;//=trg_pt_id[0];
+    { // Get trg_id_offset
+      long long disp=0;
+      long long size=trg_count;
+      MPI_Scan(&size, &disp, 1, MPI_LONG_LONG, MPI_SUM, comm);
+      trg_id_offset=disp-size;
+    }
+
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){
       size_t a=((tid+0)*trg_pt_id.Dim())/omp_p;
@@ -1229,11 +1236,14 @@ struct QuadraticPatch{
     }
   }
 
-  void project(Real_t* t_coord_j, Real_t& x, Real_t&y){ // Find nearest point on patch
+  int project(Real_t* t_coord_j, Real_t& x, Real_t&y){ // Find nearest point on patch
     static Real_t eps=-1;
     if(eps<0){
-      eps=1.0;
-      while(eps+(Real_t)1.0>1.0) eps*=0.5;
+      #pragma omp critical
+      if(eps<0){
+        eps=1.0;
+        while(eps+(Real_t)1.0>1.0) eps*=0.5;
+      }
     }
 
     assert(dof==COORD_DIM);
@@ -1330,10 +1340,29 @@ struct QuadraticPatch{
                                 t_coord_j[2]-sc[2]};
           dR2_=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
           if(dR2_!=dR2_) assert(false); // Check NaN
-          if(dR2_<dR2 || dx*dx*dxdx+dy*dy*dydy<64*eps){ x+=dx; y+=dy; break;}
+          if(dR2_<dR2){ x+=dx; y+=dy; break;}
+          if(dx*dx*dxdx+dy*dy*dydy<64*eps) break;
           else {dx*=0.5; dy*=0.5;}
         }
       }
+      if(dx*dx*dxdx+dy*dy*dydy<64*eps) break;
+    }
+
+    { // Determine direction of point (exterior or interior)
+      Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
+                            t_coord_j[1]-sc[1],
+                            t_coord_j[2]-sc[2]};
+      Real_t sgrad[2*COORD_DIM];
+      grad(x,y,sgrad);
+
+      Real_t direc=0;
+      direc+=dR[0]*sgrad[1]*sgrad[3+2];
+      direc+=dR[1]*sgrad[2]*sgrad[3+0];
+      direc+=dR[2]*sgrad[0]*sgrad[3+1];
+      direc-=dR[0]*sgrad[2]*sgrad[3+1];
+      direc-=dR[1]*sgrad[0]*sgrad[3+2];
+      direc-=dR[2]*sgrad[1]*sgrad[3+0];
+      return (direc<0);
     }
   }
 
@@ -1400,7 +1429,7 @@ static inline Real_t InterPoly(Real_t x, int j, int deg){
 
 
 template <class Real_t>
-void patch_mesh(Real_t* patch_value_, size_t sph_order, size_t k0_, size_t k1_,
+static void patch_mesh(Real_t* patch_value_, size_t sph_order, size_t k0_, size_t k1_,
     const Real_t* sx_coord, const Real_t* sy_coord, const Real_t* sz_coord, const Real_t* pole_coord, const Real_t* tcoord,
     const Real_t* sx_value, const Real_t* sy_value, const Real_t* sz_value, const Real_t* pole_value){
 
@@ -1472,20 +1501,20 @@ void patch_mesh(Real_t* patch_value_, size_t sph_order, size_t k0_, size_t k1_,
       patch_value_[(0*3+0)*COORD_DIM+2]+=value[2][0];
     }
     { // (0,1)
-      patch_value_[(0*3+1)*COORD_DIM+0]+=value[0][1];
-      patch_value_[(0*3+1)*COORD_DIM+1]+=value[1][1];
-      patch_value_[(0*3+1)*COORD_DIM+2]+=value[2][1];
+      patch_value_[(0*3+1)*COORD_DIM+0]+=value[0][7];
+      patch_value_[(0*3+1)*COORD_DIM+1]+=value[1][7];
+      patch_value_[(0*3+1)*COORD_DIM+2]+=value[2][7];
     }
     { // (0,2)
-      patch_value_[(0*3+2)*COORD_DIM+0]+=value[0][2];
-      patch_value_[(0*3+2)*COORD_DIM+1]+=value[1][2];
-      patch_value_[(0*3+2)*COORD_DIM+2]+=value[2][2];
+      patch_value_[(0*3+2)*COORD_DIM+0]+=value[0][6];
+      patch_value_[(0*3+2)*COORD_DIM+1]+=value[1][6];
+      patch_value_[(0*3+2)*COORD_DIM+2]+=value[2][6];
     }
 
     { // (1,0)
-      patch_value_[(1*3+0)*COORD_DIM+0]+=value[0][7];
-      patch_value_[(1*3+0)*COORD_DIM+1]+=value[1][7];
-      patch_value_[(1*3+0)*COORD_DIM+2]+=value[2][7];
+      patch_value_[(1*3+0)*COORD_DIM+0]+=value[0][1];
+      patch_value_[(1*3+0)*COORD_DIM+1]+=value[1][1];
+      patch_value_[(1*3+0)*COORD_DIM+2]+=value[2][1];
     }
     { // (1,1)
       patch_value_[(1*3+1)*COORD_DIM+0]+=pole_value[0*COORD_DIM+0];
@@ -1493,20 +1522,20 @@ void patch_mesh(Real_t* patch_value_, size_t sph_order, size_t k0_, size_t k1_,
       patch_value_[(1*3+1)*COORD_DIM+2]+=pole_value[0*COORD_DIM+2];
     }
     { // (1,2)
-      patch_value_[(1*3+2)*COORD_DIM+0]+=value[0][3];
-      patch_value_[(1*3+2)*COORD_DIM+1]+=value[1][3];
-      patch_value_[(1*3+2)*COORD_DIM+2]+=value[2][3];
+      patch_value_[(1*3+2)*COORD_DIM+0]+=value[0][5];
+      patch_value_[(1*3+2)*COORD_DIM+1]+=value[1][5];
+      patch_value_[(1*3+2)*COORD_DIM+2]+=value[2][5];
     }
 
     { // (2,0)
-      patch_value_[(2*3+0)*COORD_DIM+0]+=value[0][6];
-      patch_value_[(2*3+0)*COORD_DIM+1]+=value[1][6];
-      patch_value_[(2*3+0)*COORD_DIM+2]+=value[2][6];
+      patch_value_[(2*3+0)*COORD_DIM+0]+=value[0][2];
+      patch_value_[(2*3+0)*COORD_DIM+1]+=value[1][2];
+      patch_value_[(2*3+0)*COORD_DIM+2]+=value[2][2];
     }
     { // (2,1)
-      patch_value_[(2*3+1)*COORD_DIM+0]+=value[0][5];
-      patch_value_[(2*3+1)*COORD_DIM+1]+=value[1][5];
-      patch_value_[(2*3+1)*COORD_DIM+2]+=value[2][5];
+      patch_value_[(2*3+1)*COORD_DIM+0]+=value[0][3];
+      patch_value_[(2*3+1)*COORD_DIM+1]+=value[1][3];
+      patch_value_[(2*3+1)*COORD_DIM+2]+=value[2][3];
     }
     { // (2,2)
       patch_value_[(2*3+2)*COORD_DIM+0]+=value[0][4];
@@ -1735,6 +1764,7 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
     pvfmm::Profile::Tic("Proj",&comm,true);
     size_t N_trg=trg_coord.Dim()/COORD_DIM;
     std::vector<char>   is_surf_pt      (N_trg);           // If a target point is a surface point
+    std::vector<char>   is_extr_pt      (N_trg);           // If a target point is an exterior point
     std::vector<Real_t> proj_coord      (N_trg*COORD_DIM); // Projection coordinates (x,y,z)
     std::vector<Real_t> proj_veloc      (N_trg*COORD_DIM); // Velocity at projection coordinates
     std::vector<Real_t> proj_patch_param(N_trg*        2); // Projection patch prameter coordinates
@@ -1801,6 +1831,7 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
           { // Find nearest point on patch (first interpolation point)
             Real_t& x=proj_patch_param[trg_idx*2+0];
             Real_t& y=proj_patch_param[trg_idx*2+1];
+            is_extr_pt[trg_idx]=
             patch_coord.project(&  trg_coord[trg_idx*COORD_DIM],x,y);
             patch_coord.eval(x,y,&proj_coord[trg_idx*COORD_DIM]);
           }
@@ -1874,7 +1905,9 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
               patch_mesh<Real_t>(patch_force_dbl_, k0_max-1, k0_, k1_,
                                  sx_coord, sy_coord, sz_coord, pole_coord, &trg_coord[trg_idx*COORD_DIM],
                                  sx_dforce, sy_dforce, sz_dforce, pole_force_dbl);
-              for(size_t k=0;k<3*3*COORD_DIM;k++) patch_veloc_[k]-=0.5*patch_force_dbl_[k];
+              Real_t scal=0.5;
+              if(is_extr_pt[trg_idx]) scal=-0.5;
+              for(size_t k=0;k<3*3*COORD_DIM;k++) patch_veloc_[k]+=scal*patch_force_dbl_[k];
             }
             patch_veloc=QuadraticPatch<Real_t>(&patch_veloc_[0],COORD_DIM);
           }
