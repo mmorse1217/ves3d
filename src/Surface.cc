@@ -143,7 +143,6 @@ mapToTangentSpace(Vec_t &vec_fld) const
     GeometricDot(normal_, normal_, *scp);
     Sqrt(*scp, *scp);
     uyInv(normal_, *scp, normal_);
-    GeometricDot(normal_, normal_, *scp);
 
     //mapping to tangent
     GeometricDot(*fld, normal_, *scp);

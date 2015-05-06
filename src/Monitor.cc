@@ -47,9 +47,9 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             <<", area error = "<<SCI_PRINT_FRMT<<fabs(A/A0_-1)
             <<", volume error = "<<SCI_PRINT_FRMT<<fabs(V/V0_-1));
 
-        bool checkpoint_now = static_cast<int>(t/checkpoint_stride_) > last_checkpoint_;
+	int checkpoint_index(checkpoint_stride_ <= 0 ? last_checkpoint_+1 : t/checkpoint_stride_);
 
-        if ( checkpoint_flag_ && checkpoint_now )
+        if ( checkpoint_flag_ && checkpoint_index > last_checkpoint_ )
         {
 	    ++time_idx_;
 	    std::string fname(params_->checkpoint_file_name);
