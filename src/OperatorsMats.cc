@@ -2,7 +2,7 @@ template <typename Container>
 OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     const Parameters<value_type> &params) :
     p_(params.sh_order),
-    p_up_(params.rep_up_freq),
+    p_up_(params.upsample_freq),
     data_(getDataLength(params)),
     mats_p_(Container::getDevice(), p_, data_.begin(), readFromFile),
     mats_p_up_(Container::getDevice(), p_up_, data_.begin() +
@@ -111,8 +111,7 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
 }
 
 template <typename Container>
-size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type>
-    &params) const
+size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type> &params) const
 {
     int np = 2 * p_ * ( p_ + 1);
     int np_up = 2 * p_up_ * ( p_up_ + 1);
@@ -129,4 +128,14 @@ size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type>
     return(3*np + np_up + rot_mat_size +  spharm_rot_size +
         SHTMats<value_type, device_type>::getDataLength(p_)      +
         SHTMats<value_type, device_type>::getDataLength(p_up_));
+}
+
+template <typename Container>
+const SHTMats<typename Container::value_type, typename Container::device_type>&
+OperatorsMats<Container>::getShMats(int order) const
+{
+    if (order==p_)
+	return mats_p_;
+    else /* if (order==p_up_) */
+	return mats_p_up_;
 }

@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 
     Parameters<real> sim_par;
     sim_par.sh_order = p;
-    sim_par.rep_up_freq = 2*p;
+    sim_par.upsample_freq = 2*p;
 
     char fname[300] = "MovePole.out";
     remove(fname);

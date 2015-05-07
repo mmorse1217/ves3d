@@ -30,6 +30,8 @@ class Parameters : public Streamable
     int n_surfs;
     int sh_order;
     int filter_freq;
+    int upsample_freq;
+
     T bending_modulus;
     T viscosity_contrast;
 
@@ -53,15 +55,15 @@ class Parameters : public Streamable
     enum SingularStokesRot singular_stokes;
 
     //Reparametrization
-    int rep_maxit;
-    int rep_up_freq;
-    int rep_filter_freq;
-    T rep_ts;
-    T rep_tol;
+    int  rep_maxit;
+    int  rep_filter_freq;
+    bool rep_upsample;
+    T    rep_ts;
+    T    rep_tol;
 
     //Background flow
     T bg_flow_param;
-    bool upsample_interaction;
+    bool interaction_upsample;
 
     //Startup and Monitoring
     bool checkpoint;

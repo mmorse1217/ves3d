@@ -66,7 +66,7 @@ int main(int argc, char** argv){
     sim_par.n_surfs	    = nvec;
     sim_par.sh_order	    = p;
     sim_par.filter_freq     = p;
-    sim_par.rep_up_freq     = p;
+    sim_par.upsample_freq   = p;
     sim_par.rep_filter_freq = p;
     sim_par.ts              = ts;
     COUT(sim_par);
@@ -85,7 +85,7 @@ int main(int argc, char** argv){
     Mats_t Mats(true /* readFromFile */, sim_par);
 
     //Making The Surface, And Time Stepper
-    Sur_t S(Mats, &x);
+    Sur_t S(p, Mats, &x);
 
     //Setting the background flow
     BgFlowBase<Vec_t> *vInf(NULL);

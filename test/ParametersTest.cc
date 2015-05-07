@@ -67,6 +67,9 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.n_surfs == pc.n_surfs					, "incorrect n_surfs");
     ASSERT(p.sh_order == pc.sh_order					, "incorrect sh_order");
     ASSERT(p.filter_freq == pc.filter_freq				, "incorrect filter_freq");
+    ASSERT(p.upsample_freq == pc.upsample_freq				, "incorrect upsample_freq");
+    ASSERT(p.rep_filter_freq == pc.rep_filter_freq			, "incorrect rep_filter_freq");
+    ASSERT(p.rep_upsample == pc.rep_upsample				, "incorrect rep_upsample");
     ASSERT(p.bending_modulus == pc.bending_modulus			, "incorrect bending_modulus");
     ASSERT(p.viscosity_contrast == pc.viscosity_contrast		, "incorrect viscosity_contrast");
     ASSERT(p.position_solver_iter == pc.position_solver_iter		, "incorrect position_solver_iter");
@@ -84,12 +87,10 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p. bg_flow == pc. bg_flow					, "incorrect  bg_flow");
     ASSERT(p. singular_stokes == pc. singular_stokes			, "incorrect  singular_stokes");
     ASSERT(p.rep_maxit == pc.rep_maxit					, "incorrect rep_maxit");
-    ASSERT(p.rep_up_freq == pc.rep_up_freq				, "incorrect rep_up_freq");
-    ASSERT(p.rep_filter_freq == pc.rep_filter_freq			, "incorrect rep_filter_freq");
     ASSERT(p.rep_ts == pc.rep_ts					, "incorrect rep_ts");
     ASSERT(p.rep_tol == pc.rep_tol					, "incorrect rep_tol");
     ASSERT(p.bg_flow_param == pc.bg_flow_param				, "incorrect bg_flow_param");
-    ASSERT(p.upsample_interaction == pc.upsample_interaction		, "incorrect upsample_interaction");
+    ASSERT(p.interaction_upsample == pc.interaction_upsample		, "incorrect interaction_upsample");
     ASSERT(p.checkpoint == pc.checkpoint        			, "incorrect checkpoint");
     ASSERT(p.checkpoint_stride == pc.checkpoint_stride			, "incorrect checkpoint_stride");
     ASSERT(p.init_file_name == pc.init_file_name			, "incorrect init_file_name");
@@ -104,9 +105,11 @@ bool ParametersTest<P>::TestStream(const P &p)
 
 int main(int, char**){
 
-    int argc(9);
-    char *argv[] = {"execname", "--n-surfs", "5", "--sh-order","13","-o","out.txt", "-l", "a.txt"};
+    int argc(11);
+    char *argv[] = {"execname", "--n-surfs", "5", "--sh-order","13","-o","out.txt", "-l", "a.txt",
+		    "--rep-upsample", "--interaction-upsample"};
     Parameters<double> p(argc, argv);
     ParametersTest<Parameters<double> > PT;
     PT(p);
+    COUT(p);
 }

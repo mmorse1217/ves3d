@@ -49,7 +49,7 @@ int main(int argc, char** argv)
         //Reading operators from file
         Parameters<real> sim_par;
         sim_par.sh_order = p;
-        sim_par.rep_up_freq = p;
+        sim_par.upsample_freq = p;
         bool readFromFile = true;
         Mats_t mats(readFromFile, sim_par);
 
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
         Vec_t x2(nv2, p); fillRand(x2);
         Vec_t x3(nv3, p); fillRand(x3);
 
-        Surface<Sca_t, Vec_t> S(mats,&x1);
+        Surface<Sca_t, Vec_t> S(p,mats,&x1);
         COUT("Number of surfaces: "<<S.getNumberOfSurfaces());
         Sca_t H1(nv1, p);
         axpy(1, S.getMeanCurv(), H1);

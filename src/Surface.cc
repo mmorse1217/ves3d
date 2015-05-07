@@ -7,24 +7,33 @@
  */
 template <typename ScalarContainer, typename VectorContainer>
 Surface<ScalarContainer, VectorContainer>::Surface(
-    const OperatorsMats<Arr_t> &mats, const Vec_t *x_in,
-    int upsample, int filter) :
-    upsample_freq_((upsample == -1) ? mats.p_ : upsample),
-    rep_filter_freq_((filter == -1) ? mats.p_/3 : filter),
-    sht_(mats.p_, mats.mats_p_), ///@todo make sht_ autonomous
-    sht_rep_filter_(mats.p_, mats.mats_p_, rep_filter_freq_),
-    sht_rep_upsample_(upsample_freq_, mats.mats_p_up_),
+    int sh_order, const OperatorsMats<Arr_t> &mats,
+    const Vec_t *x_in, int diff_filter_freq,
+    int rep_filter_freq) :
+    sh_order_(sh_order),
+    diff_filter_freq_((diff_filter_freq == -1) ? 2*sh_order_/3 : diff_filter_freq),
+    reparam_filter_freq_((rep_filter_freq == -1) ? sh_order_/3 : rep_filter_freq),
+    mats_(&mats),
+    sht_(sh_order_, mats.getShMats(sh_order_), diff_filter_freq_), ///@todo make sht_ autonomous
+    sht_rep_filter_(sh_order, mats.getShMats(sh_order_), reparam_filter_freq_),
+    sht_resample_(NULL),
     containers_are_stale_(true),
     first_forms_are_stale_(true),
     second_forms_are_stale_(true),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0)
 {
-    INFO("Initializing with upsample_freq="<<upsample_freq_
-        <<", rep_filter_freq="<<rep_filter_freq_
+    if (sh_order_ == mats.p_ )
+	sht_resample_ = new SHMats_t(mats.p_up_, mats.mats_p_up_);
+    else
+	sht_resample_ = new SHMats_t(mats.p_, mats.mats_p_);
+
+    INFO("Initializing with sh_order="<<sh_order_
+	<<", diff_filter_freq="<<diff_filter_freq_
+        <<", reparam_filter_freq="<<reparam_filter_freq_
         <<", sh order="<<sht_.getShOrder()
         <<", sht_rep_filter="<<sht_rep_filter_.getShOrder()
-        <<", sht_rep_upsample="<<sht_rep_upsample_.getShOrder()
+        <<", sht_resample="<<sht_resample_->getShOrder()
 	 );
 
     x_.set_name("position");
@@ -34,10 +43,11 @@ Surface<ScalarContainer, VectorContainer>::Surface(
 template <typename ScalarContainer, typename VectorContainer>
 Surface<ScalarContainer, VectorContainer>::~Surface()
 {
-    ASSERT(!checked_out_work_sca_,"All scalar are returned work pool");
-    ASSERT(!checked_out_work_vec_,"All vectors are returned work pool");
+    ASSERT(!checked_out_work_sca_,"All scalar are not returned to work pool");
+    ASSERT(!checked_out_work_vec_,"All vectors are not returned to work pool");
 
     purgeTheWorkSpace();
+    delete sht_resample_;
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -128,7 +138,7 @@ mapToTangentSpace(Vec_t &vec_fld) const
     std::auto_ptr<Vec_t> fld(checkoutVec());
 
     //up-sampling
-    int usf(sht_rep_upsample_.getShOrder());
+    int usf(sht_resample_->getShOrder());
 
     scp->resize(scp->getNumSubs(), usf);
     wrk->resize(wrk->getNumSubs(), usf);
@@ -136,8 +146,8 @@ mapToTangentSpace(Vec_t &vec_fld) const
     fld->resize(fld->getNumSubs(), usf);
     normal_.resize(normal_.getNumSubs(), usf);
 
-    Resample(vec_fld, sht_, sht_rep_upsample_, *shc, *wrk, *fld);
-    Resample(normal_, sht_, sht_rep_upsample_, *shc, *wrk, normal_);
+    Resample(vec_fld, sht_, *sht_resample_, *shc, *wrk, *fld);
+    Resample(normal_, sht_, *sht_resample_, *shc, *wrk, normal_);
 
     //re-normalizing
     GeometricDot(normal_, normal_, *scp);
@@ -150,8 +160,8 @@ mapToTangentSpace(Vec_t &vec_fld) const
     xvpw(*scp, normal_, *fld, *fld);
 
     //down-sampling
-    Resample(*fld   , sht_rep_upsample_, sht_, *shc, *wrk, vec_fld);
-    Resample(normal_, sht_rep_upsample_, sht_, *shc, *wrk, normal_);
+    Resample(*fld   , *sht_resample_, sht_, *shc, *wrk, vec_fld);
+    Resample(normal_, *sht_resample_, sht_, *shc, *wrk, normal_);
     normal_.resize(normal_.getNumSubs(), sht_.getShOrder());
 
     recycle(scp);
@@ -504,6 +514,36 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
 }
 
 template <typename S, typename V>
+Error_t Surface<S, V>::resample(int new_sh_freq, Surface **new_surf) const{
+
+    ASSERT(*new_surf==NULL, "Target of pointer seems to be in use");
+
+    /* current implementation doesn't permit resampling to arbitrary freq */
+    if (new_sh_freq != sht_resample_->getShOrder())
+	return ErrorEvent::NotImplementedError;
+
+    // resample x to the target freq
+    std::auto_ptr<Vec_t> wrk(checkoutVec());
+    std::auto_ptr<Vec_t> shc(checkoutVec());
+    std::auto_ptr<Vec_t> xre(checkoutVec());
+    wrk->resize(wrk->getNumSubs(), new_sh_freq);
+    shc->resize(shc->getNumSubs(), new_sh_freq);
+    xre->resize(xre->getNumSubs(), new_sh_freq);
+    Resample(x_, sht_, *sht_resample_, *shc, *wrk, *xre);
+
+    // construct new object
+    *new_surf = new Surface(new_sh_freq, *mats_, xre.get(),
+	diff_filter_freq_*new_sh_freq/sh_order_,
+	reparam_filter_freq_*new_sh_freq/sh_order_);
+
+    recycle(wrk);
+    recycle(shc);
+    recycle(xre);
+
+    return ErrorEvent::Success;
+}
+
+template <typename S, typename V>
 Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
 
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
@@ -513,9 +553,9 @@ Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
     os<<"sh_order: "<<x_.getShOrder()<<"\n";
     os<<"SHT_order: "<<sht_.getShOrder()<<"\n";
     os<<"SHT_rep_order: "<<sht_rep_filter_.getShOrder()<<"\n";
-    os<<"SHT_rep_up_order: "<<sht_rep_upsample_.getShOrder()<<"\n";
-    os<<"upsample_freq: "<<upsample_freq_<<"\n";
-    os<<"rep_filter_freq: "<<rep_filter_freq_<<"\n";
+    os<<"SHT_resample_order: "<<sht_resample_->getShOrder()<<"\n";
+    os<<"diff_filter_freq: "<<diff_filter_freq_<<"\n";
+    os<<"reparam_filter_freq: "<<reparam_filter_freq_<<"\n";
     x_.pack(os,format);
     os<<"/SURFACE\n";
 
@@ -545,16 +585,16 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     ASSERT(ii==sht_rep_filter_.getShOrder(), "incompatible data, cannot unpack");
 
     is>>key>>ii;
-    ASSERT(key=="SHT_rep_up_order:", "bad key SHT_rep_up_order");
-    ASSERT(ii==sht_rep_upsample_.getShOrder(), "incompatible data, cannot unpack");
+    ASSERT(key=="SHT_resample_order:", "bad key SHT_resample_order");
+    ASSERT(ii==sht_resample_->getShOrder(), "incompatible data, cannot unpack");
 
     is>>key>>ii;
-    ASSERT(key=="upsample_freq:", "bad key upsample_freq");
-    ASSERT(ii==upsample_freq_, "incompatible data, cannot unpack");
+    ASSERT(key=="diff_filter_freq:", "bad key diff_filter_freq");
+    ASSERT(ii==diff_filter_freq_, "incompatible data, cannot unpack");
 
     is>>key>>ii;
-    ASSERT(key=="rep_filter_freq:", "bad key rep_filter_freq");
-    ASSERT(ii==rep_filter_freq_, "incompatible data, cannot unpack");
+    ASSERT(key=="reparam_filter_freq:", "bad key reparam_filter_freq");
+    ASSERT(ii==reparam_filter_freq_, "incompatible data, cannot unpack");
 
     x_.unpack(is, format);
     is>>s;
@@ -573,8 +613,8 @@ std::ostream& operator<<(std::ostream& output, const Surface<S, V> &sur)
     output<<" =====================================================\n"
           <<"  Number of surfaces     : "<<sur.getNumberOfSurfaces()<<"\n"
           <<"  SH order               : "<<sur.getShOrder()<<"\n"
-          <<"  Up-sample freq         : "<<sur.upsample_freq_<<"\n"
-          <<"  Reparametrization freq : "<<sur.rep_filter_freq_<<"\n"
+          <<"  Differentiation freq   : "<<sur.diff_filter_freq_<<"\n"
+	  <<"  Reparametrization freq : "<<sur.reparam_filter_freq_<<"\n"
           <<" =====================================================\n";
 
     return(output);

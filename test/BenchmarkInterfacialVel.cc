@@ -53,8 +53,8 @@ int main(int argc, char** argv)
     sim_par.ts                   = 1;
     sim_par.bg_flow_param        = 1e-1;
     sim_par.singular_stokes      = Direct;
-    sim_par.upsample_interaction = false; //Make sure this is false
-    sim_par.rep_up_freq          = 12;
+    sim_par.interaction_upsample = false; //Make sure this is false
+    sim_par.upsample_freq        = 12;
 
     DataIO myIO;
     Vec_t x(nvec, p), Fb(nvec, p), SFb(nvec, p), vel(nvec, p), xnew(nvec, p);
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     Mats_t Mats(readFromFile, sim_par);
 
     //Making The Surface, And Time Stepper
-    Sur_t S(Mats, &x);
+    Sur_t S(p, Mats, &x);
 
     {
         //Setting the background flow

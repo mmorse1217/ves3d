@@ -54,7 +54,7 @@ all: ${TEST}
 	${CXX} -MM ${CXXFLAGS} ${CPPFLAGS} -c -o $*.d $*.cc
 
 clean:
-	-${RM} *.o *.exe *.out *.d
+	-${RM} *.o *.exe *.out *.d *.chk
 
 check:  ${TEST}
 	${MAKE} run

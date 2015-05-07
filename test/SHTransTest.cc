@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     int nVec(1), p(6), q(2*p);
     Parameters<real> params;
     params.sh_order = p;
-    params.rep_up_freq = q;
+    params.upsample_freq = q;
     COUT(params);
 
     //reading mats2
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     //resampling
     Vec_t xr(nVec, q);
     Sh_t SH_p(params.sh_order,M.mats_p_);
-    Sh_t SH_q(params.rep_up_freq,M.mats_p_up_);
+    Sh_t SH_q(params.upsample_freq,M.mats_p_up_);
 
     Resample(x, SH_p, SH_q, shc, wrk, xr);
     IO.WriteData("ShtResampling.out", xr, DataIO::ASCII, std::ios::out);
