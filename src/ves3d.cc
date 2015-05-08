@@ -29,8 +29,11 @@ int main(int argc, char **argv)
     Param_t input_params;
     CHK(input_params.parseInput(argc, argv, &dict));
 
-    Sim_t sim(input_params);
-    CHK(sim.Run());
+    {	// putting sim in block so that it is deconstructed before
+	// petscfinalize
+	Sim_t sim(input_params);
+	CHK(sim.Run());
+    }
 
     PROFILEEND("",0);
     PRINTERRORLOG();

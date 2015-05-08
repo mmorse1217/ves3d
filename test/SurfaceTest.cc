@@ -16,102 +16,81 @@ extern const DevGPU the_gpu_device(0);
 
 typedef double real;
 
-#ifndef Doxygen_skip
+template<typename ST, typename MT>
+void test_streaming(const ST &S, const MT &mats){
+    std::stringstream s1,s2;
+    S.pack(s1, Streamable::ASCII);
+    ST S2(S.getShOrder(), mats, NULL,  S.diffFilterFreq(), S.reparamFilterFreq());
+    S2.unpack(s1, Streamable::ASCII);
+    S2.pack(s2, Streamable::ASCII);
+    ASSERT(s1.str()==s2.str(), "bad streaming");
+}
 
-template<typename Sca, typename Vec, typename Device>
-void testSurface(const Device &dev)
-{
-    typedef typename Sca::array_type Arr_t;
-    typedef OperatorsMats<Arr_t> Mats_t;
-    int const nVec(2);
+template<typename ST>
+void test_geo_props(const ST &S){
 
-    //IO
-    DataIO myIO;
+    typedef typename ST::Sca_t Sca_t;
+    typedef typename ST::Vec_t Vec_t;
+    typedef typename ST::device_type Dev_t;
 
-    //@todo Parmeters have nothing to do with the surface
-    Parameters<real> sim_par;
-    sim_par.sh_order = 6;
-    sim_par.rep_up_freq = 12;
-    ASSERT(sim_par.sh_order==6,"Test only works for p=6");
-
-    // initializing vesicle positions from text file
-    Vec x0(nVec, sim_par.sh_order);
-    int fLen = x0.getStride();
-
-    char fname[400];
-    COUT("Loading initial shape");
-    sprintf(fname, "precomputed/dumbbell_%d_double.txt",sim_par.sh_order);
-    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * DIM);
-
-    COUT("Populating x0 (nves="<<nVec<<")");
-    for(int ii=1;ii<nVec; ++ii)
-        x0.getDevice().Memcpy(x0.getSubN_begin(ii),
-            x0.begin(),
-            x0.getTheDim() * fLen * sizeof(real),
-            Device::MemcpyDeviceToDevice);
-
-    //Reading operators from file
-    COUT("Loading matrices");
-    bool readFromFile = true;
-    Mats_t mats(readFromFile, sim_par);
-
-    //Creating objects
-    COUT("Creating the surface object");
-    Surface<Sca, Vec> S(mats, &x0);
+    const Vec_t &x0(S.getPosition());
+    int p(S.getShOrder());
+    int nVec(x0.getNumSubs());
+    int fLen(x0.getStride());
 
     COUT("Extracting X, Y, and Z coordindate functions");
-    Sca X(nVec,sim_par.sh_order);
-    Sca Y(nVec,sim_par.sh_order);
-    Sca Z(nVec,sim_par.sh_order);
+    Sca_t X(nVec,p);
+    Sca_t Y(nVec,p);
+    Sca_t Z(nVec,p);
 
     for(int ii=0;ii<nVec;ii++)
     {
         x0.getDevice().Memcpy(X.getSubN_begin(ii),
             x0.getSubN_begin(ii),
             fLen * sizeof(real),
-            Device::MemcpyDeviceToDevice);
+            Dev_t::MemcpyDeviceToDevice);
 
         x0.getDevice().Memcpy(Y.getSubN_begin(ii),
             x0.getSubN_begin(ii) + fLen,
             fLen * sizeof(real),
-            Device::MemcpyDeviceToDevice);
+            Dev_t::MemcpyDeviceToDevice);
 
         x0.getDevice().Memcpy(Z.getSubN_begin(ii),
             x0.getSubN_begin(ii) + 2*fLen,
             fLen * sizeof(real),
-            Device::MemcpyDeviceToDevice);
+            Dev_t::MemcpyDeviceToDevice);
     }
 
     //Area and volume
     real err;
     COUT("Computing area");
-    Sca Area(nVec, sim_par.sh_order, std::make_pair(1,1));
+    Sca_t Area(nVec, p, std::make_pair(1,1));
     S.area(Area);
     real area(MaxAbs(Area));
     COUT("Area = "<<area);
     ASSERT( fabs(area/16.2179377312307-1)<1e-8,"Expected area for dumbell");
 
     COUT("Computing volume");
-    Sca Vol(nVec, sim_par.sh_order, std::make_pair(1,1));
+    Sca_t Vol(nVec, p, std::make_pair(1,1));
     S.volume(Vol);
     real vol(MaxAbs(Vol));
     COUT("Volume = "<<vol);
-    ASSERT( fabs(vol/5.24886489292959-1)<1e-8,"Expected area for dumbell");
+    ASSERT( fabs(vol/5.24886489292959-1)<1e-8,"Expected volume for dumbell");
 
     COUT("Computing centers");
-    Vec Cntrs(nVec, 0, std::make_pair(1,1));
+    Vec_t Cntrs(nVec, 0, std::make_pair(1,1));
     S.getCenters(Cntrs);
     real cntr(MaxAbs(Cntrs));
     ASSERT( fabs(cntr)<1e-8,"Expected center");
 
     COUT("Computing mean curvature");
-    Sca H(nVec,sim_par.sh_order);
+    Sca_t H(nVec,p);
     axpy((real) 0, H, S.getMeanCurv(),H);
     err = MaxAbs(H);
     ASSERT(fabs(err/1.376627062-1)<8e-8,"Expected curvature ");
 
     // Checking the grad and div operator
-    Vec grad(nVec,sim_par.sh_order), lap(nVec,sim_par.sh_order);
+    Vec_t grad(nVec,p), lap(nVec,p);
 
     COUT("Computing surface Laplacian");
     S.grad(X,grad);
@@ -140,21 +119,21 @@ void testSurface(const Device &dev)
         lap.getDevice().Memcpy(lap.getSubN_begin(ii),
             X.getSubN_begin(ii),
             fLen * sizeof(real),
-            Device::MemcpyDeviceToDevice);
+            Dev_t::MemcpyDeviceToDevice);
 
         lap.getDevice().Memcpy(lap.getSubN_begin(ii) + fLen,
             Y.getSubN_begin(ii), fLen *
             sizeof(real),
-            Device::MemcpyDeviceToDevice);
+            Dev_t::MemcpyDeviceToDevice);
 
         lap.getDevice().Memcpy(lap.getSubN_begin(ii) + 2*fLen,
             Z.getSubN_begin(ii), fLen *
             sizeof(real),
-            Device::MemcpyDeviceToDevice);
+            Dev_t::MemcpyDeviceToDevice);
     }
 
     COUT("Comparing surface Laplacian with curvature");
-    Sca hh(nVec,sim_par.sh_order);
+    Sca_t hh(nVec,p);
     GeometricDot(lap,S.getNormal(),hh);
     err=fabs(MaxAbs(hh)/2.428980517523748-1);
     ASSERT(err<1e-7,"dot(Lap,N)="<<err);
@@ -164,7 +143,7 @@ void testSurface(const Device &dev)
     ASSERT(err<1e-6,"H-.5*dot(Lap,N)"<<err);
 
     COUT("Computing Div(N)");
-    Sca div_n(nVec,sim_par.sh_order);
+    Sca_t div_n(nVec,p);
     S.div(S.getNormal(), div_n);
     axpy((real) .5, div_n, S.getMeanCurv(),div_n);
     err = MaxAbs(div_n);
@@ -178,22 +157,86 @@ void testSurface(const Device &dev)
     COUT("Checking mapToTangentSpace");
     grad.getDevice().Memcpy(grad.begin(), S.getNormal().begin(),
         S.getNormal().size() * sizeof(real),
-        Device::MemcpyDeviceToDevice);
+        Dev_t::MemcpyDeviceToDevice);
     S.mapToTangentSpace(grad);
     ASSERT(MaxAbs(grad)<1e-14,"Normal map to tangent space");
-
-    test_streaming(S, mats);
 }
-#endif //Doxygen_skip
 
 template<typename ST, typename MT>
-void test_streaming(const ST &S, const MT &mats){
-    std::stringstream s1,s2;
-    S.pack(s1, Streamable::ASCII);
-    ST S2(mats, NULL,  S.upsampleFreq(), S.filterFreq());
-    S2.unpack(s1, Streamable::ASCII);
-    S2.pack(s2, Streamable::ASCII);
-    ASSERT(s1.str()==s2.str(), "bad streaming");
+void test_resample(const ST &S, const MT &mats){
+    INFO("testing up-sampling");
+    ST *S1(NULL), *S2(NULL), *S3(NULL);;
+    int p1(mats.p_up_), p2(mats.p_up_+1), p3(mats.p_);
+    CHK(S.resample(p1, &S1));
+    ASSERT(S1->getShOrder()==p1, "wrong sh order");
+
+    ASSERT(S.resample(p2, &S2) == ErrorEvent::NotImplementedError, "expected error");
+    CHK(S1->resample(p3, &S3));
+
+    // typename ST::Vec_t err;
+    // err.replicate(S.getPosition());
+
+    // axpy(-1.0, S.getPosition(), S3->getPosition(), err);
+    // int stride(err.getStride());
+    // for (int i = 0; i < err.getNumSubFuncs(); ++i){
+    //     for (int j = 0; j < stride; ++j)
+    // 	{
+    // 	    double e(fabs(err.begin()[i*stride+j]));
+    // 	    std::cout<< ((e < 1e-14) ? 0 : e) <<", ";
+    // 	}
+    // 	std::cout<<"\n----------"<<std::endl;
+    // }
+    delete S1;
+    delete S2;
+    delete S3;
+
+    INFO("testing down-sampling");
+}
+
+template<typename Sca, typename Vec, typename Device>
+void testSurfaceClass(const Device &dev)
+{
+    typedef typename Sca::array_type Arr_t;
+    typedef OperatorsMats<Arr_t> Mats_t;
+    int const nVec(2);
+
+    //IO
+    DataIO myIO;
+
+    //@todo Parmeters have nothing to do with the surface
+    Parameters<real> sim_par;
+    sim_par.sh_order = 6;
+    sim_par.upsample_freq = 12;
+    ASSERT(sim_par.sh_order==6,"Test only works for p=6");
+
+    // initializing vesicle positions from text file
+    Vec x0(nVec, sim_par.sh_order);
+    int fLen = x0.getStride();
+
+    char fname[400];
+    COUT("Loading initial shape");
+    sprintf(fname, "precomputed/dumbbell_%d_double.txt",sim_par.sh_order);
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * DIM);
+
+    COUT("Populating x0 (nves="<<nVec<<")");
+    for(int ii=1;ii<nVec; ++ii)
+        x0.getDevice().Memcpy(x0.getSubN_begin(ii),
+            x0.begin(),
+            x0.getTheDim() * fLen * sizeof(real),
+            Device::MemcpyDeviceToDevice);
+
+    //Reading operators from file
+    COUT("Loading matrices");
+    bool readFromFile = true;
+    Mats_t mats(readFromFile, sim_par);
+
+    //Creating objects
+    COUT("Creating the surface object");
+    Surface<Sca, Vec> S(x0.getShOrder(),mats, &x0);
+
+    test_geo_props(S);
+    test_streaming(S, mats);
+    test_resample(S, mats);
 }
 
 int main(int argc, char ** argv)
@@ -204,7 +247,7 @@ int main(int argc, char ** argv)
     typedef Scalars<real, DevCPU, the_cpu_device> ScaCPU_t;
     typedef Vectors<real, DevCPU, the_cpu_device> VecCPU_t;
 
-    testSurface<ScaCPU_t, VecCPU_t, DevCPU>(the_cpu_device);
+    testSurfaceClass<ScaCPU_t, VecCPU_t, DevCPU>(the_cpu_device);
     PROFILEREPORT(SortTime);
     COUT(emph<<" *** Surface class with CPU device passed ***"<<emph);
 
@@ -214,7 +257,7 @@ int main(int argc, char ** argv)
     typedef Scalars<real, DevGPU, the_gpu_device> ScaGPU_t;
     typedef Vectors<real, DevGPU, the_gpu_device> VecGPU_t;
 
-    testSurface<ScaGPU_t, VecGPU_t, DevGPU>(the_gpu_device);
+    testSurfaceClass<ScaGPU_t, VecGPU_t, DevGPU>(the_gpu_device);
     PROFILEREPORT(SortTime);
 
     COUT(emph<<" *** Surface class with GPU device passed ***"<<emph);

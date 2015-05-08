@@ -37,7 +37,7 @@ void testStokesDoubleLayer(const Device &dev){
   //@todo Parmeters have nothing to do with the surface
   Parameters<real> sim_par;
   sim_par.sh_order = 6;
-  sim_par.rep_up_freq = 12;
+  sim_par.upsample_freq = 12;
   ASSERT(sim_par.sh_order==6,"Test only works for p=6");
 
   // initializing vesicle positions from text file
@@ -78,7 +78,7 @@ void testStokesDoubleLayer(const Device &dev){
 
   //Creating objects
   COUT("Creating the surface object");
-  Surf_t S(mats,&x0);
+  Surf_t S(x0.getShOrder(),mats,&x0);
 
   Sca_t w_sph_, w_sph_inv_, sing_quad_weights_;
   { // Set w_sph_, w_sph_inv_, sing_quad_weights_

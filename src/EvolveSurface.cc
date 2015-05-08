@@ -13,7 +13,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     F_(NULL)
 {
     objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
-    S_ = new Sur_t(mats_, x0, params_->rep_up_freq, params_->rep_filter_freq);
+    S_ = new Sur_t(x0->getShOrder(), mats_, x0, params_->filter_freq, params_->rep_filter_freq);
     S_->set_name("surface");
 
     if ( monitor_ == NULL)

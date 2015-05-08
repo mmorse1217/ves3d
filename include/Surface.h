@@ -35,14 +35,15 @@ class Surface : public Streamable
     typedef ScalarContainer Sca_t;
 
     ///@todo add a default constructor
-    Surface(const OperatorsMats<Arr_t> &mats, const Vec_t *x_in,
-        int upsample = -1, int filter = -1);
+    Surface(int sh_order, const OperatorsMats<Arr_t> &mats,
+	const Vec_t *x_in, int diff_filter_freq = -1,
+	int rep_filter_freq=-1);
 
     ~Surface();
 
     void setPosition(const Vec_t& x_in);
     int getNumberOfSurfaces() const { return(getPosition().getNumSubs()); }
-    int getShOrder() const { return(getPosition().getShOrder()); }
+    int getShOrder() const { return sh_order_; }
 
     Vec_t& getPositionModifiable();
     const Vec_t& getPosition() const;
@@ -63,13 +64,16 @@ class Surface : public Streamable
     void mapToTangentSpace(Vec_t &vec_fld) const;
     void linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const;
 
+    Error_t resample(int new_sh_freq, Surface **new_surf) const;
+
     // From streamable class --------------------------------------------------
     // ------------------------------------------------------------------------
     virtual Error_t pack(std::ostream &os, Format format) const;
     virtual Error_t unpack(std::istream &is, Format format);
 
-    int upsampleFreq() const {return upsample_freq_;}
-    int filterFreq() const {return rep_filter_freq_;}
+    int diffFilterFreq() const {return diff_filter_freq_;}
+    int reparamFilterFreq() const {return reparam_filter_freq_;}
+
   private:
     Vec_t x_;
     mutable Vec_t normal_;
@@ -79,13 +83,17 @@ class Surface : public Streamable
     mutable Vec_t cu_;
     mutable Vec_t cv_;
 
-    int upsample_freq_;
-    int rep_filter_freq_;
+    int sh_order_;
+    int diff_filter_freq_;
+    int reparam_filter_freq_;
 
+    const OperatorsMats<Arr_t> *mats_;
     typedef SHTMats<value_type, device_type> Mats_t;
-    SHTrans<Sca_t,Mats_t> sht_;
-    SHTrans<Sca_t,Mats_t> sht_rep_filter_;
-    SHTrans<Sca_t,Mats_t> sht_rep_upsample_;
+    typedef SHTrans<Sca_t,Mats_t> SHMats_t;
+
+    SHMats_t sht_;
+    SHMats_t sht_rep_filter_;
+    SHMats_t *sht_resample_; /*either up/down sample based initialization */
 
     GaussLegendreIntegrator<Sca_t> integrator_;
 

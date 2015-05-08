@@ -22,8 +22,11 @@ void Parameters<T>::init()
     bending_modulus	    = 1e-2;
     bg_flow                 = ShearFlow;
     bg_flow_param	    = 1e-1;
+    checkpoint		    = false;
+    checkpoint_stride	    = -1;
     error_factor	    = 1;
     filter_freq		    = 8;
+    interaction_upsample    = false;
     n_surfs		    = 1;
     num_threads             = 4;
     position_solver_iter    = 15;
@@ -33,9 +36,7 @@ void Parameters<T>::init()
     rep_maxit		    = 10;
     rep_tol		    = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
     rep_ts		    = 1;
-    rep_up_freq		    = 24;
-    checkpoint		    = false;
-    checkpoint_stride	    = -1;
+    rep_upsample	    = false;
     scheme		    = JacobiBlockImplicit;
     sh_order		    = 12;
     singular_stokes	    = ViaSpHarm;
@@ -47,10 +48,9 @@ void Parameters<T>::init()
     time_precond            = NoPrecond;
     time_tol                = 1e-6;
     ts			    = 1;
-    upsample_interaction    = false;
+    upsample_freq	    = 24;
     viscosity_contrast      = 1.0;
 }
-
 
 template<typename T>
 Parameters<T>::~Parameters()
@@ -132,8 +132,8 @@ Error_t Parameters<T>::expand_templates(const DictString_t *dict){
 template<typename T>
 void Parameters<T>::adjustFreqs()
 {
-  this->filter_freq = 2 * this->sh_order / 3;
-  this->rep_up_freq = 2 * this->sh_order;
+  this->filter_freq     = 2 * this->sh_order / 3;
+  this->upsample_freq   = 2 * this->sh_order;
   this->rep_filter_freq = this->sh_order / 3;
 }
 
@@ -156,8 +156,10 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
   opt->addUsage( "     --bg-flow-type          Type of the background flow" );
   opt->addUsage( "     --cent-file             The file containing the initial center points");
+  opt->addUsage( "     --checkpoint-stride     The frequency of saving to file (in time scale)" );
   opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
   opt->addUsage( "     --filter-freq           The differentiation filter frequency" );
+  opt->addUsage( "     --interaction-upsample  Flag to whether upsample (and filter) the interaction force" );
   opt->addUsage( "     --n-surfs               The number of surfaces" );
   opt->addUsage( "     --num-threads           The number OpenMP threads" );
   opt->addUsage( "     --position-iter-max     Maximum number of iterations for the position solver" );
@@ -167,8 +169,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --rep-max-iter          Maximum number of reparametrization steps" );
   opt->addUsage( "     --rep-timestep          The Time step for the reparametrization" );
   opt->addUsage( "     --rep-tol               The absolute value tol on the velocity of reparametrization" );
-  opt->addUsage( "     --rep-up-freq           The upsampling frequency for the reparametrization" );
-  opt->addUsage( "     --checkpoint-stride     The frequency of saving to file (in time scale)" );
+  opt->addUsage( "     --rep-upsample          Flag to whether upsample the surfaces for reparametrization" );
   opt->addUsage( "     --sh-order              The spherical harmonics order" );
   opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
@@ -180,7 +181,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --time-scheme           The time stepping scheme" );
   opt->addUsage( "     --time-tol              The desired error tolerance in the time stepping" );
   opt->addUsage( "     --timestep              The time step size" );
-  opt->addUsage( "     --upsample-interaction  Flag to whether upsample (and filter) the interaction force" );
+  opt->addUsage( "     --upsample-freq         The upsample frequency used for reparametrization and interaction" );
   opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
 }
 
@@ -193,8 +194,8 @@ void Parameters<T>::setOptions(AnyOption *opt)
   // a flag (takes no argument), supporting long and short forms
   opt->setCommandFlag( "help", 'h');
   opt->setFlag( "checkpoint", 's' );
-  opt->setFlag( "upsample-interaction");
-
+  opt->setFlag( "interaction-upsample");
+  opt->setFlag( "rep-upsample" );
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
@@ -218,7 +219,6 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "rep-max-iter" );
   opt->setOption( "rep-timestep" );
   opt->setOption( "rep-tol" );
-  opt->setOption( "rep-up-freq" );
   opt->setOption( "checkpoint-stride" );
   opt->setOption( "sh-order" );
   opt->setOption( "singular-stokes" );
@@ -231,6 +231,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "time-scheme" );
   opt->setOption( "time-tol" );
   opt->setOption( "timestep" );
+  opt->setOption( "upsample-freq" );
   opt->setOption( "viscosity-contrast" );
 
   //for options that will be checked only on the command and line not
@@ -250,10 +251,15 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   else
       this->checkpoint = false;
 
-  if( opt->getFlag( "upsample-interaction" ) )
-      this->upsample_interaction = true;
+  if( opt->getFlag( "interaction-upsample" ) )
+      this->interaction_upsample = true;
   else
-      this->upsample_interaction = false;
+      this->interaction_upsample = false;
+
+  if( opt->getFlag( "rep-upsample" ) )
+      this->rep_upsample = true;
+  else
+      this->rep_upsample = false;
 
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "init-file" ) != NULL || opt->getValue( 'i' ) !=NULL )
@@ -272,6 +278,15 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     this->adjustFreqs();
   }
 
+  if( opt->getValue( "upsample-freq" ) != NULL  )
+    this->upsample_freq =  atoi(opt->getValue( "upsample-freq" ));
+
+  if( opt->getValue( "filter-freq" ) != NULL  )
+    this->filter_freq =  atoi(opt->getValue( "filter-freq" ));
+
+  if( opt->getValue( "rep-filter-freq"  ) != NULL  )
+    this->rep_filter_freq =  atoi(opt->getValue( "rep-filter-freq"  ));
+
   if( opt->getValue( "bending-modulus" ) != NULL  )
     this->bending_modulus = atof(opt->getValue( "bending-modulus" ));
 
@@ -280,16 +295,13 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "bg-flow-type" ) != NULL  )
     this->bg_flow = EnumifyBgFlow(opt->getValue( "bg-flow-type" ));
-    ASSERT(this->bg_flow != UnknownFlow, "Failed to parse the background flow name");
+  ASSERT(this->bg_flow != UnknownFlow, "Failed to parse the background flow name");
 
   if( opt->getValue( "bg-flow-param" ) != NULL  )
     this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
 
   if( opt->getValue( "cent-file") !=NULL )
     this->cntrs_file_name = opt->getValue( "cent-file" );
-
-  if( opt->getValue( "filter-freq" ) != NULL  )
-    this->filter_freq =  atoi(opt->getValue( "filter-freq" ));
 
   if( opt->getValue( "error-factor" ) != NULL  )
     this->error_factor =  atof(opt->getValue( "error-factor" ));
@@ -309,9 +321,6 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "position-tol" ) != NULL  )
     this->position_solver_tol =  atof(opt->getValue( "position-tol" ));
 
-  if( opt->getValue( "rep-filter-freq"  ) != NULL  )
-    this->rep_filter_freq =  atoi(opt->getValue( "rep-filter-freq"  ));
-
   if( opt->getValue( "rep-max-iter" ) != NULL  )
     this->rep_maxit =  atoi(opt->getValue( "rep-max-iter" ));
 
@@ -321,9 +330,6 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "rep-tol" ) != NULL  )
     this->rep_tol =  atof(opt->getValue( "rep-tol" ));
 
-  if( opt->getValue( "rep-up-freq" ) != NULL  )
-    this->rep_up_freq =  atoi(opt->getValue( "rep-up-freq" ));
-
   if( opt->getValue( "checkpoint-stride" ) != NULL  )
     this->checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
 
@@ -332,10 +338,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     ASSERT(this->scheme != UnknownScheme, "Failed to parse the time scheme name");
   }
 
-  if( opt->getValue( "time-precond" ) != NULL  ){
-    this->time_precond = EnumifyPrecond(opt->getValue( "time-precond" ));
-    ASSERT(this->time_precond != UnknownPrecond, "Failed to parse the preconditioner name" );
-  }
+  if( opt->getValue( "time-precond" ) != NULL  )
+      this->time_precond = EnumifyPrecond(opt->getValue( "time-precond" ));
+  ASSERT(this->time_precond != UnknownPrecond, "Failed to parse the preconditioner name" );
 
   if( opt->getValue( "singular-stokes" ) != NULL  )
     this->singular_stokes = EnumifyStokesRot(opt->getValue( "singular-stokes" ));
@@ -373,6 +378,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"n_surfs: "<<n_surfs<<"\n";
     os<<"sh_order: "<<sh_order<<"\n";
     os<<"filter_freq: "<<filter_freq<<"\n";
+    os<<"upsample_freq: "<<upsample_freq<<"\n";
     os<<"bending_modulus: "<<bending_modulus<<"\n";
     os<<"viscosity_contrast: "<<viscosity_contrast<<"\n";
     os<<"position_solver_iter: "<<position_solver_iter<<"\n";
@@ -390,12 +396,12 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"bg_flow: "<< bg_flow<<"\n";
     os<<"singular_stokes: "<< singular_stokes<<"\n";
     os<<"rep_maxit: "<<rep_maxit<<"\n";
-    os<<"rep_up_freq: "<<rep_up_freq<<"\n";
+    os<<"rep_upsample: "<<rep_upsample<<"\n";
     os<<"rep_filter_freq: "<<rep_filter_freq<<"\n";
     os<<"rep_ts: "<<rep_ts<<"\n";
     os<<"rep_tol: "<<rep_tol<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
-    os<<"upsample_interaction: "<<upsample_interaction<<"\n";
+    os<<"interaction_upsample: "<<interaction_upsample<<"\n";
     os<<"checkpoint: "<<checkpoint<<"\n";
     os<<"checkpoint_stride: "<<checkpoint_stride<<"\n";
     os<<"init_file_name: "<<init_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
@@ -419,6 +425,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>n_surfs;			ASSERT(key=="n_surfs:", "Unexpected key (expeded n_surfs)");
     is>>key>>sh_order;			ASSERT(key=="sh_order:", "Unexpected key (expected sh_order)");
     is>>key>>filter_freq;		ASSERT(key=="filter_freq:", "Unexpected key (expected filter_freq)");
+    is>>key>>upsample_freq;		ASSERT(key=="upsample_freq:", "Unexpected key (expected upsample_freq)");
     is>>key>>bending_modulus;		ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
     is>>key>>viscosity_contrast;	ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
     is>>key>>position_solver_iter;	ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
@@ -443,12 +450,12 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     singular_stokes=EnumifyStokesRot(s.c_str());
 
     is>>key>>rep_maxit;			ASSERT(key=="rep_maxit:", "Unexpected key (expected rep_maxit)");
-    is>>key>>rep_up_freq;		ASSERT(key=="rep_up_freq:", "Unexpected key (expected rep_up_freq)");
+    is>>key>>rep_upsample;		ASSERT(key=="rep_upsample:", "Unexpected key (expected rep_upsample)");
     is>>key>>rep_filter_freq;		ASSERT(key=="rep_filter_freq:", "Unexpected key (expected rep_filter_freq)");
     is>>key>>rep_ts;			ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
     is>>key>>rep_tol;			ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
     is>>key>>bg_flow_param;		ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
-    is>>key>>upsample_interaction;	ASSERT(key=="upsample_interaction:", "Unexpected key (expected upsample_interaction)");
+    is>>key>>interaction_upsample;	ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
     is>>key>>checkpoint;		ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
     is>>key>>checkpoint_stride;		ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
 
@@ -478,7 +485,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" Spherical harmonics:"<<std::endl;
     output<<"   Surface SH order         : "<<par.sh_order<<std::endl;
     output<<"   Filter freq              : "<<par.filter_freq<<std::endl;
-    output<<"   Rep upsample freq        : "<<par.rep_up_freq<<std::endl;
+    output<<"   Upsample freq            : "<<par.upsample_freq<<std::endl;
     output<<"   Rep filter freq          : "<<par.rep_filter_freq<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
@@ -512,6 +519,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Rep maxit                : "<<par.rep_maxit<<std::endl;
     output<<"   Rep step size            : "<<par.rep_ts<<std::endl;
     output<<"   Rep tol                  : "<<par.rep_tol<<std::endl;
+    output<<"   Rep upsample             : "<<std::boolalpha<<par.rep_upsample<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Initialization:"<<std::endl;
@@ -529,7 +537,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" Background flow:"<<std::endl;
     output<<"   Background flow type     : "<<par.bg_flow<<std::endl;
     output<<"   Background flow parameter: "<<par.bg_flow_param<<std::endl;
-    output<<"   Upsample Interaction     : "<<std::boolalpha<<par.upsample_interaction<<std::endl;
+    output<<"   Interaction Upsample     : "<<std::boolalpha<<par.interaction_upsample<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Misc:"<<std::endl;

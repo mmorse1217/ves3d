@@ -60,18 +60,21 @@ def load_file(fnames):
 
     data = list()
     for f in fnames:
-        data.append(np.genfromtxt(f, dtype=None).reshape((-1,1)))
+        with open(f, 'r+') as fh:
+            for line in fh:
+                if (line[:6]=='data: '):
+                    X=line[6:].strip().split(' ')
+                    data.append(np.array([float(x) for x in X]))
+
     data = np.hstack(data)
     return data
 
 def plot_series( data, p, n, out_template, animate,
                  increment, **kwargs):
 
-    sz  = 2*p*(p+1)
-    ds  = data.size
-    nT  = int(ds/sz/n/4)
-    nC  = data.shape[1]
-    nR  = sz*n/nC
+    sz   = 2*p*(p+1)
+    data = data.reshape((3*sz*n,-1),order='F')
+    nT   = data.shape[1]
 
     fig = plt.figure()
     for iT in range(0,nT,increment):
@@ -84,16 +87,13 @@ def plot_series( data, p, n, out_template, animate,
             az=120+160*iT/nT
             ax.view_init(elev=el,azim=az)
 
-        d   = data[4*iT*nR:4*(iT+1)*nR,:]
-        xyz = d[0:3*nR,:].reshape((3*sz,-1), order="F")
-        s   = d[3*nR:,:].reshape((sz,-1), order="F")
+        xyz = data[:,iT].reshape((3*sz,-1), order="F")
 
         for iN in range(n):
             plot(p=p,
                  x = xyz[   0:  sz,iN],
                  y = xyz[  sz:2*sz,iN],
-                 z = xyz[2*sz:    ,iN],
-                 s = s[:,iN])
+                 z = xyz[2*sz:    ,iN])
 
         plt.draw()
         ax.axis('tight')
@@ -105,7 +105,7 @@ def plot_series( data, p, n, out_template, animate,
 
     plt.show()
 
-def plot(p,x,y,z,s):
+def plot(p,x,y,z):
 
     x = x.reshape((p+1,-1))
     y = y.reshape((p+1,-1))

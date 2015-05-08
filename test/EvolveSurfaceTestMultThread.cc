@@ -130,7 +130,7 @@ void TestEvolveSurfMT(){
 
     sim_par.sh_order        = 6;
     sim_par.filter_freq     = 4;
-    sim_par.rep_up_freq     = 12;
+    sim_par.upsample_freq   = 12;
     sim_par.rep_filter_freq = 2;
 
     sim_par.ts                   = 1;
@@ -138,7 +138,7 @@ void TestEvolveSurfMT(){
     sim_par.scheme               = JacobiBlockGaussSeidel;
     sim_par.singular_stokes      = Direct;
     sim_par.bg_flow_param        = 0;
-    sim_par.upsample_interaction = true;
+    sim_par.interaction_upsample = true;
     sim_par.rep_maxit            = 20;
     sim_par.checkpoint           = false;
     COUT(sim_par);

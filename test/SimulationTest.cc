@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     real_t ts(1e-3);
     params.n_surfs		= 2;
     params.sh_order		= 6;
-    params.rep_up_freq	    	= 12;
+    params.upsample_freq    	= 12;
     params.ts		    	= ts;
     params.time_horizon	    	= 2*ts;
     params.scheme		= JacobiBlockExplicit;

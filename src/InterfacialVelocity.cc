@@ -635,7 +635,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 EvaluateFarInteraction(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const
 {
-    if ( params_.upsample_interaction ){
+    if ( params_.interaction_upsample ){
 	return EvalFarInter_ImpUpsample(src, fi, vel);
     } else {
 	return EvalFarInter_Imp(src, fi, vel);
