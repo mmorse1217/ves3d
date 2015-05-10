@@ -55,7 +55,11 @@ class StokesVelocity{
     StokesVelocity(const StokesVelocity &);
     StokesVelocity& operator=(const StokesVelocity &);
 
-    void ApplyQuadWeights();
+    void GetPole(const Vec_t& v,  PVFMMVec_t& pvfmm_v);
+    void Vec2PVFMMVec(const Vec_t& v,  PVFMMVec_t& pvfmm_v);
+    void Upsample(const Vec_t& v, Vec_t* v_out=NULL,  PVFMMVec_t* pvfmm_v=NULL);
+
+    void Setup();
     const Vec_t& SelfInteraction(bool update_self);
     const PVFMMVec_t& NearInteraction(bool update_near);
     const PVFMMVec_t& FarInteraction(bool update_far);
@@ -63,22 +67,21 @@ class StokesVelocity{
     static void u_ref(const Real_t* coord, int n, Real_t* out);
     static void force(const Real_t* coord, int n, Real_t* out);
 
-    void* pvfmm_ctx;
-    NearSingular<Surf_t> near_singular;
 
     const Surf_t* S;
     const Vec_t* force_single;
     const Vec_t* force_double;
     const Vec_t* S_vel_ptr;
 
-    PVFMMVec_t src_coord;
+    Surf_t*    S_up;
+    PVFMMVec_t src_coord_up;
+    PVFMMVec_t qforce_single_up;
+    PVFMMVec_t qforce_double_up;
+    PVFMMVec_t force_double_up;
+    PVFMMVec_t surf_vel_up;
     PVFMMVec_t trg_coord;
-    PVFMMVec_t qforce_single;
-    PVFMMVec_t qforce_double;
 
     Vec_t S_vel;
-    Vec_t SL_vel;
-    Vec_t DL_vel;
     PVFMMVec_t fmm_vel;
     PVFMMVec_t trg_vel;
 
@@ -94,15 +97,19 @@ class StokesVelocity{
     unsigned int fmm_flag;
     unsigned int self_flag;
 
-    int sh_order;
-    Sca_t quad_weights_;
-    Sca_t w_sph_, w_sph_inv_, sing_quad_weights_;
+    int sh_order, sh_order_up;
+    Sca_t quad_weights_;                          // upsampled, for far-field integration
+    Sca_t w_sph_, w_sph_inv_, sing_quad_weights_; // for singular integration
+    PVFMMVec_t pole_quad;
 
+    MPI_Comm comm;
+    Real_t box_size_;
     MovePole<Sca_t,Mats_t> move_pole;
     const Parameters<Real_t> &sim_par;
-
-    Real_t box_size_;
-    MPI_Comm comm;
+    SHTrans<Sca_t, SHTMats<Real_t, device_type> > sht_   ;
+    SHTrans<Sca_t, SHTMats<Real_t, device_type> > sht_up_;
+    NearSingular<Surf_t> near_singular;
+    void* pvfmm_ctx;
 };
 
 #include "StokesVelocity.cc"
