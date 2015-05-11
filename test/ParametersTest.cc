@@ -82,6 +82,7 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.ts == pc.ts						, "incorrect ts");
     ASSERT(p.time_tol == pc.time_tol					, "incorrect time_tol");
     ASSERT(p.time_iter_max == pc.time_iter_max				, "incorrect time_iter_max");
+    ASSERT(p.solve_for_velocity == pc.solve_for_velocity		, "incorrect solve_for_velocity");
     ASSERT(p.scheme == pc.scheme					, "incorrect scheme");
     ASSERT(p.time_precond == pc.time_precond				, "incorrect time_precond");
     ASSERT(p. bg_flow == pc. bg_flow					, "incorrect  bg_flow");

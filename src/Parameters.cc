@@ -40,6 +40,7 @@ void Parameters<T>::init()
     scheme		    = JacobiBlockImplicit;
     sh_order		    = 12;
     singular_stokes	    = ViaSpHarm;
+    solve_for_velocity      = true;
     tension_solver_iter	    = 15;
     tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
@@ -172,6 +173,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --rep-upsample          Flag to whether upsample the surfaces for reparametrization" );
   opt->addUsage( "     --sh-order              The spherical harmonics order" );
   opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
+  opt->addUsage( "     --solve-for-velocity    If true, set up the linear system to solve for velocity and tension otherwise for position" );
   opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
   opt->addUsage( "     --tension-restart       Maximum number of restarts for the tension solver" );
   opt->addUsage( "     --tension-tol           The tolerence for the tension solver" );
@@ -196,6 +198,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setFlag( "checkpoint", 's' );
   opt->setFlag( "interaction-upsample");
   opt->setFlag( "rep-upsample" );
+  opt->setFlag( "solve-for-velocity" );
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
@@ -260,6 +263,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
       this->rep_upsample = true;
   else
       this->rep_upsample = false;
+
+  if( opt->getFlag( "solve-for-velocity" ) )
+      this->solve_for_velocity = true;
+  else
+      this->solve_for_velocity = false;
 
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "init-file" ) != NULL || opt->getValue( 'i' ) !=NULL )
@@ -391,6 +399,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"ts: "<<ts<<"\n";
     os<<"time_tol: "<<time_tol<<"\n";
     os<<"time_iter_max: "<<time_iter_max<<"\n";
+    os<<"solve_for_velocity: "<<solve_for_velocity<<"\n";
     os<<"scheme: "<<scheme<<"\n";
     os<<"time_precond: "<<time_precond<<"\n";
     os<<"bg_flow: "<< bg_flow<<"\n";
@@ -438,6 +447,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>ts;			ASSERT(key=="ts:", "Unexpected key (expected ts)");
     is>>key>>time_tol;			ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
     is>>key>>time_iter_max;		ASSERT(key=="time_iter_max:", "Unexpected key (expected time_iter_max)");
+    is>>key>>solve_for_velocity;	ASSERT(key=="solve_for_velocity:", "Unexpected key (expected solve_for_velocity)");
 
     //enums
     is>>key>>s; 			ASSERT(key=="scheme:", "Unexpected key (expected scheme)");
@@ -503,7 +513,6 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Tension solver restart   : "<<par.tension_solver_restart<<std::endl;
     output<<"   Position solver tol      : "<<par.position_solver_tol<<std::endl;
     output<<"   Tension solver tol       : "<<par.tension_solver_tol<<std::endl;
-    output<<"   Error Factor             : "<<par.error_factor<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Time stepper:"<<std::endl;
@@ -513,6 +522,8 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Time tol                 : "<<par.time_tol<<std::endl;
     output<<"   Time iter max            : "<<par.time_iter_max<<std::endl;
     output<<"   Precond                  : "<<par.time_precond<<std::endl;
+    output<<"   Error Factor             : "<<par.error_factor<<std::endl;
+    output<<"   Solve for velocity       : "<<std::boolalpha<<par.solve_for_velocity<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Reparametrization:"<<std::endl;
