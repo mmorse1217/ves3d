@@ -106,6 +106,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::pack(
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
     os<<"EVOLVE\n";
+    os<<"version: "<<VERSION<<"\n";
     os<<"name: "<<Streamable::name_<<"\n";
     //params_->pack(os,format);
     S_->pack(os,format);
@@ -127,6 +128,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
     ASSERT(s=="EVOLVE", "Bad input string (missing header).");
 
     is>>key>>Streamable::name_;
+    ASSERT(key=="name:", "bad key name");
+
+    is>>key>>s;
+    ASSERT(key=="version:", "bad key version");
+    INFO("Unpacking checkpoint from version "<<s<<" (current version "<<VERSION);
+
     //params_->unpack(is,format);
     S_->unpack(is,format);
     is>>s;
