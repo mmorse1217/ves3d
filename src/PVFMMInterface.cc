@@ -16,41 +16,126 @@
 
 ////////// Stokes Kernel //////////
 
-template <class T>
-void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
-  pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(28*dof));
-#endif
-  const T mu=1.0;
-  const T SCAL_CONST = 1.0/(8.0*pvfmm::const_pi<T>()*mu);
-  for(int t=0;t<trg_cnt;t++){
-    T p[3]={0,0,0};
-    for(int s=0;s<src_cnt;s++){
-      T dR[3]={r_trg[3*t  ]-r_src[3*s  ],
-               r_trg[3*t+1]-r_src[3*s+1],
-               r_trg[3*t+2]-r_src[3*s+2]};
-      T R = (dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
-      if (R!=0){
-        T invR2=1.0/R;
-        T invR=sqrt(invR2);
-        T invR3=invR2*invR;
-        T* f=&v_src[s*4];
+template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
+void stokes_sl_m2l_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
+  #define SRC_BLK 500
+  size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
-        T inner_prod=(f[0]*dR[0] +
-                      f[1]*dR[1] +
-                      f[2]*dR[2])* invR3;
+  //// Number of newton iterations
+  size_t NWTN_ITER=0;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin0<Vec_t,Real_t>) NWTN_ITER=0;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin1<Vec_t,Real_t>) NWTN_ITER=1;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin2<Vec_t,Real_t>) NWTN_ITER=2;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin3<Vec_t,Real_t>) NWTN_ITER=3;
 
-        T inner_prod_plus_f3_invR3=inner_prod+f[3]*invR3;
-
-        p[0] += f[0]*invR + dR[0]*inner_prod_plus_f3_invR3;
-        p[1] += f[1]*invR + dR[1]*inner_prod_plus_f3_invR3;
-        p[2] += f[2]*invR + dR[2]*inner_prod_plus_f3_invR3;
-      }
-    }
-    k_out[t*3+0] += p[0]*SCAL_CONST;
-    k_out[t*3+1] += p[1]*SCAL_CONST;
-    k_out[t*3+2] += p[2]*SCAL_CONST;
+  Real_t nwtn_scal=1; // scaling factor for newton iterations
+  for(int i=0;i<NWTN_ITER;i++){
+    nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
+  const Real_t OOEP = 1.0/(8*nwtn_scal*pvfmm::const_pi<Real_t>());
+  Vec_t inv_nwtn_scal2=pvfmm::set_intrin<Vec_t,Real_t>(1.0/(nwtn_scal*nwtn_scal));
+
+  size_t src_cnt_=src_coord.Dim(1);
+  size_t trg_cnt_=trg_coord.Dim(1);
+  for(size_t sblk=0;sblk<src_cnt_;sblk+=SRC_BLK){
+    size_t src_cnt=src_cnt_-sblk;
+    if(src_cnt>SRC_BLK) src_cnt=SRC_BLK;
+    for(size_t t=0;t<trg_cnt_;t+=VecLen){
+      Vec_t tx=pvfmm::load_intrin<Vec_t>(&trg_coord[0][t]);
+      Vec_t ty=pvfmm::load_intrin<Vec_t>(&trg_coord[1][t]);
+      Vec_t tz=pvfmm::load_intrin<Vec_t>(&trg_coord[2][t]);
+
+      Vec_t tvx=pvfmm::zero_intrin<Vec_t>();
+      Vec_t tvy=pvfmm::zero_intrin<Vec_t>();
+      Vec_t tvz=pvfmm::zero_intrin<Vec_t>();
+      for(size_t s=sblk;s<sblk+src_cnt;s++){
+        Vec_t dx=pvfmm::sub_intrin(tx,pvfmm::bcast_intrin<Vec_t>(&src_coord[0][s]));
+        Vec_t dy=pvfmm::sub_intrin(ty,pvfmm::bcast_intrin<Vec_t>(&src_coord[1][s]));
+        Vec_t dz=pvfmm::sub_intrin(tz,pvfmm::bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+        Vec_t svx       =pvfmm::bcast_intrin<Vec_t>(&src_value[0][s]);
+        Vec_t svy       =pvfmm::bcast_intrin<Vec_t>(&src_value[1][s]);
+        Vec_t svz       =pvfmm::bcast_intrin<Vec_t>(&src_value[2][s]);
+        Vec_t inner_prod=pvfmm::bcast_intrin<Vec_t>(&src_value[3][s]);
+
+        Vec_t r2=               pvfmm::mul_intrin(dx,dx) ;
+        r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
+        r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
+
+        Vec_t rinv=RSQRT_INTRIN(r2);
+        Vec_t rinv2=pvfmm::mul_intrin(pvfmm::mul_intrin(rinv,rinv),inv_nwtn_scal2);
+
+        inner_prod=pvfmm::add_intrin(inner_prod,pvfmm::mul_intrin(svx,dx));
+        inner_prod=pvfmm::add_intrin(inner_prod,pvfmm::mul_intrin(svy,dy));
+        inner_prod=pvfmm::add_intrin(inner_prod,pvfmm::mul_intrin(svz,dz));
+        inner_prod=pvfmm::mul_intrin(inner_prod,rinv2);
+
+        tvx=pvfmm::add_intrin(tvx,pvfmm::mul_intrin(rinv,pvfmm::add_intrin(svx,pvfmm::mul_intrin(dx,inner_prod))));
+        tvy=pvfmm::add_intrin(tvy,pvfmm::mul_intrin(rinv,pvfmm::add_intrin(svy,pvfmm::mul_intrin(dy,inner_prod))));
+        tvz=pvfmm::add_intrin(tvz,pvfmm::mul_intrin(rinv,pvfmm::add_intrin(svz,pvfmm::mul_intrin(dz,inner_prod))));
+      }
+      Vec_t ooep=pvfmm::set_intrin<Vec_t,Real_t>(OOEP);
+
+      tvx=pvfmm::add_intrin(pvfmm::mul_intrin(tvx,ooep),pvfmm::load_intrin<Vec_t>(&trg_value[0][t]));
+      tvy=pvfmm::add_intrin(pvfmm::mul_intrin(tvy,ooep),pvfmm::load_intrin<Vec_t>(&trg_value[1][t]));
+      tvz=pvfmm::add_intrin(pvfmm::mul_intrin(tvz,ooep),pvfmm::load_intrin<Vec_t>(&trg_value[2][t]));
+
+      pvfmm::store_intrin(&trg_value[0][t],tvx);
+      pvfmm::store_intrin(&trg_value[1][t],tvy);
+      pvfmm::store_intrin(&trg_value[2][t],tvz);
+    }
+  }
+
+  { // Add FLOPS
+    #ifndef __MIC__
+    pvfmm::Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(29+4*(NWTN_ITER)));
+    #endif
+  }
+  #undef SRC_BLK
+}
+
+template <class T, int newton_iter=0>
+void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, pvfmm::mem::MemoryManager* mem_mgr){
+  #define STK_KER_NWTN(nwtn) if(newton_iter==nwtn) \
+        pvfmm::generic_kernel<Real_t, 4, 3, stokes_sl_m2l_uKernel<Real_t,Vec_t, pvfmm::rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+            ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
+  #define STOKES_KERNEL STK_KER_NWTN(0); STK_KER_NWTN(1); STK_KER_NWTN(2); STK_KER_NWTN(3);
+
+  if(pvfmm::mem::TypeTraits<T>::ID()==pvfmm::mem::TypeTraits<float>::ID()){
+    typedef float Real_t;
+    #if defined __MIC__
+      #define Vec_t Real_t
+    #elif defined __AVX__
+      #define Vec_t __m256
+    #elif defined __SSE3__
+      #define Vec_t __m128
+    #else
+      #define Vec_t Real_t
+    #endif
+    STOKES_KERNEL;
+    #undef Vec_t
+  }else if(pvfmm::mem::TypeTraits<T>::ID()==pvfmm::mem::TypeTraits<double>::ID()){
+    typedef double Real_t;
+    #if defined __MIC__
+      #define Vec_t Real_t
+    #elif defined __AVX__
+      #define Vec_t __m256d
+    #elif defined __SSE3__
+      #define Vec_t __m128d
+    #else
+      #define Vec_t Real_t
+    #endif
+    STOKES_KERNEL;
+    #undef Vec_t
+  }else{
+    typedef T Real_t;
+    #define Vec_t Real_t
+    STOKES_KERNEL;
+    #undef Vec_t
+  }
+
+  #undef STK_KER_NWTN
+  #undef STOKES_KERNEL
 }
 
 template <class T>
@@ -67,78 +152,255 @@ void stokes_m2l_vol_poten(const T* coord, int n, T* out){
   }
 }
 
-template <class T>
-void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
-  pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(26*dof));
-#endif
-  const T mu=1.0;
-  const T SCAL_CONST = 1.0/(8.0*pvfmm::const_pi<T>()*mu);
-  for(int t=0;t<trg_cnt;t++){
-    T p[3]={0,0,0};
-    for(int s=0;s<src_cnt;s++){
-      T dR[3]={r_trg[3*t  ]-r_src[3*s  ],
-               r_trg[3*t+1]-r_src[3*s+1],
-               r_trg[3*t+2]-r_src[3*s+2]};
-      T R = (dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
 
-      T invR2=(R!=0?1.0/R:0.0);
-      T invR=sqrt(invR2);
-      T invR3=invR2*invR;
-      T* f=&v_src[s*3];
+template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
+void stokes_sl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
+  #define SRC_BLK 500
+  size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
-      T inner_prod=(f[0]*dR[0] +
-                    f[1]*dR[1] +
-                    f[2]*dR[2])* invR3;
+  //// Number of newton iterations
+  size_t NWTN_ITER=0;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin0<Vec_t,Real_t>) NWTN_ITER=0;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin1<Vec_t,Real_t>) NWTN_ITER=1;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin2<Vec_t,Real_t>) NWTN_ITER=2;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin3<Vec_t,Real_t>) NWTN_ITER=3;
 
-      p[0] += f[0]*invR + dR[0]*inner_prod;
-      p[1] += f[1]*invR + dR[1]*inner_prod;
-      p[2] += f[2]*invR + dR[2]*inner_prod;
-    }
-    k_out[t*3+0] += p[0]*SCAL_CONST;
-    k_out[t*3+1] += p[1]*SCAL_CONST;
-    k_out[t*3+2] += p[2]*SCAL_CONST;
+  Real_t nwtn_scal=1; // scaling factor for newton iterations
+  for(int i=0;i<NWTN_ITER;i++){
+    nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
+  const Real_t OOEP = 1.0/(8*nwtn_scal*pvfmm::const_pi<Real_t>());
+  Vec_t inv_nwtn_scal2=pvfmm::set_intrin<Vec_t,Real_t>(1.0/(nwtn_scal*nwtn_scal));
+
+  size_t src_cnt_=src_coord.Dim(1);
+  size_t trg_cnt_=trg_coord.Dim(1);
+  for(size_t sblk=0;sblk<src_cnt_;sblk+=SRC_BLK){
+    size_t src_cnt=src_cnt_-sblk;
+    if(src_cnt>SRC_BLK) src_cnt=SRC_BLK;
+    for(size_t t=0;t<trg_cnt_;t+=VecLen){
+      Vec_t tx=pvfmm::load_intrin<Vec_t>(&trg_coord[0][t]);
+      Vec_t ty=pvfmm::load_intrin<Vec_t>(&trg_coord[1][t]);
+      Vec_t tz=pvfmm::load_intrin<Vec_t>(&trg_coord[2][t]);
+
+      Vec_t tvx=pvfmm::zero_intrin<Vec_t>();
+      Vec_t tvy=pvfmm::zero_intrin<Vec_t>();
+      Vec_t tvz=pvfmm::zero_intrin<Vec_t>();
+      for(size_t s=sblk;s<sblk+src_cnt;s++){
+        Vec_t dx=pvfmm::sub_intrin(tx,pvfmm::bcast_intrin<Vec_t>(&src_coord[0][s]));
+        Vec_t dy=pvfmm::sub_intrin(ty,pvfmm::bcast_intrin<Vec_t>(&src_coord[1][s]));
+        Vec_t dz=pvfmm::sub_intrin(tz,pvfmm::bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+        Vec_t svx=             pvfmm::bcast_intrin<Vec_t>(&src_value[0][s]) ;
+        Vec_t svy=             pvfmm::bcast_intrin<Vec_t>(&src_value[1][s]) ;
+        Vec_t svz=             pvfmm::bcast_intrin<Vec_t>(&src_value[2][s]) ;
+
+        Vec_t r2=        pvfmm::mul_intrin(dx,dx) ;
+        r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
+        r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
+
+        Vec_t rinv=RSQRT_INTRIN(r2);
+        Vec_t rinv2=pvfmm::mul_intrin(pvfmm::mul_intrin(rinv,rinv),inv_nwtn_scal2);
+
+        Vec_t inner_prod=                       pvfmm::mul_intrin(svx,dx) ;
+        inner_prod=pvfmm::add_intrin(inner_prod,pvfmm::mul_intrin(svy,dy));
+        inner_prod=pvfmm::add_intrin(inner_prod,pvfmm::mul_intrin(svz,dz));
+        inner_prod=pvfmm::mul_intrin(inner_prod,rinv2);
+
+        tvx=pvfmm::add_intrin(tvx,pvfmm::mul_intrin(rinv,pvfmm::add_intrin(svx,pvfmm::mul_intrin(dx,inner_prod))));
+        tvy=pvfmm::add_intrin(tvy,pvfmm::mul_intrin(rinv,pvfmm::add_intrin(svy,pvfmm::mul_intrin(dy,inner_prod))));
+        tvz=pvfmm::add_intrin(tvz,pvfmm::mul_intrin(rinv,pvfmm::add_intrin(svz,pvfmm::mul_intrin(dz,inner_prod))));
+      }
+      Vec_t ooep=pvfmm::set_intrin<Vec_t,Real_t>(OOEP);
+
+      tvx=pvfmm::add_intrin(pvfmm::mul_intrin(tvx,ooep),pvfmm::load_intrin<Vec_t>(&trg_value[0][t]));
+      tvy=pvfmm::add_intrin(pvfmm::mul_intrin(tvy,ooep),pvfmm::load_intrin<Vec_t>(&trg_value[1][t]));
+      tvz=pvfmm::add_intrin(pvfmm::mul_intrin(tvz,ooep),pvfmm::load_intrin<Vec_t>(&trg_value[2][t]));
+
+      pvfmm::store_intrin(&trg_value[0][t],tvx);
+      pvfmm::store_intrin(&trg_value[1][t],tvy);
+      pvfmm::store_intrin(&trg_value[2][t],tvz);
+    }
+  }
+
+  { // Add FLOPS
+    #ifndef __MIC__
+    pvfmm::Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(29+4*(NWTN_ITER)));
+    #endif
+  }
+  #undef SRC_BLK
 }
 
-template <class T>
-void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, pvfmm::mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
-  pvfmm::Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(27*dof));
-#endif
-  const T SCAL_CONST = 3.0/(4.0*pvfmm::const_pi<T>());
-  for(int t=0;t<trg_cnt;t++){
-    for(int i=0;i<dof;i++){
-      T p[3]={0,0,0};
-      for(int s=0;s<src_cnt;s++){
-        T dR[3]={r_trg[3*t  ]-r_src[3*s  ],
-                 r_trg[3*t+1]-r_src[3*s+1],
-                 r_trg[3*t+2]-r_src[3*s+2]};
-        T R = (dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
+template <class T, int newton_iter=0>
+void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, pvfmm::mem::MemoryManager* mem_mgr){
+  #define STK_KER_NWTN(nwtn) if(newton_iter==nwtn) \
+        pvfmm::generic_kernel<Real_t, 3, 3, stokes_sl_uKernel<Real_t,Vec_t, pvfmm::rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+            ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
+  #define STOKES_KERNEL STK_KER_NWTN(0); STK_KER_NWTN(1); STK_KER_NWTN(2); STK_KER_NWTN(3);
 
-        if (R!=0){
-          T invR2=1.0/R;
-          T invR=sqrt(invR2);
-          T invR3=invR2*invR;
-          T invR5=invR2*invR3;
+  if(pvfmm::mem::TypeTraits<T>::ID()==pvfmm::mem::TypeTraits<float>::ID()){
+    typedef float Real_t;
+    #if defined __MIC__
+      #define Vec_t Real_t
+    #elif defined __AVX__
+      #define Vec_t __m256
+    #elif defined __SSE3__
+      #define Vec_t __m128
+    #else
+      #define Vec_t Real_t
+    #endif
+    STOKES_KERNEL;
+    #undef Vec_t
+  }else if(pvfmm::mem::TypeTraits<T>::ID()==pvfmm::mem::TypeTraits<double>::ID()){
+    typedef double Real_t;
+    #if defined __MIC__
+      #define Vec_t Real_t
+    #elif defined __AVX__
+      #define Vec_t __m256d
+    #elif defined __SSE3__
+      #define Vec_t __m128d
+    #else
+      #define Vec_t Real_t
+    #endif
+    STOKES_KERNEL;
+    #undef Vec_t
+  }else{
+    typedef T Real_t;
+    #define Vec_t Real_t
+    STOKES_KERNEL;
+    #undef Vec_t
+  }
 
-          T* f=&v_src[(s*dof+i)*6+0];
-          T* n=&v_src[(s*dof+i)*6+3];
+  #undef STK_KER_NWTN
+  #undef STOKES_KERNEL
+}
 
-          T r_dot_n=(n[0]*dR[0]+n[1]*dR[1]+n[2]*dR[2]);
-          T r_dot_f=(f[0]*dR[0]+f[1]*dR[1]+f[2]*dR[2]);
-          T p_=r_dot_n*r_dot_f*invR5;
+template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
+void stokes_dl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
+  #define SRC_BLK 500
+  size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
-          p[0] += dR[0]*p_;
-          p[1] += dR[1]*p_;
-          p[2] += dR[2]*p_;
-        }
+  //// Number of newton iterations
+  size_t NWTN_ITER=0;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin0<Vec_t,Real_t>) NWTN_ITER=0;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin1<Vec_t,Real_t>) NWTN_ITER=1;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin2<Vec_t,Real_t>) NWTN_ITER=2;
+  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))pvfmm::rsqrt_intrin3<Vec_t,Real_t>) NWTN_ITER=3;
+
+  Real_t nwtn_scal=1; // scaling factor for newton iterations
+  for(int i=0;i<NWTN_ITER;i++){
+    nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
+  }
+  const Real_t SCAL_CONST = 3.0/(4.0*nwtn_scal*nwtn_scal*nwtn_scal*nwtn_scal*nwtn_scal*pvfmm::const_pi<Real_t>());
+
+  size_t src_cnt_=src_coord.Dim(1);
+  size_t trg_cnt_=trg_coord.Dim(1);
+  for(size_t sblk=0;sblk<src_cnt_;sblk+=SRC_BLK){
+    size_t src_cnt=src_cnt_-sblk;
+    if(src_cnt>SRC_BLK) src_cnt=SRC_BLK;
+    for(size_t t=0;t<trg_cnt_;t+=VecLen){
+      Vec_t tx=pvfmm::load_intrin<Vec_t>(&trg_coord[0][t]);
+      Vec_t ty=pvfmm::load_intrin<Vec_t>(&trg_coord[1][t]);
+      Vec_t tz=pvfmm::load_intrin<Vec_t>(&trg_coord[2][t]);
+
+      Vec_t tvx=pvfmm::zero_intrin<Vec_t>();
+      Vec_t tvy=pvfmm::zero_intrin<Vec_t>();
+      Vec_t tvz=pvfmm::zero_intrin<Vec_t>();
+      for(size_t s=sblk;s<sblk+src_cnt;s++){
+        Vec_t dx=pvfmm::sub_intrin(tx,pvfmm::bcast_intrin<Vec_t>(&src_coord[0][s]));
+        Vec_t dy=pvfmm::sub_intrin(ty,pvfmm::bcast_intrin<Vec_t>(&src_coord[1][s]));
+        Vec_t dz=pvfmm::sub_intrin(tz,pvfmm::bcast_intrin<Vec_t>(&src_coord[2][s]));
+
+        Vec_t snx=pvfmm::bcast_intrin<Vec_t>(&src_value[0][s]) ;
+        Vec_t sny=pvfmm::bcast_intrin<Vec_t>(&src_value[1][s]) ;
+        Vec_t snz=pvfmm::bcast_intrin<Vec_t>(&src_value[2][s]) ;
+
+        Vec_t svx=pvfmm::bcast_intrin<Vec_t>(&src_value[3][s]) ;
+        Vec_t svy=pvfmm::bcast_intrin<Vec_t>(&src_value[4][s]) ;
+        Vec_t svz=pvfmm::bcast_intrin<Vec_t>(&src_value[5][s]) ;
+
+        Vec_t r2=               pvfmm::mul_intrin(dx,dx) ;
+        r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
+        r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
+
+        Vec_t rinv=RSQRT_INTRIN(r2);
+        Vec_t rinv2=pvfmm::mul_intrin(rinv ,rinv );
+        Vec_t rinv5=pvfmm::mul_intrin(pvfmm::mul_intrin(rinv2,rinv2),rinv);
+
+        Vec_t r_dot_n=                    pvfmm::mul_intrin(snx,dx) ;
+        r_dot_n=pvfmm::add_intrin(r_dot_n,pvfmm::mul_intrin(sny,dy));
+        r_dot_n=pvfmm::add_intrin(r_dot_n,pvfmm::mul_intrin(snz,dz));
+
+        Vec_t r_dot_f=                    pvfmm::mul_intrin(svx,dx) ;
+        r_dot_f=pvfmm::add_intrin(r_dot_f,pvfmm::mul_intrin(svy,dy));
+        r_dot_f=pvfmm::add_intrin(r_dot_f,pvfmm::mul_intrin(svz,dz));
+
+        Vec_t p=pvfmm::mul_intrin(pvfmm::mul_intrin(r_dot_n,r_dot_f),rinv5);
+        tvx=pvfmm::add_intrin(tvx,pvfmm::mul_intrin(dx,p));
+        tvy=pvfmm::add_intrin(tvy,pvfmm::mul_intrin(dy,p));
+        tvz=pvfmm::add_intrin(tvz,pvfmm::mul_intrin(dz,p));
       }
-      k_out[(t*dof+i)*3+0] += p[0]*SCAL_CONST;
-      k_out[(t*dof+i)*3+1] += p[1]*SCAL_CONST;
-      k_out[(t*dof+i)*3+2] += p[2]*SCAL_CONST;
+      Vec_t scal_const=pvfmm::set_intrin<Vec_t,Real_t>(SCAL_CONST);
+
+      tvx=pvfmm::add_intrin(pvfmm::mul_intrin(tvx,scal_const),pvfmm::load_intrin<Vec_t>(&trg_value[0][t]));
+      tvy=pvfmm::add_intrin(pvfmm::mul_intrin(tvy,scal_const),pvfmm::load_intrin<Vec_t>(&trg_value[1][t]));
+      tvz=pvfmm::add_intrin(pvfmm::mul_intrin(tvz,scal_const),pvfmm::load_intrin<Vec_t>(&trg_value[2][t]));
+
+      pvfmm::store_intrin(&trg_value[0][t],tvx);
+      pvfmm::store_intrin(&trg_value[1][t],tvy);
+      pvfmm::store_intrin(&trg_value[2][t],tvz);
     }
   }
+
+  { // Add FLOPS
+    #ifndef __MIC__
+    pvfmm::Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(31+4*(NWTN_ITER)));
+    #endif
+  }
+  #undef SRC_BLK
+}
+
+template <class T, int newton_iter=0>
+void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, pvfmm::mem::MemoryManager* mem_mgr){
+  #define STK_KER_NWTN(nwtn) if(newton_iter==nwtn) \
+        pvfmm::generic_kernel<Real_t, 6, 3, stokes_dl_uKernel<Real_t,Vec_t, pvfmm::rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
+            ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
+  #define STOKES_KERNEL STK_KER_NWTN(0); STK_KER_NWTN(1); STK_KER_NWTN(2); STK_KER_NWTN(3);
+
+  if(pvfmm::mem::TypeTraits<T>::ID()==pvfmm::mem::TypeTraits<float>::ID()){
+    typedef float Real_t;
+    #if defined __MIC__
+      #define Vec_t Real_t
+    #elif defined __AVX__
+      #define Vec_t __m256
+    #elif defined __SSE3__
+      #define Vec_t __m128
+    #else
+      #define Vec_t Real_t
+    #endif
+    STOKES_KERNEL;
+    #undef Vec_t
+  }else if(pvfmm::mem::TypeTraits<T>::ID()==pvfmm::mem::TypeTraits<double>::ID()){
+    typedef double Real_t;
+    #if defined __MIC__
+      #define Vec_t Real_t
+    #elif defined __AVX__
+      #define Vec_t __m256d
+    #elif defined __SSE3__
+      #define Vec_t __m128d
+    #else
+      #define Vec_t Real_t
+    #endif
+    STOKES_KERNEL;
+    #undef Vec_t
+  }else{
+    typedef T Real_t;
+    #define Vec_t Real_t
+    STOKES_KERNEL;
+    #undef Vec_t
+  }
+
+  #undef STK_KER_NWTN
+  #undef STOKES_KERNEL
 }
 
 template <class T>
@@ -152,6 +414,19 @@ void stokes_vol_poten(const T* coord, int n, T* out){
     out[n*3*1+i*3+0]=      0; out[n*3*1+i*3+1]=-ry_2/6; out[n*3*1+i*3+2]=      0;
     out[n*3*2+i*3+0]=      0; out[n*3*2+i*3+1]=      0; out[n*3*2+i*3+2]=-rz_2/6;
   }
+}
+
+
+template <class Real_t>
+inline const pvfmm::Kernel<Real_t>& StokesKernel<Real_t>::Kernel(){
+
+  static const pvfmm::Kernel<Real_t> ker_m2l=pvfmm::BuildKernel<Real_t, stokes_sl_m2l<Real_t,2>                      >("stokes_m2l", 3, std::pair<int,int>(4,3),
+      NULL,NULL,NULL,     NULL,    NULL,    NULL, NULL,NULL, stokes_m2l_vol_poten);
+
+  static const pvfmm::Kernel<Real_t> ker    =pvfmm::BuildKernel<Real_t, stokes_sl    <Real_t,2>, stokes_dl<Real_t,2> >("stokes_vel", 3, std::pair<int,int>(3,3),
+      NULL,NULL,NULL, &ker_m2l,&ker_m2l,&ker_m2l, NULL,NULL, stokes_vol_poten    );
+
+  return ker;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

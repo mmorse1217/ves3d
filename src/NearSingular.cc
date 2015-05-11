@@ -1085,11 +1085,11 @@ void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
 
         if(qforce_single){ // Subtract wrong near potential
           PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
-          stokes_sl(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
           PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
-          stokes_dl(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
       }
     }
@@ -1349,10 +1349,10 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
         }
         if(interp_veloc.Dim()){ // Set interp_veloc
           if(qforce_single){
-            stokes_sl(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
+            StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
           }
           if(qforce_double){
-            stokes_dl(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
+            StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
           }
         }
         { // Set patch_veloc
@@ -1759,5 +1759,7 @@ void NearSingular<Surf_t>::QuadraticPatch::grad(Real_t x, Real_t y, Real_t* val)
     }
   }
 }
+
+#undef VES_STRIDE
 
 #endif

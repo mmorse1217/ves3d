@@ -88,7 +88,8 @@ StokesVelocity<Surf_t>::StokesVelocity(
 
     std::vector<Real_t> leg((p+1)*(p+1));
     LegPoly(&x[0],x.size(),p+1,&leg[0]);
-    pole_quad.ReInit(p+1,0);
+    pole_quad.ReInit(p+1);
+    pole_quad.SetZero();
     for(size_t j=0;j<p+1;j++){
       for(size_t i=0;i<p+1;i++){
         pole_quad[i]+=leg[j*(p+1)+i]*sqrt(2.0*j+1.0);
