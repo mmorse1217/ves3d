@@ -572,29 +572,30 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     ASSERT(s=="SURFACE", "Bad input string (missing header).");
 
     is>>key>>Streamable::name_;
+    ASSERT(key=="name:", "bad key name");
 
     is>>key>>ii;
     ASSERT(key=="sh_order:", "bad key sh_order");
 
     is>>key>>ii;
     ASSERT(key=="SHT_order:", "bad key SHT_order");
-    ASSERT(ii==sht_.getShOrder(), "incompatible data, cannot unpack");
+    ASSERT(ii==sht_.getShOrder(), "incompatible data (different sh_order), cannot unpack");
 
     is>>key>>ii;
     ASSERT(key=="SHT_rep_order:", "bad key SHT_rep_order");
-    ASSERT(ii==sht_rep_filter_.getShOrder(), "incompatible data, cannot unpack");
+    ASSERT(ii==sht_rep_filter_.getShOrder(), "incompatible data (different sh_order), cannot unpack");
 
     is>>key>>ii;
     ASSERT(key=="SHT_resample_order:", "bad key SHT_resample_order");
-    ASSERT(ii==sht_resample_->getShOrder(), "incompatible data, cannot unpack");
+    ASSERT(ii==sht_resample_->getShOrder(), "incompatible data (different sh_order), cannot unpack");
 
     is>>key>>ii;
     ASSERT(key=="diff_filter_freq:", "bad key diff_filter_freq");
-    ASSERT(ii==diff_filter_freq_, "incompatible data, cannot unpack");
+    ASSERT(ii==diff_filter_freq_, "incompatible data (different sh_order), cannot unpack");
 
     is>>key>>ii;
     ASSERT(key=="reparam_filter_freq:", "bad key reparam_filter_freq");
-    ASSERT(ii==reparam_filter_freq_, "incompatible data, cannot unpack");
+    ASSERT(ii==reparam_filter_freq_, "incompatible data (different sh_order), cannot unpack");
 
     x_.unpack(is, format);
     is>>s;

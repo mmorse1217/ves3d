@@ -52,7 +52,6 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
 
     //Finally, Evolve surface
     Evolve_t Es(&sim_par, Mats, vInf, NULL, &interaction, NULL, NULL, &x0);
-
     CHK ( Es.Evolve() );
 
     //testing streaming
@@ -88,7 +87,7 @@ int main(int argc, char **argv)
     sim_par.rep_maxit            = 20;
     sim_par.checkpoint           = true;
     sim_par.checkpoint_stride    = 1;
-    sim_par.checkpoint_file_name = "EvolveSurf.out";
+    sim_par.checkpoint_file_name = "EvolveSurf.chk";
     COUT(sim_par);
 
     //Cleaning the slate

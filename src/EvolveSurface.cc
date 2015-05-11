@@ -13,7 +13,8 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     F_(NULL)
 {
     objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
-    S_ = new Sur_t(x0->getShOrder(), mats_, x0, params_->filter_freq, params_->rep_filter_freq);
+
+    S_ = new Sur_t(params->sh_order, mats_, x0, params_->filter_freq, params_->rep_filter_freq);
     S_->set_name("surface");
 
     if ( monitor_ == NULL)
@@ -108,7 +109,6 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::pack(
     os<<"EVOLVE\n";
     os<<"version: "<<VERSION<<"\n";
     os<<"name: "<<Streamable::name_<<"\n";
-    //params_->pack(os,format);
     S_->pack(os,format);
     os<<"/EVOLVE\n";
 
@@ -127,14 +127,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
     is>>s;
     ASSERT(s=="EVOLVE", "Bad input string (missing header).");
 
-    is>>key>>Streamable::name_;
-    ASSERT(key=="name:", "bad key name");
-
     is>>key>>s;
     ASSERT(key=="version:", "bad key version");
-    INFO("Unpacking checkpoint from version "<<s<<" (current version "<<VERSION);
+    INFO("Unpacking checkpoint from version "<<s<<" (current version "<<VERSION<<")");
 
-    //params_->unpack(is,format);
+    is>>key>>Streamable::name_;
+    ASSERT(key=="name:", "bad key name");
     S_->unpack(is,format);
     is>>s;
     ASSERT(s=="/EVOLVE", "Bad input string (missing footer).");
