@@ -46,13 +46,14 @@ clean:
 	${MAKE} -C ${VES3D_TSTDIR} clean
 	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d
 	-${RM} -r ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
+	-${RM} *.${VES3D_CHKEXT} ${VES3D_EXPRDIR}/*.${VES3D_CHKEXT}
 
 distclean:
 	${MAKE} clean
 	-${RM} $(addprefix ${VES3D_BINDIR}/,${VES3D_BINS})
 
-# include dependency file for templates (generated in when making bin files)
+# include dependency file for templates (generated when making bin files)
 -include $(addprefix ${VES3D_SRCDIR}/, $(addsuffix .d, ${VES3D_BINS}))
 
-.PHONY: lib install config test check experiment docs tags all-tags clean distclean
+.PHONY: lib install test check doc tags all-tags clean distclean
 .SECONDARY:
