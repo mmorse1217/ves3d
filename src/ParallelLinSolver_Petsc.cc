@@ -547,6 +547,13 @@ Error_t  ParallelLinSolverPetsc<T>::Configure()
 }
 
 template<typename T>
+Error_t ParallelLinSolverPetsc<T>::InitialGuessNonzero(bool flg) const
+{
+    ierr = KSPSetInitialGuessNonzero(ps_, (PetscBool) flg);
+    return ErrorEvent::Success;
+}
+
+template<typename T>
 Error_t ParallelLinSolverPetsc<T>::VecFactory(vec_type **newvec) const
 {
     COUTDEBUG("Making a new compatible vec");
@@ -585,7 +592,6 @@ Error_t  ParallelLinSolverPetsc<T>::Solve(const vec_type *rhs, vec_type *x) cons
     COUTDEBUG("Solving the linear system");
     const petsc_vec_type* rp = static_cast<const petsc_vec_type*>(rhs);
     petsc_vec_type* xp = static_cast<petsc_vec_type*>(x);
-
     ierr = KSPSolve(ps_, rp->PetscVec(), xp->PetscVec()); CHK_PETSC(ierr);
     return ErrorEvent::Success;
 }
@@ -607,7 +613,7 @@ Error_t  ParallelLinSolverPetsc<T>::ViewReport() const
     ierr = KSPGetConvergedReason(ps_, &reason); CHK_PETSC(ierr);
 
     if (reason>0){
-	PRINTF(*comm_, "KSP converged with reason=%d\n", reason);
+	WHENCHATTY(PRINTF(*comm_, "KSP converged with reason=%d\n", reason));
     } else {
 	PRINTF_ERR(*comm_, "KSP diverged with reason=%d\n", reason);
 	ABORT(ierr, "KSP diverged");
@@ -681,6 +687,9 @@ PetscErrorCode PetscPrecondWrapper(PC P, Vec x, Vec y){
 
 template<typename T>
 PetscErrorCode PetscKSPMonitor(KSP K,PetscInt n, PetscReal rnorm, void *dummy){
-  PetscPrintf(PETSC_COMM_WORLD, "KSP Residual norm at iteration %D: %14.12e \n",n,rnorm);
+    WHENCHATTY(PetscPrintf(PETSC_COMM_WORLD,
+	    "KSP Residual norm at iteration %D: %14.12e \n",
+	    n,
+	    rnorm));
   return 0;
 }
