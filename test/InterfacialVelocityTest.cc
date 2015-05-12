@@ -69,17 +69,15 @@ int main(int argc, char** argv){
     sim_par.upsample_freq   = p;
     sim_par.rep_filter_freq = p;
     sim_par.ts              = ts;
+    sim_par.time_precond    = DiagonalSpectral;
+    sim_par.init_file_name  = "precomputed/Bmark_TwoVes_Exp_p{{sh_order}}_float_x0.txt";
+    sim_par.expand_templates();
     COUT(sim_par);
 
-    DataIO myIO(sim_par.checkpoint_file_name, DataIO::ASCII);
-    char fname[300];
-    std::string prec = (typeid(real_t) == typeid(float)) ? "float" : "double";
-    //sprintf(fname, "precomputed/dumbbell_%u_%s.txt", sim_par.sh_order, prec.c_str());
-    sprintf(fname, "precomputed/Bmark_TwoVes_Exp_p%u_float_x0.txt", sim_par.sh_order);
-
+    DataIO myIO;
     Vec_t x(nvec, p);
     Sca_t tension(nvec, p);
-    myIO.ReadData(FullPath(fname), x);
+    myIO.ReadData(FullPath(sim_par.init_file_name), x);
 
     //Reading Operators From
     Mats_t Mats(true /* readFromFile */, sim_par);
@@ -102,7 +100,12 @@ int main(int argc, char** argv){
     // INFO("Gauss-Seidel update");
     // F.updateJacobiGaussSeidel(ts);
 
-    INFO("Globally implicit update");
+    INFO("Globally implicit update (solve for velocity)");
+    sim_par.solve_for_velocity=true;
+    F->updateImplicit(ts);
+
+    INFO("Globally implicit update (solve for position)");
+    sim_par.solve_for_velocity=false;
     F->updateImplicit(ts);
 
     delete F;

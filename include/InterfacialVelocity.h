@@ -48,8 +48,11 @@ class InterfacialVelocity
 
     Error_t Prepare(const SolverScheme &scheme) const;
     Error_t BgFlow(Vec_t &bg, const value_type &dt) const;
-    Error_t AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const;
+
+    Error_t AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const;
+    Error_t AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const;
     Error_t AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
+
     Error_t Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
     Error_t ConfigureSolver(const SolverScheme &scheme) const;
     Error_t Update(PVec_t *u0);
@@ -110,7 +113,7 @@ class InterfacialVelocity
 
     mutable Stokes_t stokes_;
     mutable MovePole<Sca_t,Mats_t> move_pole;
-    mutable Vec_t velocity_;
+    mutable Vec_t pos_vel_;
     mutable Sca_t tension_;
     mutable Sca_t precond_data;
     mutable Arr_t vel_coeff_, dl_coeff_;

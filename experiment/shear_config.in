@@ -4,7 +4,7 @@ filter-freq : 4
 upsample-freq : 12
 rep-filter-freq : 2
 rep-upsample
-upsample-interaction
+interaction-upsample
 
 ## initial shape -----------------------------
 n-surfs : 1
