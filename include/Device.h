@@ -182,8 +182,20 @@ class Device
     T* Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in,
         const size_t stride, const size_t ns, T *x_dw) const;
 
-    //! General matrix-matrix multiplication. consult BLAS
-    //! documentation for the detail of the syntax.
+    //! General matrix-matrix multiplication.
+    //!  From DGEMM documentation
+    //!
+    //! performs   C := alpha*op( A )*op( B ) + beta*C,
+    //! DGEMM ( TRANSA, TRANSB, M, N, K, ALPHA, A, LDA, B, LDB, BETA, C, LDC )
+    //!
+    //! Arguments:
+    //!      TRANSA, TRANSB : transpose A or B ('N', 'T', or 'C')
+    //!      M : rows of op(A),C
+    //!      N : columns of columns of op(B),C)
+    //!      K : columns of op(B)/rows of op(B)
+    //!      LDA, LDB, LDC: Leading dimension of A,B,or C (needed for correct transpose)
+    //!
+    //! Consult BLAS documentation for more detail of the syntax.
     template<typename T>
     T* gemm(const char *transA, const char *transB, const int *m,
         const int *n, const int *k, const T *alpha, const T *A,
