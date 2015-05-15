@@ -53,12 +53,14 @@ Surface<ScalarContainer, VectorContainer>::~Surface()
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec_t& x_in)
 {
+    PROFILESTART();
     containers_are_stale_ = true;
     first_forms_are_stale_ = true;
     second_forms_are_stale_ = true;
 
     x_.replicate(x_in);
     axpy(static_cast<value_type>(1), x_in, x_);
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -116,6 +118,7 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 getSmoothedShapePosition(Vec_t &smthd_pos) const
 {
+    PROFILESTART();
     std::auto_ptr<Vec_t> wrk(checkoutVec());
     std::auto_ptr<Vec_t> shc(checkoutVec());
 
@@ -123,12 +126,14 @@ getSmoothedShapePosition(Vec_t &smthd_pos) const
 
     recycle(wrk);
     recycle(shc);
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 mapToTangentSpace(Vec_t &vec_fld) const
 {
+    PROFILESTART();
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -168,12 +173,14 @@ mapToTangentSpace(Vec_t &vec_fld) const
     recycle(wrk);
     recycle(shc);
     recycle(fld);
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 updateFirstForms() const
 {
+    PROFILESTART();
     COUTDEBUG("Updating first fundamental forms");
     if(containers_are_stale_)
         checkContainers();
@@ -219,12 +226,14 @@ updateFirstForms() const
     recycle(scp);
 
     first_forms_are_stale_ = false;
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 updateAll() const
 {
+    PROFILESTART();
     COUTDEBUG("Updating all fundamental forms");
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -276,12 +285,14 @@ updateAll() const
     recycle(dif);
 
     second_forms_are_stale_ = false;
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 grad(const ScalarContainer &f_in, VectorContainer &grad_f_out) const
 {
+    PROFILESTART();
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -299,12 +310,14 @@ grad(const ScalarContainer &f_in, VectorContainer &grad_f_out) const
     recycle(scw2);
     recycle(shc);
     recycle(wrk);
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 div(const VectorContainer &f_in, ScalarContainer &div_f_out) const
 {
+    PROFILESTART();
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -327,23 +340,28 @@ div(const VectorContainer &f_in, ScalarContainer &div_f_out) const
     sht_.lowPassFilter(div_f_out, *wrk, *shc, div_f_out);
     recycle(shc);
     recycle(wrk);
+
+    PROFILEEND("",0);
 }
 
 template< typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 area(ScalarContainer &area_out) const
 {
+    PROFILESTART();
     COUTDEBUG("Computing area");
     if(first_forms_are_stale_)
         updateFirstForms();
 
     integrator_(w_, area_out);
+    PROFILEEND("",0);
 }
 
 template< typename ScalarContainer, typename VectorContainer >
 void Surface<ScalarContainer, VectorContainer>::
 volume(ScalarContainer &vol_out) const
 {
+    PROFILESTART();
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -354,12 +372,14 @@ volume(ScalarContainer &vol_out) const
 
     integrator_(*scw, w_, vol_out);
     recycle(scw);
+    PROFILEEND("",0);
 }
 
 template< typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 getCenters(Vec_t &centers) const
 {
+    PROFILESTART();
     COUTDEBUG("Computing centers of mass");
     if(first_forms_are_stale_)
         updateFirstForms();
@@ -380,6 +400,7 @@ getCenters(Vec_t &centers) const
     volume(*scw);
     uyInv(centers, *scw, centers);
     recycle(scw);
+    PROFILEEND("",0);
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -476,6 +497,7 @@ template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
 linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
 {
+    PROFILESTART();
     if(first_forms_are_stale_)
         updateFirstForms();
 
@@ -511,16 +533,16 @@ linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const
     recycle(shc);
     recycle(dif);
     recycle(scw);
+    PROFILEEND("",0);
 }
 
 template <typename S, typename V>
-Error_t Surface<S, V>::resample(int new_sh_freq, Surface **new_surf) const{
-
-    ASSERT(*new_surf==NULL, "Target of pointer seems to be in use");
-
+Error_t Surface<S, V>::resample(int new_sh_freq, Surface **new_surf /* delete when you're done */ ) const{
     /* current implementation doesn't permit resampling to arbitrary freq */
     if (new_sh_freq != sht_resample_->getShOrder())
 	return ErrorEvent::NotImplementedError;
+
+    PROFILESTART();
 
     // resample x to the target freq
     std::auto_ptr<Vec_t> wrk(checkoutVec());
@@ -532,13 +554,19 @@ Error_t Surface<S, V>::resample(int new_sh_freq, Surface **new_surf) const{
     Resample(x_, sht_, *sht_resample_, *shc, *wrk, *xre);
 
     // construct new object
-    *new_surf = new Surface(new_sh_freq, *mats_, xre.get(),
-	diff_filter_freq_*new_sh_freq/sh_order_,
-	reparam_filter_freq_*new_sh_freq/sh_order_);
+    if (*new_surf == NULL){
+	*new_surf = new Surface(new_sh_freq, *mats_, xre.get(),
+	    diff_filter_freq_*new_sh_freq/sh_order_,
+	    reparam_filter_freq_*new_sh_freq/sh_order_);
+    } else {
+	ASSERT((*new_surf)->getShOrder()==new_sh_freq, "Container should have the same order as the argument");
+	(*new_surf)->setPosition(*xre);
+    }
 
     recycle(wrk);
     recycle(shc);
     recycle(xre);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }

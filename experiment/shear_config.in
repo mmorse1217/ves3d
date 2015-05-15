@@ -1,8 +1,5 @@
 ## spherical harmonics -----------------------
 sh-order : 6
-filter-freq : 4
-upsample-freq : 12
-rep-filter-freq : 2
 rep-upsample
 interaction-upsample
 
@@ -14,13 +11,14 @@ cent-file : experiment/shear_centers.txt
 
 ## time stepping -----------------------------
 time-horizon : 5e1
-timestep : 5e-1
-time-tol : 1e-6
+timestep : .5
+time-tol : 1e-5
 time-iter-max : 40
 time-scheme : GloballyImplicit
 time-precond : DiagonalSpectral
 singular-stokes : Direct
 error-factor : .01
+solve-for-velocity
 
 ## reparametrization -------------------------
 rep-max-iter : 1000

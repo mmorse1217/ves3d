@@ -53,6 +53,7 @@ template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
+    PROFILESTART();
     T t(0);
     T dt(params_->ts);
     T time_horizon(params_->time_horizon);
@@ -96,6 +97,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         CHK( (*monitor_)( this, t, dt) );
     }
 
+    PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 

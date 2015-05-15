@@ -55,6 +55,7 @@ class InterfacialVelocity
 
     Error_t Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
     Error_t ConfigureSolver(const SolverScheme &scheme) const;
+    Error_t ConfigurePrecond(const PrecondScheme &precond) const;
     Error_t Update(PVec_t *u0);
 
     Error_t updateJacobiExplicit(const value_type &dt);
@@ -90,10 +91,12 @@ class InterfacialVelocity
     // parallel solver
     PSolver_t *parallel_solver_;
     mutable bool psolver_configured_;
+    mutable bool precond_configured_;
     mutable POp_t *parallel_matvec_;
 
     mutable PVec_t *parallel_rhs_;
     mutable PVec_t *parallel_u_;
+
     static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
     static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
 
@@ -115,7 +118,8 @@ class InterfacialVelocity
     mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;
-    mutable Sca_t precond_data;
+    mutable Sca_t position_precond;
+    mutable Sca_t tension_precond;
     mutable Arr_t vel_coeff_, dl_coeff_;
 
     //Workspace

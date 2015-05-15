@@ -12,6 +12,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     //
     parallel_solver_(parallel_solver),
     psolver_configured_(false),
+    precond_configured_(false),
     parallel_matvec_(NULL),
     parallel_rhs_(NULL),
     parallel_u_(NULL),
@@ -63,8 +64,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         device_type::MemcpyDeviceToDevice);
 
     //spectrum in harmonic space, diagonal
-    if (params_.time_precond == DiagonalSpectral)
-	precond_data.resize(1,p);
+    if (params_.time_precond == DiagonalSpectral){
+	position_precond.resize(1,p);
+	tension_precond.resize(1,p);
+    }
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -262,25 +265,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
 	if (!psolver_configured_) CHK(ConfigureSolver(scheme));
     }
 
-    // preconditioner
-    if (params_.time_precond == DiagonalSpectral){
-	COUTDEBUG("Setting up the diagonal preceonditioner");
-	//! @bug Memory gets allocated at each time step independent of step size
-	value_type *buffer = new value_type[precond_data.size() * sizeof(value_type)];
-	int idx(0);
-
-	for(int iM=0; iM<precond_data.getGridDim().second; ++iM){
-	    for(int iN=0; iN<precond_data.getGridDim().first; ++iN){
-		//! @bug incorrect preconditoner. It's not correctly aligned with the shc
-		value_type bending_precond(1.0/(1.0-dt_*iN*iN*iN));
-		buffer[idx++] = bending_precond;
-	    }
-	}
-	precond_data.getDevice().Memcpy(precond_data.begin(), buffer,
-	    precond_data.size() * sizeof(value_type),
-	    device_type::MemcpyHostToDevice);
-	delete[] buffer;
-    }
+    if (params_.time_precond != NoPrecond && !precond_configured_)
+	ConfigurePrecond(params_.time_precond);
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -326,15 +312,64 @@ ConfigureSolver(const SolverScheme &scheme) const
     CHK(parallel_solver_->Configure());
 
     // setting up the preconditioner
-    if (params_.time_precond == DiagonalSpectral){
+    if (params_.time_precond != NoPrecond){
 	CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
 	CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
-    } else if (params_.time_precond != NoPrecond){
-	return ErrorEvent::NotImplementedError;
+    }
+    psolver_configured_ = true;
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ConfigurePrecond(const PrecondScheme &precond) const{
+
+    PROFILESTART();
+    if (precond!=DiagonalSpectral)
+	return ErrorEvent::NotImplementedError; /* Unsupported preconditioner scheme */
+
+    INFO("Setting up the diagonal preceonditioner");
+    value_type *buffer = new value_type[position_precond.size() * sizeof(value_type)];
+
+    { //bending precond
+	int idx(0), N(0);
+	// The sh coefficients are ordered by m and then n
+	for(int iM=0; iM<position_precond.getGridDim().second; ++iM){
+	    for(int iN=++N/2; iN<position_precond.getGridDim().first; ++iN){
+		value_type bending_precond(1.0/fabs(1.0-dt_*iN*iN*iN));
+		bending_precond = fabs(bending_precond) < 1e3   ? bending_precond : 1.0;
+		buffer[idx]     = fabs(bending_precond) > 1e-10 ? bending_precond : 1.0;
+		++idx;
+	    }
+	}
+	position_precond.getDevice().Memcpy(position_precond.begin(), buffer,
+	    position_precond.size() * sizeof(value_type),
+	    device_type::MemcpyHostToDevice);
+    }
+    { // tension precond
+	int idx(0), N(0);
+	for(int iM=0; iM<tension_precond.getGridDim().second; ++iM){
+	    for(int iN=++N/2; iN<tension_precond.getGridDim().first; ++iN){
+		value_type eig(4*iN*iN-1);
+		eig *= 2*iN+3;
+		eig /= iN+1;
+		eig /= 2*iN*iN+2*iN-1;
+		eig  = iN==0 ? 1.0 : eig/iN;
+		buffer[idx] = fabs(eig) > 1e-10 ? eig : 1.0;
+		++idx;
+	    }
+	}
+	tension_precond.getDevice().Memcpy(tension_precond.begin(), buffer,
+	    tension_precond.size() * sizeof(value_type),
+	    device_type::MemcpyHostToDevice);
     }
 
-    psolver_configured_ = true;
+    delete[] buffer;
+    precond_configured_=true;
     PROFILEEND("",0);
+
     return ErrorEvent::Success;
 }
 
@@ -562,32 +597,46 @@ ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
     ksp->PrecondContext((const void**) &F);
 
     size_t vsz(F->pos_vel_.size()), tsz(F->tension_.size());
-    std::auto_ptr<Vec_t> vel = F->checkoutVec();
-    vel->replicate(F->pos_vel_);
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxw = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxs = F->checkoutVec();
+    vox->replicate(F->pos_vel_);
+    vxw->replicate(F->pos_vel_);
+    vxs->replicate(F->pos_vel_);
 
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
-    std::auto_ptr<Vec_t> shc = F->checkoutVec();
-    std::auto_ptr<Vec_t> wrk = F->checkoutVec();
-    shc->replicate(F->pos_vel_);
-    wrk->replicate(F->pos_vel_);
+    std::auto_ptr<Sca_t> tnw = F->checkoutSca();
+    std::auto_ptr<Sca_t> tns = F->checkoutSca();
     ten->replicate(F->tension_);
-
+    tnw->replicate(F->tension_);
+    tns->replicate(F->tension_);
 
     COUTDEBUG("Unpacking the input parallel vector");
-    vel->getDevice().Memcpy(vel->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
+    COUTDEBUG("Applying diagonal preconditioner");
+    F->sht_.forward(*vox, *vxw, *vxs);
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.backward(*vxs, *vxw, *vox);
+
+    F->sht_.forward(*ten, *tnw, *tns);
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin(), tns->begin());
+    F->sht_.backward(*tns, *tnw, *ten);
+
     // checking and setting return values
-    ASSERT(vel->getDevice().isNumeric(vel->begin(), vel->size()), "Non-numeric velocity");
+    ASSERT(vox->getDevice().isNumeric(vox->begin(), vox->size()), "Non-numeric velocity");
     ASSERT(ten->getDevice().isNumeric(ten->begin(), ten->size()), "Non-numeric divergence");
 
-    vel->getDevice().Memcpy(y    , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-    F->recycle(vel);
+    F->recycle(vox);
     F->recycle(ten);
-    F->recycle(shc);
-    F->recycle(wrk);
+    F->recycle(vxw);
+    F->recycle(vxs);
+    F->recycle(tnw);
+    F->recycle(tns);
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -653,6 +702,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateFarField() const
 {
+    PROFILESTART();
     pos_vel_.replicate(S_.getPosition());
     CHK(this->BgFlow(pos_vel_, this->dt_));
 
@@ -672,7 +722,7 @@ updateFarField() const
 	recycle(fi);
 	recycle(vel);
     }
-
+    PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 
@@ -680,6 +730,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const
 {
+    PROFILESTART();
     std::auto_ptr<Vec_t>	X = checkoutVec();
     std::auto_ptr<Vec_t>	D = checkoutVec();
     std::auto_ptr<Vec_t>	P = checkoutVec();
@@ -707,6 +758,7 @@ CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const
     recycle(X);
     recycle(D);
     recycle(P);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }
@@ -817,6 +869,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
 {
+    PROFILESTART();
     std::auto_ptr<Sca_t> rhs = checkoutSca();
     std::auto_ptr<Sca_t> wrk = checkoutSca();
 
@@ -849,6 +902,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
 
     recycle(wrk);
     recycle(rhs);
+    PROFILEEND("",0);
 
     return ret_val;
 }
@@ -886,11 +940,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
 
-            PROFILESTART();
             S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(),
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
-            PROFILEEND("SelfInteraction_",0);
         }
 
     recycle(t1);
@@ -898,7 +950,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     recycle(v1);
     recycle(v2);
 
-    PROFILEEND("",0);
+    PROFILEEND("SelfInteraction_",0);
     return ErrorEvent::Success;
 }
 
@@ -934,11 +986,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
 
-            PROFILESTART();
             S_.getPosition().getDevice().DirectStokesDoubleLayer(v1->begin(), v3->begin(), v2->begin(),
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
-            PROFILEEND("DblLayerSelfInteraction_",0);
+
         }
 
     recycle(t1);
@@ -946,7 +997,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
     recycle(v1);
     recycle(v2);
 
-    PROFILEEND("",0);
+    PROFILEEND("DblLayerSelfInteraction_",0);
     return ErrorEvent::Success;
 }
 
@@ -954,6 +1005,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
+    PROFILESTART();
     std::auto_ptr<Vec_t> fb = checkoutVec();
 
     COUTDEBUG("Time matvec");
@@ -961,6 +1013,7 @@ operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
     CHK(stokes(*fb, time_mat_vec));
     axpy(-dt_, time_mat_vec, x_new, time_mat_vec);
     recycle(fb);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }
@@ -986,6 +1039,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
+    PROFILESTART();
+
     value_type ts(params_.rep_ts);
     value_type vel(0);
 
@@ -1023,6 +1078,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     recycle(u1);
     recycle(u2);
     recycle(wrk);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }
