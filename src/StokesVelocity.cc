@@ -145,6 +145,7 @@ void StokesVelocity<Surf_t>::SetTrgCoord(const Surf_t& T_){
   fmm_flag=fmm_flag | StokesVelocity::UpdateTrgCoord;
   size_t omp_p=omp_get_max_threads();
 
+  trg_is_surf=true;
   const Vec_t& x=T_.getPosition();
   size_t N_ves = x.getNumSubs(); // Number of vesicles
   size_t M_ves = x.getStride(); // Points per vesicle
@@ -168,14 +169,15 @@ void StokesVelocity<Surf_t>::SetTrgCoord(const Surf_t& T_){
       }
     }
   }
-  near_singular.SetTrgCoord(&trg_coord[0],trg_coord.Dim()/COORD_DIM);
+  near_singular.SetTrgCoord(&trg_coord[0],trg_coord.Dim()/COORD_DIM,trg_is_surf);
 }
 
 template<typename Surf_t>
 void StokesVelocity<Surf_t>::SetTrgCoord(Real_t* trg_coord_, size_t N){ // TODO: change to const Real_t*
   fmm_flag=fmm_flag | StokesVelocity::UpdateTrgCoord;
+  trg_is_surf=false;
   trg_coord.ReInit(N*COORD_DIM, trg_coord_);
-  near_singular.SetTrgCoord(&trg_coord[0],N);
+  near_singular.SetTrgCoord(&trg_coord[0],N,trg_is_surf);
 }
 
 
@@ -256,9 +258,9 @@ void StokesVelocity<Surf_t>::Upsample(const Vec_t& v, Vec_t* v_out,  PVFMMVec_t*
 
   Vec_t wrk[3]; // TODO: Pre-allocate
   if(!v_out) v_out=&wrk[2];
-  wrk[0].resize(v.getNumSubs(), sh_order_up);
-  wrk[1].resize(v.getNumSubs(), sh_order_up);
-  v_out->resize(v.getNumSubs(), sh_order_up);
+  wrk[0].resize(v.getNumSubs(), std::max(sh_order_up,sh_order));
+  wrk[1].resize(v.getNumSubs(), std::max(sh_order_up,sh_order));
+  v_out->resize(v.getNumSubs(), std::max(sh_order_up,sh_order));
   Resample(v, sht_, sht_up_, wrk[0], wrk[1], *v_out);
 
   if(pvfmm_v){
@@ -274,7 +276,9 @@ void StokesVelocity<Surf_t>::Setup(){
   if(fmm_flag & StokesVelocity::UpdateSrcCoord){ // Compute src_coord_up
     fmm_flag=fmm_flag & ~StokesVelocity::UpdateSrcCoord;
 
-    S->resample(sh_order_up, &S_up);
+    S_up=NULL; // TODO delete old S_up? Shouldn't Surface class do that?
+    if(sh_order_up==sh_order) S_up=S;
+    else CHK(S->resample(sh_order_up, (Surf_t**)&S_up));
     const Vec_t& S_coord   =S   ->getPosition();
     const Vec_t& S_coord_up=S_up->getPosition();
     Vec2PVFMMVec(S_coord_up, src_coord_up);
@@ -391,8 +395,6 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
       pvfmm::Profile::Tic("SelfInteraction",&comm);
       bool prof_state=pvfmm::Profile::Enable(false);
       assert(S);
-      Vec_t SL_vel; // TODO Pre-allocate
-      Vec_t DL_vel; // TODO Pre-allocate
       int imax(S->getPosition().getGridDim().first);
       int jmax(S->getPosition().getGridDim().second);
       int np = S->getPosition().getStride();
@@ -543,17 +545,43 @@ StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int 
   bool update_self=(flag & StokesVelocity::UpdateSelf);
   bool update_near=(flag & StokesVelocity::UpdateNear);
   bool update_far =(flag & StokesVelocity::UpdateFar );
+  size_t omp_p=omp_get_max_threads();
 
   SelfInteraction(update_self);
   const PVFMMVec_t& near_vel=NearInteraction(update_near);
   const PVFMMVec_t& far_vel=FarInteraction(update_far);
-  { // Compute trg_vel = fmm_vel + near_vel
+  { // Compute trg_vel = far_vel + near_vel
     trg_vel.ReInit(trg_coord.Dim());
     assert(trg_vel.Dim()==far_vel.Dim());
-    //assert(trg_vel.Dim()==near_vel.Dim());
+    assert(trg_vel.Dim()==near_vel.Dim());
     #pragma omp parallel for
     for(size_t i=0;i<trg_vel.Dim();i++){
-      trg_vel[i]=fmm_vel[i]+near_vel[i];
+      trg_vel[i]=far_vel[i]+near_vel[i];
+    }
+  }
+  if(trg_is_surf){
+    Vec_t& x=S_vel;
+    size_t N_ves = x.getNumSubs(); // Number of vesicles
+    size_t M_ves = x.getStride(); // Points per vesicle
+    assert(M_ves==x.getGridDim().first*x.getGridDim().second);
+    assert(N_ves*M_ves*COORD_DIM==trg_vel.Dim());
+
+    #pragma omp parallel for
+    for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
+      size_t a=((tid+0)*N_ves)/omp_p;
+      size_t b=((tid+1)*N_ves)/omp_p;
+      for(size_t i=a;i<b;i++){
+        // read each component of x
+        Real_t* xk=x.getSubN_begin(i)+0*M_ves;
+        Real_t* yk=x.getSubN_begin(i)+1*M_ves;
+        Real_t* zk=x.getSubN_begin(i)+2*M_ves;
+
+        for(size_t j=0;j<M_ves;j++){
+          trg_vel[(i*M_ves+j)*COORD_DIM+0]+=xk[j];
+          trg_vel[(i*M_ves+j)*COORD_DIM+1]+=yk[j];
+          trg_vel[(i*M_ves+j)*COORD_DIM+2]+=zk[j];
+        }
+      }
     }
   }
   return &trg_vel[0];
@@ -649,7 +677,7 @@ void StokesVelocity<Surf_t>::Test(){
 
   // Set parameters
   Parameters<Real_t> sim_par;
-  sim_par.sh_order = 32;
+  sim_par.sh_order = 6;
   sim_par.upsample_freq = 32;
 
   // Reading operators from file

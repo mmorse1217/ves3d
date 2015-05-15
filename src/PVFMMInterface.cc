@@ -194,9 +194,10 @@ void stokes_sl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& 
         Vec_t svy=             pvfmm::bcast_intrin<Vec_t>(&src_value[1][s]) ;
         Vec_t svz=             pvfmm::bcast_intrin<Vec_t>(&src_value[2][s]) ;
 
-        Vec_t r2=        pvfmm::mul_intrin(dx,dx) ;
+        Vec_t r2=               pvfmm::mul_intrin(dx,dx) ;
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
+        r2=pvfmm::and_intrin(pvfmm::cmplt_intrin(pvfmm::set_intrin<Vec_t,Real_t>(1e-10),r2),r2); // TODO: Temporary fix
 
         Vec_t rinv=RSQRT_INTRIN(r2);
         Vec_t rinv2=pvfmm::mul_intrin(pvfmm::mul_intrin(rinv,rinv),inv_nwtn_scal2);
@@ -321,6 +322,7 @@ void stokes_dl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& 
         Vec_t r2=               pvfmm::mul_intrin(dx,dx) ;
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
+        r2=pvfmm::and_intrin(pvfmm::cmplt_intrin(pvfmm::set_intrin<Vec_t,Real_t>(1e-10),r2),r2); // TODO: Temporary fix
 
         Vec_t rinv=RSQRT_INTRIN(r2);
         Vec_t rinv2=pvfmm::mul_intrin(rinv ,rinv );

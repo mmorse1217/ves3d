@@ -84,10 +84,11 @@ void NearSingular<Surf_t>::SetDensityDL(const PVFMMVec_t* qforce_double_, const 
 
 
 template<typename Surf_t>
-void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N){ // TODO: change to const Real_t*
+void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_surf_){ // TODO: change to const Real_t*
   update_direct=update_direct | NearSingular::UpdateTrgCoord;
   update_interp=update_interp | NearSingular::UpdateTrgCoord;
   update_setup =update_setup  | NearSingular::UpdateTrgCoord;
+  trg_is_surf=trg_is_surf_;
   T.ReInit(N*COORD_DIM,trg_coord);
 }
 
@@ -668,6 +669,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
     pvfmm::Vector<size_t>& near_trg_pt_id  =coord_setup.near_trg_pt_id  ;
     pvfmm::Vector<size_t>& near_ves_pt_id  =coord_setup.near_ves_pt_id  ;
 
+    pvfmm::Vector<long long> pt_vesid;
     pvfmm::Vector<size_t> pt_id;
     PVFMMVec_t pt_coord=T;
     size_t trg_id_offset;
@@ -711,10 +713,31 @@ void NearSingular<Surf_t>::SetupCoordData(){
         }
       }
 
+      pt_vesid.ReInit(pt_coord.Dim()/COORD_DIM);
+      if(trg_is_surf){ // Set pt_vesid
+        size_t N_ves = S->Dim()/(VES_STRIDE*COORD_DIM); // Number of vesicles
+        size_t M_ves = pt_vesid.Dim()/N_ves;
+        size_t ves_id_offset;
+        { // Get ves_id_offset
+          long long disp=0;
+          long long size=N_ves;
+          MPI_Scan(&size, &disp, 1, MPI_LONG_LONG, MPI_SUM, comm);
+          ves_id_offset=disp-size;
+        }
+        assert(N_ves*M_ves==pt_vesid.Dim());
+        for(size_t i=0;i<N_ves;i++)
+        for(size_t j=0;j<M_ves;j++){
+          pt_vesid[i*M_ves+j]=ves_id_offset+i;
+        }
+      }else{
+        for(size_t i=0;i<pt_vesid.Dim();i++) pt_vesid[i]=-1;
+      }
+
       { // Sort pt data (pt_mid, pt_coord, pt_id)
         pvfmm::par::SortScatterIndex(pt_mid, pt_id, comm, &S_let.mins[rank]);
         pvfmm::par::ScatterForward  (pt_mid, pt_id, comm);
         pvfmm::par::ScatterForward(pt_coord, pt_id, comm);
+        pvfmm::par::ScatterForward(pt_vesid, pt_id, comm);
       }
 
       { // build tree_mid, tree_pt_cnt, tree_pt_dsp
@@ -791,8 +814,10 @@ void NearSingular<Surf_t>::SetupCoordData(){
           size_t tcnt=tree_pt_cnt[i];
           size_t tdsp=tree_pt_dsp[i];
           PVFMMVec_t tcoord;
-          { // Set t_coord
+          pvfmm::Vector<long long> tvesid;
+          if(tcnt){ // Set t_coord
             tcoord.ReInit(tcnt*COORD_DIM,&pt_coord[tdsp*COORD_DIM],false);
+            tvesid.ReInit(tcnt          ,&pt_vesid[tdsp          ],false);
           }
 
           PVFMMVec_t scoord[27];
@@ -846,7 +871,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
                   while(dz>box_size_*0.5) dz-=box_size_;
                 }
                 Real_t r2=dx*dx+dy*dy+dz*dz;
-                if(r2<r2_near){
+                if(r2<r2_near && svesid[k][s]!=tvesid[t]){
                   size_t vesid=svesid[k][s];
                   size_t pt_id=spt_id[k][s];
 
@@ -1002,9 +1027,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
     pvfmm::Vector<size_t>&  trg_cnt=coord_setup.  near_trg_cnt;
     pvfmm::Vector<size_t>&  trg_dsp=coord_setup.  near_trg_dsp;
 
-    pvfmm::Vector<char>& is_surf_pt=coord_setup.is_surf_pt;
     pvfmm::Vector<char>& is_extr_pt=coord_setup.is_extr_pt;
-
     PVFMMVec_t& proj_patch_param=coord_setup.proj_patch_param;
     PVFMMVec_t& proj_coord      =coord_setup.proj_coord      ;
 
@@ -1015,27 +1038,15 @@ void NearSingular<Surf_t>::SetupCoordData(){
     size_t N_trg=trg_coord.Dim()/COORD_DIM;
     proj_patch_param.ReInit(N_trg*        2);
     proj_coord      .ReInit(N_trg*COORD_DIM);
-    is_surf_pt      .ReInit(N_trg          );
     is_extr_pt      .ReInit(N_trg          );
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Setup
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
       for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-        // Determine if trg point is on the surface TODO: fix this
-        for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
-          size_t trg_idx=trg_dsp[i]+j;
-          size_t src_idx=coord_setup.near_ves_pt_id[trg_idx];
-          is_surf_pt[trg_idx]=(trg_coord[trg_idx*COORD_DIM+0]==S[0][src_idx*COORD_DIM+0] &&
-                               trg_coord[trg_idx*COORD_DIM+1]==S[0][src_idx*COORD_DIM+1] &&
-                               trg_coord[trg_idx*COORD_DIM+2]==S[0][src_idx*COORD_DIM+2]);
-        }
-
         // Compute projection for near points
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
           size_t trg_idx=trg_dsp[i]+j;
-          if(is_surf_pt[trg_idx]) continue;
-
           QuadraticPatch patch;
           { // create patch
             Real_t mesh[3*3*COORD_DIM];
@@ -1074,18 +1085,17 @@ void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
     assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
     #pragma omp parallel for
-    for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_direct.
+    for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_direct for near points.
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
-      for(size_t i=a;i<b;i++){ // loop over all vesicles
+      for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
         PVFMMVec_t s_coord(     M_ves*COORD_DIM, &S[0]      [   i*M_ves*COORD_DIM], false);
         PVFMMVec_t t_coord(trg_cnt[i]*COORD_DIM, &trg_coord [trg_dsp[i]*COORD_DIM], false);
         PVFMMVec_t t_veloc(trg_cnt[i]*COORD_DIM, &vel_direct[trg_dsp[i]*COORD_DIM], false);
-        t_veloc.SetZero();
 
         if(qforce_single){ // Subtract wrong near potential
           PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
-          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->      ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
           PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
@@ -1093,8 +1103,31 @@ void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
         }
       }
     }
-
     VelocityScatter(vel_direct);
+
+    #pragma omp parallel for
+    for(size_t tid=0;tid<omp_p;tid++) if(trg_is_surf){ // Compute vel_direct for surface points.
+      size_t a=((tid+0)*N_ves)/omp_p;
+      size_t b=((tid+1)*N_ves)/omp_p;
+      for(size_t i=a;i<b;i++){ // loop over all vesicles
+        size_t Ta=(vel_direct.Dim()/COORD_DIM)*(i+0)/N_ves;
+        size_t Tb=(vel_direct.Dim()/COORD_DIM)*(i+1)/N_ves;
+
+        PVFMMVec_t s_coord(  M_ves*COORD_DIM, &S[0]      [i*M_ves*COORD_DIM], false);
+        PVFMMVec_t t_coord((Tb-Ta)*COORD_DIM, &T         [     Ta*COORD_DIM], false);
+        PVFMMVec_t t_veloc((Tb-Ta)*COORD_DIM, &vel_direct[     Ta*COORD_DIM], false);
+
+        if(qforce_single){ // Subtract wrong near potential
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
+          StokesKernel<Real_t>::Kernel().k_s2t->      ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], Tb-Ta, &t_veloc[0], NULL);
+        }
+        if(qforce_double){ // Subtract wrong near potential
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
+          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], Tb-Ta, &t_veloc[0], NULL);
+        }
+      }
+    }
+
     update_direct=NearSingular::UpdateNone;
     pvfmm::Profile::Toc();
   }
@@ -1269,217 +1302,180 @@ static inline Real_t InterPoly(Real_t x, int j, int deg){
 
 template<typename Surf_t>
 const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool update){
-  if((update && update_interp) || (update_interp & NearSingular::UpdateSurfaceVel)){ // Compute near-singular
-    pvfmm::Profile::Tic("NearInteraction",&comm,true);
-    bool prof_state=pvfmm::Profile::Enable(false);
-    size_t omp_p=omp_get_max_threads();
-    SetupCoordData();
-    assert(S_vel);
-
-    Real_t&                  r_near=coord_setup.        r_near;
-    PVFMMVec_t&           trg_coord=coord_setup.near_trg_coord;
-    pvfmm::Vector<size_t>&  trg_cnt=coord_setup.  near_trg_cnt;
-    pvfmm::Vector<size_t>&  trg_dsp=coord_setup.  near_trg_dsp;
-
-    pvfmm::Vector<char>& is_surf_pt=coord_setup.is_surf_pt;
-    pvfmm::Vector<char>& is_extr_pt=coord_setup.is_extr_pt;
-
-    PVFMMVec_t& proj_patch_param=coord_setup.proj_patch_param;
-    PVFMMVec_t& proj_coord      =coord_setup.proj_coord      ;
-
-    if(update)
-    vel_interp.ReInit(trg_coord.Dim());
-    vel_surfac.ReInit(trg_coord.Dim());
-
-    size_t M_ves = VES_STRIDE;                 // Points per vesicle
-    size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
-    assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
-
-
-    pvfmm::Profile::Tic("VelocInterp",&comm,true);
-    #pragma omp parallel for
-    for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_interp.
-      PVFMMVec_t interp_coord;
-      PVFMMVec_t interp_veloc;
-      PVFMMVec_t patch_veloc;
-      PVFMMVec_t interp_x;
-
-      size_t a=((tid+0)*N_ves)/omp_p;
-      size_t b=((tid+1)*N_ves)/omp_p;
-      if(update && update_interp)
-      for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-        PVFMMVec_t s_coord(M_ves*COORD_DIM, &S[0][i*M_ves*COORD_DIM], false);
-        { // Resize interp_coord, interp_veloc, patch_veloc, interp_x; interp_veloc[:]=0
-          size_t near_cnt=0;
-          for(size_t j=0;j<trg_cnt[i];j++){ // compute near_cnt; set vel_interp[surface_pts]=0
-            size_t trg_idx=trg_dsp[i]+j;
-            if(is_surf_pt[trg_idx]){
-              Real_t* v=&vel_interp[trg_idx*COORD_DIM];
-              v[0]=0.0; v[1]=0.0; v[2]=0.0;
-            }else near_cnt++;
-          }
-          interp_coord.Resize(near_cnt*(INTERP_DEG-1)*COORD_DIM);
-          interp_veloc.Resize(near_cnt*(INTERP_DEG-1)*COORD_DIM);
-          patch_veloc .Resize(near_cnt               *COORD_DIM);
-          interp_x    .Resize(near_cnt                         );
-          interp_veloc.SetZero();
-        }
-        { // Set interp_x, interp_coord
-          size_t near_cnt=0;
-          for(size_t j=0;j<trg_cnt[i];j++) if(!is_surf_pt[trg_dsp[i]+j]){ // loop over target points
-            size_t trg_idx=trg_dsp[i]+j;
-            Real_t interp_coord0[COORD_DIM]={proj_coord[trg_idx*COORD_DIM+0],
-                                             proj_coord[trg_idx*COORD_DIM+1],
-                                             proj_coord[trg_idx*COORD_DIM+2]};
-            Real_t dR[COORD_DIM]={trg_coord[trg_idx*COORD_DIM+0]-interp_coord0[0],
-                                  trg_coord[trg_idx*COORD_DIM+1]-interp_coord0[1],
-                                  trg_coord[trg_idx*COORD_DIM+2]-interp_coord0[2]};
-            Real_t dR_norm=sqrt(dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
-            Real_t OOdR=1.0/dR_norm;
-
-            interp_x[near_cnt]=dR_norm/r_near;
-            for(size_t l=0;l<INTERP_DEG-1;l++){
-              Real_t x=InterPoints<Real_t>(l+1, INTERP_DEG);
-              interp_coord[(l+near_cnt*(INTERP_DEG-1))*COORD_DIM+0]=interp_coord0[0]+dR[0]*OOdR*r_near*x;
-              interp_coord[(l+near_cnt*(INTERP_DEG-1))*COORD_DIM+1]=interp_coord0[1]+dR[1]*OOdR*r_near*x;
-              interp_coord[(l+near_cnt*(INTERP_DEG-1))*COORD_DIM+2]=interp_coord0[2]+dR[2]*OOdR*r_near*x;
-            }
-            near_cnt++;
-          }
-        }
-        if(interp_veloc.Dim()){ // Set interp_veloc
-          if(qforce_single){
-            StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
-          }
-          if(qforce_double){
-            StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
-          }
-        }
-        { // Set patch_veloc
-          size_t near_cnt=0;
-          for(size_t j=0;j<trg_cnt[i];j++) if(!is_surf_pt[trg_dsp[i]+j]){ // loop over target points
-            size_t trg_idx=trg_dsp[i]+j;
-            QuadraticPatch patch;
-            { // create patch
-              Real_t mesh[3*3*COORD_DIM];
-              { // compute mesh
-                size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-                QuadraticPatch::patch_mesh(mesh   , sh_order_, M_patch_interp, k_, &S_vel       [0][i*M_ves*COORD_DIM]);
-              }
-              if(force_double){ // add contribution from force_double to mesh
-                Real_t mesh_fd[3*3*COORD_DIM];
-                size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-                QuadraticPatch::patch_mesh(mesh_fd, sh_order_, M_patch_interp, k_, &force_double[0][i*M_ves*COORD_DIM]);
-                Real_t scal=0.5; if(is_extr_pt[trg_idx]) scal=-0.5;
-                for(size_t k=0;k<3*3*COORD_DIM;k++) mesh[k]+=scal*mesh_fd[k];
-              }
-              patch=QuadraticPatch(&mesh[0],COORD_DIM);
-            }
-            { // compute first interpolation point
-              Real_t& x=proj_patch_param[trg_idx*2+0];
-              Real_t& y=proj_patch_param[trg_idx*2+1];
-              patch.eval(x,y,&patch_veloc[near_cnt*COORD_DIM]);
-            }
-            near_cnt++;
-          }
-        }
-
-        { // Interpolate
-          size_t near_cnt=0;
-          for(size_t j=0;j<trg_cnt[i];j++) if(!is_surf_pt[trg_dsp[i]+j]){ // loop over target points
-            size_t trg_idx=trg_dsp[i]+j;
-            Real_t* veloc_interp_=&vel_interp[trg_idx*COORD_DIM];
-            { // Interpolate and find target velocity veloc_interp_
-              pvfmm::Matrix<Real_t> y(INTERP_DEG,1);
-              pvfmm::Matrix<Real_t> x(INTERP_DEG,1);
-              Real_t x_=interp_x[near_cnt];
-              for(size_t l=0;l<INTERP_DEG;l++){
-                x[l][0]=InterPoly(x_,l,INTERP_DEG);
-              }
-              for(size_t k=0;k<COORD_DIM;k++){
-                y[0][0]=patch_veloc[near_cnt*COORD_DIM+k];
-                for(size_t l=0;l<INTERP_DEG-1;l++){
-                  y[l+1][0]=interp_veloc[(l+near_cnt*(INTERP_DEG-1))*COORD_DIM+k];
-                }
-                #if 0
-                static pvfmm::Matrix<Real_t> M;
-                if(M.Dim(0)*M.Dim(1)==0){ // matrix for computing interpolation coefficients
-                  #pragma omp critical
-                  if(M.Dim(0)*M.Dim(1)==0){
-                    pvfmm::Matrix<Real_t> M_(INTERP_DEG,INTERP_DEG);
-                    assert(InterPoints<Real_t>(0, INTERP_DEG)==0);
-                    for(size_t i=0;i<INTERP_DEG;i++){
-                      Real_t x=InterPoints<Real_t>(i, INTERP_DEG);
-                      for(size_t j=0;j<INTERP_DEG;j++){
-                        M_[i][j]=InterPoly(x,j,INTERP_DEG);
-                      }
-                    }
-                    M=M_.pinv();
-                  }
-                }
-                pvfmm::Matrix<Real_t> coeff(INTERP_DEG,1);
-                coeff=M*y;
-                #else
-                pvfmm::Matrix<Real_t>& coeff=y;
-                #endif
-                veloc_interp_[k]=0;
-                for(size_t l=0;l<INTERP_DEG;l++) veloc_interp_[k]+=y[l][0]*x[l][0];
-              }
-            }
-            near_cnt++;
-          }
-        }
-      }
+  if(!update || !update_interp){
+    return vel_interp;
+  }
+  update_interp=NearSingular::UpdateNone;
+  static Real_t eps_sqrt=-1;
+  if(eps_sqrt<0){
+    #pragma omp critical
+    if(eps_sqrt<0){
+      eps_sqrt=1.0;
+      while(eps_sqrt+(Real_t)1.0>1.0) eps_sqrt*=0.5;
+      eps_sqrt=sqrt(eps_sqrt);
     }
-    pvfmm::Profile::Toc();
+  }
 
-    pvfmm::Profile::Tic("VelocSurf",&comm,true);
-    #pragma omp parallel for
-    for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_surfac.
-      size_t a=((tid+0)*N_ves)/omp_p;
-      size_t b=((tid+1)*N_ves)/omp_p;
-      for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-        // Get velocity for surface points
+  pvfmm::Profile::Tic("NearInteraction",&comm,true);
+  bool prof_state=pvfmm::Profile::Enable(false);
+  size_t omp_p=omp_get_max_threads();
+  SetupCoordData();
+  assert(S_vel);
+
+  Real_t&                  r_near=coord_setup.        r_near;
+  PVFMMVec_t&           trg_coord=coord_setup.near_trg_coord;
+  pvfmm::Vector<size_t>&  trg_cnt=coord_setup.  near_trg_cnt;
+  pvfmm::Vector<size_t>&  trg_dsp=coord_setup.  near_trg_dsp;
+
+  pvfmm::Vector<char>& is_extr_pt=coord_setup.is_extr_pt;
+  PVFMMVec_t& proj_patch_param=coord_setup.proj_patch_param;
+  PVFMMVec_t& proj_coord      =coord_setup.proj_coord      ;
+
+  size_t M_ves = VES_STRIDE;                 // Points per vesicle
+  size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+  assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
+
+  vel_interp.ReInit(trg_coord.Dim());
+  pvfmm::Profile::Tic("VelocInterp",&comm,true);
+  #pragma omp parallel for
+  for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_interp.
+    PVFMMVec_t interp_coord;
+    PVFMMVec_t interp_veloc;
+    PVFMMVec_t patch_veloc;
+    PVFMMVec_t interp_x;
+
+    size_t a=((tid+0)*N_ves)/omp_p;
+    size_t b=((tid+1)*N_ves)/omp_p;
+    for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
+      PVFMMVec_t s_coord(M_ves*COORD_DIM, &S[0][i*M_ves*COORD_DIM], false);
+      { // Resize interp_coord, interp_veloc, patch_veloc, interp_x; interp_veloc[:]=0
+        interp_coord.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_DIM);
+        interp_veloc.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_DIM);
+        patch_veloc .Resize(trg_cnt[i]               *COORD_DIM);
+        interp_x    .Resize(trg_cnt[i]                         );
+        interp_veloc.SetZero();
+      }
+      { // Set interp_x, interp_coord
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
           size_t trg_idx=trg_dsp[i]+j;
-          if(is_surf_pt[trg_idx]){
-            size_t src_idx=coord_setup.near_ves_pt_id[trg_idx];
-            vel_surfac[trg_idx*COORD_DIM+0]=S_vel[0][src_idx*COORD_DIM+0];
-            vel_surfac[trg_idx*COORD_DIM+1]=S_vel[0][src_idx*COORD_DIM+1];
-            vel_surfac[trg_idx*COORD_DIM+2]=S_vel[0][src_idx*COORD_DIM+2];
-          }else{
-            vel_surfac[trg_idx*COORD_DIM+0]=0.0;
-            vel_surfac[trg_idx*COORD_DIM+1]=0.0;
-            vel_surfac[trg_idx*COORD_DIM+2]=0.0;
+          Real_t interp_coord0[COORD_DIM]={proj_coord[trg_idx*COORD_DIM+0],
+                                           proj_coord[trg_idx*COORD_DIM+1],
+                                           proj_coord[trg_idx*COORD_DIM+2]};
+          Real_t dR[COORD_DIM]={trg_coord[trg_idx*COORD_DIM+0]-interp_coord0[0],
+                                trg_coord[trg_idx*COORD_DIM+1]-interp_coord0[1],
+                                trg_coord[trg_idx*COORD_DIM+2]-interp_coord0[2]};
+          Real_t dR_norm=sqrt(dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
+          //if(!is_extr_pt[trg_idx]) dR_norm=-dR_norm;
+          Real_t OOdR=1.0/dR_norm;
+          if(dR_norm<eps_sqrt){
+            dR_norm=0;
+            OOdR=0;
+          }
+
+          interp_x[j]=dR_norm/r_near;
+          for(size_t l=0;l<INTERP_DEG-1;l++){
+            Real_t x=InterPoints<Real_t>(l+1, INTERP_DEG);
+            interp_coord[(l+j*(INTERP_DEG-1))*COORD_DIM+0]=interp_coord0[0]+dR[0]*OOdR*r_near*x;
+            interp_coord[(l+j*(INTERP_DEG-1))*COORD_DIM+1]=interp_coord0[1]+dR[1]*OOdR*r_near*x;
+            interp_coord[(l+j*(INTERP_DEG-1))*COORD_DIM+2]=interp_coord0[2]+dR[2]*OOdR*r_near*x;
+          }
+        }
+      }
+      if(interp_veloc.Dim()){ // Set interp_veloc
+        if(qforce_single){
+          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
+        }
+        if(qforce_double){
+          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
+        }
+      }
+      { // Set patch_veloc
+        for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
+          size_t trg_idx=trg_dsp[i]+j;
+          QuadraticPatch patch;
+          { // create patch
+            Real_t mesh[3*3*COORD_DIM];
+            { // compute mesh
+              size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
+              QuadraticPatch::patch_mesh(mesh   , sh_order_, M_patch_interp, k_, &S_vel       [0][i*M_ves*COORD_DIM]);
+            }
+            if(force_double){ // add contribution from force_double to mesh
+              Real_t mesh_fd[3*3*COORD_DIM];
+              size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
+              QuadraticPatch::patch_mesh(mesh_fd, sh_order_, M_patch_interp, k_, &force_double[0][i*M_ves*COORD_DIM]);
+              Real_t scal=0.5; if(is_extr_pt[trg_idx]) scal=-0.5;
+              for(size_t k=0;k<3*3*COORD_DIM;k++) mesh[k]+=scal*mesh_fd[k];
+            }
+            patch=QuadraticPatch(&mesh[0],COORD_DIM);
+          }
+          { // compute first interpolation point
+            Real_t& x=proj_patch_param[trg_idx*2+0];
+            Real_t& y=proj_patch_param[trg_idx*2+1];
+            patch.eval(x,y,&patch_veloc[j*COORD_DIM]);
+          }
+        }
+      }
+
+      { // Interpolate
+        for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
+          size_t trg_idx=trg_dsp[i]+j;
+          Real_t* veloc_interp_=&vel_interp[trg_idx*COORD_DIM];
+          if(interp_x[j]==0){
+            for(size_t k=0;k<COORD_DIM;k++){
+              veloc_interp_[k]=patch_veloc[j*COORD_DIM+k];
+            }
+          }else{ // Interpolate and find target velocity veloc_interp_
+            pvfmm::Matrix<Real_t> y(INTERP_DEG,1);
+            pvfmm::Matrix<Real_t> x(INTERP_DEG,1);
+            Real_t x_=interp_x[j];
+            for(size_t l=0;l<INTERP_DEG;l++){
+              x[l][0]=InterPoly(x_,l,INTERP_DEG);
+            }
+            for(size_t k=0;k<COORD_DIM;k++){
+              y[0][0]=patch_veloc[j*COORD_DIM+k];
+              for(size_t l=0;l<INTERP_DEG-1;l++){
+                y[l+1][0]=interp_veloc[(l+j*(INTERP_DEG-1))*COORD_DIM+k];
+              }
+              #if 0
+              static pvfmm::Matrix<Real_t> M;
+              if(M.Dim(0)*M.Dim(1)==0){ // matrix for computing interpolation coefficients
+                #pragma omp critical
+                if(M.Dim(0)*M.Dim(1)==0){
+                  pvfmm::Matrix<Real_t> M_(INTERP_DEG,INTERP_DEG);
+                  assert(InterPoints<Real_t>(0, INTERP_DEG)==0);
+                  for(size_t i=0;i<INTERP_DEG;i++){
+                    Real_t x=InterPoints<Real_t>(i, INTERP_DEG);
+                    for(size_t j=0;j<INTERP_DEG;j++){
+                      M_[i][j]=InterPoly(x,j,INTERP_DEG);
+                    }
+                  }
+                  M=M_.pinv();
+                }
+              }
+              pvfmm::Matrix<Real_t> coeff(INTERP_DEG,1);
+              coeff=M*y;
+              #else
+              pvfmm::Matrix<Real_t>& coeff=y;
+              #endif
+              veloc_interp_[k]=0;
+              for(size_t l=0;l<INTERP_DEG;l++) veloc_interp_[k]+=y[l][0]*x[l][0];
+            }
           }
         }
       }
     }
-    pvfmm::Profile::Toc();
-
-    pvfmm::Profile::Tic("Scatter",&comm,true);
-    if(update)
-    VelocityScatter(vel_interp);
-    VelocityScatter(vel_surfac);
-
-    assert(vel_interp.Dim()==T.Dim());
-    assert(vel_surfac.Dim()==T.Dim());
-    #pragma omp parallel for
-    for(size_t i=0;i<vel_surfac.Dim();i++){
-      vel_surfac[i]+=vel_interp[i];
-    }
-
-    if(update){
-      update_interp=NearSingular::UpdateNone;
-    }else{
-      update_interp=(update_interp & ~(NearSingular::UpdateSurfaceVel));
-    }
-    pvfmm::Profile::Toc();
-
-    pvfmm::Profile::Enable(prof_state);
-    pvfmm::Profile::Toc();
   }
-  return vel_surfac;
+  pvfmm::Profile::Toc();
+
+  pvfmm::Profile::Tic("Scatter",&comm,true);
+  VelocityScatter(vel_interp);
+  assert(vel_interp.Dim()==T.Dim());
+  pvfmm::Profile::Toc();
+
+  pvfmm::Profile::Enable(prof_state);
+  pvfmm::Profile::Toc();
+
+  return vel_interp;
 }
 
 

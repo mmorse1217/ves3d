@@ -21,7 +21,7 @@ class NearSingular{
     void SetDensitySL(const PVFMMVec_t* qforce_single=NULL);
     void SetDensityDL(const PVFMMVec_t* qforce_double=NULL, const PVFMMVec_t* force_double=NULL);
 
-    void SetTrgCoord(Real_t* trg_coord, size_t N);
+    void SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_surf_);
 
     void SubtractDirect(PVFMMVec_t& vel_fmm);
     const PVFMMVec_t& operator()(bool update=true);
@@ -89,7 +89,7 @@ class NearSingular{
     PVFMMVec_t T;
     PVFMMVec_t vel_direct;
     PVFMMVec_t vel_interp;
-    PVFMMVec_t vel_surfac;
+    bool trg_is_surf;
 
     enum UpdateFlag{
       UpdateNone      = 0,

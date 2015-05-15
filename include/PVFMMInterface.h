@@ -32,7 +32,7 @@ struct StokesKernel{
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void* PVFMMCreateContext(T box_size=-1, int n=4000, int m=10, int max_d=MAX_DEPTH,
+void* PVFMMCreateContext(T box_size=-1, int n=1000, int m=10, int max_d=MAX_DEPTH,
     const pvfmm::Kernel<T>* ker=&StokesKernel<T>::Kernel(),
     MPI_Comm comm=MPI_COMM_WORLD);
 

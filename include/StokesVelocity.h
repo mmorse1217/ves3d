@@ -69,19 +69,22 @@ class StokesVelocity{
 
 
     const Surf_t* S;
+    const Surf_t* S_up;
     const Vec_t* force_single;
     const Vec_t* force_double;
     const Vec_t* S_vel_ptr;
 
-    Surf_t*    S_up;
     PVFMMVec_t src_coord_up;
     PVFMMVec_t qforce_single_up;
     PVFMMVec_t qforce_double_up;
     PVFMMVec_t force_double_up;
     PVFMMVec_t surf_vel_up;
     PVFMMVec_t trg_coord;
+    bool trg_is_surf;
 
     Vec_t S_vel;
+    Vec_t SL_vel;
+    Vec_t DL_vel;
     PVFMMVec_t fmm_vel;
     PVFMMVec_t trg_vel;
 
