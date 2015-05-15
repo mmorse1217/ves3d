@@ -54,7 +54,7 @@ all: ${TEST}
 	${CXX} -MM ${CXXFLAGS} ${CPPFLAGS} -c -o $*.d $*.cc
 
 clean:
-	-${RM} *.o *.exe *.out *.d *.chk
+	-${RM} *.o *.exe *.out *.d *.${VES3D_CHKEXT}
 
 check:  ${TEST}
 	${MAKE} run

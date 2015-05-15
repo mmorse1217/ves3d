@@ -172,6 +172,7 @@ class ParallelLinSolver{
     virtual Error_t UpdatePrecond(precond_type precond) = 0;
 
     virtual Error_t Configure() = 0;
+    virtual Error_t InitialGuessNonzero(bool flg) const = 0;
 
     // factories
     virtual Error_t VecFactory(vec_type **newvec) const = 0;

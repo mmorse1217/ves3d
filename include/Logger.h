@@ -185,8 +185,10 @@ static bool assert_expr(false);
 #ifdef QUIET
 #define INFO(str)
 #define WHENQUIET(expr) expr
+#define WHENCHATTY(expr)
 #else
 #define WHENQUIET(expr)
+#define WHENCHATTY(expr) expr
 #define INFO(str) (std::cout<<"[INFO - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #endif //QUIET
 

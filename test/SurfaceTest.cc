@@ -28,6 +28,7 @@ void test_streaming(const ST &S, const MT &mats){
 
 template<typename ST>
 void test_geo_props(const ST &S){
+    ASSERT(S.getShOrder()==6,"Test only works for p=6");
 
     typedef typename ST::Sca_t Sca_t;
     typedef typename ST::Vec_t Vec_t;
@@ -68,14 +69,14 @@ void test_geo_props(const ST &S){
     S.area(Area);
     real area(MaxAbs(Area));
     COUT("Area = "<<area);
-    ASSERT( fabs(area/16.2179377312307-1)<1e-8,"Expected area for dumbell");
+    ASSERT( fabs(area/16.2179377312307-1)<5e-8,"Expected area for dumbell, "<<fabs(area/16.2179377312307-1));
 
     COUT("Computing volume");
     Sca_t Vol(nVec, p, std::make_pair(1,1));
     S.volume(Vol);
     real vol(MaxAbs(Vol));
     COUT("Volume = "<<vol);
-    ASSERT( fabs(vol/5.24886489292959-1)<1e-8,"Expected volume for dumbell");
+    ASSERT( fabs(vol/5.24886489292959-1)<5e-8,"Expected volume for dumbell, "<<fabs(vol/5.24886489292959-1));
 
     COUT("Computing centers");
     Vec_t Cntrs(nVec, 0, std::make_pair(1,1));
@@ -164,8 +165,10 @@ void test_geo_props(const ST &S){
 
 template<typename ST, typename MT>
 void test_resample(const ST &S, const MT &mats){
+    typedef typename ST::Vec_t::value_type value_type;
+
     INFO("testing up-sampling");
-    ST *S1(NULL), *S2(NULL), *S3(NULL);;
+    ST *S1(NULL), *S2(NULL), *S3(NULL), *S4(NULL);
     int p1(mats.p_up_), p2(mats.p_up_+1), p3(mats.p_);
     CHK(S.resample(p1, &S1));
     ASSERT(S1->getShOrder()==p1, "wrong sh order");
@@ -173,19 +176,25 @@ void test_resample(const ST &S, const MT &mats){
     ASSERT(S.resample(p2, &S2) == ErrorEvent::NotImplementedError, "expected error");
     CHK(S1->resample(p3, &S3));
 
-    // typename ST::Vec_t err;
-    // err.replicate(S.getPosition());
+    typename ST::Vec_t err;
+    err.replicate(S.getPosition());
 
-    // axpy(-1.0, S.getPosition(), S3->getPosition(), err);
-    // int stride(err.getStride());
-    // for (int i = 0; i < err.getNumSubFuncs(); ++i){
-    //     for (int j = 0; j < stride; ++j)
-    // 	{
-    // 	    double e(fabs(err.begin()[i*stride+j]));
-    // 	    std::cout<< ((e < 1e-14) ? 0 : e) <<", ";
-    // 	}
-    // 	std::cout<<"\n----------"<<std::endl;
-    // }
+    axpy(-1.0, S.getPosition(), S3->getPosition(), err);
+    value_type  merr = MaxAbs(err);
+    COUT("resampling error "<<merr);
+    ASSERT(merr<5e-14,"bad resampling, "<<merr);
+
+    //resample into initialized surface
+    axpy(2.0, S3->getPosition(), S3->getPositionModifiable());
+    CHK(S.resample(p1, &S4));
+    CHK(S3->resample(p1, &S4));
+
+    err.replicate(S1->getPosition());
+    axpy(-2.0, S1->getPosition(), S4->getPosition(), err);
+    merr = MaxAbs(err);
+    COUT("resampling error "<<merr);
+    ASSERT(merr<1e-13,"bad resampling, "<<merr);
+
     delete S1;
     delete S2;
     delete S3;
@@ -206,8 +215,7 @@ void testSurfaceClass(const Device &dev)
     //@todo Parmeters have nothing to do with the surface
     Parameters<real> sim_par;
     sim_par.sh_order = 6;
-    sim_par.upsample_freq = 12;
-    ASSERT(sim_par.sh_order==6,"Test only works for p=6");
+    sim_par.upsample_freq = 16;
 
     // initializing vesicle positions from text file
     Vec x0(nVec, sim_par.sh_order);
@@ -234,7 +242,7 @@ void testSurfaceClass(const Device &dev)
     COUT("Creating the surface object");
     Surface<Sca, Vec> S(x0.getShOrder(),mats, &x0);
 
-    test_geo_props(S);
+    if (S.getShOrder() == 6 ) test_geo_props(S);
     test_streaming(S, mats);
     test_resample(S, mats);
 }

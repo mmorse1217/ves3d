@@ -13,7 +13,8 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     F_(NULL)
 {
     objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
-    S_ = new Sur_t(x0->getShOrder(), mats_, x0, params_->filter_freq, params_->rep_filter_freq);
+
+    S_ = new Sur_t(params->sh_order, mats_, x0, params_->filter_freq, params_->rep_filter_freq);
     S_->set_name("surface");
 
     if ( monitor_ == NULL)
@@ -52,6 +53,7 @@ template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
+    PROFILESTART();
     T t(0);
     T dt(params_->ts);
     T time_horizon(params_->time_horizon);
@@ -95,6 +97,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         CHK( (*monitor_)( this, t, dt) );
     }
 
+    PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 
@@ -106,8 +109,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::pack(
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
     os<<"EVOLVE\n";
+    os<<"version: "<<VERSION<<"\n";
     os<<"name: "<<Streamable::name_<<"\n";
-    //params_->pack(os,format);
     S_->pack(os,format);
     os<<"/EVOLVE\n";
 
@@ -126,8 +129,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
     is>>s;
     ASSERT(s=="EVOLVE", "Bad input string (missing header).");
 
+    is>>key>>s;
+    ASSERT(key=="version:", "bad key version");
+    INFO("Unpacking checkpoint from version "<<s<<" (current version "<<VERSION<<")");
+
     is>>key>>Streamable::name_;
-    //params_->unpack(is,format);
+    ASSERT(key=="name:", "bad key name");
     S_->unpack(is,format);
     is>>s;
     ASSERT(s=="/EVOLVE", "Bad input string (missing footer).");

@@ -12,13 +12,11 @@ SHTrans<Container, Mats>::SHTrans(int p_in, const Mats &mats, int filter_freq) :
     dft_size(2*p),
     filter_coeff_((value_type*) device_.Malloc(p * (p + 2) * sizeof(value_type)))
 {
-    int ll = p * (p + 2);
-    value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
-
-    int idx = 0, len;
     filter_freq = (filter_freq == -1) ? 2*p/3 : filter_freq;
-
     INFO("Initializing with p="<<p<<", filter_freq="<<filter_freq);
+
+    value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
+    int idx = 0, len;
     for(int ii=0; ii< 2 * p; ++ii)
     {
         len = p + 1 - (ii+1)/2;

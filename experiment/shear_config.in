@@ -1,43 +1,34 @@
-## spherical harmonics #######################
+## spherical harmonics -----------------------
 sh-order : 6
-# filter-freq : 4
-# rep-filter-freq : 2
-# rep-up-freq : 12
-# upsample-interaction
+rep-upsample
+interaction-upsample
 
-## solver ####################################
-position-iter-max : 20
-tension-iter-max : 20
-position-restart : 10
-tension-restart : 10
-position-tol : 1e-6
-tension-tol : 1e-6
-
-## time stepping #############################
-time-horizon : 5e1
-timestep : 5e-1
-time-tol : 1e-5
-time-iter-max : 40
-time-scheme : GloballyImplicit
-time-precond : DiagonalSpectral
-singular-stokes : Direct
-
-## reparametrization #########################
-rep-max-iter : 20
-rep-timestep : 1e-2
-rep-tol : 1e-4
-
-## initial shape #############################
+## initial shape -----------------------------
 n-surfs : 1
 bending-modulus : .01
 init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
 cent-file : experiment/shear_centers.txt
 
-## checkpoint/monitor ########################
+## time stepping -----------------------------
+time-horizon : 5e1
+timestep : .5
+time-tol : 1e-5
+time-iter-max : 40
+time-scheme : GloballyImplicit
+time-precond : DiagonalSpectral
+singular-stokes : Direct
+error-factor : .01
+solve-for-velocity
+
+## reparametrization -------------------------
+rep-max-iter : 1000
+rep-timestep : 5e-2
+rep-tol : 1e-3
+
+## checkpoint/monitor ------------------------
 checkpoint
 checkpoint-file : experiment/shear_{{time_idx}}.chk
-error-factor : .01
 
-## far filed #################################
+## far filed ---------------------------------
 bg-flow-type : ShearFlow
 bg-flow-param : 0.1

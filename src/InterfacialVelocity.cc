@@ -12,6 +12,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     //
     parallel_solver_(parallel_solver),
     psolver_configured_(false),
+    precond_configured_(false),
     parallel_matvec_(NULL),
     parallel_rhs_(NULL),
     parallel_u_(NULL),
@@ -24,7 +25,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     checked_out_work_vec_(0),
     stokes_(mats,params_)
 {
-    velocity_.replicate(S_.getPosition());
+    pos_vel_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
 
     //Setting initial tension to zero
@@ -62,8 +63,11 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         quad_weights_up_.size() * sizeof(value_type),
         device_type::MemcpyDeviceToDevice);
 
-    if (params_.time_precond == DiagonalSpectral)
-      precond_data.resize(1,p);
+    //spectrum in harmonic space, diagonal
+    if (params_.time_precond == DiagonalSpectral){
+	position_precond.resize(1,p);
+	tension_precond.resize(1,p);
+    }
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -99,23 +103,23 @@ updateJacobiExplicit(const value_type &dt)
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
 
-    // puts u_inf and interaction in velocity_
+    // puts u_inf and interaction in pos_vel_
     this->updateFarField();
 
     // add S[f_b]
     Intfcl_force_.bendingForce(S_, *u1);
     CHK(stokes(*u1, *u2));
-    axpy(static_cast<value_type>(1.0), *u2, velocity_, velocity_);
+    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
 
     // compute tension
-    CHK(getTension(velocity_, tension_));
+    CHK(getTension(pos_vel_, tension_));
 
     // add S[f_sigma]
     Intfcl_force_.tensileForce(S_, tension_, *u1);
     CHK(stokes(*u1, *u2));
-    axpy(static_cast<value_type>(1.0), *u2, velocity_, velocity_);
+    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
 
-    axpy(dt_, velocity_, S_.getPosition(), S_.getPositionModifiable());
+    axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
 
     recycle(u1);
     recycle(u2);
@@ -133,11 +137,11 @@ updateJacobiGaussSeidel(const value_type &dt)
     std::auto_ptr<Vec_t> u2 = checkoutVec();
     std::auto_ptr<Vec_t> u3 = checkoutVec();
 
-    // put far field in velocity_ and the sum with S[f_b] in u1
+    // put far field in pos_vel_ and the sum with S[f_b] in u1
     this->updateFarField();
     Intfcl_force_.bendingForce(S_, *u2);
     CHK(stokes(*u2, *u1));
-    axpy(static_cast<value_type>(1.0), velocity_, *u1, *u1);
+    axpy(static_cast<value_type>(1.0), pos_vel_, *u1, *u1);
 
     // tension
     CHK(getTension(*u1, tension_));
@@ -145,7 +149,7 @@ updateJacobiGaussSeidel(const value_type &dt)
     CHK(stokes(*u1, *u2));
 
     // position rhs
-    axpy(static_cast<value_type>(1.0), velocity_, *u2, *u1);
+    axpy(static_cast<value_type>(1.0), pos_vel_, *u2, *u1);
     axpy(dt_, *u1, S_.getPosition(), *u1);
 
     // initial guess
@@ -193,9 +197,15 @@ updateImplicit(const value_type &dt)
     PROFILESTART();
     this->dt_ = dt;
     SolverScheme scheme(GloballyImplicit);
-    INFO("Updating using a step with "<<scheme);
+    INFO("Taking a time step using "<<scheme<<" scheme");
     CHK(Prepare(scheme));
-    CHK(AssembleRhs(parallel_rhs_, dt_, scheme));
+
+    if (params_.solve_for_velocity) {
+	CHK(AssembleRhsVel(parallel_rhs_, dt_, scheme));
+    } else {
+	CHK(AssembleRhsPos(parallel_rhs_, dt_, scheme));
+    }
+
     CHK(AssembleInitial(parallel_u_, dt_, scheme));
     CHK(Solve(parallel_rhs_, parallel_u_, dt_, scheme));
     CHK(Update(parallel_u_));
@@ -209,19 +219,19 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
 {
     PROFILESTART();
 
-    if (velocity_.size() != S_.getPosition().size() ||
+    if (pos_vel_.size() != S_.getPosition().size() ||
 	dl_coeff_.size() != S_.getPosition().getNumSubs() ){
 
       COUTDEBUG("Resizing the containers");
-      velocity_.replicate(S_.getPosition());
+      pos_vel_.replicate(S_.getPosition());
       tension_.replicate(S_.getPosition());
 
-      INFO("zeroing content of velocity and tension arrays");
-      velocity_.getDevice().Memset(velocity_.begin(), 0, sizeof(value_type)*velocity_.size());
+      COUTDEBUG("zeroing content of velocity and tension arrays");
+      pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
       tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
 
       //Permitting the viscosity constrast to be different for each vesicle
-      size_t     nves(velocity_.getNumSubs());
+      size_t     nves(pos_vel_.getNumSubs());
       value_type lambda(params_.viscosity_contrast);
       value_type *buffer = new  value_type[nves];
 
@@ -241,11 +251,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
       delete[] buffer;
     }
 
-    ASSERT(  velocity_.size() ==   S_.getPosition().size(), "inccorrect size");
+    ASSERT(   pos_vel_.size() ==   S_.getPosition().size(), "inccorrect size");
     ASSERT( 3*tension_.size() ==   S_.getPosition().size(), "inccorrect size");
     ASSERT(  dl_coeff_.size() ==   S_.getPosition().getNumSubs(), "inccorrect size");
     ASSERT( vel_coeff_.size() ==   S_.getPosition().getNumSubs(), "inccorrect size");
 
+    INFO("Setting interaction source and target");
     stokes_.SetSrcCoord(S_);
     stokes_.SetTrgCoord(S_);
 
@@ -254,26 +265,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
 	if (!psolver_configured_) CHK(ConfigureSolver(scheme));
     }
 
-    // preconditioner
-    if (params_.time_precond == DiagonalSpectral){
-      COUTDEBUG("Setting up the diagonal preceonditioner");
-      //! @bug Memory gets allocated at each time step independent of step size
-      value_type *buffer = new value_type[precond_data.size() * sizeof(value_type)];
-      int idx(0);
-
-      for(int iM=0; iM<precond_data.getGridDim().second; ++iM){
-	for(int iN=0; iN<precond_data.getGridDim().first; ++iN){
-	  //! @bug incorrect preconditoner. It's not correctly aligned with the shc
-	  value_type bending_precond(1.0/(1.0-dt_*iN*iN*iN));
-	  buffer[idx++] = bending_precond;
-	}
-      }
-      precond_data.getDevice().Memcpy(precond_data.begin(), buffer,
-				      precond_data.size() * sizeof(value_type),
-				      device_type::MemcpyHostToDevice);
-      delete[] buffer;
-    }
-
+    if (params_.time_precond != NoPrecond && !precond_configured_)
+	ConfigurePrecond(params_.time_precond);
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -292,7 +285,7 @@ ConfigureSolver(const SolverScheme &scheme) const
     typedef typename PVec::size_type size_type;
 
     // Setting up the operator
-    size_t sz(velocity_.size()+tension_.size());
+    size_type sz(pos_vel_.size()+tension_.size());
     CHK(parallel_solver_->LinOpFactory(&parallel_matvec_));
     CHK(parallel_matvec_->SetSizes(sz,sz));
     CHK(parallel_matvec_->SetName("Vesicle interaction"));
@@ -312,33 +305,83 @@ ConfigureSolver(const SolverScheme &scheme) const
     // setting up the solver
     CHK(parallel_solver_->SetOperator(parallel_matvec_));
     CHK(parallel_solver_->SetTolerances(params_.time_tol,
-					PSolver_t::PLS_DEFAULT,
-					PSolver_t::PLS_DEFAULT,
-					params_.time_iter_max));
+	    PSolver_t::PLS_DEFAULT,
+	    PSolver_t::PLS_DEFAULT,
+	    params_.time_iter_max));
 
     CHK(parallel_solver_->Configure());
 
     // setting up the preconditioner
-    if (params_.time_precond == DiagonalSpectral){
-      CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
-      CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
-    } else if (params_.time_precond != NoPrecond){
-      return ErrorEvent::NotImplementedError;
+    if (params_.time_precond != NoPrecond){
+	CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
+	CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
     }
-
     psolver_configured_ = true;
+
     PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
+ConfigurePrecond(const PrecondScheme &precond) const{
+
+    PROFILESTART();
+    if (precond!=DiagonalSpectral)
+	return ErrorEvent::NotImplementedError; /* Unsupported preconditioner scheme */
+
+    INFO("Setting up the diagonal preceonditioner");
+    value_type *buffer = new value_type[position_precond.size() * sizeof(value_type)];
+
+    { //bending precond
+	int idx(0), N(0);
+	// The sh coefficients are ordered by m and then n
+	for(int iM=0; iM<position_precond.getGridDim().second; ++iM){
+	    for(int iN=++N/2; iN<position_precond.getGridDim().first; ++iN){
+		value_type bending_precond(1.0/fabs(1.0-dt_*iN*iN*iN));
+		bending_precond = fabs(bending_precond) < 1e3   ? bending_precond : 1.0;
+		buffer[idx]     = fabs(bending_precond) > 1e-10 ? bending_precond : 1.0;
+		++idx;
+	    }
+	}
+	position_precond.getDevice().Memcpy(position_precond.begin(), buffer,
+	    position_precond.size() * sizeof(value_type),
+	    device_type::MemcpyHostToDevice);
+    }
+    { // tension precond
+	int idx(0), N(0);
+	for(int iM=0; iM<tension_precond.getGridDim().second; ++iM){
+	    for(int iN=++N/2; iN<tension_precond.getGridDim().first; ++iN){
+		value_type eig(4*iN*iN-1);
+		eig *= 2*iN+3;
+		eig /= iN+1;
+		eig /= 2*iN*iN+2*iN-1;
+		eig  = iN==0 ? 1.0 : eig/iN;
+		buffer[idx] = fabs(eig) > 1e-10 ? eig : 1.0;
+		++idx;
+	    }
+	}
+	tension_precond.getDevice().Memcpy(tension_precond.begin(), buffer,
+	    tension_precond.size() * sizeof(value_type),
+	    device_type::MemcpyHostToDevice);
+    }
+
+    delete[] buffer;
+    precond_configured_=true;
+    PROFILEEND("",0);
+
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
 {
     PROFILESTART();
     ASSERT(scheme==GloballyImplicit, "Unsupported scheme");
+    INFO("Assembling RHS to solve for velocity");
 
-    // rhs=[u_inf+Bx;0]
+    // rhs=[u_inf+Bx;div(u_inf+Bx)]
     COUTDEBUG("Evaluate background flow");
     std::auto_ptr<Vec_t> vRhs = checkoutVec();
     vRhs->replicate(S_.getPosition());
@@ -355,7 +398,7 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
 
     COUTDEBUG("Computing rhs for div(u)");
     std::auto_ptr<Sca_t> tRhs = checkoutSca();
-    tRhs->getDevice().Memset(tRhs->begin(), 0, tRhs->size() * sizeof(value_type));
+    S_.div(*vRhs, *tRhs);
 
     ASSERT( vRhs->getDevice().isNumeric(vRhs->begin(), vRhs->size()), "Non-numeric rhs");
     ASSERT( tRhs->getDevice().isNumeric(tRhs->begin(), tRhs->size()), "Non-numeric rhs");
@@ -381,24 +424,85 @@ AssembleRhs(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
+AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const
+{
+    PROFILESTART();
+    ASSERT(scheme==GloballyImplicit, "Unsupported scheme");
+    INFO("Assembling RHS to solve for position");
+
+    // rhs=[;0]
+    COUTDEBUG("Evaluate background flow");
+    std::auto_ptr<Vec_t> pRhs = checkoutVec();
+    std::auto_ptr<Vec_t> pRhs2 = checkoutVec();
+    pRhs->replicate(S_.getPosition());
+    pRhs2->replicate(S_.getPosition());
+    CHK(BgFlow(*pRhs, dt));
+
+    if( fabs(params_.viscosity_contrast-1.0)>1e-12){
+	COUTDEBUG("Computing the rhs due to viscosity difference");
+	std::auto_ptr<Vec_t> x  = checkoutVec();
+	std::auto_ptr<Vec_t> Dx = checkoutVec();
+	av(dl_coeff_, S_.getPosition(), *x);
+	stokes_.SetDensitySL(NULL);
+	stokes_.SetDensityDL(x.get());
+	stokes_(*Dx);
+	axpy(-dt, *pRhs, *Dx, *pRhs);
+	axpy(static_cast<value_type>(-1.0), *pRhs, *pRhs);
+
+	recycle(x);
+	recycle(Dx);
+    } else
+	axpy(dt, *pRhs, *pRhs);
+
+    COUTDEBUG("Computing rhs for div(u)");
+    std::auto_ptr<Sca_t> tRhs = checkoutSca();
+    S_.div(*pRhs, *tRhs);
+
+    av(vel_coeff_, S_.getPosition(), *pRhs2);
+    axpy(static_cast<value_type>(1.0), *pRhs, *pRhs2, *pRhs);
+
+    ASSERT( pRhs->getDevice().isNumeric(pRhs->begin(), pRhs->size()), "Non-numeric rhs");
+    ASSERT( tRhs->getDevice().isNumeric(tRhs->begin(), tRhs->size()), "Non-numeric rhs");
+
+    COUTDEBUG("Copy data to parallel rhs array");
+    size_t xsz(pRhs->size()), tsz(tRhs->size());
+    typename PVec_t::iterator i(NULL);
+    typename PVec_t::size_type rsz;
+    CHK(parallel_rhs_->GetArray(i, rsz));
+    ASSERT(rsz==xsz+tsz,"Bad sizes");
+    pRhs->getDevice().Memcpy(i    , pRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    tRhs->getDevice().Memcpy(i+xsz, tRhs->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    CHK(parallel_rhs_->RestoreArray(i));
+
+    recycle(pRhs);
+    recycle(pRhs2);
+    recycle(tRhs);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const
 {
     PROFILESTART();
     COUTDEBUG("Using current position/tension as initial guess");
-    size_t vsz(velocity_.size()), tsz(tension_.size());
+    size_t vsz(pos_vel_.size()), tsz(tension_.size());
     typename PVec_t::iterator i(NULL);
     typename PVec_t::size_type rsz;
 
-    ASSERT( velocity_.getDevice().isNumeric(velocity_.begin(), velocity_.size()), "Non-numeric velocity");
+    ASSERT( pos_vel_.getDevice().isNumeric(pos_vel_.begin(), pos_vel_.size()), "Non-numeric velocity");
     ASSERT( tension_.getDevice().isNumeric(tension_.begin(), tension_.size()), "Non-numeric tension");
 
     CHK(parallel_u_->GetArray(i, rsz));
     ASSERT(rsz==vsz+tsz,"Bad sizes");
     COUTDEBUG("Copy data to parallel solution array");
-    velocity_.getDevice().Memcpy(   i, velocity_.begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    tension_.getDevice().Memcpy(i+vsz, tension_.begin() , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    pos_vel_.getDevice().Memcpy(    i, pos_vel_.begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    tension_.getDevice().Memcpy(i+vsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     CHK(parallel_u_->RestoreArray(i));
 
+    CHK(parallel_solver_->InitialGuessNonzero(true));
     PROFILEEND("",0);
     return ErrorEvent::Success;
 }
@@ -410,53 +514,70 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
     PROFILESTART();
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
-    size_t vsz(F->velocity_.size()), tsz(F->tension_.size());
+    size_t vsz(F->pos_vel_.size()), tsz(F->tension_.size());
 
-    std::auto_ptr<Vec_t> vel = F->checkoutVec();
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
     std::auto_ptr<Vec_t> fb  = F->checkoutVec();
     std::auto_ptr<Vec_t> fs  = F->checkoutVec();
     std::auto_ptr<Vec_t> Sf  = F->checkoutVec();
     std::auto_ptr<Sca_t> Dv  = F->checkoutSca();
-    vel->replicate(F->velocity_);
+    vox->replicate(F->pos_vel_);
     ten->replicate(F->tension_);
-    fb->replicate(*vel);
-    fs->replicate(*vel);
-    Sf->replicate(*vel);
-    Dv->replicate(*vel);
+    fb->replicate(*vox);
+    fs->replicate(*vox);
+    Sf->replicate(*vox);
+    Dv->replicate(*vox);
 
     COUTDEBUG("Unpacking the input parallel vector");
-    vel->getDevice().Memcpy(vel->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
-    COUTDEBUG("Computing the div term");
-    F->S_.div(*vel, *Dv);
-
     COUTDEBUG("Computing the interfacial forces");
-    F->Intfcl_force_.linearBendingForce(F->S_, *vel, *fb);
+    F->Intfcl_force_.linearBendingForce(F->S_, *vox, *fb);
     F->Intfcl_force_.tensileForce(F->S_, *ten, *fs);
-    axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
+
+    if (F->params_.solve_for_velocity) {
+	axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
+    } else {
+	axpy(static_cast<value_type>(1.0), *fb, *fs, *fb);
+	axpy(static_cast<value_type>(F->dt_), *fb, *fb);
+    }
+
     F->stokes_.SetDensitySL(fb.get());
 
     if( fabs(F->params_.viscosity_contrast-1.0)>1e-12){
-      COUTDEBUG("Setting the double layer density");
-      av(F->dl_coeff_, *vel, *fs);
-      F->stokes_.SetDensityDL(fs.get());
-    };
+	COUTDEBUG("Setting the double layer density");
+	av(F->dl_coeff_, *vox, *fs);
+	F->stokes_.SetDensityDL(fs.get());
+    } else {
+	F->stokes_.SetDensityDL(NULL);
+    }
 
+    COUTDEBUG("Calling stokes");
     F->stokes_(*Sf);
+
+    COUTDEBUG("Computing the div term");
+    //! @note For some reason, doing the linear algebraic manipulation
+    //! and writing the constraint as -\div{S[f_b+f_s]} = \div{u_inf
+    //! almost halves the number of gmres iterations. Also having the
+    //! minus sign in the matvec is tangibly better (1-2
+    //! iterations). Need to investigate why.
+    F->S_.div(*Sf, *Dv);
+    axpy(static_cast<value_type>(-1.0), *Dv, *Dv);
+
     if( fabs(F->params_.viscosity_contrast-1.0)>1e-12)
-      av(F->vel_coeff_, *vel, *vel);
+	av(F->vel_coeff_, *vox, *vox);
 
-    axpy(static_cast<value_type>(-1.0), *Sf, *vel, *vel);
+    axpy(static_cast<value_type>(-1.0), *Sf, *vox, *vox);
 
-    ASSERT(vel->getDevice().isNumeric(vel->begin(), vel->size()), "Non-numeric velocity");
+    ASSERT(vox->getDevice().isNumeric(vox->begin(), vox->size()), "Non-numeric velocity");
     ASSERT(Dv->getDevice().isNumeric(Dv->begin(), Dv->size()), "Non-numeric divergence");
 
-    vel->getDevice().Memcpy(y   , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    vox->getDevice().Memcpy(y   , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     Dv->getDevice().Memcpy(y+vsz, Dv->begin() , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-    F->recycle(vel);
+    F->recycle(vox);
     F->recycle(ten);
     F->recycle(fb);
     F->recycle(fs);
@@ -475,44 +596,47 @@ ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
     const InterfacialVelocity *F(NULL);
     ksp->PrecondContext((const void**) &F);
 
-    size_t vsz(F->velocity_.size()), tsz(F->tension_.size());
-    std::auto_ptr<Vec_t> vel = F->checkoutVec();
+    size_t vsz(F->pos_vel_.size()), tsz(F->tension_.size());
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxw = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxs = F->checkoutVec();
+    vox->replicate(F->pos_vel_);
+    vxw->replicate(F->pos_vel_);
+    vxs->replicate(F->pos_vel_);
+
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
-    std::auto_ptr<Vec_t> shc = F->checkoutVec();
-    std::auto_ptr<Vec_t> wrk = F->checkoutVec();
-    vel->replicate(F->velocity_);
-    shc->replicate(F->velocity_);
-    wrk->replicate(F->velocity_);
+    std::auto_ptr<Sca_t> tnw = F->checkoutSca();
+    std::auto_ptr<Sca_t> tns = F->checkoutSca();
     ten->replicate(F->tension_);
+    tnw->replicate(F->tension_);
+    tns->replicate(F->tension_);
 
     COUTDEBUG("Unpacking the input parallel vector");
-    vel->getDevice().Memcpy(vel->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
     COUTDEBUG("Applying diagonal preconditioner");
-    //     F->sht_.forward(*vel, *wrk, *shc);
-    //     for(int i(0);i<shc->size();++i) shc->begin()[i]=1;
-    //     F->sht_.ScaleFreq(shc->begin(), shc->getNumSubFuncs(), F->precond_data.begin(), shc->begin());
-    //     int idx(0);
-    //     for(int iM=0; iM<F->precond_data.getGridDim().second; ++iM){
-    //       for(int iN=0; iN<F->precond_data.getGridDim().first; ++iN){
-    // 	        std::cout<<shc->begin()[idx++]<<" ";
-    //       }
-    //       std::cout<<std::endl;
-    //     }
-    //     F->sht_.backward(*shc, *wrk, *vel);
+    F->sht_.forward(*vox, *vxw, *vxs);
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.backward(*vxs, *vxw, *vox);
+
+    F->sht_.forward(*ten, *tnw, *tns);
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin(), tns->begin());
+    F->sht_.backward(*tns, *tnw, *ten);
 
     // checking and setting return values
-    ASSERT(vel->getDevice().isNumeric(vel->begin(), vel->size()), "Non-numeric velocity");
+    ASSERT(vox->getDevice().isNumeric(vox->begin(), vox->size()), "Non-numeric velocity");
     ASSERT(ten->getDevice().isNumeric(ten->begin(), ten->size()), "Non-numeric divergence");
 
-    vel->getDevice().Memcpy(y    , vel->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-    F->recycle(vel);
+    F->recycle(vox);
     F->recycle(ten);
-    F->recycle(shc);
-    F->recycle(wrk);
+    F->recycle(vxw);
+    F->recycle(vxs);
+    F->recycle(tnw);
+    F->recycle(tns);
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -523,7 +647,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const
 {
     PROFILESTART();
-    INFO("Solving for position and tension using "<<scheme<<" scheme.");
+    INFO("Solving for position/velocity and tension using "<<scheme<<" scheme.");
     //parallel_rhs_->View();
     //parallel_u_->View();
 
@@ -543,23 +667,28 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Update(PVec_t *u0)
 {
     PROFILESTART();
     COUTDEBUG("Updating position and tension.");
-    size_t  vsz(velocity_.size()), tsz(tension_.size());
+    size_t  vsz(pos_vel_.size()), tsz(tension_.size());
     typename PVec_t::iterator i(NULL);
     typename PVec_t::size_type rsz;
 
     CHK(parallel_u_->GetArray(i, rsz));
     ASSERT(rsz==vsz+tsz,"Bad sizes");
     COUTDEBUG("Copy data from parallel solution array.");
-    velocity_.getDevice().Memcpy(velocity_.begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    tension_.getDevice().Memcpy(tension_.begin()  , i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    pos_vel_.getDevice().Memcpy(pos_vel_.begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    tension_.getDevice().Memcpy(tension_.begin(), i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     CHK(parallel_u_->RestoreArray(i));
-    axpy(dt_, velocity_, S_.getPosition(), S_.getPositionModifiable());
+
+    if (params_.solve_for_velocity){
+	axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
+    } else {
+	S_.setPosition(pos_vel_);
+    }
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 
-template<typename	SurfContainer, typename Interaction>
+template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 BgFlow(Vec_t &bg, const value_type &dt) const{
     //!@bug the time should be passed to the BgFlow handle.
@@ -569,30 +698,31 @@ BgFlow(Vec_t &bg, const value_type &dt) const{
 }
 
 // Compute velocity_far = velocity_bg + FMM(bending+tension) - DirectStokes(bending+tension)
-template<typename	SurfContainer, typename Interaction>
+template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateFarField() const
 {
-    velocity_.replicate(S_.getPosition());
-    CHK(this->BgFlow(velocity_, this->dt_));
+    PROFILESTART();
+    pos_vel_.replicate(S_.getPosition());
+    CHK(this->BgFlow(pos_vel_, this->dt_));
 
     if (this->interaction_.HasInteraction()){
 	std::auto_ptr<Vec_t>	fi  = checkoutVec();
 	std::auto_ptr<Vec_t>	vel = checkoutVec();
-	fi->replicate(velocity_);
-	vel->replicate(velocity_);
+	fi->replicate(pos_vel_);
+	vel->replicate(pos_vel_);
 
 	Intfcl_force_.bendingForce(S_, *fi);
 	Intfcl_force_.tensileForce(S_, tension_, *vel);
 	axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
 
 	EvaluateFarInteraction(S_.getPosition(), *fi, *vel);
-	axpy(static_cast<value_type>(1.0), *vel, velocity_, velocity_);
+	axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
 
 	recycle(fi);
 	recycle(vel);
     }
-
+    PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 
@@ -600,6 +730,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const
 {
+    PROFILESTART();
     std::auto_ptr<Vec_t>	X = checkoutVec();
     std::auto_ptr<Vec_t>	D = checkoutVec();
     std::auto_ptr<Vec_t>	P = checkoutVec();
@@ -627,6 +758,7 @@ CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const
     recycle(X);
     recycle(D);
     recycle(P);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }
@@ -737,6 +869,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     const Vec_t &vel_in, Sca_t &tension) const
 {
+    PROFILESTART();
     std::auto_ptr<Sca_t> rhs = checkoutSca();
     std::auto_ptr<Sca_t> wrk = checkoutSca();
 
@@ -769,6 +902,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
 
     recycle(wrk);
     recycle(rhs);
+    PROFILEEND("",0);
 
     return ret_val;
 }
@@ -806,11 +940,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
 
-            PROFILESTART();
             S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(),
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
-            PROFILEEND("SelfInteraction_",0);
         }
 
     recycle(t1);
@@ -818,7 +950,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     recycle(v1);
     recycle(v2);
 
-    PROFILEEND("",0);
+    PROFILEEND("SelfInteraction_",0);
     return ErrorEvent::Success;
 }
 
@@ -854,11 +986,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
 
-            PROFILESTART();
             S_.getPosition().getDevice().DirectStokesDoubleLayer(v1->begin(), v3->begin(), v2->begin(),
                 sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
-            PROFILEEND("DblLayerSelfInteraction_",0);
+
         }
 
     recycle(t1);
@@ -866,7 +997,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
     recycle(v1);
     recycle(v2);
 
-    PROFILEEND("",0);
+    PROFILEEND("DblLayerSelfInteraction_",0);
     return ErrorEvent::Success;
 }
 
@@ -874,6 +1005,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 {
+    PROFILESTART();
     std::auto_ptr<Vec_t> fb = checkoutVec();
 
     COUTDEBUG("Time matvec");
@@ -881,6 +1013,7 @@ operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
     CHK(stokes(*fb, time_mat_vec));
     axpy(-dt_, time_mat_vec, x_new, time_mat_vec);
     recycle(fb);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }
@@ -906,8 +1039,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
+    PROFILESTART();
+
     value_type ts(params_.rep_ts);
-    value_type vel;
+    value_type vel(0);
 
     int ii(-1);
     std::auto_ptr<Vec_t> u1 = checkoutVec();
@@ -943,6 +1078,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     recycle(u1);
     recycle(u2);
     recycle(wrk);
+    PROFILEEND("",0);
 
     return ErrorEvent::Success;
 }
@@ -1114,15 +1250,15 @@ benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
 
     //    if (this->interaction_.HasInteraction()){
 	this->updateFarField();
-	axpy(static_cast<value_type>(1), velocity_, SFb, velocity_);
+	axpy(static_cast<value_type>(1), pos_vel_, SFb, pos_vel_);
     // } else {
-    // 	axpy(static_cast<value_type>(1), SFb, velocity_);
+    // 	axpy(static_cast<value_type>(1), SFb, pos_vel_);
     // }
 
-    axpy(static_cast<value_type>(-1), vel, velocity_, vel);
+    axpy(static_cast<value_type>(-1), vel, pos_vel_, vel);
 
     value_type err = MaxAbs(vel);
-    axpy(static_cast<value_type>(1), velocity_, vel);
+    axpy(static_cast<value_type>(1), pos_vel_, vel);
 
     ASSERT(err<tol, "Background flow benchmark failed: "
         <<"err="<<err<<", tol="<<tol);
@@ -1191,7 +1327,7 @@ benchmarkTensionImplicit(Sca_t &tension, value_type tol)
     //Explicit bending for tension
     Intfcl_force_.bendingForce(S_, *u1);
     stokes(*u1, *u2);
-    axpy(static_cast<value_type>(1), *u2, velocity_, *u1);
+    axpy(static_cast<value_type>(1), *u2, pos_vel_, *u1);
 
     //Tension
     axpy(static_cast<value_type>(0), *scp, *scp);

@@ -179,6 +179,7 @@ class ParallelLinSolverPetsc : public ParallelLinSolver<T>
     Error_t UpdatePrecond(precond_type precond);
 
     Error_t Configure();
+    Error_t InitialGuessNonzero(bool flg) const;
 
     // factories
     Error_t VecFactory(vec_type **newvec) const;
