@@ -86,7 +86,7 @@ void SHTMats<T, Device>::gen_dft_forward() {
     T* buffer = new T[getDFTLength()];
 
     for(int j = 0; j < dft_size; j++)
-        buffer[dft_size * j] = 1.0F/dft_size;
+        buffer[dft_size * j] = 1.0/dft_size;
 
     for(int j = 0; j < dft_size; j++)
         for(int i = 1; i < sh_order_; i++) {
@@ -113,7 +113,7 @@ void SHTMats<T, Device>::gen_dft_backward() {
     T* buffer = new T[getDFTLength()];
 
     for(int j = 0; j < dft_size; j++)
-        buffer[dft_size * j] = 1.0F;
+        buffer[dft_size * j] = 1.0;
 
     for(int j = 0; j < dft_size; j++)
         for(int i = 1; i < sh_order_; i++) {
