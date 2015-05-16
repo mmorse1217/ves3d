@@ -106,6 +106,7 @@ StokesVelocity<Surf_t>::StokesVelocity(
 template<typename Surf_t>
 StokesVelocity<Surf_t>::~StokesVelocity(){
   PVFMMDestroyContext<Real_t>(&pvfmm_ctx);
+  if(S_up) delete S_up;
 }
 
 
@@ -276,7 +277,6 @@ void StokesVelocity<Surf_t>::Setup(){
   if(fmm_flag & StokesVelocity::UpdateSrcCoord){ // Compute src_coord_up
     fmm_flag=fmm_flag & ~StokesVelocity::UpdateSrcCoord;
 
-    S_up=NULL; // TODO delete old S_up? Shouldn't Surface class do that?
     if(sh_order_up==sh_order) S_up=S;
     else CHK(S->resample(sh_order_up, (Surf_t**)&S_up));
     const Vec_t& S_coord   =S   ->getPosition();
