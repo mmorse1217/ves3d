@@ -599,6 +599,7 @@ T* Device<CPU>::Transpose(const T *in, size_t height, size_t width, T *out) cons
     assert(out != in || height * width == 0);
     PROFILESTART();
 
+    //! @bug doesn't look to be cache friendly, fix
 #pragma omp parallel for
     for(size_t jj=0;jj<width;++jj)
         for(size_t ii=0;ii<height;++ii)
