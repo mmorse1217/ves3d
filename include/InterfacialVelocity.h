@@ -98,6 +98,8 @@ class InterfacialVelocity
     mutable PVec_t *parallel_u_;
 
     static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
+    Error_t ImplicitMatvecPhysical(Vec_t &vox, Sca_t &ten) const;
+
     static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
 
     value_type dt_;

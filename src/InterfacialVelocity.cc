@@ -260,13 +260,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     stokes_.SetSrcCoord(S_);
     stokes_.SetTrgCoord(S_);
 
-    if (scheme==GloballyImplicit){
-	ASSERT(parallel_solver_ != NULL, "need a working parallel solver");
-	if (!psolver_configured_) CHK(ConfigureSolver(scheme));
-    }
-
-    if (params_.time_precond != NoPrecond && !precond_configured_)
+    if (!precond_configured_ && params_.time_precond!=NoPrecond)
 	ConfigurePrecond(params_.time_precond);
+
+    if (!psolver_configured_ && scheme==GloballyImplicit){
+	ASSERT(parallel_solver_ != NULL, "need a working parallel solver");
+	CHK(ConfigureSolver(scheme));
+    }
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -313,6 +313,7 @@ ConfigureSolver(const SolverScheme &scheme) const
 
     // setting up the preconditioner
     if (params_.time_precond != NoPrecond){
+	ASSERT(precond_configured_, "The preconditioner isn't configured yet");
 	CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
 	CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
     }
@@ -508,6 +509,67 @@ AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) co
 }
 
 template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(Vec_t &vox, Sca_t &ten) const
+{
+    PROFILESTART();
+
+    std::auto_ptr<Vec_t> fb  = checkoutVec();
+    std::auto_ptr<Vec_t> Sf  = checkoutVec();
+    std::auto_ptr<Vec_t> Du  = checkoutVec();
+    fb->replicate(vox);
+    Sf->replicate(vox);
+    Du->replicate(vox);
+
+    COUTDEBUG("Computing the interfacial forces");
+    Intfcl_force_.linearBendingForce(S_, vox, *fb);
+    Intfcl_force_.tensileForce(S_, ten, *Sf);
+
+    if (params_.solve_for_velocity) {
+	axpy(static_cast<value_type>(dt_), *fb, *Sf, *fb);
+    } else {
+	axpy(static_cast<value_type>(1.0), *fb, *Sf, *fb);
+	axpy(static_cast<value_type>(dt_), *fb, *fb);
+    }
+
+    stokes_.SetDensitySL(fb.get());
+
+    if( fabs(params_.viscosity_contrast-1.0)>1e-12){
+	COUTDEBUG("Setting the double layer density");
+	av(dl_coeff_, vox, *Du);
+	stokes_.SetDensityDL(Du.get());
+    } else {
+	stokes_.SetDensityDL(NULL);
+    }
+
+    COUTDEBUG("Calling stokes");
+    stokes_(*Sf);
+
+    COUTDEBUG("Computing the div term");
+    //! @note For some reason, doing the linear algebraic manipulation
+    //! and writing the constraint as -\div{S[f_b+f_s]} = \div{u_inf
+    //! almost halves the number of gmres iterations. Also having the
+    //! minus sign in the matvec is tangibly better (1-2
+    //! iterations). Need to investigate why.
+    S_.div(*Sf, ten);
+    axpy(static_cast<value_type>(-1.0), ten, ten);
+
+    if( fabs(params_.viscosity_contrast-1.0)>1e-12)
+	av(vel_coeff_, vox, vox);
+
+    axpy(static_cast<value_type>(-1.0), *Sf, vox, vox);
+
+    ASSERT(vox.getDevice().isNumeric(vox.begin(), vox.size()), "Non-numeric velocity");
+    ASSERT(ten.getDevice().isNumeric(ten.begin(), ten.size()), "Non-numeric divergence");
+
+    recycle(fb);
+    recycle(Sf);
+    recycle(Du);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
 {
@@ -518,71 +580,21 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
 
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
-    std::auto_ptr<Vec_t> fb  = F->checkoutVec();
-    std::auto_ptr<Vec_t> fs  = F->checkoutVec();
-    std::auto_ptr<Vec_t> Sf  = F->checkoutVec();
-    std::auto_ptr<Sca_t> Dv  = F->checkoutSca();
     vox->replicate(F->pos_vel_);
     ten->replicate(F->tension_);
-    fb->replicate(*vox);
-    fs->replicate(*vox);
-    Sf->replicate(*vox);
-    Dv->replicate(*vox);
 
-    COUTDEBUG("Unpacking the input parallel vector");
+    COUTDEBUG("Unpacking the input from parallel vector");
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
-    COUTDEBUG("Computing the interfacial forces");
-    F->Intfcl_force_.linearBendingForce(F->S_, *vox, *fb);
-    F->Intfcl_force_.tensileForce(F->S_, *ten, *fs);
+    F->ImplicitMatvecPhysical(*vox, *ten);
 
-    if (F->params_.solve_for_velocity) {
-	axpy(static_cast<value_type>(F->dt_), *fb, *fs, *fb);
-    } else {
-	axpy(static_cast<value_type>(1.0), *fb, *fs, *fb);
-	axpy(static_cast<value_type>(F->dt_), *fb, *fb);
-    }
-
-    F->stokes_.SetDensitySL(fb.get());
-
-    if( fabs(F->params_.viscosity_contrast-1.0)>1e-12){
-	COUTDEBUG("Setting the double layer density");
-	av(F->dl_coeff_, *vox, *fs);
-	F->stokes_.SetDensityDL(fs.get());
-    } else {
-	F->stokes_.SetDensityDL(NULL);
-    }
-
-    COUTDEBUG("Calling stokes");
-    F->stokes_(*Sf);
-
-    COUTDEBUG("Computing the div term");
-    //! @note For some reason, doing the linear algebraic manipulation
-    //! and writing the constraint as -\div{S[f_b+f_s]} = \div{u_inf
-    //! almost halves the number of gmres iterations. Also having the
-    //! minus sign in the matvec is tangibly better (1-2
-    //! iterations). Need to investigate why.
-    F->S_.div(*Sf, *Dv);
-    axpy(static_cast<value_type>(-1.0), *Dv, *Dv);
-
-    if( fabs(F->params_.viscosity_contrast-1.0)>1e-12)
-	av(F->vel_coeff_, *vox, *vox);
-
-    axpy(static_cast<value_type>(-1.0), *Sf, *vox, *vox);
-
-    ASSERT(vox->getDevice().isNumeric(vox->begin(), vox->size()), "Non-numeric velocity");
-    ASSERT(Dv->getDevice().isNumeric(Dv->begin(), Dv->size()), "Non-numeric divergence");
-
-    vox->getDevice().Memcpy(y   , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    Dv->getDevice().Memcpy(y+vsz, Dv->begin() , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    COUTDEBUG("Unpacking the output in parallel vector");
+    vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
     F->recycle(vox);
     F->recycle(ten);
-    F->recycle(fb);
-    F->recycle(fs);
-    F->recycle(Sf);
-    F->recycle(Dv);
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
