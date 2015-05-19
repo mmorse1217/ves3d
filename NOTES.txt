@@ -1,0 +1,5 @@
+To-do
+-----
+[20150517][DM] Upsampling surface during differentiation
+[20150517][DM] Test to see whether summing the singular stokes in higher frequency helps (rotate then upsample)
+[20150517][AR] The spectral precondioner has adverse effect on number of iterations, need to investigate
