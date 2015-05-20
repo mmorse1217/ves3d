@@ -40,7 +40,8 @@ void Parameters<T>::init()
     scheme		    = JacobiBlockImplicit;
     sh_order		    = 12;
     singular_stokes	    = ViaSpHarm;
-    solve_for_velocity      = true;
+    solve_for_velocity      = false;
+    pseudospectral          = false;
     tension_solver_iter	    = 15;
     tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
@@ -166,6 +167,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --position-iter-max     Maximum number of iterations for the position solver" );
   opt->addUsage( "     --position-restart      Maximum number of restarts for the position solver" );
   opt->addUsage( "     --position-tol          The tolerence for the position solver" );
+  opt->addUsage( "     --pseudospectral        Form and solve the system for function values on grid points (otherwise Galerkin)" );
   opt->addUsage( "     --rep-filter-freq       The filter freq for the reparametrization" );
   opt->addUsage( "     --rep-max-iter          Maximum number of reparametrization steps" );
   opt->addUsage( "     --rep-timestep          The Time step for the reparametrization" );
@@ -199,6 +201,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setFlag( "interaction-upsample");
   opt->setFlag( "rep-upsample" );
   opt->setFlag( "solve-for-velocity" );
+  opt->setFlag( "pseudospectral" );
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
@@ -268,6 +271,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
       this->solve_for_velocity = true;
   else
       this->solve_for_velocity = false;
+
+  if( opt->getFlag( "pseudospectral" ) )
+      this->pseudospectral = true;
+  else
+      this->pseudospectral = false;
 
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "init-file" ) != NULL || opt->getValue( 'i' ) !=NULL )
@@ -400,6 +408,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"time_tol: "<<time_tol<<"\n";
     os<<"time_iter_max: "<<time_iter_max<<"\n";
     os<<"solve_for_velocity: "<<solve_for_velocity<<"\n";
+    os<<"pseudospectral: "<<pseudospectral<<"\n";
     os<<"scheme: "<<scheme<<"\n";
     os<<"time_precond: "<<time_precond<<"\n";
     os<<"bg_flow: "<< bg_flow<<"\n";
@@ -448,6 +457,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>time_tol;			ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
     is>>key>>time_iter_max;		ASSERT(key=="time_iter_max:", "Unexpected key (expected time_iter_max)");
     is>>key>>solve_for_velocity;	ASSERT(key=="solve_for_velocity:", "Unexpected key (expected solve_for_velocity)");
+    is>>key>>pseudospectral;     	ASSERT(key=="pseudospectral:", "Unexpected key (expected pseudospectral)");
 
     //enums
     is>>key>>s; 			ASSERT(key=="scheme:", "Unexpected key (expected scheme)");
@@ -524,6 +534,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Precond                  : "<<par.time_precond<<std::endl;
     output<<"   Error Factor             : "<<par.error_factor<<std::endl;
     output<<"   Solve for velocity       : "<<std::boolalpha<<par.solve_for_velocity<<std::endl;
+    output<<"   Pseudospectral           : "<<std::boolalpha<<par.pseudospectral<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Reparametrization:"<<std::endl;

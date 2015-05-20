@@ -59,13 +59,15 @@ int main(int argc, char **argv)
 
   {
     Param_t params;
-    real_t ts(1e-3);
+    real_t ts(1e-4);
     params.n_surfs		= 2;
     params.sh_order		= 6;
     params.upsample_freq    	= 12;
     params.ts		    	= ts;
     params.time_horizon	    	= 2*ts;
-    params.scheme		= JacobiBlockExplicit;
+    params.scheme		= GloballyImplicit;
+    params.time_precond		= DiagonalSpectral;
+    params.pseudospectral       = false;
     params.bg_flow_param	= 5e-2;
     params.checkpoint           = true;
     params.checkpoint_stride    = ts;
@@ -92,7 +94,7 @@ int main(int argc, char **argv)
     err.replicate(x);
     axpy((real_t) -1.0, xref, x, err);
     real_t maxerr = MaxAbs(err);
-    ASSERT(maxerr<2e-7, "inconsistent state after start from checkpoint");
+    ASSERT(maxerr<5e-7, "inconsistent state after start from checkpoint error="<<maxerr);
   }
 
   {
@@ -125,7 +127,7 @@ int main(int argc, char **argv)
     e.replicate(av);
     axpy((real_t) -1, av, bv, e);
     real_t maxerr = MaxAbs(e);
-    ASSERT(maxerr<2e-7, "inconsistent checkpoints");
+    ASSERT(maxerr<5e-7, "inconsistent checkpoints, error="<<maxerr);
   }
 
 #ifdef HAS_PETSC

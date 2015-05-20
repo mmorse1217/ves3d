@@ -14,8 +14,8 @@ typedef double real;
 typedef Device<CPU> DCPU;
 extern const DCPU the_cpu_dev(0);
 
-int main(int argc, char *argv[])
-{
+bool test_resample(){
+
     typedef Scalars<real,DCPU,the_cpu_dev> Sca_t;
     typedef typename Sca_t::array_type Arr_t;
     typedef Vectors<real,DCPU,the_cpu_dev> Vec_t;
@@ -28,8 +28,6 @@ int main(int argc, char *argv[])
     params.sh_order = p;
     params.upsample_freq = q;
     COUT(params);
-
-    //reading mats2
     DataIO IO;
 
     //Initializing vesicle positions from text file
@@ -62,5 +60,45 @@ int main(int argc, char *argv[])
 
     COUT(alert<<"\n  *** Run ../matlab/SHTransTest.m to see the results ***"
         <<alert);
+
+    return true;
+}
+
+bool test_inverse(){
+    typedef Scalars<real,DCPU,the_cpu_dev> Sca_t;
+    typedef typename Sca_t::array_type Arr_t;
+    typedef OperatorsMats<Arr_t> OMats_t;
+    typedef SHTMats<real,DCPU> SMats_t;
+    typedef SHTrans<Sca_t,SMats_t> Sh_t;
+
+    int p(6), q(2*p), n(1);
+    Parameters<real> params;
+    params.sh_order	 = p;
+    params.upsample_freq = q;
+    DataIO IO;
+
+    // Operators
+    OMats_t M(true /* readFromFile */, params);
+    Sh_t sht(params.sh_order,M.mats_p_);
+    Sca_t xhat(n,p), x(n,p), shc(n,p), wrk(n,p);
+    size_t len((p+1)*(p+1)-1);
+
+    fillRand(xhat);
+    xhat.getDevice().Memset(xhat.begin()+len,0, (xhat.size()-len)*sizeof(real));
+
+    sht.backward(xhat,wrk,x);
+    sht.forward(x    ,wrk,shc);
+    shc.getDevice().Memset(shc.begin()+len,0, (shc.size()-len)*sizeof(real));
+
+    axpy(-1.0, shc,xhat,shc);
+    real merr = MaxAbs(shc);
+    ASSERT(merr<1e-14,"forward and backward shoud be inverse of each other, error="<<merr);
+    return true;
+}
+
+int main(int argc, char *argv[])
+{
+    ASSERT(test_resample(),"resample test failed");
+    ASSERT(test_inverse(),"inverse test failed");
     return 0;
 }
