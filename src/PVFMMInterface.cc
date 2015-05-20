@@ -11,6 +11,13 @@
 #include <fmm_node.hpp>
 #include <fmm_tree.hpp>
 
+template <class Real_t>
+static Real_t machine_eps(){
+  Real_t eps=1;
+  while(eps*(Real_t)0.5+(Real_t)1.0>1.0) eps*=0.5;
+  return eps;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////// Kernel Function Declarations ////////////////////////
 
@@ -156,6 +163,7 @@ void stokes_m2l_vol_poten(const T* coord, int n, T* out){
 template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
 void stokes_sl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
   #define SRC_BLK 500
+  static Real_t eps=machine_eps<Real_t>();
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
   //// Number of newton iterations
@@ -197,7 +205,7 @@ void stokes_sl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& 
         Vec_t r2=               pvfmm::mul_intrin(dx,dx) ;
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
-        r2=pvfmm::and_intrin(pvfmm::cmplt_intrin(pvfmm::set_intrin<Vec_t,Real_t>(1e-10),r2),r2); // TODO: Temporary fix
+        r2=pvfmm::and_intrin(pvfmm::cmplt_intrin(pvfmm::set_intrin<Vec_t,Real_t>(eps),r2),r2);
 
         Vec_t rinv=RSQRT_INTRIN(r2);
         Vec_t rinv2=pvfmm::mul_intrin(pvfmm::mul_intrin(rinv,rinv),inv_nwtn_scal2);
@@ -278,6 +286,7 @@ void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
 void stokes_dl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
   #define SRC_BLK 500
+  static Real_t eps=machine_eps<Real_t>();
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
   //// Number of newton iterations
@@ -322,7 +331,7 @@ void stokes_dl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& 
         Vec_t r2=               pvfmm::mul_intrin(dx,dx) ;
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dy,dy));
         r2=pvfmm::add_intrin(r2,pvfmm::mul_intrin(dz,dz));
-        r2=pvfmm::and_intrin(pvfmm::cmplt_intrin(pvfmm::set_intrin<Vec_t,Real_t>(1e-10),r2),r2); // TODO: Temporary fix
+        r2=pvfmm::and_intrin(pvfmm::cmplt_intrin(pvfmm::set_intrin<Vec_t,Real_t>(eps),r2),r2);
 
         Vec_t rinv=RSQRT_INTRIN(r2);
         Vec_t rinv2=pvfmm::mul_intrin(rinv ,rinv );
@@ -462,8 +471,7 @@ void PVFMMBoundingBox(size_t n_src, const T* x, T* scale_xr, T* shift_xr, MPI_Co
     MPI_Allreduce(loc_min_x, min_x, DIM, MPI_DOUBLE, MPI_MIN, comm);
     MPI_Allreduce(loc_max_x, max_x, DIM, MPI_DOUBLE, MPI_MAX, comm);
 
-    T eps=1; // Points should be well within the box.
-    while(eps*(T)0.5+(T)1.0>1.0) eps*=0.5; eps*=64;
+    static T eps=machine_eps<T>()*64; // Points should be well within the box.
     scale_x=1.0/(max_x[0]-min_x[0]+2*eps);
     for(size_t k=0;k<DIM;k++){
       scale_x=std::min(scale_x,(T)(1.0/(max_x[k]-min_x[k]+2*eps)));
