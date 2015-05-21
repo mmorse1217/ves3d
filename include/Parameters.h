@@ -67,6 +67,7 @@ class Parameters : public Streamable
     //Background flow
     T bg_flow_param;
     bool interaction_upsample;
+    T periodic_length;
 
     //Startup and Monitoring
     bool checkpoint;

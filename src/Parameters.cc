@@ -41,6 +41,7 @@ void Parameters<T>::init()
     sh_order		    = 12;
     singular_stokes	    = ViaSpHarm;
     solve_for_velocity      = false;
+    periodic_length	    = -1;
     pseudospectral          = false;
     tension_solver_iter	    = 15;
     tension_solver_restart  = 1;
@@ -165,6 +166,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --interaction-upsample  Flag to whether upsample (and filter) the interaction force" );
   opt->addUsage( "     --n-surfs               The number of surfaces" );
   opt->addUsage( "     --num-threads           The number OpenMP threads" );
+  opt->addUsage( "     --periodic-length       Length of periodic domain (-1 for non-periodic)" );
   opt->addUsage( "     --position-iter-max     Maximum number of iterations for the position solver" );
   opt->addUsage( "     --position-restart      Maximum number of restarts for the position solver" );
   opt->addUsage( "     --position-tol          The tolerence for the position solver" );
@@ -221,6 +223,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "filter-freq" );
   opt->setOption( "n-surfs" );
   opt->setOption( "num-threads" );
+  opt->setOption( "periodic-length" );
   opt->setOption( "position-iter-max" );
   opt->setOption( "position-restart" );
   opt->setOption( "position-tol" );
@@ -318,6 +321,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "bg-flow-param" ) != NULL  )
     this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
+
+  if( opt->getValue( "periodic-length" ) != NULL  )
+    this->periodic_length =  atof(opt->getValue( "periodic-length" ));
 
   if( opt->getValue( "cent-file") !=NULL )
     this->cntrs_file_name = opt->getValue( "cent-file" );
@@ -428,6 +434,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"rep_ts: "<<rep_ts<<"\n";
     os<<"rep_tol: "<<rep_tol<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
+    os<<"periodic_length: "<<periodic_length<<"\n";
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
     os<<"checkpoint: "<<checkpoint<<"\n";
     os<<"checkpoint_stride: "<<checkpoint_stride<<"\n";
@@ -485,6 +492,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>rep_ts;			ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
     is>>key>>rep_tol;			ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
     is>>key>>bg_flow_param;		ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
+    is>>key>>periodic_length;		ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
     is>>key>>interaction_upsample;	ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
     is>>key>>checkpoint;		ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
     is>>key>>checkpoint_stride;		ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
@@ -570,6 +578,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" Background flow:"<<std::endl;
     output<<"   Background flow type     : "<<par.bg_flow<<std::endl;
     output<<"   Background flow parameter: "<<par.bg_flow_param<<std::endl;
+    output<<"   Periodic flow interval   : "<<par.periodic_length<<std::endl;
     output<<"   Interaction Upsample     : "<<std::boolalpha<<par.interaction_upsample<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
