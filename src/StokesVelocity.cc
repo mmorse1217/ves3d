@@ -26,12 +26,11 @@ template<typename Surf_t>
 StokesVelocity<Surf_t>::StokesVelocity(
     const OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_,
-    Real_t box_size,
     MPI_Comm c):
-  near_singular(sht_up_.getShOrder(),box_size,c),
+  near_singular(sht_up_.getShOrder(),sim_par_.period_length,c),
   sht_   (mats.p_   , mats.mats_p_   ),
   sht_up_(mats.p_up_, mats.mats_p_up_),
-  box_size_(box_size),
+  box_size_(sim_par_.period_length),
   sim_par(sim_par_),
   move_pole(mats),
   S_up(NULL),
@@ -679,6 +678,7 @@ void StokesVelocity<Surf_t>::Test(){
   Parameters<Real_t> sim_par;
   sim_par.sh_order = 6;
   sim_par.upsample_freq = 32;
+  sim_par.period_length = -5;
 
   // Reading operators from file
   bool readFromFile = true;
@@ -688,7 +688,7 @@ void StokesVelocity<Surf_t>::Test(){
   //ShearFlow<Vec_t> vInf(sim_par.bg_flow_param);
 
   //StokesVelocity<Surf_t> stokes_vel(mats, sim_par, vInf, comm);
-  StokesVelocity<Surf_t> stokes_vel(mats, sim_par, -5, comm);
+  StokesVelocity<Surf_t> stokes_vel(mats, sim_par, comm);
 
   //=================================================================//
 
