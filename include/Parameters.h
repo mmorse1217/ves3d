@@ -48,6 +48,7 @@ class Parameters : public Streamable
     T ts;
     T time_tol;
     int time_iter_max;
+    bool time_adaptive;
     bool solve_for_velocity;
     bool pseudospectral;
 

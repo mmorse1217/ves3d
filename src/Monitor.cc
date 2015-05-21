@@ -62,7 +62,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
     value_type A(device.MaxAbs(area_.begin(), N_ves));
     value_type V(device.MaxAbs(vol_ .begin(), N_ves));
 
-    if(A0_ > 0){ // Set new dt
+    if(params_->time_adaptive && A0_ > 0){ // Set new dt
        value_type timestep_order=1;
        value_type time_horizon=params_->time_horizon;
 

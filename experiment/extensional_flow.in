@@ -19,6 +19,7 @@ time-precond : DiagonalSpectral
 singular-stokes : Direct
 error-factor : .01
 solve-for-velocity
+time-adaptive
 
 ## reparametrization -------------------------
 rep-max-iter : 1000

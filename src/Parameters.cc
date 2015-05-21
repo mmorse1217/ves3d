@@ -45,6 +45,7 @@ void Parameters<T>::init()
     tension_solver_iter	    = 15;
     tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
+    time_adaptive           = false;
     time_horizon	    = 1;
     time_iter_max           = 100;
     time_precond            = NoPrecond;
@@ -179,6 +180,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
   opt->addUsage( "     --tension-restart       Maximum number of restarts for the tension solver" );
   opt->addUsage( "     --tension-tol           The tolerence for the tension solver" );
+  opt->addUsage( "     --time-adaptive         Flag to use adaptive time-stepping" );
   opt->addUsage( "     --time-horizon          The time horizon of the simulation" );
   opt->addUsage( "     --time-iter-max         Maximum number of iteration for the choice of time stepper" );
   opt->addUsage( "     --time-precond          The type of preconditioner to use" );
@@ -202,6 +204,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setFlag( "rep-upsample" );
   opt->setFlag( "solve-for-velocity" );
   opt->setFlag( "pseudospectral" );
+  opt->setFlag( "time-adaptive" );
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
@@ -382,6 +385,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "time-iter-max" ) != NULL  )
     this->time_iter_max =  atof(opt->getValue( "time-iter-max" ));
 
+  if( opt->getFlag( "time-adaptive" ) )
+      this->time_adaptive = true;
+  else
+      this->time_adaptive = false;
+
 //   other methods: (bool) opt.getFlag( ... long or short ... )
 }
 
@@ -407,6 +415,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"ts: "<<ts<<"\n";
     os<<"time_tol: "<<time_tol<<"\n";
     os<<"time_iter_max: "<<time_iter_max<<"\n";
+    os<<"time_adaptive: "<<time_adaptive<<"\n";
     os<<"solve_for_velocity: "<<solve_for_velocity<<"\n";
     os<<"pseudospectral: "<<pseudospectral<<"\n";
     os<<"scheme: "<<scheme<<"\n";
@@ -456,6 +465,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>ts;			ASSERT(key=="ts:", "Unexpected key (expected ts)");
     is>>key>>time_tol;			ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
     is>>key>>time_iter_max;		ASSERT(key=="time_iter_max:", "Unexpected key (expected time_iter_max)");
+    is>>key>>time_adaptive;	        ASSERT(key=="time_adaptive:", "Unexpected key (expected time_adaptive)");
     is>>key>>solve_for_velocity;	ASSERT(key=="solve_for_velocity:", "Unexpected key (expected solve_for_velocity)");
     is>>key>>pseudospectral;     	ASSERT(key=="pseudospectral:", "Unexpected key (expected pseudospectral)");
 
@@ -531,6 +541,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Scheme                   : "<<par.scheme<<std::endl;
     output<<"   Time tol                 : "<<par.time_tol<<std::endl;
     output<<"   Time iter max            : "<<par.time_iter_max<<std::endl;
+    output<<"   Time adaptivity          : "<<std::boolalpha<<par.time_adaptive<<std::endl;
     output<<"   Precond                  : "<<par.time_precond<<std::endl;
     output<<"   Error Factor             : "<<par.error_factor<<std::endl;
     output<<"   Solve for velocity       : "<<std::boolalpha<<par.solve_for_velocity<<std::endl;
