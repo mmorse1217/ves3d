@@ -82,10 +82,10 @@ StokesVelocity<Surf_t>::StokesVelocity(
     size_t p=sh_order;
 
     //Gauss-Legendre quadrature nodes and weights
-    std::vector<Real_t> x(p+1),w(p+1);
+    std::vector<double> x(p+1),w(p+1);
     cgqf(p+1, 1, 0.0, 0.0, -1.0, 1.0, &x[0], &w[0]);
 
-    std::vector<Real_t> leg((p+1)*(p+1));
+    std::vector<double> leg((p+1)*(p+1));
     LegPoly(&x[0],x.size(),p+1,&leg[0]);
     pole_quad.ReInit(p+1);
     pole_quad.SetZero();
