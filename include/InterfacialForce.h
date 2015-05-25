@@ -1,7 +1,10 @@
 #ifndef _INTERFACIALFORCE_H_
 #define _INTERFACIALFORCE_H_
 
+#include "OperatorsMats.h"
 #include "Parameters.h"
+#include "SHTrans.h"
+#include "SHTMats.h"
 #include "Logger.h"
 
 template<typename SurfContainer>
