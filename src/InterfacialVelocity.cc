@@ -7,7 +7,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     S_(S_in),
     interaction_(Inter),
     bg_flow_(bgFlow),
-    Intfcl_force_(params),
+    Intfcl_force_(params,mats),
     params_(params),
     //
     parallel_solver_(parallel_solver),

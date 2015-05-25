@@ -10,16 +10,23 @@ class InterfacialForce
   private:
     typedef typename SurfContainer::Sca_t Sca_t;
     typedef typename SurfContainer::Vec_t Vec_t;
+    typedef typename SurfContainer::Arr_t Arr_t;
     typedef typename SurfContainer::value_type value_type;
+    typedef typename SurfContainer::device_type device_type;
 
     value_type bending_modulus_;
+    const Parameters<value_type> &params_;
+    SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_   ;
+    SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_up_;
 
     mutable Sca_t s1, s2;
     mutable Vec_t v1;
+    mutable SurfContainer* S_up;
 
   public:
-    InterfacialForce(value_type bending_modulus);
-    InterfacialForce(const Parameters<value_type> &params);
+    //InterfacialForce(value_type bending_modulus);
+    InterfacialForce(const Parameters<value_type> &params,
+                     const OperatorsMats<Arr_t> &mats);
     ~InterfacialForce();
 
     void bendingForce(const SurfContainer &S, Vec_t &Fb) const;
