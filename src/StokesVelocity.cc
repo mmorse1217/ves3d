@@ -27,10 +27,10 @@ StokesVelocity<Surf_t>::StokesVelocity(
     const OperatorsMats<Arr_t> &mats,
     const Parameters<Real_t> &sim_par_,
     MPI_Comm c):
-  near_singular(sht_up_.getShOrder(),sim_par_.period_length,c),
+  near_singular(sht_up_.getShOrder(),sim_par_.periodic_length,c),
   sht_   (mats.p_   , mats.mats_p_   ),
   sht_up_(mats.p_up_, mats.mats_p_up_),
-  box_size_(sim_par_.period_length),
+  box_size_(sim_par_.periodic_length),
   sim_par(sim_par_),
   move_pole(mats),
   S_up(NULL),
@@ -116,6 +116,11 @@ void StokesVelocity<Surf_t>::SetSrcCoord(const Surf_t& S_){
   fmm_flag=fmm_flag | StokesVelocity::UpdateSrcCoord;
   near_singular.SetSrcCoord(src_coord_up);
   S=&S_;
+
+  #ifndef NDEBUG
+  Real_t error=MonitorError();
+  INFO("StokesVelocity: double-layer error = "<<error);
+  #endif
 }
 
 template<typename Surf_t>
@@ -177,7 +182,7 @@ void StokesVelocity<Surf_t>::SetTrgCoord(Real_t* trg_coord_, size_t N){ // TODO:
   fmm_flag=fmm_flag | StokesVelocity::UpdateTrgCoord;
   trg_is_surf=false;
   trg_coord.ReInit(N*COORD_DIM, trg_coord_);
-  near_singular.SetTrgCoord(&trg_coord[0],N,trg_is_surf);
+  near_singular.SetTrgCoord(&trg_coord[0],trg_coord.Dim()/COORD_DIM,trg_is_surf);
 }
 
 
@@ -616,6 +621,60 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
   }
 }
 
+template<typename Surf_t>
+StokesVelocity<Surf_t>::Real_t StokesVelocity<Surf_t>::MonitorError(){
+  if(!S) return -1;
+
+  // Save original state
+  const Vec_t* force_single_orig=force_single;
+  const Vec_t* force_double_orig=force_double;
+  PVFMMVec_t trg_coord_orig=trg_coord;
+  bool trg_is_surf_orig=trg_is_surf;
+
+  Vec_t force;
+  force.replicate(S->getPosition());
+  size_t N_ves = force.getNumSubs(); // Number of vesicles
+  size_t M_ves = force.getStride(); // Points per vesicle
+  for(size_t i=0;i<N_ves;i++){ // Set force
+    Real_t* xk=force.getSubN_begin(i)+0*M_ves;
+    Real_t* yk=force.getSubN_begin(i)+1*M_ves;
+    Real_t* zk=force.getSubN_begin(i)+2*M_ves;
+    for(size_t j=0;j<M_ves;j++){
+      xk[j]=1.0;
+      yk[j]=1.0;
+      zk[j]=1.0;
+    }
+  }
+
+  SetDensitySL(NULL);
+  SetDensityDL(&force);
+  SetTrgCoord(*S);
+
+  Real_t* velocity=this->operator()();
+  Real_t* velocity_self=S_vel.begin();
+  double norm_glb[2]={0,0};
+  { // Compute error norm
+    double norm_local[2]={0,0};
+    for(size_t i=0;i<N_ves*M_ves*COORD_DIM;i++){
+      norm_local[0]=std::max(norm_local[0],fabs(velocity     [i]+0.5));
+      norm_local[1]=std::max(norm_local[1],fabs(velocity_self[i]+0.5));
+    }
+    MPI_Allreduce(&norm_local, &norm_glb, 2, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), comm);
+  }
+
+  { // Restore original state
+    SetDensitySL(force_single_orig);
+    SetDensityDL(force_double_orig);
+
+    fmm_flag=fmm_flag | StokesVelocity::UpdateTrgCoord;
+    trg_is_surf=trg_is_surf_orig;
+    trg_coord.ReInit(trg_coord_orig.Dim(), &trg_coord_orig[0]);
+    near_singular.SetTrgCoord(&trg_coord[0],trg_coord.Dim()/COORD_DIM,trg_is_surf);
+  }
+
+  return norm_glb[0];
+}
+
 
 
 template<typename Surf_t>
@@ -678,7 +737,7 @@ void StokesVelocity<Surf_t>::Test(){
   Parameters<Real_t> sim_par;
   sim_par.sh_order = 6;
   sim_par.upsample_freq = 32;
-  sim_par.period_length = -5;
+  sim_par.periodic_length = -5;
 
   // Reading operators from file
   bool readFromFile = true;

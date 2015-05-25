@@ -48,6 +48,8 @@ class StokesVelocity{
     void operator()(Vec_t& T_vel, unsigned int flag=StokesVelocity::UpdateAll);
     Real_t* operator()(unsigned int flag=StokesVelocity::UpdateAll);
 
+    Real_t MonitorError();
+
     static void Test();
 
   private:
