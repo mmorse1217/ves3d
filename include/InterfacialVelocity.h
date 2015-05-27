@@ -58,10 +58,10 @@ class InterfacialVelocity
     Error_t ConfigurePrecond(const PrecondScheme &precond) const;
     Error_t Update(PVec_t *u0);
 
-    Error_t updateJacobiExplicit(const value_type &dt);
-    Error_t updateJacobiGaussSeidel(const value_type &dt);
-    Error_t updateJacobiImplcit(const value_type &dt);
-    Error_t updateImplicit(const value_type &dt);
+    Error_t updateJacobiExplicit   (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
+    Error_t updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx);
+    Error_t updateJacobiImplcit    (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
+    Error_t updateImplicit         (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
 
     Error_t reparam();
 

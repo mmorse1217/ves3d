@@ -96,7 +96,7 @@ InterfacialVelocity<SurfContainer, Interaction>::
 // Notes: tension solve is block implicit.
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-updateJacobiExplicit(const value_type &dt)
+updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     this->dt_ = dt;
 
@@ -119,7 +119,9 @@ updateJacobiExplicit(const value_type &dt)
     CHK(stokes(*u1, *u2));
     axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
 
-    axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
+    //axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
+    dx.replicate(S_.getPosition());
+    axpy(dt, pos_vel_, dx);
 
     recycle(u1);
     recycle(u2);
@@ -129,7 +131,7 @@ updateJacobiExplicit(const value_type &dt)
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-updateJacobiGaussSeidel(const value_type &dt)
+updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     this->dt_ = dt;
 
@@ -179,9 +181,11 @@ updateJacobiGaussSeidel(const value_type &dt)
            "relres ("<<relres<<")<tol("<<tol<<")"
            );
 
-    u2->getDevice().Memcpy(S_.getPositionModifiable().begin(), u2->begin(),
-        S_.getPosition().size() * sizeof(value_type),
-        u2->getDevice().MemcpyDeviceToDevice);
+    //u2->getDevice().Memcpy(S_.getPositionModifiable().begin(), u2->begin(),
+    //    S_.getPosition().size() * sizeof(value_type),
+    //    u2->getDevice().MemcpyDeviceToDevice);
+    dx.replicate(S_.getPosition());
+    axpy(-1, S_.getPosition(), *u2, dx);
 
     recycle(u1);
     recycle(u2);
@@ -192,7 +196,7 @@ updateJacobiGaussSeidel(const value_type &dt)
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-updateImplicit(const value_type &dt)
+updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     PROFILESTART();
     this->dt_ = dt;
@@ -206,12 +210,22 @@ updateImplicit(const value_type &dt)
 	CHK(AssembleRhsPos(parallel_rhs_, dt_, scheme));
     }
 
-    CHK(AssembleInitial(parallel_u_, dt_, scheme));
-    CHK(Solve(parallel_rhs_, parallel_u_, dt_, scheme));
-    CHK(Update(parallel_u_));
+    Error_t err=ErrorEvent::Success;
+    if(err==ErrorEvent::Success) err=AssembleInitial(parallel_u_, dt_, scheme);
+    if(err==ErrorEvent::Success) err=Solve(parallel_rhs_, parallel_u_, dt_, scheme);
+    if(err==ErrorEvent::Success) err=Update(parallel_u_);
+
+    dx.replicate(S_.getPosition());
+    if (params_.solve_for_velocity){
+	//axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
+        axpy(dt, pos_vel_, dx);
+    } else {
+	//S_.setPosition(pos_vel_);
+        axpy(-1, S_.getPosition(), pos_vel_, dx);
+    }
 
     PROFILEEND("",0);
-    return ErrorEvent::Success;
+    return err;
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -797,10 +811,10 @@ Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &s
     CHK(parallel_solver_->IterationNumber(iter));
     INFO("Parallel solver returned after "<<iter<<" iteration(s).");
     INFO("Parallal solver report:");
-    WHENCHATTY(parallel_solver_->ViewReport());
+    Error_t err=parallel_solver_->ViewReport();
 
     PROFILEEND("",0);
-    return ErrorEvent::Success;
+    return err;
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -813,7 +827,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Update(PVec_t *u0)
     typename PVec_t::iterator i(NULL);
     typename PVec_t::size_type rsz;
 
-    CHK(parallel_u_->GetArray(i, rsz));
+    CHK(u0->GetArray(i, rsz));
     ASSERT(rsz==vsz+tsz,"Bad sizes");
 
     if (params_.pseudospectral){
@@ -842,13 +856,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Update(PVec_t *u0)
 	recycle(wrk);
     }
 
-    CHK(parallel_u_->RestoreArray(i));
-
-    if (params_.solve_for_velocity){
-	axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
-    } else {
-	S_.setPosition(pos_vel_);
-    }
+    CHK(u0->RestoreArray(i));
 
     PROFILEEND("",0);
     return ErrorEvent::Success;

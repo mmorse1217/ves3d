@@ -68,7 +68,7 @@ class EvolveSurface : public Streamable
     typedef typename Repart::GlobalRepart_t GlobalRepart_t;
 
     typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
-    typedef Error_t (IntVel_t::*Scheme_t)(const value_type &);
+    typedef Error_t (IntVel_t::*Scheme_t)(const Sur_t &, const value_type &, Vec_t &);
 
     EvolveSurface(Params_t *params, const Mats_t &mats, BgFlow_t *vInf,
 	Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,

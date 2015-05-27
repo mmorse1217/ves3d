@@ -27,7 +27,6 @@ class Monitor : public MonitorBase<EvolveSurface>
     value_type checkpoint_stride_;
     DataIO IO_;
     mutable value_type A0_, V0_;
-    typename EvolveSurface::Sca_t area_, vol_;
     typename EvolveSurface::Sca_t area0_, vol0_;
     typename EvolveSurface::Sca_t area_new, vol_new;
     int last_checkpoint_;
