@@ -102,9 +102,10 @@ class StokesVelocity{
     unsigned int fmm_flag;
     unsigned int self_flag;
 
-    int sh_order, sh_order_up;
-    Sca_t quad_weights_;                          // upsampled, for far-field integration
-    Sca_t w_sph_, w_sph_inv_, sing_quad_weights_; // for singular integration
+    int sh_order, sh_order_far, sh_order_self;
+    Sca_t quad_weights_;              // for far-field integration (sh_order_far)
+    Sca_t w_sph_inv_;                 // for singular integration  (sh_order)
+    Sca_t w_sph_sing_quad_weights_;   // for singular integration  (sh_order_self)
     PVFMMVec_t pole_quad;
 
     MPI_Comm comm;

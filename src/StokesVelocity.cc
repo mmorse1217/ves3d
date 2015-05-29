@@ -50,32 +50,59 @@ StokesVelocity<Surf_t>::StokesVelocity(
   self_flag=self_flag | StokesVelocity::UpdateDensityDL;
   self_flag=self_flag | StokesVelocity::UpdateSurfaceVel;
 
-  sh_order   =sht_   .getShOrder();
-  sh_order_up=sht_up_.getShOrder();
-  assert(sim_par.sh_order==sht_.getShOrder());
-  { // quadrature weights
-    quad_weights_.resize(1,sh_order_up);
+  sh_order     =sht_   .getShOrder();
+  sh_order_far =sht_up_.getShOrder();
+  sh_order_self=sht_up_.getShOrder(); //sht_.getShOrder();
+  assert(sim_par.sh_order     ==sht_   .getShOrder());
+  assert(sim_par.upsample_freq==sht_up_.getShOrder());
+  { // Set quad_weights_ (sh_order_far)
+    quad_weights_.resize(1,sh_order_far);
     quad_weights_.getDevice().Memcpy(quad_weights_.begin(),
         mats.quad_weights_p_up_,
         quad_weights_.size() * sizeof(Real_t),
         Surf_t::device_type::MemcpyDeviceToDevice);
   }
 
-  { // Set w_sph_, w_sph_inv_, sing_quad_weights_
-    w_sph_.resize(1, sh_order);
+  { // Set w_sph_inv_ (sh_order)
+    Sca_t w_sph_;
+    w_sph_    .resize(1, sh_order);
     w_sph_inv_.resize(1, sh_order);
     int np = w_sph_.getStride();
 
     w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
         np * sizeof(Real_t), device_type::MemcpyDeviceToDevice);
     xInv(w_sph_,w_sph_inv_);
+  }
+  { // Set w_sph_sing_quad_weights_ (sh_order_self)
+    Sca_t w_sph_, sing_quad_weights_;
+    w_sph_.resize(1, sh_order_self);
+    int np = w_sph_.getStride();
+
+    if(sh_order_self==sht_up_.getShOrder()){
+      w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_up_,
+          np * sizeof(Real_t), device_type::MemcpyDeviceToDevice);
+    }else{
+      w_sph_.getDevice().Memcpy(w_sph_.begin(), mats.w_sph_,
+          np * sizeof(Real_t), device_type::MemcpyDeviceToDevice);
+    }
 
     //Singular quadrature weights
-    sing_quad_weights_.resize(1,sh_order);
-    sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(),
-        mats.sing_quad_weights_, sing_quad_weights_.size() *
-        sizeof(Real_t),
-        device_type::MemcpyDeviceToDevice);
+    sing_quad_weights_.resize(1,sh_order_self);
+    if(sh_order_self==sht_up_.getShOrder()){
+      sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(),
+          mats.sing_quad_weights_up_, sing_quad_weights_.size() *
+          sizeof(Real_t),
+          device_type::MemcpyDeviceToDevice);
+    }else{
+      sing_quad_weights_.getDevice().Memcpy(sing_quad_weights_.begin(),
+          mats.sing_quad_weights_, sing_quad_weights_.size() *
+          sizeof(Real_t),
+          device_type::MemcpyDeviceToDevice);
+    }
+
+    // Precompute w_sph_sing_quad_
+    w_sph_sing_quad_weights_.resize(1, sh_order_self);
+    ax(sing_quad_weights_, w_sph_, w_sph_sing_quad_weights_);
   }
 
   { // compute quadrature to find pole
@@ -105,7 +132,7 @@ StokesVelocity<Surf_t>::StokesVelocity(
 template<typename Surf_t>
 StokesVelocity<Surf_t>::~StokesVelocity(){
   PVFMMDestroyContext<Real_t>(&pvfmm_ctx);
-  if(S_up) delete S_up;
+  if(sh_order_far!=sh_order && S_up) delete S_up;
 }
 
 
@@ -118,8 +145,7 @@ void StokesVelocity<Surf_t>::SetSrcCoord(const Surf_t& S_){
   S=&S_;
 
   #ifndef NDEBUG
-  Real_t error=MonitorError();
-  INFO("StokesVelocity: double-layer error = "<<error);
+  MonitorError();
   #endif
 }
 
@@ -192,8 +218,8 @@ void StokesVelocity<Surf_t>::GetPole(const Vec_t& v,  PVFMMVec_t& pvfmm_v){
   assert(v.getShOrder()==sh_order);
   size_t omp_p=omp_get_max_threads();
   size_t N_ves   =v.getNumSubs(); // Number of vesicles
-  size_t M_ves   =(1+sh_order   )*(2*sh_order   );
-  size_t M_ves_up=(1+sh_order_up)*(2*sh_order_up);
+  size_t M_ves   =(1+sh_order    )*(2*sh_order    );
+  size_t M_ves_up=(1+sh_order_far)*(2*sh_order_far);
   if(pvfmm_v.Dim()!=N_ves*(2+M_ves_up)*COORD_DIM){
     pvfmm_v.ReInit(N_ves*(2+M_ves_up)*COORD_DIM);
   }
@@ -263,9 +289,9 @@ void StokesVelocity<Surf_t>::Upsample(const Vec_t& v, Vec_t* v_out,  PVFMMVec_t*
 
   Vec_t wrk[3]; // TODO: Pre-allocate
   if(!v_out) v_out=&wrk[2];
-  wrk[0].resize(v.getNumSubs(), std::max(sh_order_up,sh_order));
-  wrk[1].resize(v.getNumSubs(), std::max(sh_order_up,sh_order));
-  v_out->resize(v.getNumSubs(), std::max(sh_order_up,sh_order));
+  wrk[0].resize(v.getNumSubs(), std::max(sh_order_far,sh_order));
+  wrk[1].resize(v.getNumSubs(), std::max(sh_order_far,sh_order));
+  v_out->resize(v.getNumSubs(), std::max(sh_order_far,sh_order));
   Resample(v, sht_, sht_up_, wrk[0], wrk[1], *v_out);
 
   if(pvfmm_v){
@@ -281,8 +307,8 @@ void StokesVelocity<Surf_t>::Setup(){
   if(fmm_flag & StokesVelocity::UpdateSrcCoord){ // Compute src_coord_up
     fmm_flag=fmm_flag & ~StokesVelocity::UpdateSrcCoord;
 
-    if(sh_order_up==sh_order) S_up=S;
-    else CHK(S->resample(sh_order_up, (Surf_t**)&S_up));
+    if(sh_order_far==sh_order) S_up=S;
+    else CHK(S->resample(sh_order_far, (Surf_t**)&S_up));
     const Vec_t& S_coord   =S   ->getPosition();
     const Vec_t& S_coord_up=S_up->getPosition();
     Vec2PVFMMVec(S_coord_up, src_coord_up);
@@ -431,14 +457,32 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
           for(int jj=0;jj < jmax; ++jj){
             move_pole(ii, jj, outputs);
 
-            ax<Sca_t>(w_sph_, force_single_out, force_single_out);
-            S->getPosition().getDevice().DirectStokes(coord_out.begin(), force_single_out.begin(),
-                sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+            Vec_t *coord, *force_single, *normal, *force_double;
+            Vec_t coord_up, force_single_up, normal_up, force_double_up;
+            if(sh_order==sh_order_self){
+              coord       =&       coord_out;
+              force_single=&force_single_out;
+              normal      =&      normal_out;
+              force_double=&force_double_out;
+            }else{
+              Upsample(       coord_out, &       coord_up);
+              Upsample(force_single_out, &force_single_up);
+              Upsample(      normal_out, &      normal_up);
+              Upsample(force_double_out, &force_double_up);
+
+              coord       =&       coord_up;
+              force_single=&force_single_up;
+              normal      =&      normal_up;
+              force_double=&force_double_up;
+            }
+            int src_np = coord->getStride();
+
+            S->getPosition().getDevice().DirectStokes(coord->begin(), force_single->begin(),
+                w_sph_sing_quad_weights_.begin(), src_np, np, nv, S->getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, SL_vel.begin());
 
-            ax<Sca_t>(w_sph_, force_double_out, force_double_out);
-            S->getPosition().getDevice().DirectStokesDoubleLayer(coord_out.begin(), normal_out.begin(), force_double_out.begin(),
-                sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+            S->getPosition().getDevice().DirectStokesDoubleLayer(coord->begin(), normal->begin(), force_double->begin(),
+                w_sph_sing_quad_weights_.begin(), src_np, np, nv, S->getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, DL_vel.begin());
           }
         }
@@ -446,26 +490,40 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
         if(self_flag & (StokesVelocity::UpdateDensitySL | StokesVelocity::UpdateSrcCoord)){ // Single layer
           SL_vel.resize(nv, sh_order);
           if(force_single){
-            Vec_t v1(nv, sh_order);
-            Vec_t v2(nv, sh_order);
-            Vec_t v3(nv, sh_order);
+            Vec_t coord_out(nv, sh_order);
+            Vec_t force_single_in (nv, sh_order);
+            Vec_t force_single_out(nv, sh_order);
 
             Sca_t t1(nv, sh_order);
             ax(w_sph_inv_, S->getAreaElement(), t1);
-            xv(        t1,       *force_single, v3);
+            xv(        t1,       *force_single, force_single_in);
+
 
             int numinputs = 2;
-            const Sca_t* inputs[] = {&S->getPosition(), &v3};
-            Sca_t*      outputs[] = {&              v1, &v2};
+            const Sca_t* inputs[] = {&S->getPosition(), &force_single_in };
+            Sca_t*      outputs[] = {&       coord_out, &force_single_out};
             move_pole.setOperands(inputs, numinputs, sim_par.singular_stokes);
 
             for(int ii=0;ii < imax; ++ii)
             for(int jj=0;jj < jmax; ++jj){
               move_pole(ii, jj, outputs);
 
-              ax<Sca_t>(w_sph_, v2, v2);
-              S->getPosition().getDevice().DirectStokes(v1.begin(), v2.begin(),
-                  sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+              Vec_t *coord, *force_single;
+              Vec_t coord_up, force_single_up;
+              if(sh_order==sh_order_self){
+                coord       =&       coord_out;
+                force_single=&force_single_out;
+              }else{
+                Upsample(       coord_out, &       coord_up);
+                Upsample(force_single_out, &force_single_up);
+
+                coord       =&       coord_up;
+                force_single=&force_single_up;
+              }
+              int src_np = coord->getStride();
+
+              S->getPosition().getDevice().DirectStokes(coord->begin(), force_single->begin(),
+                  w_sph_sing_quad_weights_.begin(), src_np, np, nv, S->getPosition().begin(),
                   ii * jmax + jj, ii * jmax + jj + 1, SL_vel.begin());
             }
           }else{
@@ -475,27 +533,43 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
         if(self_flag & (StokesVelocity::UpdateDensityDL | StokesVelocity::UpdateSrcCoord)){ // Double layer
           DL_vel.resize(nv, sh_order);
           if(force_double){
-            Vec_t v1(nv, sh_order);
-            Vec_t v2(nv, sh_order);
-            Vec_t v3(nv, sh_order);
-            Vec_t v4(nv, sh_order);
+            Vec_t coord_out(nv, sh_order);
+            Vec_t normal_out(nv, sh_order);
+            Vec_t force_double_in (nv, sh_order);
+            Vec_t force_double_out(nv, sh_order);
 
             Sca_t t1(nv, sh_order);
             ax(w_sph_inv_, S->getAreaElement(), t1);
-            xv(        t1,       *force_double, v3);
+            xv(        t1,       *force_double, force_double_in);
 
             int numinputs = 3;
-            const Sca_t* inputs[] = {&S->getPosition(), &S->getNormal(), &v3};
-            Sca_t*      outputs[] = {&              v1, &            v4, &v2};
+            const Sca_t* inputs[] = {&S->getPosition(), &S->getNormal(), &force_double_in };
+            Sca_t*      outputs[] = {&       coord_out, &    normal_out, &force_double_out};
             move_pole.setOperands(inputs, numinputs, sim_par.singular_stokes);
 
             for(int ii=0;ii < imax; ++ii)
             for(int jj=0;jj < jmax; ++jj){
               move_pole(ii, jj, outputs);
 
-              ax<Sca_t>(w_sph_, v2, v2);
-              S->getPosition().getDevice().DirectStokesDoubleLayer(v1.begin(), v4.begin(), v2.begin(),
-                  sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+              Vec_t *coord, *normal, *force_double;
+              Vec_t coord_up, normal_up, force_double_up;
+              if(sh_order==sh_order_self){
+                coord       =&       coord_out;
+                normal      =&      normal_out;
+                force_double=&force_double_out;
+              }else{
+                Upsample(       coord_out, &       coord_up);
+                Upsample(      normal_out, &      normal_up);
+                Upsample(force_double_out, &force_double_up);
+
+                coord       =&       coord_up;
+                normal      =&      normal_up;
+                force_double=&force_double_up;
+              }
+              int src_np = coord->getStride();
+
+              S->getPosition().getDevice().DirectStokesDoubleLayer(coord->begin(), normal->begin(), force_double->begin(),
+                  w_sph_sing_quad_weights_.begin(), src_np, np, nv, S->getPosition().begin(),
                   ii * jmax + jj, ii * jmax + jj + 1, DL_vel.begin());
             }
           }else{
@@ -672,6 +746,7 @@ StokesVelocity<Surf_t>::Real_t StokesVelocity<Surf_t>::MonitorError(){
     near_singular.SetTrgCoord(&trg_coord[0],trg_coord.Dim()/COORD_DIM,trg_is_surf);
   }
 
+  INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]);
   return norm_glb[0];
 }
 
