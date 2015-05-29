@@ -20,15 +20,19 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     else
         spharm_rot_size = (p_ + 1) * (p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
 
-    quad_weights_       = data_.begin() +
+    value_type* data_ptr = data_.begin() +
         SHTMats<value_type,device_type>::getDataLength(p_) +
         SHTMats<value_type,device_type>::getDataLength(p_up_);
 
-    quad_weights_p_up_  = quad_weights_       + np;
-    sing_quad_weights_  = quad_weights_p_up_  + np_up;
-    w_sph_              = sing_quad_weights_  + np;
-    all_rot_mats_       = w_sph_              + np;
-    sh_rot_mats_        = all_rot_mats_       + rot_mat_size;
+    quad_weights_         =data_ptr; data_ptr+= np;
+    quad_weights_p_up_    =data_ptr; data_ptr+= np_up;
+    sing_quad_weights_    =data_ptr; data_ptr+= np;
+    sing_quad_weights_up_ =data_ptr; data_ptr+= np_up;
+    w_sph_                =data_ptr; data_ptr+= np;
+    w_sph_up_             =data_ptr; data_ptr+= np_up;
+    all_rot_mats_         =data_ptr; data_ptr+= rot_mat_size;
+    sh_rot_mats_          =data_ptr; data_ptr+= spharm_rot_size;
+    assert((data_ptr-data_.begin())==getDataLength(params));
 
     if (rot_mat_size == 0)
         all_rot_mats_ = NULL;
@@ -88,6 +92,12 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
         sprintf(buffer,"precomputed/quad_weights_%u_%s.txt", p_up_,tname.c_str());
         fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, quad_weights_p_up_ - data_.begin(), np_up);
 
+        sprintf(buffer,"precomputed/sing_quad_weights_%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, sing_quad_weights_up_- data_.begin() , np_up);
+
+        sprintf(buffer,"precomputed/w_sph_%u_%s.txt", p_up_,tname.c_str());
+        fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, w_sph_up_- data_.begin(), np_up);
+
         sprintf(buffer,"precomputed/legTrans%u_%s.txt", p_up_,tname.c_str());
         fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, mats_p_up_.dlt_- data_.begin(),
             mats_p_up_.getDLTLength());
@@ -125,7 +135,7 @@ size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type> &par
         spharm_rot_size = (p_ + 1) * (p_ *
             (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
 
-    return(3*np + np_up + rot_mat_size +  spharm_rot_size +
+    return(3*np + 3*np_up + rot_mat_size +  spharm_rot_size +
         SHTMats<value_type, device_type>::getDataLength(p_)      +
         SHTMats<value_type, device_type>::getDataLength(p_up_));
 }
