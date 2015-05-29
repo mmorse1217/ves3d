@@ -205,13 +205,13 @@ class Device
     //! Direct stokes integration.
     template<typename T>
     void DirectStokes(const T *src, const T *den, const T *qw,
-        size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
+        size_t src_stride, size_t trg_stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
         size_t trg_idx_tail, T *pot) const;
 
     //! Direct stokes double layer integration.
     template<typename T>
     void DirectStokesDoubleLayer(const T *src, const T *norm, const T *den, const T *qw,
-        size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
+        size_t src_stride, size_t trg_stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
         size_t trg_idx_tail, T *pot) const;
 
     //! The max of an array.

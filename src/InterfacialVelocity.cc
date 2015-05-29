@@ -963,7 +963,7 @@ EvalFarInter_Imp(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const
 
     // compute self (to subtract)
     slf->getDevice().DirectStokes(src.begin(), den->begin(), quad_weights_.begin(),
-	slf->getStride(), slf->getNumSubs(), src.begin() /* target */,
+	slf->getStride(), slf->getStride(), slf->getNumSubs(), src.begin() /* target */,
 	0, slf->getStride() /* number of trgs per surface */,
 	slf->begin());
 
@@ -1011,7 +1011,7 @@ EvalFarInter_ImpUpsample(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const
 
     // compute self (to subtract)
     slf->getDevice().DirectStokes(pos->begin(), den->begin(), quad_weights_up_.begin(),
-	slf->getStride(), slf->getNumSubs(), pos->begin() /* target */,
+	slf->getStride(), slf->getStride(), slf->getNumSubs(), pos->begin() /* target */,
 	0, slf->getStride() /* number of trgs per surface */,
 	slf->begin());
 
@@ -1115,7 +1115,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
             xv(*t2, *v2, *v2);
 
             S_.getPosition().getDevice().DirectStokes(v1->begin(), v2->begin(),
-                sing_quad_weights_.begin(), np, nv, S_.getPosition().begin(),
+                sing_quad_weights_.begin(), np, np, nv, S_.getPosition().begin(),
                 ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
         }
 

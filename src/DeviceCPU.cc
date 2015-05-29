@@ -513,45 +513,45 @@ T* Device<CPU>::gemm(const char *transA, const char *transB,
 template<>
 template<typename T>
 void Device<CPU>::DirectStokes(const T *src, const T *den, const T *qw,
-    size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
+    size_t src_stride, size_t trg_stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
     size_t trg_idx_tail, T *pot) const
 {
     PROFILESTART();
 
 #ifdef __SSE2__
     if(qw != NULL)
-        DirectStokesSSE(stride, n_surfs, trg_idx_head, trg_idx_tail,
+        DirectStokesSSE(src_stride, trg_stride, n_surfs, trg_idx_head, trg_idx_tail,
             qw, trg, src, den, pot);
     else
-        DirectStokesSSE_Noqw(stride, n_surfs, trg_idx_head,
+        DirectStokesSSE_Noqw(src_stride, trg_stride, n_surfs, trg_idx_head,
             trg_idx_tail, trg, src, den, pot);
-    PROFILEEND("CPUSSE", ((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
+    PROFILEEND("CPUSSE", ((qw == NULL) ? 32 : 35) * n_surfs * src_stride * (trg_idx_tail - trg_idx_head));
 #else
 #warning "SSE instructions are not available: the non-SSE version of the Stokes kernel will be called"
 
     if(qw != NULL)
-        DirectStokesKernel(stride, n_surfs, trg_idx_head,
+        DirectStokesKernel(src_stride, trg_stride, n_surfs, trg_idx_head,
             trg_idx_tail, qw, trg, src, den, pot);
     else
-        DirectStokesKernel_Noqw(stride, n_surfs, trg_idx_head,
+        DirectStokesKernel_Noqw(src_stride, trg_stride, n_surfs, trg_idx_head,
             trg_idx_tail, trg, src, den, pot);
 
-    PROFILEEND("CPU",((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
+    PROFILEEND("CPU",((qw == NULL) ? 32 : 35) * n_surfs * src_stride * (trg_idx_tail - trg_idx_head));
 #endif
 }
 
 template<>
 template<typename T>
 void Device<CPU>::DirectStokesDoubleLayer(const T *src, const T *norm, const T *den, const T *qw,
-    size_t stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
+    size_t src_stride, size_t trg_stride, size_t n_surfs, const T *trg, size_t trg_idx_head,
     size_t trg_idx_tail, T *pot) const
 {
     PROFILESTART();
 
-    DirectStokesDoubleLayerKernel(stride, n_surfs, trg_idx_head,
+    DirectStokesDoubleLayerKernel(src_stride, trg_stride, n_surfs, trg_idx_head,
         trg_idx_tail, qw, trg, src, norm, den, pot);
 
-    PROFILEEND("CPU",((qw == NULL) ? 32 : 35) * n_surfs * stride * (trg_idx_tail - trg_idx_head));
+    PROFILEEND("CPU",((qw == NULL) ? 32 : 35) * n_surfs * src_stride * (trg_idx_tail - trg_idx_head));
 }
 
 template<>

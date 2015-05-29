@@ -592,7 +592,7 @@ void cuda_shuffle(float *in, int m, int n, int dim, float *out) {
 #define PI_8I 0.0397887358F
 
 __global__
-void stokes(int m, int n, int t_head, const float *T, const float *S, const float *D, float *U, const float *Q) {
+void stokes(int src_m, int trg_m, int n, int t_head, const float *T, const float *S, const float *D, float *U, const float *Q) {
   float trg_reg[3];
   float src_reg[3];
   float pot_reg[3];
@@ -601,25 +601,25 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
   __shared__
   float u_sh[BLOCK_HEIGHT][3];
 
-  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+  int t_off = blockIdx.x * 3 * trg_m + t_head + blockIdx.y;
 
   trg_reg[0] = T[t_off];
-  trg_reg[1] = T[m + t_off];
-  trg_reg[2] = T[m + m + t_off];
+  trg_reg[1] = T[trg_m + t_off];
+  trg_reg[2] = T[trg_m + trg_m + t_off];
 
 //  u_reg = make_C3(0.0, 0.0, 0.0);
 
-  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int block_off = blockIdx.x * 3 * src_m + threadIdx.x;
   int s = threadIdx.x;
 
-  while(block_off < blockIdx.x * 3 * m + m) {
+  while(block_off < blockIdx.x * 3 * src_m + src_m) {
     src_reg[0] = S[block_off];
-    src_reg[1] = S[block_off + m];
-    src_reg[2] = S[block_off + m + m];
+    src_reg[1] = S[block_off + src_m];
+    src_reg[2] = S[block_off + src_m + src_m];
 
     pot_reg[0] = D[block_off] * Q[s];
-    pot_reg[1] = D[block_off + m] * Q[s];
-    pot_reg[2] = D[block_off + m + m] * Q[s];
+    pot_reg[1] = D[block_off + src_m] * Q[s];
+    pot_reg[2] = D[block_off + src_m + src_m] * Q[s];
 
     dis_reg[0] = src_reg[0] - trg_reg[0];
     dis_reg[1] = src_reg[1] - trg_reg[1];
@@ -663,14 +663,14 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
   }
   if (threadIdx.x == 0) {
     U[t_off] = u_sh[0][0] * PI_8I;
-    U[m + t_off] = u_sh[0][1] * PI_8I;
-    U[m + m + t_off] = u_sh[0][2] * PI_8I;
+    U[trg_m + t_off] = u_sh[0][1] * PI_8I;
+    U[trg_m + trg_m + t_off] = u_sh[0][2] * PI_8I;
   }
 
 }
 
 __global__
-void stokes(int m, int n, int t_head, const float *T, const float *S, const float *D, float *U) {
+void stokes(int src_m, int trg_m, int n, int t_head, const float *T, const float *S, const float *D, float *U) {
   float trg_reg[3];
   float src_reg[3];
   float pot_reg[3];
@@ -679,25 +679,25 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
   __shared__
   float u_sh[BLOCK_HEIGHT][3];
 
-  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+  int t_off = blockIdx.x * 3 * trg_m + t_head + blockIdx.y;
 
   trg_reg[0] = T[t_off];
-  trg_reg[1] = T[m + t_off];
-  trg_reg[2] = T[m + m + t_off];
+  trg_reg[1] = T[trg_m + t_off];
+  trg_reg[2] = T[trg_m + trg_m + t_off];
 
 //  u_reg = make_C3(0.0, 0.0, 0.0);
 
-  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int block_off = blockIdx.x * 3 * src_m + threadIdx.x;
   int s = threadIdx.x;
 
-  while(block_off < blockIdx.x * 3 * m + m) {
+  while(block_off < blockIdx.x * 3 * src_m + src_m) {
     src_reg[0] = S[block_off];
-    src_reg[1] = S[block_off + m];
-    src_reg[2] = S[block_off + m + m];
+    src_reg[1] = S[block_off + src_m];
+    src_reg[2] = S[block_off + src_m + src_m];
 
     pot_reg[0] = D[block_off];
-    pot_reg[1] = D[block_off + m];
-    pot_reg[2] = D[block_off + m + m];
+    pot_reg[1] = D[block_off + src_m];
+    pot_reg[2] = D[block_off + src_m + src_m];
 
     dis_reg[0] = src_reg[0] - trg_reg[0];
     dis_reg[1] = src_reg[1] - trg_reg[1];
@@ -741,22 +741,22 @@ void stokes(int m, int n, int t_head, const float *T, const float *S, const floa
   }
   if (threadIdx.x == 0) {
     U[t_off] = u_sh[0][0] * PI_8I;
-    U[m + t_off] = u_sh[0][1] * PI_8I;
-    U[m + m + t_off] = u_sh[0][2] * PI_8I;
+    U[trg_m + t_off] = u_sh[0][1] * PI_8I;
+    U[trg_m + trg_m + t_off] = u_sh[0][2] * PI_8I;
   }
 
 }
 
 
-void cuda_stokes(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *D, float *U, const float *Q) {
+void cuda_stokes(int src_m, int trg_m, int n, int t_head, int t_tail, const float *T, const float *S, const float *D, float *U, const float *Q) {
   dim3 grid;
   grid.x = n;
   grid.y = t_tail - t_head;
 
   if (Q != NULL)
-      stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U, Q);
+      stokes<<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, D, U, Q);
   else
-      stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U);
+      stokes<<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, D, U);
   cudaThreadSynchronize();
 }
 
@@ -781,7 +781,7 @@ __device__ inline double rsqrt_wrapper(double y){
 }
 
 template <typename Real_t, bool HAVE_QW>
-__global__ void stokes_double_layer(int m, int n, int t_head, const Real_t *T, const Real_t *S, const Real_t *N, const Real_t *D, Real_t *U, const Real_t *Q) {
+__global__ void stokes_double_layer(int src_m, int trg_m, int n, int t_head, const Real_t *T, const Real_t *S, const Real_t *N, const Real_t *D, Real_t *U, const Real_t *Q) {
   const Real_t SCAL_CONST = -3.0/(4.0*M_PI);
   Real_t trg_reg[3];
   Real_t src_reg[3];
@@ -792,27 +792,27 @@ __global__ void stokes_double_layer(int m, int n, int t_head, const Real_t *T, c
   __shared__
   Real_t u_sh[BLOCK_HEIGHT][3];
 
-  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+  int t_off = blockIdx.x * 3 * trg_m + t_head + blockIdx.y;
 
   trg_reg[0] = T[t_off];
-  trg_reg[1] = T[m + t_off];
-  trg_reg[2] = T[m + m + t_off];
+  trg_reg[1] = T[trg_m + t_off];
+  trg_reg[2] = T[trg_m + trg_m + t_off];
 
-  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int block_off = blockIdx.x * 3 * src_m + threadIdx.x;
   int s = threadIdx.x;
 
-  while(block_off < blockIdx.x * 3 * m + m) {
+  while(block_off < blockIdx.x * 3 * src_m + src_m) {
     src_reg[0] = S[block_off];
-    src_reg[1] = S[block_off + m];
-    src_reg[2] = S[block_off + m + m];
+    src_reg[1] = S[block_off + src_m];
+    src_reg[2] = S[block_off + src_m + src_m];
 
     nor_reg[0] = N[block_off];
-    nor_reg[1] = N[block_off + m];
-    nor_reg[2] = N[block_off + m + m];
+    nor_reg[1] = N[block_off + src_m];
+    nor_reg[2] = N[block_off + src_m + src_m];
 
     den_reg[0] = D[block_off];
-    den_reg[1] = D[block_off + m];
-    den_reg[2] = D[block_off + m + m];
+    den_reg[1] = D[block_off + src_m];
+    den_reg[2] = D[block_off + src_m + src_m];
 
     dis_reg[0] = src_reg[0] - trg_reg[0];
     dis_reg[1] = src_reg[1] - trg_reg[1];
@@ -832,7 +832,8 @@ __global__ void stokes_double_layer(int m, int n, int t_head, const Real_t *T, c
 
     Real_t r_dot_n = nor_reg[0]*dis_reg[0] + nor_reg[1]*dis_reg[1] + nor_reg[2]*dis_reg[2];
     Real_t r_dot_f = den_reg[0]*dis_reg[0] + den_reg[1]*dis_reg[1] + den_reg[2]*dis_reg[2];
-    Real_t p_ = r_dot_n * r_dot_f * inv_r5 * (HAVE_QW ? Q[s] : 1.0);
+    Real_t p_ = r_dot_n * r_dot_f * inv_r5;
+    if(HAVE_QW) p_*=Q[s];
 
     u_reg[0] += dis_reg[0] * p_;
     u_reg[1] += dis_reg[1] * p_;
@@ -859,14 +860,14 @@ __global__ void stokes_double_layer(int m, int n, int t_head, const Real_t *T, c
     stride *= 2;
   }
   if (threadIdx.x == 0) {
-    U[0*m + t_off] = u_sh[0][0] * SCAL_CONST;
-    U[1*m + t_off] = u_sh[0][1] * SCAL_CONST;
-    U[2*m + t_off] = u_sh[0][2] * SCAL_CONST;
+    U[0*trg_m + t_off] = u_sh[0][0] * SCAL_CONST;
+    U[1*trg_m + t_off] = u_sh[0][1] * SCAL_CONST;
+    U[2*trg_m + t_off] = u_sh[0][2] * SCAL_CONST;
   }
 }
 
 
-void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const float *T, const float *S, const float *N, const float *D, float *U, const float *Q) {
+void cuda_stokes_double_layer(int src_m, int trg_m, int n, int t_head, int t_tail, const float *T, const float *S, const float *N, const float *D, float *U, const float *Q) {
   dim3 grid;
   grid.x = n;
   grid.y = t_tail - t_head;
@@ -878,9 +879,9 @@ void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const float 
   }
 
   if (Q != NULL)
-      stokes_double_layer<float, true><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+      stokes_double_layer<float, true><<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, N, D, U, Q);
   else
-      stokes_double_layer<float,false><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+      stokes_double_layer<float,false><<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, N, D, U, Q);
 
   { // cudaGetLastError()
     cudaError_t error=cudaGetLastError();
@@ -891,7 +892,7 @@ void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const float 
   cudaThreadSynchronize();
 }
 
-void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const double *T, const double *S, const double *N, const double *D, double *U, const double *Q) {
+void cuda_stokes_double_layer(int src_m, int trg_m, int n, int t_head, int t_tail, const double *T, const double *S, const double *N, const double *D, double *U, const double *Q) {
   dim3 grid;
   grid.x = n;
   grid.y = t_tail - t_head;
@@ -903,9 +904,9 @@ void cuda_stokes_double_layer(int m, int n, int t_head, int t_tail, const double
   }
 
   if (Q != NULL)
-      stokes_double_layer<double, true><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+      stokes_double_layer<double, true><<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, N, D, U, Q);
   else
-      stokes_double_layer<double,false><<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, N, D, U, Q);
+      stokes_double_layer<double,false><<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, N, D, U, Q);
 
   { // cudaGetLastError()
     cudaError_t error=cudaGetLastError();
@@ -1837,7 +1838,7 @@ void cuda_shuffle(double *in, int m, int n, int dim, double *out) {
 #define PI_8I 0.0397887358F
 
 __global__
-void stokes(int m, int n, int t_head, const double *T, const double *S, const double *D, double *U, const double *Q) {
+void stokes(int src_m, int trg_m, int n, int t_head, const double *T, const double *S, const double *D, double *U, const double *Q) {
   double trg_reg[3];
   double src_reg[3];
   double pot_reg[3];
@@ -1846,25 +1847,25 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
   __shared__
   double u_sh[BLOCK_HEIGHT][3];
 
-  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+  int t_off = blockIdx.x * 3 * trg_m + t_head + blockIdx.y;
 
   trg_reg[0] = T[t_off];
-  trg_reg[1] = T[m + t_off];
-  trg_reg[2] = T[m + m + t_off];
+  trg_reg[1] = T[trg_m + t_off];
+  trg_reg[2] = T[trg_m + trg_m + t_off];
 
 //  u_reg = make_C3(0.0, 0.0, 0.0);
 
-  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int block_off = blockIdx.x * 3 * src_m + threadIdx.x;
   int s = threadIdx.x;
 
-  while(block_off < blockIdx.x * 3 * m + m) {
+  while(block_off < blockIdx.x * 3 * src_m + src_m) {
     src_reg[0] = S[block_off];
-    src_reg[1] = S[block_off + m];
-    src_reg[2] = S[block_off + m + m];
+    src_reg[1] = S[block_off + src_m];
+    src_reg[2] = S[block_off + src_m + src_m];
 
     pot_reg[0] = D[block_off] * Q[s];
-    pot_reg[1] = D[block_off + m] * Q[s];
-    pot_reg[2] = D[block_off + m + m] * Q[s];
+    pot_reg[1] = D[block_off + src_m] * Q[s];
+    pot_reg[2] = D[block_off + src_m + src_m] * Q[s];
 
     dis_reg[0] = src_reg[0] - trg_reg[0];
     dis_reg[1] = src_reg[1] - trg_reg[1];
@@ -1908,14 +1909,14 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
   }
   if (threadIdx.x == 0) {
     U[t_off] = u_sh[0][0] * PI_8I;
-    U[m + t_off] = u_sh[0][1] * PI_8I;
-    U[m + m + t_off] = u_sh[0][2] * PI_8I;
+    U[trg_m + t_off] = u_sh[0][1] * PI_8I;
+    U[trg_m + trg_m + t_off] = u_sh[0][2] * PI_8I;
   }
 
 }
 
 __global__
-void stokes(int m, int n, int t_head, const double *T, const double *S, const double *D, double *U) {
+void stokes(int src_m, int trg_m, int n, int t_head, const double *T, const double *S, const double *D, double *U) {
   double trg_reg[3];
   double src_reg[3];
   double pot_reg[3];
@@ -1924,25 +1925,25 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
   __shared__
   double u_sh[BLOCK_HEIGHT][3];
 
-  int t_off = blockIdx.x * 3 * m + t_head + blockIdx.y;
+  int t_off = blockIdx.x * 3 * trg_m + t_head + blockIdx.y;
 
   trg_reg[0] = T[t_off];
-  trg_reg[1] = T[m + t_off];
-  trg_reg[2] = T[m + m + t_off];
+  trg_reg[1] = T[trg_m + t_off];
+  trg_reg[2] = T[trg_m + trg_m + t_off];
 
 //  u_reg = make_C3(0.0, 0.0, 0.0);
 
-  int block_off = blockIdx.x * 3 * m + threadIdx.x;
+  int block_off = blockIdx.x * 3 * src_m + threadIdx.x;
   int s = threadIdx.x;
 
-  while(block_off < blockIdx.x * 3 * m + m) {
+  while(block_off < blockIdx.x * 3 * src_m + src_m) {
     src_reg[0] = S[block_off];
-    src_reg[1] = S[block_off + m];
-    src_reg[2] = S[block_off + m + m];
+    src_reg[1] = S[block_off + src_m];
+    src_reg[2] = S[block_off + src_m + src_m];
 
     pot_reg[0] = D[block_off];
-    pot_reg[1] = D[block_off + m];
-    pot_reg[2] = D[block_off + m + m];
+    pot_reg[1] = D[block_off + src_m];
+    pot_reg[2] = D[block_off + src_m + src_m];
 
     dis_reg[0] = src_reg[0] - trg_reg[0];
     dis_reg[1] = src_reg[1] - trg_reg[1];
@@ -1986,21 +1987,21 @@ void stokes(int m, int n, int t_head, const double *T, const double *S, const do
   }
   if (threadIdx.x == 0) {
     U[t_off] = u_sh[0][0] * PI_8I;
-    U[m + t_off] = u_sh[0][1] * PI_8I;
-    U[m + m + t_off] = u_sh[0][2] * PI_8I;
+    U[trg_m + t_off] = u_sh[0][1] * PI_8I;
+    U[trg_m + trg_m + t_off] = u_sh[0][2] * PI_8I;
   }
 
 }
 
-void cuda_stokes(int m, int n, int t_head, int t_tail, const double *T, const double *S, const double *D, double *U, const double *Q) {
+void cuda_stokes(int src_m, int trg_m, int n, int t_head, int t_tail, const double *T, const double *S, const double *D, double *U, const double *Q) {
   dim3 grid;
   grid.x = n;
   grid.y = t_tail - t_head;
 
   if (Q != NULL)
-      stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U, Q);
+      stokes<<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, D, U, Q);
   else
-      stokes<<<grid, BLOCK_HEIGHT>>> (m, n, t_head, T, S, D, U);
+      stokes<<<grid, BLOCK_HEIGHT>>> (src_m, trg_m, n, t_head, T, S, D, U);
   cudaThreadSynchronize();
 }
 
