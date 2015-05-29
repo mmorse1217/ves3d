@@ -92,7 +92,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
       TimeAdapErrAreaVol,
       TimeAdapNone
     };
-    TimeAdaptive time_adap=TimeAdapErrAreaVol;
+    TimeAdaptive time_adap=(params_->time_adaptive?TimeAdapErrAreaVol:TimeAdapNone);
 
     Vec_t dx, x0, x_coarse;
     CHK( (*monitor_)( this, 0, dt) );
