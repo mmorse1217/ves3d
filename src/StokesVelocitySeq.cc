@@ -138,7 +138,7 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
 
           ax<Sca_t>(w_sph_, v2, v2);
           S->getPosition().getDevice().DirectStokes(v1.begin(), v2.begin(),
-              sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+              sing_quad_weights_.begin(), np, np, nv, S->getPosition().begin(),
               ii * jmax + jj, ii * jmax + jj + 1, SL_vel.begin());
         }
       }
@@ -167,7 +167,7 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
 
           ax<Sca_t>(w_sph_, v2, v2);
           S->getPosition().getDevice().DirectStokesDoubleLayer(v1.begin(), v4.begin(), v2.begin(),
-              sing_quad_weights_.begin(), np, nv, S->getPosition().begin(),
+              sing_quad_weights_.begin(), np, np, nv, S->getPosition().begin(),
               ii * jmax + jj, ii * jmax + jj + 1, DL_vel.begin());
         }
       }
@@ -199,7 +199,7 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
         for(size_t t=0;t<N_ves;t++) if(s!=t){
           tmp_vel.getDevice().DirectStokes(
               S->getPosition().begin()+3*M_ves*s, qforce.begin()+3*M_ves*s, (Real_t*)NULL,
-              M_ves, 1, S->getPosition().begin()+3*M_ves*t /* target */,
+              M_ves, M_ves, 1, S->getPosition().begin()+3*M_ves*t /* target */,
               0, M_ves /* number of trgs per surface */,
               tmp_vel.begin()+3*M_ves*t);
         }
@@ -222,7 +222,7 @@ void StokesVelocity<Surf_t>::operator()(Vec_t& T_vel, unsigned int flag){
         for(size_t t=0;t<N_ves;t++) if(s!=t){
           tmp_vel.getDevice().DirectStokesDoubleLayer(
               S->getPosition().begin()+3*M_ves*s, S->getNormal().begin()+3*M_ves*s, qforce.begin()+3*M_ves*s, (Real_t*)NULL,
-              M_ves, 1, S->getPosition().begin()+3*M_ves*t /* target */,
+              M_ves, M_ves, 1, S->getPosition().begin()+3*M_ves*t /* target */,
               0, M_ves /* number of trgs per surface */,
               tmp_vel.begin()+3*M_ves*t);
         }

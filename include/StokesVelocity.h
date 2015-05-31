@@ -61,7 +61,10 @@ class StokesVelocity{
     void Vec2PVFMMVec(const Vec_t& v,  PVFMMVec_t& pvfmm_v);
     void Upsample(const Vec_t& v, Vec_t* v_out=NULL,  PVFMMVec_t* pvfmm_v=NULL);
 
+    template<bool SL, bool DL>
+    void SingularInteg();
     void Setup();
+
     const Vec_t& SelfInteraction(bool update_self);
     const PVFMMVec_t& NearInteraction(bool update_near);
     const PVFMMVec_t& FarInteraction(bool update_far);
@@ -71,7 +74,8 @@ class StokesVelocity{
 
 
     const Surf_t* S;
-    const Surf_t* S_up;
+    const Surf_t* S_far;
+    Surf_t*       S_self;
     const Vec_t* force_single;
     const Vec_t* force_double;
     const Vec_t* S_vel_ptr;
@@ -105,6 +109,7 @@ class StokesVelocity{
     int sh_order, sh_order_far, sh_order_self;
     Sca_t quad_weights_;              // for far-field integration (sh_order_far)
     Sca_t w_sph_inv_;                 // for singular integration  (sh_order)
+    Sca_t sing_quad_weights_;         // for singular integration  (sh_order_self)
     Sca_t w_sph_sing_quad_weights_;   // for singular integration  (sh_order_self)
     PVFMMVec_t pole_quad;
 
