@@ -1472,11 +1472,14 @@ benchmarkNewPostitionExplicit(Vec_t &xnew, value_type tol)
     COUTDEBUG("Start benchmarking explicit update");
     COUTDEBUG("----------------------------------");
 
-    updateJacobiExplicit(dt_);
+    Vec_t dx; dx.replicate(S_.getPosition());
+    updateJacobiExplicit(S_, dt_, dx);
 
     axpy(static_cast<value_type>(-1), S_.getPosition(), xnew, xnew);
+    axpy(static_cast<value_type>(-1),               dx, xnew, xnew);
     value_type err = MaxAbs(xnew);
     axpy(static_cast<value_type>(1), S_.getPosition(), xnew);
+    axpy(static_cast<value_type>(1),               dx, xnew);
 
     ASSERT(err<tol, "Explicit update benchmark failed: "
         <<"err="<<err<<", tol="<<tol);
@@ -1552,11 +1555,14 @@ benchmarkNewPostitionImplicit(Vec_t &xnew, value_type tol)
     COUTDEBUG("Start benchmarking implicit update");
     COUTDEBUG("----------------------------------");
 
-    updateJacobiGaussSeidel(dt_);
+    Vec_t dx; dx.replicate(S_.getPosition());
+    updateJacobiGaussSeidel(S_, dt_, dx);
 
     axpy(static_cast<value_type>(-1), S_.getPosition(), xnew, xnew);
+    axpy(static_cast<value_type>(-1),               dx, xnew, xnew);
     value_type err = MaxAbs(xnew);
     axpy(static_cast<value_type>(1), S_.getPosition(), xnew);
+    axpy(static_cast<value_type>(1),               dx, xnew);
 
     ASSERT(err<tol, "Implicit update benchmark failed: "
         <<"err="<<err<<", tol="<<tol);
