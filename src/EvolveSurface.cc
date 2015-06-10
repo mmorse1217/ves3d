@@ -60,7 +60,6 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
     delete F_;
     F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *vInf_, parallel_solver_);
-    IntVel_t* F_coarse_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *vInf_, parallel_solver_);
 
     //Deciding on the updater type
     Scheme_t updater(NULL);
@@ -92,7 +91,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
       TimeAdapErrAreaVol,
       TimeAdapNone
     };
-    TimeAdaptive time_adap=(params_->time_adaptive?TimeAdapErrAreaVol:TimeAdapNone);
+    TimeAdaptive time_adap=(params_->time_adaptive?TimeAdapErr:TimeAdapNone);
 
     Vec_t dx, x0, x_coarse;
     CHK( (*monitor_)( this, 0, dt) );
@@ -108,7 +107,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
             // 2*dt time-step
             x_coarse.replicate(S_->getPosition());
-            if(err==ErrorEvent::Success) err=(F_coarse_->*updater)(*S_, 2*dt, dx);
+            if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, 2*dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_coarse);
 
             // 2 x (dt time-step)
@@ -146,7 +145,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                 axpy(static_cast<value_type>(0.0), x0, x0, S_->getPositionModifiable());
             }
 
-            INFO("Time-adaptive: error/dt = "<<error/dt<<", dt_new = "<<dt_new);
+            INFO("Time-adaptive: error/dt = "<<error/dt<<", error/dt^2 = "<<error/dt/dt<<", dt_new = "<<dt_new);
             dt=dt_new;
         }else if(time_adap==TimeAdapErrAreaVol){ // Adaptive using area, volume error
             Error_t err=ErrorEvent::Success;
@@ -220,9 +219,18 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         F_->reparam();
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
-    }
 
-    delete F_coarse_;
+        if(0){ // Write VTK file
+          static unsigned long iter=0;
+          unsigned long skip=1;
+          if(iter%skip==0){
+            char fname[1000];
+            sprintf(fname, "vis/test%05d", (int)(iter/skip));
+            WriteVTK(*S_,fname);
+          }
+          iter++;
+        }
+    }
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
