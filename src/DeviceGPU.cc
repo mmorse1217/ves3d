@@ -273,7 +273,7 @@ void Device<GPU>::DirectStokesDoubleLayer(const T *src, const T *norm, const T *
 
 template<>
 template<typename T>
-T Device<GPU>::MaxAbs(T *x_in, size_t length) const
+T Device<GPU>::MaxAbs(const T *x_in, size_t length) const
 {
     PROFILESTART();
     T m = maxGpu(x_in, length);

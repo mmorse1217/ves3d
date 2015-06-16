@@ -216,7 +216,7 @@ class Device
 
     //! The max of an array.
     template<typename T>
-    T MaxAbs(T *x_in, size_t length) const;
+    T MaxAbs(const T *x_in, size_t length) const;
 
     template<typename T>
     void fillRand(T *x_in, size_t length) const;

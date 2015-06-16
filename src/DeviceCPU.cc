@@ -556,7 +556,7 @@ void Device<CPU>::DirectStokesDoubleLayer(const T *src, const T *norm, const T *
 
 template<>
 template<typename T>
-T Device<CPU>::MaxAbs(T *x_in, size_t length) const
+T Device<CPU>::MaxAbs(const T *x_in, size_t length) const
 {
     PROFILESTART();
     T *max_arr;
