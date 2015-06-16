@@ -93,6 +93,10 @@ class EvolveSurface : public Streamable
     IntVel_t *F_;
 
     bool objsOnHeap_[3];//for monitor, interaction, and repartition
+
+  private:
+
+    Error_t AreaVolumeCorrection(const Sca_t& area, const Sca_t& vol, const value_type tol=1e-12);
 };
 
 #include "EvolveSurface.cc"

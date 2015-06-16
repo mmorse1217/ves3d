@@ -85,13 +85,23 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 	  return ErrorEvent::InvalidParameterError;
     }
 
-
     enum TimeAdaptive{
       TimeAdapErr,
       TimeAdapErrAreaVol,
       TimeAdapNone
     };
     TimeAdaptive time_adap=(params_->time_adaptive?TimeAdapErr:TimeAdapNone);
+
+    Sca_t area, vol;
+    { // Compute area, vol
+        Sur_t* S_up=NULL;
+        S_->resample(params_->upsample_freq, &S_up); // up-sample
+        int N_ves=S_up->getNumberOfSurfaces();
+        area.resize(N_ves,1); S_up->area  (area);
+        vol .resize(N_ves,1); S_up->volume( vol);
+        S_up->resample(params_->sh_order, &S_); // down-sample
+        delete S_up;
+    }
 
     Vec_t dx, x0, x_coarse;
     CHK( (*monitor_)( this, 0, dt) );
@@ -217,6 +227,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         }
 
         F_->reparam();
+        AreaVolumeCorrection(area, vol);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
 
@@ -233,6 +244,130 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     }
 
     PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE,
+         typename Interact, typename Repart>
+Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(const Sca_t& area, const Sca_t& vol, const value_type tol)
+{
+    static GaussLegendreIntegrator<Sca_t> integrator;
+    const DT& device=Sca_t::getDevice();
+    int N_ves=S_->getNumberOfSurfaces();
+
+    Sur_t* S_up=NULL;
+    while(1){
+        S_->resample(params_->upsample_freq, &S_up); // up-sample
+
+        const Vec_t& Normal  =S_up->getNormal();
+        const Sca_t& AreaElem=S_up->getAreaElement();
+        const Sca_t& MeanCurv=S_up->getMeanCurv();
+
+        Sca_t X; // First perturbation direction
+        { // X = -2.0*MeanCurv
+            X.replicate(MeanCurv);
+            axpy(-2.0, MeanCurv, X);
+        }
+
+        Sca_t Y; // Second perturbation direction
+        { // Y = [1, ..., 1]
+            Y.replicate(MeanCurv);
+            device.Memset(Y.begin(), 1, Y.size()*sizeof(value_type));
+            xyInv(Y,Y,Y);
+        }
+
+        Sca_t dX(N_ves,1);
+        Sca_t dY(N_ves,1);
+        { // Set dX, dY
+            Sca_t area_err, vol_err;
+            { // compute error
+                area_err.resize(N_ves,1); S_up->area  (area_err);
+                vol_err .resize(N_ves,1); S_up->volume( vol_err);
+                device.axpy(-1.0, area_err.begin(), area.begin(), N_ves, area_err.begin());
+                device.axpy(-1.0,  vol_err.begin(),  vol.begin(), N_ves,  vol_err.begin());
+
+                value_type area_max_err=device.MaxAbs<value_type>(area_err.begin(),N_ves)/device.MaxAbs<value_type>(area.begin(),N_ves);
+                value_type  vol_max_err=device.MaxAbs<value_type>( vol_err.begin(),N_ves)/device.MaxAbs<value_type>( vol.begin(),N_ves);
+                if(std::max(area_max_err, vol_max_err)<tol) break;
+            }
+
+            Sca_t dAdX(N_ves,1);
+            Sca_t dAdY(N_ves,1);
+            Sca_t dVdX(N_ves,1);
+            Sca_t dVdY(N_ves,1);
+            { // dA/dX
+                Sca_t tmp; tmp.replicate(MeanCurv);
+                xy(X, X, tmp); integrator(tmp,AreaElem,dAdX);
+            }
+            { // dA/dY
+                Sca_t tmp; tmp.replicate(MeanCurv);
+                xy(X, Y, tmp); integrator(tmp,AreaElem,dAdY);
+            }
+            { // dV/dX
+                Sca_t tmp; tmp.replicate(MeanCurv);
+                xy(Y, X, tmp); integrator(tmp,AreaElem,dVdX);
+            }
+            { // dV/dY
+                Sca_t tmp; tmp.replicate(MeanCurv);
+                xy(Y, Y, tmp); integrator(tmp,AreaElem,dVdY);
+            }
+
+            Sca_t DetInv(N_ves,1);
+            { // Set DetInv = (dA/dX.dV/dY - dA/dY.dV/dX)^-1
+                device.xy(dAdX.begin(), dVdY.begin(), N_ves, dX.begin());
+                device.xy(dAdY.begin(), dVdX.begin(), N_ves, dY.begin());
+                device.axpy(-1.0, dY.begin(), dX.begin(), N_ves, DetInv.begin());
+                device.xyInv<value_type>(NULL, DetInv.begin(), N_ves, DetInv.begin());
+            }
+
+            Sca_t dXdA(N_ves,1);
+            Sca_t dXdV(N_ves,1);
+            Sca_t dYdA(N_ves,1);
+            Sca_t dYdV(N_ves,1);
+            { // dX/dA =  dVdY * DetInv
+                device.xy(dVdY.begin(), DetInv.begin(), N_ves, dXdA.begin());
+            }
+            { // dX/dV = -dAdY * DetInv
+                device.xy(dAdY.begin(), DetInv.begin(), N_ves, dXdV.begin());
+                device.axpy<value_type>(-1.0, dXdV.begin(), NULL, N_ves, dXdV.begin());
+            }
+            { // dY/dA = -dVdX * DetInv
+                device.xy(dVdX.begin(), DetInv.begin(), N_ves, dYdA.begin());
+                device.axpy<value_type>(-1.0, dYdA.begin(), NULL, N_ves, dYdA.begin());
+            }
+            { // dY/dV =  dAdX * DetInv
+                device.xy(dAdX.begin(), DetInv.begin(), N_ves, dYdV.begin());
+            }
+
+            { // dX = dX/dA*area_err + dX/dV*vol_err
+              device.xy(dXdA.begin(), area_err.begin(), N_ves, dXdA.begin());
+              device.xy(dXdV.begin(),  vol_err.begin(), N_ves, dXdV.begin());
+              device.axpy(1.0, dXdA.begin(), dXdV.begin(), N_ves, dX.begin());
+            }
+            { // dY = dY/dA*area_err + dY/dV*vol_err
+              device.xy(dYdA.begin(), area_err.begin(), N_ves, dYdA.begin());
+              device.xy(dYdV.begin(),  vol_err.begin(), N_ves, dYdV.begin());
+              device.axpy(1.0, dYdA.begin(), dYdV.begin(), N_ves, dY.begin());
+            }
+        }
+
+        Vec_t dS; dS.replicate(Normal);
+        Vec_t& position=S_up->getPositionModifiable();
+        { // position += dX*X.*Normal
+            device.xvpw<value_type>( X.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            device.avpw<value_type>(dX.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            axpy(1, dS, position, position);
+        }
+        { // position += dY*Y.*Normal
+            device.xvpw<value_type>( Y.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            device.avpw<value_type>(dY.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            axpy(1, dS, position, position);
+        }
+
+        S_up->resample(params_->sh_order, &S_); // down-sample
+    }
+    delete S_up;
+
     return ErrorEvent::Success;
 }
 
