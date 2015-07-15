@@ -21,6 +21,10 @@ Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase
 	    *vInf = new ParabolicFlowImp<Vec_t>(10.0, params.bg_flow_param);
 	    break;
 
+	case TaylorVortexFlow:
+	    *vInf = new TaylorVortexImp<Vec_t>(params.bg_flow_param, params.periodic_length);
+	    break;
+
 	case PeriodicFlow:
 	    //return ErrorEvent::NotImplementedError;
 	    *vInf = new PeriodicFlowImp<Vec_t>(params.bg_flow_param);
@@ -178,7 +182,7 @@ TaylorVortexImp<Vec_t>::TaylorVortexImp(value_type strength, value_type x_period
     value_type y_period) :
     strength_(strength), x_period_(x_period), y_period_(y_period)
 {
-    assert( Vec_t::getDeviceType() == CPU );
+    assert( Vec_t::getDevice().type() == CPU );
 }
 
 template<typename Vec_t>
@@ -192,8 +196,8 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
     wrk_vec1_.replicate(pos);
     wrk_vec2_.replicate(pos);
 
-    axpy( BGPI / x_period_, pos, wrk_vec1_);
-    axpy( BGPI / y_period_, pos, wrk_vec2_);
+    axpy( 2*BGPI / x_period_, pos, wrk_vec1_);
+    axpy( 2*BGPI / y_period_, pos, wrk_vec2_);
 
     for ( size_t ii=0;ii<pos.size(); ++ii )
     {

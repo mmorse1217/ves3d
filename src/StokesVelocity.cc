@@ -768,15 +768,17 @@ StokesVelocity<Surf_t>::Real_t StokesVelocity<Surf_t>::MonitorError(){
   SetTrgCoord(*S);
 
   Real_t* velocity=this->operator()();
+  Real_t* velocity_near=&(NearInteraction(true)[0]);
   Real_t* velocity_self=S_vel.begin();
-  double norm_glb[2]={0,0};
+  double norm_glb[3]={0,0,0};
   { // Compute error norm
-    double norm_local[2]={0,0};
+    double norm_local[3]={0,0,0};
     for(size_t i=0;i<N_ves*M_ves*COORD_DIM;i++){
-      norm_local[0]=std::max(norm_local[0],fabs(velocity     [i]+0.5));
-      norm_local[1]=std::max(norm_local[1],fabs(velocity_self[i]+0.5));
+      norm_local[0]=std::max(norm_local[0],fabs(velocity_self[i]+0.5));
+      norm_local[1]=std::max(norm_local[1],fabs(velocity_near[i]    ));
+      norm_local[2]=std::max(norm_local[2],fabs(velocity     [i]+0.5));
     }
-    MPI_Allreduce(&norm_local, &norm_glb, 2, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), comm);
+    MPI_Allreduce(&norm_local, &norm_glb, 3, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), comm);
   }
 
   { // Restore original state
@@ -789,7 +791,7 @@ StokesVelocity<Surf_t>::Real_t StokesVelocity<Surf_t>::MonitorError(){
     near_singular.SetTrgCoord(&trg_coord[0],trg_coord.Dim()/COORD_DIM,trg_is_surf);
   }
 
-  INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]);
+  INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
   return norm_glb[0];
 }
 

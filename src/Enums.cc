@@ -50,6 +50,8 @@ enum BgFlowType EnumifyBgFlow(const char * name)
       return ExtensionalFlow;
   else if ( ns.compare(0,9,"Parabolic") == 0 )
       return ParabolicFlow;
+  else if ( ns.compare(0,6,"Taylor") == 0 )
+      return TaylorVortexFlow;
   else if ( ns.compare(0,6,"Period") == 0 )
       return PeriodicFlow;
   else if ( ns.compare(0,4,"User") == 0 )

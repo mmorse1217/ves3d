@@ -68,6 +68,7 @@ enum PrecondScheme {DiagonalSpectral,       /* Only the self preconditioner; dia
 enum BgFlowType {ShearFlow,
 		 ExtensionalFlow,
 		 ParabolicFlow,
+		 TaylorVortexFlow,
 		 PeriodicFlow,
 		 UserDefinedFlow,        /* Mostly for testing purposes   */
 		 UnknownFlow};           /* Used to signal parsing errors */
