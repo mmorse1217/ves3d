@@ -43,6 +43,7 @@ enum PrecondScheme EnumifyPrecond(const char * name)
 enum BgFlowType EnumifyBgFlow(const char * name)
 {
   std::string ns(name);
+  //std::cout<<ns<<'\n';
 
   if      ( ns.compare(0,5,"Shear") == 0 )
       return ShearFlow;
@@ -144,6 +145,9 @@ std::ostream& operator<<(std::ostream& output, const enum BgFlowType &BG)
 	    break;
 	case ParabolicFlow:
 	    output<<"ParabolicFlow";
+	    break;
+	case TaylorVortexFlow:
+	    output<<"TaylorFlow";
 	    break;
 	case PeriodicFlow:
 	    output<<"PeriodicFlow";
