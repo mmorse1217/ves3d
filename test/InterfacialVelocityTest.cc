@@ -75,7 +75,7 @@ int main(int argc, char** argv){
     COUT(sim_par);
 
     DataIO myIO;
-    Vec_t x(nvec, p);
+    Vec_t x(nvec, p), dx(nvec, p);
     Sca_t tension(nvec, p);
     myIO.ReadData(FullPath(sim_par.init_file_name), x);
 
@@ -102,11 +102,11 @@ int main(int argc, char** argv){
 
     INFO("Globally implicit update (solve for velocity)");
     sim_par.solve_for_velocity=true;
-    F->updateImplicit(ts);
+    F->updateImplicit(S,ts,dx);
 
     INFO("Globally implicit update (solve for position)");
     sim_par.solve_for_velocity=false;
-    F->updateImplicit(ts);
+    F->updateImplicit(S,ts,dx);
 
     delete F;
     delete ksp;

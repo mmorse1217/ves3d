@@ -153,7 +153,7 @@ void testStokesDoubleLayer(const Device &dev){
     xv(t2, v2, v2);
 
     S.getPosition().getDevice().DirectStokesDoubleLayer(v1.begin(), v3.begin(), v2.begin(),
-        sing_quad_weights_.begin(), np, nv, S.getPosition().begin(),
+        sing_quad_weights_.begin(), np, np, nv, S.getPosition().begin(),
         ii * jmax + jj, ii * jmax + jj + 1, velocity.begin());
   }
 
@@ -168,7 +168,7 @@ void testStokesDoubleLayer(const Device &dev){
 
 int main(int argc, char ** argv){
 
-  COUT("Surface test:\n=============");
+  COUT("Stokes Double Layer test:\n=========================");
   COUT("CPU device:\n------------");
 
   typedef Scalars<real, DevCPU, the_cpu_device> ScaCPU_t;
@@ -232,10 +232,10 @@ int main(int argc, char ** argv){
     //    qw_gpu.begin(), src_gpu.getStride(), nVec, trg_gpu.begin(), 0, trg_gpu.getStride(), vel_gpu.begin());
 
     vel_cpu.getDevice().DirectStokesDoubleLayer(src_cpu.begin(), nor_cpu.begin(), den_cpu.begin(),
-        qw_cpu.begin(), src_cpu.getStride(), nVec, trg_cpu.begin(), 0, trg_cpu.getStride(), vel_cpu.begin());
+        qw_cpu.begin(), src_cpu.getStride(), trg_cpu.getStride(), nVec, trg_cpu.begin(), 0, trg_cpu.getStride(), vel_cpu.begin());
 
     vel_gpu.getDevice().DirectStokesDoubleLayer(src_gpu.begin(), nor_gpu.begin(), den_gpu.begin(),
-        qw_gpu.begin(), src_gpu.getStride(), nVec, trg_gpu.begin(), 0, trg_gpu.getStride(), vel_gpu.begin());
+        qw_gpu.begin(), src_gpu.getStride(), trg_gpu.getStride(), nVec, trg_gpu.begin(), 0, trg_gpu.getStride(), vel_gpu.begin());
 
     VecCPU_t vel_gpu_copy(nVec,sh_order);
     { // Copy from device to cpu

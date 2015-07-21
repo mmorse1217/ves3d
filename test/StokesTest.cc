@@ -30,14 +30,15 @@ int main(int argc, char** argv)
     fillRand(qw);
 
     Logger::Tic();
-    DirectStokesKernel(pos.getStride(), pos.getNumSubs(), 0,
+    DirectStokesKernel(pos.getStride(), pos.getStride(), pos.getNumSubs(), 0,
         numtrg, qw.begin(), pos.begin(),
         pos.begin(), den.begin(), pot1.begin());
+
     double t1(Logger::Toc());
     COUT("  Time (Direct) : "<<t1);
 
     Logger::Tic();
-    DirectStokesSSE(pos.getStride(), pos.getNumSubs(), 0,
+    DirectStokesSSE(pos.getStride(), pos.getStride(), pos.getNumSubs(), 0,
         numtrg, qw.begin(), pos.begin(),
         pos.begin(), den.begin(), pot2.begin());
     double t2(Logger::Toc());

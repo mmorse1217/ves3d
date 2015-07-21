@@ -1,5 +1,6 @@
 # -*- mode: sh; -*-
 module load petsc/openmpi/intel/3.3.7
+module load pvfmm
 module list
 
 export VES3D_DIR=${RES_DIR}/projects/ves3d/cxx/
