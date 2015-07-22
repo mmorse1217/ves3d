@@ -23,20 +23,29 @@ class InterfacialForce
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_up_;
 
     mutable Sca_t s1, s2;
-    mutable Vec_t v1;
+    mutable Vec_t v1, ftmp;
     mutable SurfContainer* S_up;
 
   public:
-    //InterfacialForce(value_type bending_modulus);
     InterfacialForce(const Parameters<value_type> &params,
                      const OperatorsMats<Arr_t> &mats);
     ~InterfacialForce();
 
     void bendingForce(const SurfContainer &S, Vec_t &Fb) const;
-    void linearBendingForce(const SurfContainer &S, 
-        const Vec_t &x_new, Vec_t &Fb) const;
-    void tensileForce(const SurfContainer &S, const Sca_t &tension, 
-        Vec_t &Fs) const;
+    void linearBendingForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fb) const;
+    void tensileForce(const SurfContainer &S, const Sca_t &tension, Vec_t &Fs) const;
+    void gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const;
+
+    void explicitTractionJump(
+	const SurfContainer &S,
+	const Vec_t &x,
+        Vec_t &F) const;
+
+    void implicitTtractionJump(
+	const SurfContainer &S,
+	const Vec_t &x,
+	const Sca_t &tension,
+        Vec_t &F) const;
 };
 
 #include "InterfacialForce.cc"

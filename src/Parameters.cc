@@ -42,6 +42,10 @@ void Parameters<T>::init()
     singular_stokes	    = ViaSpHarm;
     solve_for_velocity      = false;
     periodic_length	    = -1;
+    gravity_field[0]        = 0;
+    gravity_field[1]        = 0;
+    gravity_field[2]        = -1.0;
+    excess_density          = 0.0;
     pseudospectral          = false;
     tension_solver_iter	    = 15;
     tension_solver_restart  = 1;
@@ -191,6 +195,8 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --timestep              The time step size" );
   opt->addUsage( "     --upsample-freq         The upsample frequency used for reparametrization and interaction" );
   opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
+  opt->addUsage( "     --excess-density        The difference between the density of fluids inside and outside" );
+  opt->addUsage( "     --gravity-field         The gravitational field vector (space separated)" );
 }
 
 template<typename T>
@@ -245,6 +251,8 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "timestep" );
   opt->setOption( "upsample-freq" );
   opt->setOption( "viscosity-contrast" );
+  opt->setOption( "gravity-field" );
+  opt->setOption( "excess-density" );
 
   //for options that will be checked only on the command and line not
   //in option/resource file
@@ -314,6 +322,16 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "viscosity-contrast" ) != NULL  )
     this->viscosity_contrast = atof(opt->getValue( "viscosity-contrast" ));
+
+  if( opt->getValue( "excess-density" ) != NULL )
+      this->excess_density = atof(opt->getValue( "excess-density" ));
+
+  if( opt->getValue( "gravity-field" ) != NULL  ){
+      char* next(opt->getValue("gravity-field"));
+      gravity_field[0] = strtod(next, &next);
+      gravity_field[1] = strtod(next, &next);
+      gravity_field[2] = strtod(next, NULL);
+  }
 
   if( opt->getValue( "bg-flow-type" ) != NULL  )
     this->bg_flow = EnumifyBgFlow(opt->getValue( "bg-flow-type" ));
@@ -444,6 +462,8 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"load_checkpoint: "<<load_checkpoint<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"error_factor: "<<error_factor<<"\n";
     os<<"num_threads: "<<num_threads<<"\n";
+    os<<"excess_density: "<<excess_density<<"\n";
+    os<<"gravity_field: "<<gravity_field[0]<<" "<<gravity_field[1]<<" "<<gravity_field[2]<<"\n";
     os<<"/PARAMETERS\n";
     return ErrorEvent::Success;
 }
@@ -498,15 +518,20 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>checkpoint_stride;		ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
 
     is>>key>>s;		                ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
-    if (s!="|"){init_file_name=s; is>>s; /* conume | */}else{init_file_name="";}
+    if (s!="|"){init_file_name=s; is>>s; /* consume | */}else{init_file_name="";}
     is>>key>>s;          		ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
-    if (s!="|"){cntrs_file_name=s; is>>s; /* conume | */}else{cntrs_file_name="";}
+    if (s!="|"){cntrs_file_name=s; is>>s; /* consume | */}else{cntrs_file_name="";}
     is>>key>>s;         		ASSERT(key=="checkpoint_file_name:", "Unexpected key (expected checkpoint_file_name)");
-    if (s!="|"){checkpoint_file_name=s; is>>s;/* conume | */}else{checkpoint_file_name="";}
+    if (s!="|"){checkpoint_file_name=s; is>>s;/* consume | */}else{checkpoint_file_name="";}
     is>>key>>s;         		ASSERT(key=="load_checkpoint:", "Unexpected key (expected load_checkpoint)");
-    if (s!="|"){load_checkpoint=s; is>>s; /* conume | */}else{load_checkpoint="";}
+    if (s!="|"){load_checkpoint=s; is>>s; /* consume | */}else{load_checkpoint="";}
     is>>key>>error_factor;		ASSERT(key=="error_factor:", "Unexpected key (expected error_factor)");
     is>>key>>num_threads;		ASSERT(key=="num_threads:", "Unexpected key (expected num_threads)");
+    is>>key>>excess_density;		ASSERT(key=="excess_density:", "Unexpected key (expected excess_density)");
+
+    is>>key>>gravity_field[0]>>gravity_field[1]>>gravity_field[2];
+    ASSERT(key=="gravity_field:", "Unexpected key (expected gravity_field)");
+
     is>>s;
     ASSERT(s=="/PARAMETERS", "Bad input string (missing footer).");
 
@@ -532,6 +557,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Bending modulus          : "<<par.bending_modulus<<std::endl;
     output<<"   viscosity contrast       : "<<par.viscosity_contrast<<std::endl;
     output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
+    output<<"   Excess density           : "<<par.excess_density<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Solver:"<<std::endl;
@@ -580,6 +606,10 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Background flow parameter: "<<par.bg_flow_param<<std::endl;
     output<<"   Periodic flow interval   : "<<par.periodic_length<<std::endl;
     output<<"   Interaction Upsample     : "<<std::boolalpha<<par.interaction_upsample<<std::endl;
+    output<<"   Gravitational Field      : "<<"["<<par.gravity_field[0]
+	  <<", "<<par.gravity_field[1]
+	  <<", "<<par.gravity_field[2]
+	  <<"]"<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Misc:"<<std::endl;

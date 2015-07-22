@@ -1,8 +1,3 @@
-//template<typename SurfContainer>
-//InterfacialForce<SurfContainer>::InterfacialForce(value_type bending_modulus) :
-//    bending_modulus_(bending_modulus), S_up(NULL)
-//{}
-
 template<typename SurfContainer>
 InterfacialForce<SurfContainer>::InterfacialForce(
     const Parameters<value_type> &params,
@@ -126,3 +121,30 @@ void InterfacialForce<SurfContainer>::tensileForce(const SurfContainer &S,
     }
 }
 
+template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const
+{
+    ASSERT(false, "unimplemented yet");
+}
+
+template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::explicitTractionJump(const SurfContainer &S, Vec_t &F) const
+{
+    //ftmp.replicate(S.getPosition());
+    bendingForce(S, F);
+    //gravityForce(S, S.getPosition(), ftmp);
+    //axpy<value_type>(1.0, F, ftmp, F);
+}
+
+template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::implicitTractionJump(const SurfContainer &S, const Vec_t &x,
+    const Sca_t &tension, Vec_t &F) const
+{
+    ftmp.replicate(x);
+    linearBendingForce(S, x, F);
+    //gravityForce(S,x,ftmp);
+    //axpy<value_type>(1.0, F, ftmp, F);
+
+    tensileForce(S, tension, ftmp);
+    axpy<value_type>(1.0, F, ftmp, F);
+}

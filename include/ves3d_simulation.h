@@ -73,6 +73,12 @@ class Simulation{
     Evolve_t* time_stepper(){ return timestepper_;}
     Param_t* run_params(){ return &run_params_;}
 
+    Error_t setup_basics();
+    Error_t setup_from_options();
+    Error_t setup_from_checkpoint();
+    Error_t cleanup_run();
+    Error_t prepare_run_params();
+
   private:
     const Param_t &input_params_;
     Param_t run_params_;
@@ -84,12 +90,6 @@ class Simulation{
     LinSol_t *ksp_;
     Inter_t *interaction_;
     Evolve_t *timestepper_;
-
-    Error_t setup_basics();
-    Error_t setup_from_options();
-    Error_t setup_from_checkpoint();
-    Error_t cleanup_run();
-    Error_t prepare_run_params();
 };
 
 #include "ves3d_simulation.cc"

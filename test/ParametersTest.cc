@@ -85,8 +85,8 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.solve_for_velocity == pc.solve_for_velocity		, "incorrect solve_for_velocity");
     ASSERT(p.scheme == pc.scheme					, "incorrect scheme");
     ASSERT(p.time_precond == pc.time_precond				, "incorrect time_precond");
-    ASSERT(p. bg_flow == pc. bg_flow					, "incorrect  bg_flow");
-    ASSERT(p. singular_stokes == pc. singular_stokes			, "incorrect  singular_stokes");
+    ASSERT(p.bg_flow == pc. bg_flow					, "incorrect  bg_flow");
+    ASSERT(p.singular_stokes == pc. singular_stokes			, "incorrect  singular_stokes");
     ASSERT(p.rep_maxit == pc.rep_maxit					, "incorrect rep_maxit");
     ASSERT(p.rep_ts == pc.rep_ts					, "incorrect rep_ts");
     ASSERT(p.rep_tol == pc.rep_tol					, "incorrect rep_tol");
@@ -100,17 +100,27 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.load_checkpoint == pc.load_checkpoint      		, "incorrect load_checkpoint");
     ASSERT(p.error_factor == pc.error_factor				, "incorrect error_factor");
     ASSERT(p.num_threads == pc.num_threads				, "incorrect num_threads");
+    ASSERT(p.excess_density == pc.excess_density			, "incorrect excess_density");
+    for (int ii(0); ii<DIM; ++ii)
+        ASSERT(p.gravity_field[ii] == pc.gravity_field[ii]		, "incorrect gravity_field");
 
     return true;
 }
 
 int main(int, char**){
 
-    int argc(11);
-    char *argv[] = {"execname", "--n-surfs", "5", "--sh-order","13","-o","out.txt", "-l", "a.txt",
-		    "--rep-upsample", "--interaction-upsample"};
+    int argc(15);
+    char *argv[] = {"execname",
+		    "--n-surfs", "5",
+		    "--sh-order", "13",
+		    "-o", "out.txt",
+		    "-l", "a.txt",
+		    "--rep-upsample",
+		    "--interaction-upsample",
+		    "--excess-density", "5",
+		    "--gravity-field", "1.1 2e1 -3",
+    };
     Parameters<double> p(argc, argv);
-    ParametersTest<Parameters<double> > PT;
-    PT(p);
-    COUT(p);
+    ParametersTest<Parameters<double> > p_test;
+    p_test(p);
 }

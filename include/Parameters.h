@@ -34,6 +34,7 @@ class Parameters : public Streamable
 
     T bending_modulus;
     T viscosity_contrast;
+    T excess_density;
 
     //Solver parameters
     int position_solver_iter;
@@ -68,6 +69,7 @@ class Parameters : public Streamable
     T bg_flow_param;
     bool interaction_upsample;
     T periodic_length;
+    T gravity_field[3];
 
     //Startup and Monitoring
     bool checkpoint;

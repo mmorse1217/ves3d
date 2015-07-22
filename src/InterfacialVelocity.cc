@@ -419,7 +419,7 @@ AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     COUTDEBUG("Computing the far-field interaction due to explicit traction jump");
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
-    Intfcl_force_.bendingForce(S_, *f);
+    Intfcl_force_.explicitTractionJump(S_, *f);
     stokes_.SetDensitySL(f.get());
     stokes_.SetDensityDL(NULL);
     stokes_(*Sf);
@@ -613,28 +613,27 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
 {
     PROFILESTART();
 
-    std::auto_ptr<Vec_t> fb  = checkoutVec();
+    std::auto_ptr<Vec_t> f   = checkoutVec();
     std::auto_ptr<Vec_t> Sf  = checkoutVec();
     std::auto_ptr<Vec_t> Du  = checkoutVec();
-    fb->replicate(vox);
+    f->replicate(vox);
     Sf->replicate(vox);
     Du->replicate(vox);
 
-    COUTDEBUG("Computing the interfacial forces");
-    Intfcl_force_.linearBendingForce(S_, vox, *fb);
-    Intfcl_force_.tensileForce(S_, ten, *Sf);
-
-    if (params_.solve_for_velocity) {
-	axpy(static_cast<value_type>(dt_), *fb, *Sf, *fb);
+    COUTDEBUG("Computing the interfacial forces and setting single-layer density");
+    if (params_.solve_for_velocity){
+	// Bending of dt*u + tension of sigma
+	axpy<value_type>(dt_, *vox, *Du);
+	Intfcl_force_.implicitTractionJump(S_, *Du, ten, *f);
     } else {
-	axpy(static_cast<value_type>(1.0), *fb, *Sf, *fb);
-	axpy(static_cast<value_type>(dt_), *fb, *fb);
+	// dt*(Bending of x + tension of sigma)
+	Intfcl_force_.implicitTractionJump(S_, *vox, ten, *f);
+	axpy<value_type>(dt_, *f, *f);
     }
-
-    stokes_.SetDensitySL(fb.get());
+    stokes_.SetDensitySL(f.get());
 
     if( fabs(params_.viscosity_contrast-1.0)>1e-12){
-	COUTDEBUG("Setting the double layer density");
+	COUTDEBUG("Setting the double-layer density");
 	av(dl_coeff_, vox, *Du);
 	stokes_.SetDensityDL(Du.get());
     } else {
@@ -651,17 +650,17 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
     //! minus sign in the matvec is tangibly better (1-2
     //! iterations). Need to investigate why.
     S_.div(*Sf, ten);
-    axpy(static_cast<value_type>(-1.0), ten, ten);
+    axpy<value_type>(-1.0, ten, ten);
 
     if( fabs(params_.viscosity_contrast-1.0)>1e-12)
 	av(vel_coeff_, vox, vox);
 
-    axpy(static_cast<value_type>(-1.0), *Sf, vox, vox);
+    axpy<value_type>(-1.0, *Sf, vox, vox);
 
     ASSERT(vox.getDevice().isNumeric(vox.begin(), vox.size()), "Non-numeric velocity");
     ASSERT(ten.getDevice().isNumeric(ten.begin(), ten.size()), "Non-numeric divergence");
 
-    recycle(fb);
+    recycle(f);
     recycle(Sf);
     recycle(Du);
 
