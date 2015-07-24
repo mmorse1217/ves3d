@@ -623,12 +623,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
     COUTDEBUG("Computing the interfacial forces and setting single-layer density");
     if (params_.solve_for_velocity){
 	// Bending of dt*u + tension of sigma
-	axpy<value_type>(dt_, *vox, *Du);
+	axpy(dt_, vox, *Du);
 	Intfcl_force_.implicitTractionJump(S_, *Du, ten, *f);
     } else {
 	// dt*(Bending of x + tension of sigma)
-	Intfcl_force_.implicitTractionJump(S_, *vox, ten, *f);
-	axpy<value_type>(dt_, *f, *f);
+	Intfcl_force_.implicitTractionJump(S_, vox, ten, *f);
+	axpy(dt_, *f, *f);
     }
     stokes_.SetDensitySL(f.get());
 
@@ -650,12 +650,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
     //! minus sign in the matvec is tangibly better (1-2
     //! iterations). Need to investigate why.
     S_.div(*Sf, ten);
-    axpy<value_type>(-1.0, ten, ten);
+    axpy((value_type) -1.0, ten, ten);
 
     if( fabs(params_.viscosity_contrast-1.0)>1e-12)
 	av(vel_coeff_, vox, vox);
 
-    axpy<value_type>(-1.0, *Sf, vox, vox);
+    axpy((value_type) -1.0, *Sf, vox, vox);
 
     ASSERT(vox.getDevice().isNumeric(vox.begin(), vox.size()), "Non-numeric velocity");
     ASSERT(ten.getDevice().isNumeric(ten.begin(), ten.size()), "Non-numeric divergence");

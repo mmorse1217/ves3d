@@ -161,10 +161,11 @@ static bool assert_expr(false);
         assert(assert_expr) :                                           \
         CERR_LOC(msg,"",assert(assert_expr)))
 
+#define WHENDEBUG(expr) expr
 #else  //NDEBUG
 
 #define ASSERT(expr,msg)
-
+#define WHENDEBUG(expr)
 #endif //NDEBUG
 
 /*
@@ -173,7 +174,7 @@ static bool assert_expr(false);
 #define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
 
 #ifdef VERBOSE
-#define COUTDEBUG(str) (std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<" ]["<<__FUNCTION__<<"] "<<str<<std::endl)
+#define COUTDEBUG(str) (std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl)
 #define WHENVERBOSE(expr) expr
 #else
 #define COUTDEBUG(str)

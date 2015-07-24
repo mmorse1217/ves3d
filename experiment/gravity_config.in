@@ -1,0 +1,44 @@
+##
+## For gravity execess-density needs to be greater that zero. The Bond
+## number (ratio of body force to bending) defines the shape and type of
+## flow. Here we choose the bending-moduleus and excess-density to get
+## the bell shape.
+##
+
+## spherical harmonics -----------------------
+sh-order : 12
+rep-upsample
+interaction-upsample
+
+## initial shape -----------------------------
+n-surfs : 1
+bending-modulus : .5
+init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
+cent-file : experiment/shear_centers.txt
+
+## time stepping -----------------------------
+time-horizon : 100
+timestep : .5
+time-tol : 1e-5
+time-iter-max : 120
+time-scheme : GloballyImplicit
+time-precond : DiagonalSpectral
+singular-stokes : Direct
+error-factor : 1
+solve-for-velocity
+time-adaptive
+
+## reparametrization -------------------------
+rep-max-iter : 1000
+rep-timestep : 5e-2
+rep-tol : 1e-3
+
+## checkpoint/monitor ------------------------
+checkpoint
+checkpoint-file : experiment/gravity_{{time_idx}}.chk
+
+## far filed ---------------------------------
+bg-flow-type : ShearFlow
+bg-flow-param : 0
+excess-density : 1
+

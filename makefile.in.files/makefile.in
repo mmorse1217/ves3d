@@ -3,7 +3,7 @@
 ### put customizations in the platform or cxx files. ###
 ########################################################
 
-VES3D_PLATFORM ?= $(shell hostname -s)
+VES3D_PLATFORM ?= $(shell hostname -s || echo "generic-host" )
 VES3D_MKDIR    ?= ${VES3D_DIR}/makefile.in.files
 MAKE_DEP       += ${VES3D_MKDIR}/makefile.in
 

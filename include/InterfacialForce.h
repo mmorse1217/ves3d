@@ -6,6 +6,7 @@
 #include "SHTrans.h"
 #include "SHTMats.h"
 #include "Logger.h"
+#include "HelperFuns.h"
 
 template<typename SurfContainer>
 class InterfacialForce
@@ -22,6 +23,7 @@ class InterfacialForce
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_   ;
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_up_;
 
+    mutable Vec_t cen;
     mutable Sca_t s1, s2;
     mutable Vec_t v1, ftmp;
     mutable SurfContainer* S_up;
@@ -38,10 +40,9 @@ class InterfacialForce
 
     void explicitTractionJump(
 	const SurfContainer &S,
-	const Vec_t &x,
         Vec_t &F) const;
 
-    void implicitTtractionJump(
+    void implicitTractionJump(
 	const SurfContainer &S,
 	const Vec_t &x,
 	const Sca_t &tension,

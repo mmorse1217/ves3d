@@ -3,9 +3,10 @@ InterfacialForce<SurfContainer>::InterfacialForce(
     const Parameters<value_type> &params,
     const OperatorsMats<Arr_t> &mats) :
     bending_modulus_(params.bending_modulus),
+    params_(params),
     sht_   (mats.p_   , mats.mats_p_   ),
     sht_up_(mats.p_up_, mats.mats_p_up_),
-    params_(params),
+    cen(1, 1, std::make_pair(1,1)),
     S_up(NULL)
 {}
 
@@ -124,27 +125,64 @@ void InterfacialForce<SurfContainer>::tensileForce(const SurfContainer &S,
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const
 {
-    ASSERT(false, "unimplemented yet");
+    value_type zero(0);
+
+    if(fabs(params_.excess_density-1)<1e-12){
+	Vec_t::getDevice().Memset(Fg.begin(), zero, Fg.mem_size());
+	return;
+    }
+
+    /*
+     * The traction jump due to gravity is (excess_density)*(g.(x-c)) n
+     */
+
+    // getting centers
+    cen.resize(S.getPosition().getNumSubs(),1,std::make_pair(1,1));
+    S.getCenters(cen);
+
+    // x-c
+    axpy((value_type) -1.0, cen, cen);
+    Vec_t::getDevice().apx(cen.begin(), x.begin(), x.getStride(), x.getNumSubFuncs(), Fg.begin());
+
+    // Check without subtracting center
+    // Higher p
+    Sca_t s;
+    Vec_t w;
+    s.replicate(x);
+    w.replicate(x);
+
+    // g.(x-c)
+    ShufflePoints(Fg,w);
+    int m(1), k(DIM), n(x.size()/DIM);
+
+    Vec_t::getDevice().gemm("N","N", &m, &n, &k,
+	&params_.excess_density, params_.gravity_field, &m,
+	w.begin(), &k,
+	&zero, s.begin(), &m);
+
+    xv(s,S.getNormal(),Fg);
 }
 
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::explicitTractionJump(const SurfContainer &S, Vec_t &F) const
 {
-    //ftmp.replicate(S.getPosition());
     bendingForce(S, F);
-    //gravityForce(S, S.getPosition(), ftmp);
-    //axpy<value_type>(1.0, F, ftmp, F);
+
+    ftmp.replicate(S.getPosition());
+    gravityForce(S, S.getPosition(), ftmp);
+    axpy((value_type) 1.0, F, ftmp, F);
 }
 
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::implicitTractionJump(const SurfContainer &S, const Vec_t &x,
     const Sca_t &tension, Vec_t &F) const
 {
-    ftmp.replicate(x);
     linearBendingForce(S, x, F);
-    //gravityForce(S,x,ftmp);
-    //axpy<value_type>(1.0, F, ftmp, F);
+
+    ftmp.replicate(x);
+    gravityForce(S, x, ftmp);
+    axpy((value_type) 1.0, F, ftmp, F);
 
     tensileForce(S, tension, ftmp);
-    axpy<value_type>(1.0, F, ftmp, F);
+    axpy( (value_type) 1.0, F, ftmp, F);
 }
