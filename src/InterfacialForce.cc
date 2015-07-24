@@ -127,7 +127,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 {
     value_type zero(0);
 
-    if(fabs(params_.excess_density-1)<1e-12){
+    if(fabs(params_.excess_density)<1e-14){
 	Vec_t::getDevice().Memset(Fg.begin(), zero, Fg.mem_size());
 	return;
     }
