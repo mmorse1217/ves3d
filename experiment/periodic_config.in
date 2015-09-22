@@ -1,0 +1,50 @@
+## spherical harmonics -----------------------
+sh-order : 16
+rep-upsample
+interaction-upsample
+
+## initial shape -----------------------------
+n-surfs : 2
+bending-modulus : .25
+init-file : precomputed_/dumbbell_{{sh_order}}_{{precision}}.txt
+cent-file : experiment/centers_periodic.txt
+#viscosity-contrast : 1.0
+#
+### solver  -----------------------------------
+#position-iter-max : 20
+#tension-iter-max : 20
+#position-restart : 10
+#tension-restart : 10
+#position-tol : 1e-6
+#tension-tol : 1e-6
+
+## time stepping -----------------------------
+time-horizon : 600
+timestep : 2e-1
+time-tol : 1e-6
+time-iter-max : 300
+time-scheme : GloballyImplicit
+time-precond : DiagonalSpectral
+singular-stokes : Direct
+error-factor : 10
+solve-for-velocity
+# time-adaptive
+
+## reparametrization -------------------------
+rep-max-iter : 10000
+rep-timestep : 1e-2
+rep-tol : 1e-4
+
+## checkpoint/monitor ------------------------
+checkpoint
+#checkpoint-stride : 5e-1
+checkpoint-file : experiment/periodic_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+
+## far filed ---------------------------------
+bg-flow-type : TaylorFlow
+bg-flow-param : 0.1
+
+## misc  -------------------------------------
+num-threads : 16
+
+periodic-length : 4

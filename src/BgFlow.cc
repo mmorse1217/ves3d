@@ -22,7 +22,7 @@ Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase
 	    break;
 
 	case TaylorVortexFlow:
-	    *vInf = new TaylorVortexImp<Vec_t>(params.bg_flow_param, params.periodic_length);
+	    *vInf = new TaylorVortexImp<Vec_t>(params.bg_flow_param, params.periodic_length, params.periodic_length);
 	    break;
 
 	case PeriodicFlow:

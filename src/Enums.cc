@@ -43,7 +43,6 @@ enum PrecondScheme EnumifyPrecond(const char * name)
 enum BgFlowType EnumifyBgFlow(const char * name)
 {
   std::string ns(name);
-  //std::cout<<ns<<'\n';
 
   if      ( ns.compare(0,5,"Shear") == 0 )
       return ShearFlow;
