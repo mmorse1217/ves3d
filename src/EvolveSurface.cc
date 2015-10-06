@@ -139,7 +139,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
                 value_type beta;
                 beta = (1.0/error) * (dt/time_horizon) * params_->error_factor;
-                beta = std::pow<value_type>(beta, timestep_order);
+                beta = std::pow(beta, timestep_order);
                 if(err!=ErrorEvent::Success) beta=0.5;
 
                 beta=std::min(beta,1.5);
@@ -195,12 +195,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
                 value_type beta_A;
                 beta_A = (A0/A_err) * (dt/time_horizon) * params_->error_factor;
-                beta_A = std::pow<value_type>(beta_A, timestep_order);
+                beta_A = std::pow(beta_A, timestep_order);
                 if(err!=ErrorEvent::Success) beta_A=0.5;
 
                 value_type beta_V;
                 beta_V = (V0/V_err) * (dt/time_horizon) * params_->error_factor;
-                beta_V = std::pow<value_type>(beta_V, timestep_order);
+                beta_V = std::pow(beta_V, timestep_order);
                 if(err!=ErrorEvent::Success) beta_V=0.5;
 
                 value_type beta=std::min(beta_A,beta_V);

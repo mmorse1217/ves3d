@@ -633,8 +633,8 @@ bool Device<CPU>::isNumeric(const T* x, size_t length) const
 
 #pragma omp parallel for reduction(&&:is_nan)
     for(size_t idx=0;idx<length; ++idx){
-      is_nan = is_nan && isnan(x[idx]);
-      is_nan = is_nan && isinf(x[idx]);
+        is_nan = is_nan && std::isnan(x[idx]);
+        is_nan = is_nan && std::isinf(x[idx]);
     }
 
     PROFILEEND("CPU", 0);
