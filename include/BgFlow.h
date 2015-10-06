@@ -60,8 +60,8 @@ class ExtensionalFlowImp : public BgFlowBase<Vec_t>
     ExtensionalFlowImp(value_type rate);
 
     virtual void operator()(const Vec_t &pos,
-			    const value_type time,
-			    Vec_t &vel_inf) const;
+        const value_type time,
+        Vec_t &vel_inf) const;
   private:
     void AdjustCoeffs(int stride) const;
 
@@ -103,6 +103,26 @@ class PeriodicFlowImp : public BgFlowBase<Vec_t>
     value_type period_;
     value_type strength_;
 };
+
+/////////////////////////////////////////////////////////////////////////////////
+/*
+ * only intended for testing reparametrization
+ */
+template<typename Vec_t>
+class TwisterFlowImp : public BgFlowBase<Vec_t>
+{
+  public:
+    typedef typename Vec_t::value_type value_type;
+
+    TwisterFlowImp(value_type twist);
+
+    virtual void operator()(const Vec_t &pos, const value_type time,
+        Vec_t &vel_inf) const;
+
+  private:
+    value_type twist_;
+};
+
 
 #include "BgFlow.cc"
 #endif

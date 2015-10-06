@@ -54,24 +54,25 @@ enum CoordinateOrder {PointMajor, AxisMajor, UnknownOrder};
 
 ///The linear solver scheme for the vesicle evolution equation
 enum SolverScheme {JacobiBlockExplicit,     /* Jacobi iteration + only block tension solve, explicit position */
-		   JacobiBlockGaussSeidel,  /* Jacobi iteration + tension solve + position solve              */
-		   JacobiBlockImplicit,     /* Jacobi iteration + block coupled solve                         */
-		   GloballyImplicit,        /* Fully implicit                                                 */
-		   UnknownScheme};          /* Used to signal parsing errors                                  */
+                   JacobiBlockGaussSeidel,  /* Jacobi iteration + tension solve + position solve              */
+                   JacobiBlockImplicit,     /* Jacobi iteration + block coupled solve                         */
+                   GloballyImplicit,        /* Fully implicit                                                 */
+                   UnknownScheme};          /* Used to signal parsing errors                                  */
 
 ///The linear solver scheme for the vesicle evolution equation
 enum PrecondScheme {DiagonalSpectral,       /* Only the self preconditioner; diagonal in SH basis */
-		    NoPrecond,              /* No preconditioner at all                           */
-		    UnknownPrecond};        /* Used to signal parsing errors                      */
+                    NoPrecond,              /* No preconditioner at all                           */
+                    UnknownPrecond};        /* Used to signal parsing errors                      */
 
 ///The types of background flow that are supported
 enum BgFlowType {ShearFlow,
-		 ExtensionalFlow,
-		 ParabolicFlow,
-		 TaylorVortexFlow,
-		 PeriodicFlow,
-		 UserDefinedFlow,        /* Mostly for testing purposes   */
-		 UnknownFlow};           /* Used to signal parsing errors */
+                 ExtensionalFlow,
+                 ParabolicFlow,
+                 TaylorVortexFlow,
+                 PeriodicFlow,
+                 TwisterFlow,
+                 UserDefinedFlow,        /* Mostly for testing purposes   */
+                 UnknownFlow};           /* Used to signal parsing errors */
 
 ///DirectEagerEval gives the rotation code the freedom to precompute
 ///and cache some of the expected results

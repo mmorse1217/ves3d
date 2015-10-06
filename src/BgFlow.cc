@@ -30,6 +30,10 @@ Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase
 	    *vInf = new PeriodicFlowImp<Vec_t>(params.bg_flow_param);
 	    break;
 
+	case TwisterFlow:
+	    *vInf = new TwisterFlowImp<Vec_t>(params.bg_flow_param);
+	    break;
+
 	case UserDefinedFlow:
 	    //don't do anything
 	    break;
@@ -190,7 +194,7 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
     Vec_t &vel_inf) const
 {
     int n_surfs = pos.getNumSubs();
-    int stride = pos.getStride();
+    int stride  = pos.getStride();
     int idx;
 
     wrk_vec1_.replicate(pos);
@@ -248,3 +252,38 @@ void PeriodicFlowImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
     axpy(strength_, vel_inf, vel_inf);
 }
 
+// Twister flow /////////////////////////////////////////////////////////////////
+template<typename Vec_t>
+TwisterFlowImp<Vec_t>::TwisterFlowImp(value_type twist) :
+    twist_(twist)
+{
+    ASSERT(Vec_t::getDevice().IsHost(), "Twister flow is only supported on the host machine");
+}
+
+template<typename Vec_t>
+void TwisterFlowImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
+        Vec_t &vel_inf) const
+{
+    int n_surfs = pos.getNumSubs();
+    int stride  = pos.getStride();
+    const value_type *x;
+    value_type *vel;
+
+    axpy(0.0, pos, vel_inf);
+
+    for(int iV=0;iV<n_surfs;iV++)
+    {
+        x   = pos    .begin()+pos.getTheDim() * iV * stride;
+        vel = vel_inf.begin()+pos.getTheDim() * iV * stride;
+        real_t mag;
+
+        //u_x: twist*z*(-y)
+        //u_y: twist*z*( x)
+        for(int iP(0);iP<stride; ++iP)
+        {
+            mag = twist_*x[iP+stride+stride];
+            vel[iP       ] = -mag*x[iP+stride];
+            vel[iP+stride] =  mag*x[iP       ];
+        }
+    }
+}

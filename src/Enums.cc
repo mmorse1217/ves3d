@@ -54,6 +54,8 @@ enum BgFlowType EnumifyBgFlow(const char * name)
       return TaylorVortexFlow;
   else if ( ns.compare(0,6,"Period") == 0 )
       return PeriodicFlow;
+  else if ( ns.compare(0,7,"Twister") == 0 )
+    return TwisterFlow;
   else if ( ns.compare(0,4,"User") == 0 )
       return UserDefinedFlow;
   else
@@ -150,6 +152,9 @@ std::ostream& operator<<(std::ostream& output, const enum BgFlowType &BG)
 	    break;
 	case PeriodicFlow:
 	    output<<"PeriodicFlow";
+	    break;
+	case TwisterFlow:
+	    output<<"TwisterFlow";
 	    break;
 	case UserDefinedFlow:
 	    output<<"UserDefinedFlow";
