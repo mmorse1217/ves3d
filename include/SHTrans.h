@@ -67,6 +67,7 @@ class SHTrans
 
     int p;
     int dft_size;
+    int filter_freq_;
 
     /**
      * The forward and inverse Legendre transform. The case of forward

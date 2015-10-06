@@ -85,6 +85,7 @@ class EvolveSurface : public Streamable
     const Mats_t &mats_;
 
     Sur_t *S_;
+    Sur_t *S_up_;
     BgFlow_t *vInf_;
     PSolver_t *parallel_solver_;
     Monitor_t *monitor_;

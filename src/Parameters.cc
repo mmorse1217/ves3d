@@ -19,29 +19,29 @@ template<typename T>
 void Parameters<T>::init()
 {
     // ordered alphabetically
-    bending_modulus	    = 1e-2;
+    bending_modulus         = 1e-2;
     bg_flow                 = ShearFlow;
-    bg_flow_param	    = 1e-1;
-    checkpoint		    = false;
+    bg_flow_param           = 1e-1;
+    checkpoint              = false;
     checkpoint_stride	    = -1;
-    error_factor	    = 1;
-    filter_freq		    = 8;
+    error_factor            = 1;
+    filter_freq             = 8;
     interaction_upsample    = false;
-    n_surfs		    = 1;
+    n_surfs                 = 1;
     num_threads             = 4;
     position_solver_iter    = 15;
     position_solver_restart = 1;
     position_solver_tol	    = (typeid(T) == typeid(float)) ? 1e-4: 1e-8;
-    rep_filter_freq	    = 4;
-    rep_maxit		    = 10;
-    rep_tol		    = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
-    rep_ts		    = 1;
-    rep_upsample	    = false;
-    scheme		    = JacobiBlockImplicit;
-    sh_order		    = 12;
-    singular_stokes	    = ViaSpHarm;
+    rep_filter_freq         = 4;
+    rep_maxit               = 10;
+    rep_tol                 = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
+    rep_ts                  = 1;
+    rep_upsample            = false;
+    scheme                  = JacobiBlockImplicit;
+    sh_order                = 12;
+    singular_stokes         = ViaSpHarm;
     solve_for_velocity      = false;
-    periodic_length	    = -1;
+    periodic_length         = -1;
     gravity_field[0]        = 0;
     gravity_field[1]        = 0;
     gravity_field[2]        = -1.0;
@@ -51,12 +51,12 @@ void Parameters<T>::init()
     tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
     time_adaptive           = false;
-    time_horizon	    = 1;
+    time_horizon            = 1;
     time_iter_max           = 100;
     time_precond            = NoPrecond;
     time_tol                = 1e-6;
-    ts			    = 1;
-    upsample_freq	    = 24;
+    ts                      = 1;
+    upsample_freq           = 24;
     viscosity_contrast      = 1.0;
 }
 

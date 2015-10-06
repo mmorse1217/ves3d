@@ -10,10 +10,11 @@ SHTrans<Container, Mats>::SHTrans(int p_in, const Mats &mats, int filter_freq) :
     mats_(mats),
     p(p_in),
     dft_size(2*p),
+    filter_freq_(filter_freq),
     filter_coeff_((value_type*) device_.Malloc(p * (p + 2) * sizeof(value_type)))
 {
-    filter_freq = (filter_freq == -1) ? 2*p/3 : filter_freq;
-    INFO("Initializing with p="<<p<<", filter_freq="<<filter_freq);
+    filter_freq_ = (filter_freq_ == -1) ? 2*p/3 : filter_freq_;
+    INFO("Initializing with p="<<p<<", filter_freq="<<filter_freq_);
 
     value_type *buffer = (value_type*) malloc(p * (p + 2) * sizeof(value_type));
     int idx = 0, len;
@@ -21,7 +22,7 @@ SHTrans<Container, Mats>::SHTrans(int p_in, const Mats &mats, int filter_freq) :
     {
         len = p + 1 - (ii+1)/2;
         for(int jj=0; jj < len; ++jj)
-            buffer[idx++] = (len-jj)<=(p - filter_freq) ? 0 : 1;
+            buffer[idx++] = (len-jj)<=(p - filter_freq_) ? 0 : 1;
     }
 
     device_.Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type),

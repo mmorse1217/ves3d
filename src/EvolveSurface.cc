@@ -5,6 +5,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     Interaction_t *I, Repartition_t *R, PSolver_t *parallel_solver, Vec_t *x0):
     params_(params),
     mats_(mats),
+    S_up_(NULL),
     vInf_(vInf),
     parallel_solver_(parallel_solver),
     monitor_(M),
@@ -47,6 +48,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
     if ( objsOnHeap_[0] ) delete monitor_;
     if ( objsOnHeap_[1] ) delete interaction_;
     if ( objsOnHeap_[2] ) delete repartition_;
+    if (S_up_) delete S_up_;
 }
 
 template<typename T, typename DT, const DT &DEVICE,
@@ -94,13 +96,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
     Sca_t area, vol;
     { // Compute area, vol
-        Sur_t* S_up=NULL;
-        S_->resample(params_->upsample_freq, &S_up); // up-sample
-        int N_ves=S_up->getNumberOfSurfaces();
-        area.resize(N_ves,1); S_up->area  (area);
-        vol .resize(N_ves,1); S_up->volume( vol);
-        S_up->resample(params_->sh_order, &S_); // down-sample
-        delete S_up;
+        S_->resample(params_->upsample_freq, &S_up_); // up-sample
+        int N_ves=S_up_->getNumberOfSurfaces();
+        area.resize(N_ves,1); S_up_->area  (area);
+        vol .resize(N_ves,1); S_up_->volume( vol);
+        //@bug downsample seems unnecessary
+        //S_up->resample(params_->sh_order, &S_); // down-sample
     }
 
     Vec_t dx, x0, x_coarse;
@@ -255,13 +256,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     const DT& device=Sca_t::getDevice();
     int N_ves=S_->getNumberOfSurfaces();
 
-    Sur_t* S_up=NULL;
     while(1){
-        S_->resample(params_->upsample_freq, &S_up); // up-sample
+        S_->resample(params_->upsample_freq, &S_up_); // up-sample
 
-        const Vec_t& Normal  =S_up->getNormal();
-        const Sca_t& AreaElem=S_up->getAreaElement();
-        const Sca_t& MeanCurv=S_up->getMeanCurv();
+        const Vec_t& Normal  =S_up_->getNormal();
+        const Sca_t& AreaElem=S_up_->getAreaElement();
+        const Sca_t& MeanCurv=S_up_->getMeanCurv();
 
         Sca_t X; // First perturbation direction
         { // X = -2.0*MeanCurv
@@ -281,8 +281,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
         { // Set dX, dY
             Sca_t area_err, vol_err;
             { // compute error
-                area_err.resize(N_ves,1); S_up->area  (area_err);
-                vol_err .resize(N_ves,1); S_up->volume( vol_err);
+                area_err.resize(N_ves,1); S_up_->area  (area_err);
+                vol_err .resize(N_ves,1); S_up_->volume( vol_err);
                 device.axpy(-1.0, area_err.begin(), area.begin(), N_ves, area_err.begin());
                 device.axpy(-1.0,  vol_err.begin(),  vol.begin(), N_ves,  vol_err.begin());
 
@@ -352,7 +352,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
         }
 
         Vec_t dS; dS.replicate(Normal);
-        Vec_t& position=S_up->getPositionModifiable();
+        Vec_t& position=S_up_->getPositionModifiable();
         { // position += dX*X.*Normal
             device.xvpw<value_type>( X.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             device.avpw<value_type>(dX.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
@@ -364,9 +364,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
             axpy(1, dS, position, position);
         }
 
-        S_up->resample(params_->sh_order, &S_); // down-sample
+        S_up_->resample(params_->sh_order, &S_); // down-sample
     }
-    delete S_up;
 
     return ErrorEvent::Success;
 }

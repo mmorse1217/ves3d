@@ -47,12 +47,13 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
 
 #pragma omp critical (monitor)
     {
+        INFO(emph<<"Monitor: thread = "<<omp_get_thread_num()<<"/"<<omp_get_num_threads()
+             <<", progress = "<<static_cast<int>(100*t/params_->time_horizon)<<"%"
+             <<", t = "<<SCI_PRINT_FRMT<<t
+             <<", dt = "<<SCI_PRINT_FRMT<<dt
+             <<", area error = "<<SCI_PRINT_FRMT<<(DA/A0_)
+             <<", volume error = "<<SCI_PRINT_FRMT<<(DV/V0_)<<emph);
 
-        INFO("Monitor: thread = "<<omp_get_thread_num()<<"/"<<omp_get_num_threads()
-            <<", t = "<<SCI_PRINT_FRMT<<t
-            <<", dt = "<<SCI_PRINT_FRMT<<dt
-            <<", area error = "<<SCI_PRINT_FRMT<<(DA/A0_)
-            <<", volume error = "<<SCI_PRINT_FRMT<<(DV/V0_));
 
         int checkpoint_index(checkpoint_stride_ <= 0 ? last_checkpoint_+1 : t/checkpoint_stride_);
 

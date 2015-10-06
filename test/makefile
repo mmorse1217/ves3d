@@ -2,6 +2,8 @@ ifndef VES3D_DIR
 $(error "$${VES3D_DIR} environment variable is not set.")
 endif
 
+RUNEXE = 0
+
 # include rules and flag for compiler/host
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
@@ -52,6 +54,7 @@ all: ${TEST}
 %.exe: %.o $(prefix ${VES3D_LIBDIR}, ${ARFILES}) ${MAKE_DEP}
 	${CXX} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS} $< ${LDLIBS} -o $@
 	${CXX} -MM ${CXXFLAGS} ${CPPFLAGS} -c -o $*.d $*.cc
+	@if [ "${RUNEXE}" -ne "0" ]; then ./$@; fi
 
 clean:
 	-${RM} *.o *.exe *.out *.d *.${VES3D_CHKEXT}
