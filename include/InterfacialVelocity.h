@@ -60,7 +60,7 @@ class InterfacialVelocity
 
     Error_t updateJacobiExplicit   (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
     Error_t updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx);
-    Error_t updateJacobiImplcit    (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
+    Error_t updateJacobiImplicit   (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
     Error_t updateImplicit         (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
 
     Error_t reparam();
@@ -126,6 +126,7 @@ class InterfacialVelocity
     mutable Arr_t vel_coeff_, dl_coeff_;
 
     //Workspace
+    mutable SurfContainer* S_up_;
     mutable std::queue<Sca_t*> scalar_work_q_;
     std::auto_ptr<Sca_t> checkoutSca() const;
     void recycle(std::auto_ptr<Sca_t> scp) const;

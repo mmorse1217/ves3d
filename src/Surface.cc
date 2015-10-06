@@ -12,7 +12,7 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     int rep_filter_freq) :
     sh_order_(sh_order),
     diff_filter_freq_((diff_filter_freq == -1) ? 2*sh_order_/3 : diff_filter_freq),
-    reparam_filter_freq_((rep_filter_freq == -1) ? sh_order_/3 : rep_filter_freq),
+    reparam_filter_freq_((rep_filter_freq == -1) ? sh_order_/2 : rep_filter_freq),
     mats_(&mats),
     sht_(sh_order_, mats.getShMats(sh_order_), diff_filter_freq_), ///@todo make sht_ autonomous
     sht_rep_filter_(sh_order, mats.getShMats(sh_order_), reparam_filter_freq_),
@@ -121,9 +121,7 @@ getSmoothedShapePosition(Vec_t &smthd_pos) const
     PROFILESTART();
     std::auto_ptr<Vec_t> wrk(checkoutVec());
     std::auto_ptr<Vec_t> shc(checkoutVec());
-
     sht_rep_filter_.lowPassFilter(x_, *wrk, *shc, smthd_pos);
-
     recycle(wrk);
     recycle(shc);
     PROFILEEND("",0);
@@ -131,48 +129,62 @@ getSmoothedShapePosition(Vec_t &smthd_pos) const
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
-mapToTangentSpace(Vec_t &vec_fld) const
+mapToTangentSpace(Vec_t &vec_fld, bool upsample) const
 {
     PROFILESTART();
-    if(first_forms_are_stale_)
+    if (first_forms_are_stale_)
         updateFirstForms();
 
     std::auto_ptr<Sca_t> scp(checkoutSca());
-    std::auto_ptr<Vec_t> wrk(checkoutVec());
-    std::auto_ptr<Vec_t> shc(checkoutVec());
-    std::auto_ptr<Vec_t> fld(checkoutVec());
 
-    //up-sampling
-    int usf(sht_resample_->getShOrder());
+    if (upsample) {
+        /*
+         * Upsampling is not preferred and is kept due to backward
+         * compatibility. It's better to upsample the surface and do
+         * computation there.
+         */
+        std::auto_ptr<Vec_t> wrk(checkoutVec());
+        std::auto_ptr<Vec_t> shc(checkoutVec());
+        std::auto_ptr<Vec_t> fld(checkoutVec());
 
-    scp->resize(scp->getNumSubs(), usf);
-    wrk->resize(wrk->getNumSubs(), usf);
-    shc->resize(shc->getNumSubs(), usf);
-    fld->resize(fld->getNumSubs(), usf);
-    normal_.resize(normal_.getNumSubs(), usf);
+        //up-sampling
+        int usf(sht_resample_->getShOrder());
 
-    Resample(vec_fld, sht_, *sht_resample_, *shc, *wrk, *fld);
-    Resample(normal_, sht_, *sht_resample_, *shc, *wrk, normal_);
+        scp->resize(scp->getNumSubs(), usf);
+        wrk->resize(wrk->getNumSubs(), usf);
+        shc->resize(shc->getNumSubs(), usf);
+        fld->resize(fld->getNumSubs(), usf);
+        normal_.resize(normal_.getNumSubs(), usf);
 
-    //re-normalizing
-    GeometricDot(normal_, normal_, *scp);
-    Sqrt(*scp, *scp);
-    uyInv(normal_, *scp, normal_);
+        Resample(vec_fld, sht_, *sht_resample_, *shc, *wrk, *fld);
+        Resample(normal_, sht_, *sht_resample_, *shc, *wrk, normal_);
 
-    //mapping to tangent
-    GeometricDot(*fld, normal_, *scp);
-    axpy(static_cast<value_type>(-1.0), *scp, *scp);
-    xvpw(*scp, normal_, *fld, *fld);
+        //re-normalizing
+        GeometricDot(normal_, normal_, *scp);
+        Sqrt(*scp, *scp);
+        uyInv(normal_, *scp, normal_);
 
-    //down-sampling
-    Resample(*fld   , *sht_resample_, sht_, *shc, *wrk, vec_fld);
-    Resample(normal_, *sht_resample_, sht_, *shc, *wrk, normal_);
-    normal_.resize(normal_.getNumSubs(), sht_.getShOrder());
+        //mapping to tangent
+        GeometricDot(*fld, normal_, *scp);
+        axpy(static_cast<value_type>(-1.0), *scp, *scp);
+        xvpw(*scp, normal_, *fld, *fld);
+
+        //down-sampling
+        Resample(*fld   , *sht_resample_, sht_, *shc, *wrk, vec_fld);
+        Resample(normal_, *sht_resample_, sht_, *shc, *wrk, normal_);
+        normal_.resize(normal_.getNumSubs(), sht_.getShOrder());
+
+        recycle(wrk);
+        recycle(shc);
+        recycle(fld);
+    } else {
+        scp->replicate(vec_fld);
+        GeometricDot(vec_fld, normal_, *scp);
+        axpy(static_cast<value_type>(-1.0), *scp, *scp);
+        xvpw(*scp, normal_, vec_fld, vec_fld);
+    }
 
     recycle(scp);
-    recycle(wrk);
-    recycle(shc);
-    recycle(fld);
     PROFILEEND("",0);
 }
 
@@ -555,12 +567,14 @@ Error_t Surface<S, V>::resample(int new_sh_freq, Surface **new_surf /* delete wh
 
     // construct new object
     if (*new_surf == NULL){
-	*new_surf = new Surface(new_sh_freq, *mats_, xre.get(),
-	    diff_filter_freq_*new_sh_freq/sh_order_,
-	    reparam_filter_freq_*new_sh_freq/sh_order_);
+        COUTDEBUG("Constructing new surface container");
+        *new_surf = new Surface(new_sh_freq, *mats_, xre.get(),
+            diff_filter_freq_*new_sh_freq/sh_order_ /* keep it relative */,
+            reparam_filter_freq_                    /* not relative     */ );
     } else {
-	ASSERT((*new_surf)->getShOrder()==new_sh_freq, "Container should have the same order as the argument");
-	(*new_surf)->setPosition(*xre);
+        COUTDEBUG("Reusing the surface container");
+        ASSERT((*new_surf)->getShOrder()==new_sh_freq, "Container should have the same order as the argument");
+        (*new_surf)->setPosition(*xre);
     }
 
     recycle(wrk);

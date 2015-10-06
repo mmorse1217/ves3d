@@ -101,7 +101,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         area.resize(N_ves,1); S_up_->area  (area);
         vol .resize(N_ves,1); S_up_->volume( vol);
         //@bug downsample seems unnecessary
-        //S_up->resample(params_->sh_order, &S_); // down-sample
+        //S_up_->resample(params_->sh_order, &S_); // down-sample
     }
 
     Vec_t dx, x0, x_coarse;

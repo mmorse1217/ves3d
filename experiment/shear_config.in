@@ -22,8 +22,7 @@ solve-for-velocity
 
 ## reparametrization -------------------------
 rep-max-iter : 1000
-rep-timestep : 5e-2
-rep-tol : 1e-3
+rep-tol : 1e-4
 
 ## checkpoint/monitor ------------------------
 checkpoint

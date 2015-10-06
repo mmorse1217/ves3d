@@ -61,9 +61,17 @@ class Surface : public Streamable
     void getCenters(Vec_t &centers) const;
 
     void getSmoothedShapePosition(Vec_t &smthd_pos) const;
-    void mapToTangentSpace(Vec_t &vec_fld) const;
+    void mapToTangentSpace(Vec_t &vec_fld, bool upsample=true) const;
     void linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const;
 
+    /*
+     * resampling the surface into a new container with the given
+     * frequency.
+     *
+     * The resampled container will have the same _relative_
+     * differentiation frequency, e.g. 2/3, and _absolute_
+     * reparametrization frequency, e.g. 4.
+     */
     Error_t resample(int new_sh_freq, Surface **new_surf) const;
 
     // From streamable class --------------------------------------------------

@@ -142,7 +142,7 @@ void Parameters<T>::adjustFreqs()
 {
   this->filter_freq     = 2 * this->sh_order / 3;
   this->upsample_freq   = 2 * this->sh_order;
-  this->rep_filter_freq = this->sh_order / 3;
+  this->rep_filter_freq =     this->sh_order / 2;
 }
 
 template<typename T>
@@ -177,7 +177,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --pseudospectral        Form and solve the system for function values on grid points (otherwise Galerkin)" );
   opt->addUsage( "     --rep-filter-freq       The filter freq for the reparametrization" );
   opt->addUsage( "     --rep-max-iter          Maximum number of reparametrization steps" );
-  opt->addUsage( "     --rep-timestep          The Time step for the reparametrization" );
+  opt->addUsage( "     --rep-timestep          The Time step for the reparametrization (default to timestep)" );
   opt->addUsage( "     --rep-tol               The absolute value tol on the velocity of reparametrization" );
   opt->addUsage( "     --rep-upsample          Flag to whether upsample the surfaces for reparametrization" );
   opt->addUsage( "     --sh-order              The spherical harmonics order" );
@@ -367,9 +367,6 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "rep-max-iter" ) != NULL  )
     this->rep_maxit =  atoi(opt->getValue( "rep-max-iter" ));
 
-  if( opt->getValue( "rep-timestep" ) != NULL  )
-    this->rep_ts =  atof(opt->getValue( "rep-timestep" ));
-
   if( opt->getValue( "rep-tol" ) != NULL  )
     this->rep_tol =  atof(opt->getValue( "rep-tol" ));
 
@@ -400,8 +397,14 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "time-horizon" ) != NULL  )
     this->time_horizon =  atof(opt->getValue( "time-horizon" ));
 
-  if( opt->getValue( "timestep" ) != NULL  )
-    this->ts =  atof(opt->getValue( "timestep" ));
+  if( opt->getValue( "timestep" ) != NULL  ){
+      this->ts =  atof(opt->getValue( "timestep" ));
+      this->rep_ts = this->ts;
+  }
+
+  // adjusted based on timestep (see above)
+  if( opt->getValue( "rep-timestep" ) != NULL  )
+    this->rep_ts =  atof(opt->getValue( "rep-timestep" ));
 
   if( opt->getValue( "time-tol" ) != NULL  )
     this->time_tol =  atof(opt->getValue( "time-tol" ));

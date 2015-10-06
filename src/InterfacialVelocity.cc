@@ -23,7 +23,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
-    stokes_(mats,params_)
+    stokes_(mats,params_),
+    S_up_(NULL)
 {
     pos_vel_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
@@ -84,6 +85,8 @@ InterfacialVelocity<SurfContainer, Interaction>::
     delete parallel_matvec_;
     delete parallel_rhs_;
     delete parallel_u_;
+
+    if(S_up_) delete S_up_;
 }
 
 // Performs the following computation:
@@ -1215,37 +1218,60 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     PROFILESTART();
 
     value_type ts(params_.rep_ts);
-    value_type vel(0);
+    value_type vel(params_.rep_tol+1);
 
     int ii(-1);
+    SurfContainer* Surf;
+
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
     std::auto_ptr<Sca_t> wrk = checkoutSca();
 
-    COUTDEBUG("Reparametrization");
+    if (params_.rep_upsample){
+        INFO("Upsampling for reparametrization");
+        S_.resample(params_.upsample_freq, &S_up_);
+        Surf = S_up_;
+    } else {
+        Surf = &S_;
+    }
+
+    u1 ->replicate(Surf->getPosition());
+    u2 ->replicate(Surf->getPosition());
+    wrk->replicate(Surf->getPosition());
+
     while ( ++ii < params_.rep_maxit )
     {
-        S_.getSmoothedShapePosition(*u1);
-        axpy(static_cast<value_type>(-1), S_.getPosition(),
-            *u1, *u1);
+        Surf->getSmoothedShapePosition(*u1);
+        axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
+        Surf->mapToTangentSpace(*u1, false /* upsample */);
 
-        S_.mapToTangentSpace(*u1);
+        //Advecting tension (useless for implicit)
+        if (params_.scheme != GloballyImplicit){
+            if (params_.rep_upsample)
+                WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
+            else {
+                Surf->grad(tension_, *u2);
+                GeometricDot(*u2, *u1, *wrk);
+                axpy(ts, *wrk, tension_, tension_);
+            }
+        }
 
-        //Advecting tension
-        S_.grad(tension_, *u2);
-        GeometricDot(*u2, *u1, *wrk);
-        axpy(ts, *wrk, tension_, tension_);
+        //updating position
+        axpy(ts, *u1, Surf->getPosition(), Surf->getPositionModifiable());
 
-        axpy(ts, *u1, S_.getPosition(), S_.getPositionModifiable());
-
-        vel = MaxAbs(*u1);
+        //checks
+        GeometricDot(*u1,*u1,*wrk);
+        vel = MaxAbs(*wrk);
+        vel = std::sqrt(vel);
 
         COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
-
-        if(vel < params_.rep_tol )
-            break;
-
+        if(vel < params_.rep_tol ) break;
     }
+
+    if (params_.rep_upsample)
+        Resample(Surf->getPosition(), sht_upsample_, sht_, *u1, *u2,
+            S_.getPositionModifiable());
+
     INFO("Iterations = "<<ii<<", |vel| = "<<vel);
 
     recycle(u1);
