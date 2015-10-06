@@ -43,28 +43,28 @@ class ErrorEvent
 {
   public:
     //! Errors in the Ves3D code
-    enum Error_t {Success		 = 0,
-		  UnknownError		 = 1,
-		  ArithmeticError	 = 2,
-		  AssertionError	 = 3,
-		  EnvironmentError	 = 4,	/* IO, file, etc */
-		  MemoryError		 = 5,
-		  ReferenceError	 = 6,
-		  NotImplementedError	 = 7,
-		  //
+    enum Error_t {Success                = 0,
+                  UnknownError           = 1,
+                  ArithmeticError        = 2,
+                  AssertionError         = 3,
+                  EnvironmentError       = 4, /* IO, file, etc */
+                  MemoryError            = 5,
+                  ReferenceError         = 6,
+                  NotImplementedError	 = 7,
+                  //
                   InvalidParameterError  = 10,
-		  //
+                  //
                   InvalidDeviceError	 = 20,
-		  SetOnActiveDeviceError = 21,
-		  //
-                  AccuracyError		 = 30,
-                  DivergenceError	 = 31,
-		  //
-                  InteractionError	 = 40,
-		  RepartitioningError	 = 41,
-		  //
-		  IOError                = 50,
-		  IOBadStream            = 51
+                  SetOnActiveDeviceError = 21,
+                  //
+                  AccuracyError          = 30,
+                  DivergenceError        = 31,
+                  //
+                  InteractionError       = 40,
+                  RepartitioningError	 = 41,
+                  //
+                  IOError                = 50,
+                  IOBadStream            = 51
                   };
 
     //! lightweight error event that can be handled by

@@ -1219,6 +1219,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
     value_type ts(params_.rep_ts);
     value_type vel(params_.rep_tol+1);
+    value_type last_vel(vel+1);
+    bool flag(true);
 
     int ii(-1);
     SurfContainer* Surf;
@@ -1265,7 +1267,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         vel = std::sqrt(vel);
 
         COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
-        if(vel < params_.rep_tol ) break;
+        if (vel<params_.rep_tol) {
+            flag=false;
+            break;
+        }
+
+        if (last_vel < vel) break;
+        last_vel = vel;
     }
 
     if (params_.rep_upsample)
@@ -1279,7 +1287,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     recycle(wrk);
     PROFILEEND("",0);
 
-    return ErrorEvent::Success;
+    return (flag) ? ErrorEvent::DivergenceError : ErrorEvent::Success;
 }
 
 template<typename SurfContainer, typename Interaction>

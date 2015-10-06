@@ -227,7 +227,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             t += dt;
         }
 
-        F_->reparam();
+        CHK( F_->reparam() );
         AreaVolumeCorrection(area, vol);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
