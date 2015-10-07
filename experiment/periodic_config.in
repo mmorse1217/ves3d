@@ -4,24 +4,15 @@ rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
-n-surfs : 2
-bending-modulus : .25
-init-file : precomputed_/dumbbell_{{sh_order}}_{{precision}}.txt
+n-surfs : 1
+bending-modulus : .01
+init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
 cent-file : experiment/centers_periodic.txt
-#viscosity-contrast : 1.0
-#
-### solver  -----------------------------------
-#position-iter-max : 20
-#tension-iter-max : 20
-#position-restart : 10
-#tension-restart : 10
-#position-tol : 1e-6
-#tension-tol : 1e-6
 
 ## time stepping -----------------------------
-time-horizon : 600
+time-horizon : 100
 timestep : 2e-1
-time-tol : 1e-6
+time-tol : 1e-5
 time-iter-max : 300
 time-scheme : GloballyImplicit
 time-precond : DiagonalSpectral
@@ -31,14 +22,12 @@ solve-for-velocity
 # time-adaptive
 
 ## reparametrization -------------------------
-rep-max-iter : 10000
-rep-timestep : 1e-2
+rep-max-iter : 1000
 rep-tol : 1e-4
 
 ## checkpoint/monitor ------------------------
 checkpoint
-#checkpoint-stride : 5e-1
-checkpoint-file : experiment/periodic_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+checkpoint-file : experiment/periodic_fmm_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
 
 ## far filed ---------------------------------
 bg-flow-type : TaylorFlow
@@ -46,5 +35,4 @@ bg-flow-param : 0.1
 
 ## misc  -------------------------------------
 num-threads : 16
-
-periodic-length : 4
+periodic-length : -4

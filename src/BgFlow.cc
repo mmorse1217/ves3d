@@ -6,6 +6,8 @@ Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase
 
     ASSERT(*vInf==NULL, "Non-null pointer passed");
 
+    typename Vec_t::value_type period(std::abs(params.periodic_length));
+
     switch (params.bg_flow)
     {
 	case ShearFlow:
@@ -22,7 +24,7 @@ Error_t BgFlowFactory(Parameters<typename Vec_t::value_type> &params, BgFlowBase
 	    break;
 
 	case TaylorVortexFlow:
-	    *vInf = new TaylorVortexImp<Vec_t>(params.bg_flow_param, params.periodic_length, params.periodic_length);
+	    *vInf = new TaylorVortexImp<Vec_t>(params.bg_flow_param, period, period);
 	    break;
 
 	case PeriodicFlow:
@@ -205,8 +207,8 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
 
     for ( size_t ii=0;ii<pos.size(); ++ii )
     {
-        wrk_vec1_.begin()[ii] = cos(wrk_vec1_.begin()[ii]);
-        wrk_vec2_.begin()[ii] = sin(wrk_vec2_.begin()[ii]);
+        wrk_vec1_.begin()[ii] = sin(wrk_vec1_.begin()[ii]);
+        wrk_vec2_.begin()[ii] = cos(wrk_vec2_.begin()[ii]);
     }
 
     axpy(0.0, pos, vel_inf);
@@ -214,8 +216,8 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
         for ( int ii=0;ii<stride; ++ii)
         {
             idx = ss * DIM * stride + ii;
-            vel_inf.begin()[idx          ] = -1 * wrk_vec1_.begin()[idx] * wrk_vec2_.begin()[idx + stride];
-            vel_inf.begin()[idx + stride ] =  wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride];
+            vel_inf.begin()[idx          ] =        wrk_vec1_.begin()[idx] * wrk_vec2_.begin()[idx + stride];
+            vel_inf.begin()[idx + stride ] = -1.0 * wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride];
 
         }
     axpy(strength_, vel_inf, vel_inf);

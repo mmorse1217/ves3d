@@ -1220,7 +1220,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     value_type ts(params_.rep_ts);
     value_type vel(params_.rep_tol+1);
     value_type last_vel(vel+1);
-    bool flag(true);
+    int flag(1);
 
     int ii(-1);
     SurfContainer* Surf;
@@ -1267,12 +1267,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         vel = std::sqrt(vel);
 
         COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
-        if (vel<params_.rep_tol) {
-            flag=false;
-            break;
-        }
+	if (vel<params_.rep_tol || last_vel < vel) {
+	    flag=0;
+	    if (last_vel < vel) WARN("Residual is increasing, stopping");
+	    break;
+	}
 
-        if (last_vel < vel) break;
         last_vel = vel;
     }
 
