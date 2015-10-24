@@ -66,8 +66,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
 
     //spectrum in harmonic space, diagonal
     if (params_.time_precond == DiagonalSpectral){
-	position_precond.resize(1,p);
-	tension_precond.resize(1,p);
+        position_precond.resize(1,p);
+        tension_precond.resize(1,p);
     }
 }
 
@@ -208,9 +208,9 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     CHK(Prepare(scheme));
 
     if (params_.solve_for_velocity) {
-	CHK(AssembleRhsVel(parallel_rhs_, dt_, scheme));
+        CHK(AssembleRhsVel(parallel_rhs_, dt_, scheme));
     } else {
-	CHK(AssembleRhsPos(parallel_rhs_, dt_, scheme));
+        CHK(AssembleRhsPos(parallel_rhs_, dt_, scheme));
     }
 
     Error_t err=ErrorEvent::Success;
@@ -220,10 +220,10 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     dx.replicate(S_.getPosition());
     if (params_.solve_for_velocity){
-	//axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
+        //axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
         axpy(dt, pos_vel_, dx);
     } else {
-	//S_.setPosition(pos_vel_);
+        //S_.setPosition(pos_vel_);
         axpy(-1, S_.getPosition(), pos_vel_, dx);
     }
 
@@ -235,8 +235,8 @@ template<typename SurfContainer, typename Interaction>
 size_t InterfacialVelocity<SurfContainer, Interaction>::stokesBlockSize() const{
 
     return (params_.pseudospectral ?
-	S_.getPosition().size() :
-	S_.getPosition().getShOrder()*(S_.getPosition().getShOrder()+2)*S_.getPosition().getNumSubFuncs() ); /* (p+1)^2-1 (last freq doesn't have a cosine */
+        S_.getPosition().size() :
+        S_.getPosition().getShOrder()*(S_.getPosition().getShOrder()+2)*S_.getPosition().getNumSubFuncs() ); /* (p+1)^2-1 (last freq doesn't have a cosine */
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -250,7 +250,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     PROFILESTART();
 
     if (pos_vel_.size() != S_.getPosition().size() ||
-	dl_coeff_.size() != S_.getPosition().getNumSubs() ){
+        dl_coeff_.size() != S_.getPosition().getNumSubs() ){
 
       COUTDEBUG("Resizing the containers");
       pos_vel_.replicate(S_.getPosition());
@@ -268,16 +268,16 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
       dl_coeff_.resize(nves);
       for (size_t iV(0); iV<nves; ++iV) buffer[iV] = (1.0 - lambda);
       dl_coeff_.getDevice().Memcpy(dl_coeff_.begin(),
-				   buffer,
-				   nves * sizeof(value_type),
-				   device_type::MemcpyHostToDevice);
+                                   buffer,
+                                   nves * sizeof(value_type),
+                                   device_type::MemcpyHostToDevice);
 
       vel_coeff_.resize(nves);
       for (size_t iV(0); iV<nves; ++iV) buffer[iV] = 0.5*(1.0 + lambda);
       vel_coeff_.getDevice().Memcpy(vel_coeff_.begin(),
-				    buffer,
-				    nves * sizeof(value_type),
-				    device_type::MemcpyHostToDevice);
+                                    buffer,
+                                    nves * sizeof(value_type),
+                                    device_type::MemcpyHostToDevice);
       delete[] buffer;
     }
 
@@ -291,12 +291,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     stokes_.SetTrgCoord(S_);
 
     if (!precond_configured_ && params_.time_precond!=NoPrecond)
-	ConfigurePrecond(params_.time_precond);
+        ConfigurePrecond(params_.time_precond);
 
     //!@bug doesn't support repartitioning
     if (!psolver_configured_ && scheme==GloballyImplicit){
-	ASSERT(parallel_solver_ != NULL, "need a working parallel solver");
-	CHK(ConfigureSolver(scheme));
+        ASSERT(parallel_solver_ != NULL, "need a working parallel solver");
+        CHK(ConfigureSolver(scheme));
     }
 
     PROFILEEND("",0);
@@ -336,17 +336,17 @@ ConfigureSolver(const SolverScheme &scheme) const
     // setting up the solver
     CHK(parallel_solver_->SetOperator(parallel_matvec_));
     CHK(parallel_solver_->SetTolerances(params_.time_tol,
-	    PSolver_t::PLS_DEFAULT,
-	    PSolver_t::PLS_DEFAULT,
-	    params_.time_iter_max));
+            PSolver_t::PLS_DEFAULT,
+            PSolver_t::PLS_DEFAULT,
+            params_.time_iter_max));
 
     CHK(parallel_solver_->Configure());
 
     // setting up the preconditioner
     if (params_.time_precond != NoPrecond){
-	ASSERT(precond_configured_, "The preconditioner isn't configured yet");
-	CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
-	CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
+        ASSERT(precond_configured_, "The preconditioner isn't configured yet");
+        CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
+        CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
     }
     psolver_configured_ = true;
 
@@ -360,42 +360,42 @@ ConfigurePrecond(const PrecondScheme &precond) const{
 
     PROFILESTART();
     if (precond!=DiagonalSpectral)
-	return ErrorEvent::NotImplementedError; /* Unsupported preconditioner scheme */
+        return ErrorEvent::NotImplementedError; /* Unsupported preconditioner scheme */
 
     INFO("Setting up the diagonal preceonditioner");
     value_type *buffer = new value_type[position_precond.size() * sizeof(value_type)];
 
     { //bending precond
-	int idx(0), N(0);
-	// The sh coefficients are ordered by m and then n
-	for(int iM=0; iM<position_precond.getGridDim().second; ++iM){
-	    for(int iN=++N/2; iN<position_precond.getGridDim().first; ++iN){
-		value_type bending_precond(1.0/fabs(1.0-dt_*iN*iN*iN));
-		bending_precond = fabs(bending_precond) < 1e3   ? bending_precond : 1.0;
-		buffer[idx]     = fabs(bending_precond) > 1e-10 ? bending_precond : 1.0;
-		++idx;
-	    }
-	}
-	position_precond.getDevice().Memcpy(position_precond.begin(), buffer,
-	    position_precond.size() * sizeof(value_type),
-	    device_type::MemcpyHostToDevice);
+        int idx(0), N(0);
+        // The sh coefficients are ordered by m and then n
+        for(int iM=0; iM<position_precond.getGridDim().second; ++iM){
+            for(int iN=++N/2; iN<position_precond.getGridDim().first; ++iN){
+                value_type bending_precond(1.0/fabs(1.0-dt_*iN*iN*iN));
+                bending_precond = fabs(bending_precond) < 1e3   ? bending_precond : 1.0;
+                buffer[idx]     = fabs(bending_precond) > 1e-10 ? bending_precond : 1.0;
+                ++idx;
+            }
+        }
+        position_precond.getDevice().Memcpy(position_precond.begin(), buffer,
+            position_precond.size() * sizeof(value_type),
+            device_type::MemcpyHostToDevice);
     }
     { // tension precond
-	int idx(0), N(0);
-	for(int iM=0; iM<tension_precond.getGridDim().second; ++iM){
-	    for(int iN=++N/2; iN<tension_precond.getGridDim().first; ++iN){
-		value_type eig(4*iN*iN-1);
-		eig *= 2*iN+3;
-		eig /= iN+1;
-		eig /= 2*iN*iN+2*iN-1;
-		eig  = iN==0 ? 1.0 : eig/iN;
-		buffer[idx] = fabs(eig) > 1e-10 ? eig : 1.0;
-		++idx;
-	    }
-	}
-	tension_precond.getDevice().Memcpy(tension_precond.begin(), buffer,
-	    tension_precond.size() * sizeof(value_type),
-	    device_type::MemcpyHostToDevice);
+        int idx(0), N(0);
+        for(int iM=0; iM<tension_precond.getGridDim().second; ++iM){
+            for(int iN=++N/2; iN<tension_precond.getGridDim().first; ++iN){
+                value_type eig(4*iN*iN-1);
+                eig *= 2*iN+3;
+                eig /= iN+1;
+                eig /= 2*iN*iN+2*iN-1;
+                eig  = iN==0 ? 1.0 : eig/iN;
+                buffer[idx] = fabs(eig) > 1e-10 ? eig : 1.0;
+                ++idx;
+            }
+        }
+        tension_precond.getDevice().Memcpy(tension_precond.begin(), buffer,
+            tension_precond.size() * sizeof(value_type),
+            device_type::MemcpyHostToDevice);
     }
 
     delete[] buffer;
@@ -443,29 +443,29 @@ AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     ASSERT(rsz==xsz+tsz,"Bad sizes");
 
     if (params_.pseudospectral){
-	COUTDEBUG("Copy data to parallel rhs array");
-	vRhs->getDevice().Memcpy(i    , vRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tRhs->getDevice().Memcpy(i+xsz, tRhs->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Copy data to parallel rhs array");
+        vRhs->getDevice().Memcpy(i    , vRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tRhs->getDevice().Memcpy(i+xsz, tRhs->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     } else {  /* Galerkin */
-	COUTDEBUG("Project RHS to spectral coefficient");
-	std::auto_ptr<Vec_t> vRhsSh  = checkoutVec();
-	std::auto_ptr<Sca_t> tRhsSh  = checkoutSca();
-	std::auto_ptr<Vec_t> wrk     = checkoutVec();
+        COUTDEBUG("Project RHS to spectral coefficient");
+        std::auto_ptr<Vec_t> vRhsSh  = checkoutVec();
+        std::auto_ptr<Sca_t> tRhsSh  = checkoutSca();
+        std::auto_ptr<Vec_t> wrk     = checkoutVec();
 
-	vRhsSh->replicate(*vRhs);
-	tRhsSh->replicate(*tRhs);
-	wrk->replicate(*vRhs);
+        vRhsSh->replicate(*vRhs);
+        tRhsSh->replicate(*tRhs);
+        wrk->replicate(*vRhs);
 
-	sht_.forward(*vRhs, *wrk, *vRhsSh);
-	sht_.forward(*tRhs, *wrk, *tRhsSh);
+        sht_.forward(*vRhs, *wrk, *vRhsSh);
+        sht_.forward(*tRhs, *wrk, *tRhsSh);
 
-	COUTDEBUG("Copy data to parallel RHS array (size="<<xsz<<"+"<<tsz<<")");
-	vRhs->getDevice().Memcpy(i    , vRhsSh->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tRhs->getDevice().Memcpy(i+xsz, tRhsSh->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Copy data to parallel RHS array (size="<<xsz<<"+"<<tsz<<")");
+        vRhs->getDevice().Memcpy(i    , vRhsSh->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tRhs->getDevice().Memcpy(i+xsz, tRhsSh->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-	recycle(vRhsSh);
-	recycle(tRhsSh);
-	recycle(wrk);
+        recycle(vRhsSh);
+        recycle(tRhsSh);
+        recycle(wrk);
     }
 
     CHK(parallel_rhs_->RestoreArray(i));
@@ -495,20 +495,20 @@ AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     CHK(BgFlow(*pRhs, dt));
 
     if( fabs(params_.viscosity_contrast-1.0)>1e-12){
-	COUTDEBUG("Computing the rhs due to viscosity difference");
-	std::auto_ptr<Vec_t> x  = checkoutVec();
-	std::auto_ptr<Vec_t> Dx = checkoutVec();
-	av(dl_coeff_, S_.getPosition(), *x);
-	stokes_.SetDensitySL(NULL);
-	stokes_.SetDensityDL(x.get());
-	stokes_(*Dx);
-	axpy(-dt, *pRhs, *Dx, *pRhs);
-	axpy(static_cast<value_type>(-1.0), *pRhs, *pRhs);
+        COUTDEBUG("Computing the rhs due to viscosity difference");
+        std::auto_ptr<Vec_t> x  = checkoutVec();
+        std::auto_ptr<Vec_t> Dx = checkoutVec();
+        av(dl_coeff_, S_.getPosition(), *x);
+        stokes_.SetDensitySL(NULL);
+        stokes_.SetDensityDL(x.get());
+        stokes_(*Dx);
+        axpy(-dt, *pRhs, *Dx, *pRhs);
+        axpy(static_cast<value_type>(-1.0), *pRhs, *pRhs);
 
-	recycle(x);
-	recycle(Dx);
+        recycle(x);
+        recycle(Dx);
     } else
-	axpy(dt, *pRhs, *pRhs);
+        axpy(dt, *pRhs, *pRhs);
 
     COUTDEBUG("Computing rhs for div(u)");
     std::auto_ptr<Sca_t> tRhs = checkoutSca();
@@ -528,29 +528,29 @@ AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     ASSERT(rsz==xsz+tsz,"Bad sizes");
 
     if (params_.pseudospectral){
-	COUTDEBUG("Copy data to parallel rhs array");
-	pRhs->getDevice().Memcpy(i    , pRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tRhs->getDevice().Memcpy(i+xsz, tRhs->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Copy data to parallel rhs array");
+        pRhs->getDevice().Memcpy(i    , pRhs->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tRhs->getDevice().Memcpy(i+xsz, tRhs->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     } else {  /* Galerkin */
-	COUTDEBUG("Project RHS to spectral coefficient");
-	std::auto_ptr<Vec_t> pRhsSh  = checkoutVec();
-	std::auto_ptr<Sca_t> tRhsSh  = checkoutSca();
-	std::auto_ptr<Vec_t> wrk     = checkoutVec();
+        COUTDEBUG("Project RHS to spectral coefficient");
+        std::auto_ptr<Vec_t> pRhsSh  = checkoutVec();
+        std::auto_ptr<Sca_t> tRhsSh  = checkoutSca();
+        std::auto_ptr<Vec_t> wrk     = checkoutVec();
 
-	pRhsSh->replicate(*pRhs);
-	tRhsSh->replicate(*tRhs);
-	wrk->replicate(*pRhs);
+        pRhsSh->replicate(*pRhs);
+        tRhsSh->replicate(*tRhs);
+        wrk->replicate(*pRhs);
 
-	sht_.forward(*pRhs, *wrk, *pRhsSh);
-	sht_.forward(*tRhs, *wrk, *tRhsSh);
+        sht_.forward(*pRhs, *wrk, *pRhsSh);
+        sht_.forward(*tRhs, *wrk, *tRhsSh);
 
-	COUTDEBUG("Copy data to parallel rhs array");
-	pRhs->getDevice().Memcpy(i    , pRhsSh->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tRhs->getDevice().Memcpy(i+xsz, tRhsSh->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Copy data to parallel rhs array");
+        pRhs->getDevice().Memcpy(i    , pRhsSh->begin(), xsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tRhs->getDevice().Memcpy(i+xsz, tRhsSh->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-	recycle(pRhsSh);
-	recycle(tRhsSh);
-	recycle(wrk);
+        recycle(pRhsSh);
+        recycle(tRhsSh);
+        recycle(wrk);
     }
 
     CHK(parallel_rhs_->RestoreArray(i));
@@ -580,29 +580,29 @@ AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) co
     ASSERT(rsz==vsz+tsz,"Bad sizes");
 
     if (params_.pseudospectral){
-	COUTDEBUG("Copy initial guess to parallel solution array");
-	pos_vel_.getDevice().Memcpy(i    , pos_vel_.begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tension_.getDevice().Memcpy(i+vsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Copy initial guess to parallel solution array");
+        pos_vel_.getDevice().Memcpy(i    , pos_vel_.begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tension_.getDevice().Memcpy(i+vsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     } else {  /* Galerkin */
-    	COUTDEBUG("Project initial guess to spectral coefficient");
-	std::auto_ptr<Vec_t> voxSh  = checkoutVec();
-	std::auto_ptr<Sca_t> tSh    = checkoutSca();
-	std::auto_ptr<Vec_t> wrk    = checkoutVec();
+            COUTDEBUG("Project initial guess to spectral coefficient");
+        std::auto_ptr<Vec_t> voxSh  = checkoutVec();
+        std::auto_ptr<Sca_t> tSh    = checkoutSca();
+        std::auto_ptr<Vec_t> wrk    = checkoutVec();
 
-	voxSh->replicate(pos_vel_);
-	tSh->replicate(tension_);
-	wrk->replicate(pos_vel_);
+        voxSh->replicate(pos_vel_);
+        tSh->replicate(tension_);
+        wrk->replicate(pos_vel_);
 
-	sht_.forward(pos_vel_, *wrk, *voxSh);
-	sht_.forward(tension_, *wrk, *tSh);
+        sht_.forward(pos_vel_, *wrk, *voxSh);
+        sht_.forward(tension_, *wrk, *tSh);
 
-	COUTDEBUG("Copy initial guess to parallel solution array");
-	voxSh->getDevice().Memcpy(i    , voxSh->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tSh->getDevice().Memcpy(  i+vsz, tSh->begin()  , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Copy initial guess to parallel solution array");
+        voxSh->getDevice().Memcpy(i    , voxSh->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tSh->getDevice().Memcpy(  i+vsz, tSh->begin()  , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-	recycle(voxSh);
-	recycle(tSh);
-	recycle(wrk);
+        recycle(voxSh);
+        recycle(tSh);
+        recycle(wrk);
     }
 
     CHK(parallel_u_->RestoreArray(i));
@@ -625,22 +625,22 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
 
     COUTDEBUG("Computing the interfacial forces and setting single-layer density");
     if (params_.solve_for_velocity){
-	// Bending of dt*u + tension of sigma
-	axpy(dt_, vox, *Du);
-	Intfcl_force_.implicitTractionJump(S_, *Du, ten, *f);
+        // Bending of dt*u + tension of sigma
+        axpy(dt_, vox, *Du);
+        Intfcl_force_.implicitTractionJump(S_, *Du, ten, *f);
     } else {
-	// dt*(Bending of x + tension of sigma)
-	Intfcl_force_.implicitTractionJump(S_, vox, ten, *f);
-	axpy(dt_, *f, *f);
+        // dt*(Bending of x + tension of sigma)
+        Intfcl_force_.implicitTractionJump(S_, vox, ten, *f);
+        axpy(dt_, *f, *f);
     }
     stokes_.SetDensitySL(f.get());
 
     if( fabs(params_.viscosity_contrast-1.0)>1e-12){
-	COUTDEBUG("Setting the double-layer density");
-	av(dl_coeff_, vox, *Du);
-	stokes_.SetDensityDL(Du.get());
+        COUTDEBUG("Setting the double-layer density");
+        av(dl_coeff_, vox, *Du);
+        stokes_.SetDensityDL(Du.get());
     } else {
-	stokes_.SetDensityDL(NULL);
+        stokes_.SetDensityDL(NULL);
     }
 
     COUTDEBUG("Calling stokes");
@@ -656,7 +656,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
     axpy((value_type) -1.0, ten, ten);
 
     if( fabs(params_.viscosity_contrast-1.0)>1e-12)
-	av(vel_coeff_, vox, vox);
+        av(vel_coeff_, vox, vox);
 
     axpy((value_type) -1.0, *Sf, vox, vox);
 
@@ -687,54 +687,54 @@ ImplicitApply(const POp_t *o, const value_type *x, value_type *y)
 
     COUTDEBUG("Unpacking the input from parallel vector");
     if (F->params_.pseudospectral){
-	vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     } else {  /* Galerkin */
-	std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
-	std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
-	std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
+        std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
+        std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
+        std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
 
-	voxSh->replicate(*vox);
-	tSh->replicate(*ten);
-	wrk->replicate(*vox);
-	voxSh->getDevice().Memcpy(voxSh->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	tSh  ->getDevice().Memcpy(tSh->begin()  , x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        voxSh->replicate(*vox);
+        tSh->replicate(*ten);
+        wrk->replicate(*vox);
+        voxSh->getDevice().Memcpy(voxSh->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        tSh  ->getDevice().Memcpy(tSh->begin()  , x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
-	COUTDEBUG("Mapping the input to physical space");
-	F->sht_.backward(*voxSh, *wrk, *vox);
-	F->sht_.backward(*tSh  , *wrk, *ten);
+        COUTDEBUG("Mapping the input to physical space");
+        F->sht_.backward(*voxSh, *wrk, *vox);
+        F->sht_.backward(*tSh  , *wrk, *ten);
 
-	F->recycle(voxSh);
-	F->recycle(tSh);
-	F->recycle(wrk);
+        F->recycle(voxSh);
+        F->recycle(tSh);
+        F->recycle(wrk);
     }
 
     F->ImplicitMatvecPhysical(*vox, *ten);
 
     if (F->params_.pseudospectral){
-	COUTDEBUG("Packing the matvec into parallel vector");
-	vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Packing the matvec into parallel vector");
+        vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     } else {  /* Galerkin */
-	COUTDEBUG("Mapping the matvec to physical space");
-	std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
-	std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
-	std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
+        COUTDEBUG("Mapping the matvec to physical space");
+        std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
+        std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
+        std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
 
-	voxSh->replicate(*vox);
-	tSh->replicate(*ten);
-	wrk->replicate(*vox);
+        voxSh->replicate(*vox);
+        tSh->replicate(*ten);
+        wrk->replicate(*vox);
 
-	F->sht_.forward(*vox, *wrk, *voxSh);
-	F->sht_.forward(*ten, *wrk, *tSh);
+        F->sht_.forward(*vox, *wrk, *voxSh);
+        F->sht_.forward(*ten, *wrk, *tSh);
 
-	COUTDEBUG("Packing the matvec into parallel vector");
-	voxSh->getDevice().Memcpy(y    , voxSh->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tSh  ->getDevice().Memcpy(y+vsz, tSh->begin()  , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        COUTDEBUG("Packing the matvec into parallel vector");
+        voxSh->getDevice().Memcpy(y    , voxSh->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tSh  ->getDevice().Memcpy(y+vsz, tSh->begin()  , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
-	F->recycle(voxSh);
-	F->recycle(tSh);
-	F->recycle(wrk);
+        F->recycle(voxSh);
+        F->recycle(tSh);
+        F->recycle(wrk);
     }
 
     F->recycle(vox);
@@ -768,13 +768,13 @@ ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
 
     COUTDEBUG("Unpacking the input parallel vector");
     if (F->params_.pseudospectral){
-	vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	F->sht_.forward(*vox, *wrk, *vxs);
-	F->sht_.forward(*ten, *wrk, *tns);
+        vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        F->sht_.forward(*vox, *wrk, *vxs);
+        F->sht_.forward(*ten, *wrk, *tns);
     } else {  /* Galerkin */
-	vxs->getDevice().Memcpy(vxs->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	tns->getDevice().Memcpy(tns->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        vxs->getDevice().Memcpy(vxs->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        tns->getDevice().Memcpy(tns->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     }
 
     COUTDEBUG("Applying diagonal preconditioner");
@@ -782,13 +782,13 @@ ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
     F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
 
     if (F->params_.pseudospectral){
-	F->sht_.backward(*vxs, *wrk, *vox);
-	F->sht_.backward(*tns, *wrk, *ten);
-	vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        F->sht_.backward(*vxs, *wrk, *vox);
+        F->sht_.backward(*tns, *wrk, *ten);
+        vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     } else {  /* Galerkin */
-	vxs->getDevice().Memcpy(y    , vxs->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-	tns->getDevice().Memcpy(y+vsz, tns->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        vxs->getDevice().Memcpy(y    , vxs->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tns->getDevice().Memcpy(y+vsz, tns->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     }
 
     F->recycle(vox);
@@ -809,7 +809,7 @@ Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &s
     INFO("Solving for position/velocity and tension using "<<scheme<<" scheme.");
 
     CHK(parallel_solver_->Solve(parallel_rhs_, parallel_u_));
-    typename PVec_t::size_type	iter;
+    typename PVec_t::size_type        iter;
     CHK(parallel_solver_->IterationNumber(iter));
     INFO("Parallel solver returned after "<<iter<<" iteration(s).");
     INFO("Parallal solver report:");
@@ -833,29 +833,29 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Update(PVec_t *u0)
     ASSERT(rsz==vsz+tsz,"Bad sizes");
 
     if (params_.pseudospectral){
-	COUTDEBUG("Copy data from parallel solution array");
-	pos_vel_.getDevice().Memcpy(pos_vel_.begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	tension_.getDevice().Memcpy(tension_.begin(), i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        COUTDEBUG("Copy data from parallel solution array");
+        pos_vel_.getDevice().Memcpy(pos_vel_.begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        tension_.getDevice().Memcpy(tension_.begin(), i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     } else { /* Galerkin */
-	COUTDEBUG("Unpacking the solution from parallel vector");
-	std::auto_ptr<Vec_t> voxSh = checkoutVec();
-	std::auto_ptr<Sca_t> tSh   = checkoutSca();
-	std::auto_ptr<Vec_t> wrk   = checkoutVec();
+        COUTDEBUG("Unpacking the solution from parallel vector");
+        std::auto_ptr<Vec_t> voxSh = checkoutVec();
+        std::auto_ptr<Sca_t> tSh   = checkoutSca();
+        std::auto_ptr<Vec_t> wrk   = checkoutVec();
 
-	voxSh->replicate(pos_vel_);
-	tSh->replicate(tension_);
-	wrk->replicate(pos_vel_);
+        voxSh->replicate(pos_vel_);
+        tSh->replicate(tension_);
+        wrk->replicate(pos_vel_);
 
-	voxSh->getDevice().Memcpy(voxSh->begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-	tSh  ->getDevice().Memcpy(tSh  ->begin(), i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        voxSh->getDevice().Memcpy(voxSh->begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        tSh  ->getDevice().Memcpy(tSh  ->begin(), i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
-	COUTDEBUG("Mapping the solution to physical space");
-	sht_.backward(*voxSh, *wrk, pos_vel_);
-	sht_.backward(*tSh  , *wrk, tension_);
+        COUTDEBUG("Mapping the solution to physical space");
+        sht_.backward(*voxSh, *wrk, pos_vel_);
+        sht_.backward(*tSh  , *wrk, tension_);
 
-	recycle(voxSh);
-	recycle(tSh);
-	recycle(wrk);
+        recycle(voxSh);
+        recycle(tSh);
+        recycle(wrk);
     }
 
     CHK(u0->RestoreArray(i));
@@ -883,20 +883,20 @@ updateFarField() const
     CHK(this->BgFlow(pos_vel_, this->dt_));
 
     if (this->interaction_.HasInteraction()){
-	std::auto_ptr<Vec_t>	fi  = checkoutVec();
-	std::auto_ptr<Vec_t>	vel = checkoutVec();
-	fi->replicate(pos_vel_);
-	vel->replicate(pos_vel_);
+        std::auto_ptr<Vec_t>        fi  = checkoutVec();
+        std::auto_ptr<Vec_t>        vel = checkoutVec();
+        fi->replicate(pos_vel_);
+        vel->replicate(pos_vel_);
 
-	Intfcl_force_.bendingForce(S_, *fi);
-	Intfcl_force_.tensileForce(S_, tension_, *vel);
-	axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+        Intfcl_force_.bendingForce(S_, *fi);
+        Intfcl_force_.tensileForce(S_, tension_, *vel);
+        axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
 
-	EvaluateFarInteraction(S_.getPosition(), *fi, *vel);
-	axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
+        EvaluateFarInteraction(S_.getPosition(), *fi, *vel);
+        axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
 
-	recycle(fi);
-	recycle(vel);
+        recycle(fi);
+        recycle(vel);
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -907,9 +907,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const
 {
     PROFILESTART();
-    std::auto_ptr<Vec_t>	X = checkoutVec();
-    std::auto_ptr<Vec_t>	D = checkoutVec();
-    std::auto_ptr<Vec_t>	P = checkoutVec();
+    std::auto_ptr<Vec_t>        X = checkoutVec();
+    std::auto_ptr<Vec_t>        D = checkoutVec();
+    std::auto_ptr<Vec_t>        P = checkoutVec();
 
     X->replicate(src);
     D->replicate(den);
@@ -927,9 +927,9 @@ CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const
     // shuffle back
     ShufflePoints(*P, pot);
 
-    X->setPointOrder(AxisMajor);	/* ignoring current content */
-    D->setPointOrder(AxisMajor);	/* ignoring current content */
-    P->setPointOrder(AxisMajor);	/* ignoring current content */
+    X->setPointOrder(AxisMajor);        /* ignoring current content */
+    D->setPointOrder(AxisMajor);        /* ignoring current content */
+    P->setPointOrder(AxisMajor);        /* ignoring current content */
 
     recycle(X);
     recycle(D);
@@ -944,9 +944,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 EvaluateFarInteraction(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const
 {
     if ( params_.interaction_upsample ){
-	return EvalFarInter_ImpUpsample(src, fi, vel);
+        return EvalFarInter_ImpUpsample(src, fi, vel);
     } else {
-	return EvalFarInter_Imp(src, fi, vel);
+        return EvalFarInter_Imp(src, fi, vel);
     }
 }
 
@@ -965,9 +965,9 @@ EvalFarInter_Imp(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const
 
     // compute self (to subtract)
     slf->getDevice().DirectStokes(src.begin(), den->begin(), quad_weights_.begin(),
-	slf->getStride(), slf->getStride(), slf->getNumSubs(), src.begin() /* target */,
-	0, slf->getStride() /* number of trgs per surface */,
-	slf->begin());
+        slf->getStride(), slf->getStride(), slf->getNumSubs(), src.begin() /* target */,
+        0, slf->getStride() /* number of trgs per surface */,
+        slf->begin());
 
     // incorporating the quadrature weights into the density (use pos as temp holder)
     ax<Sca_t>(quad_weights_, *den, *den);
@@ -1013,9 +1013,9 @@ EvalFarInter_ImpUpsample(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const
 
     // compute self (to subtract)
     slf->getDevice().DirectStokes(pos->begin(), den->begin(), quad_weights_up_.begin(),
-	slf->getStride(), slf->getStride(), slf->getNumSubs(), pos->begin() /* target */,
-	0, slf->getStride() /* number of trgs per surface */,
-	slf->begin());
+        slf->getStride(), slf->getStride(), slf->getNumSubs(), pos->begin() /* target */,
+        0, slf->getStride() /* number of trgs per surface */,
+        slf->begin());
 
     // incorporating the quadrature weights into the density
     ax<Sca_t>(quad_weights_up_, *den, *den);
@@ -1072,7 +1072,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
             axpy(static_cast<value_type>(-1), *wrk, *rhs, *wrk),
             relres = sqrt(AlgebraicDot(*wrk, *wrk))/sqrt(AlgebraicDot(*rhs,*rhs)),
             relres<tol
-	    ),
+            ),
            "relres ("<<relres<<")<tol("<<tol<<")"
            );
 
@@ -1637,7 +1637,7 @@ benchmarkExplicit(Vec_t &Fb, Vec_t &SFb, Vec_t &vel, Sca_t &tension,
     COUT(emph<<"Explicit stepper benchmark with "
         << S_.getPosition().getNumSubs() << " surface(s) "
         << "Passed\n"
-	<< "------------------------------------------------------------"<<emph);
+        << "------------------------------------------------------------"<<emph);
     return ( res );
 }
 
@@ -1654,7 +1654,7 @@ benchmarkImplicit(Sca_t &tension, Vec_t &matvec, Vec_t &xnew, value_type tol)
     COUT(emph<<"Implicit stepper benchmark with "
         << S_.getPosition().getNumSubs() << " surface(s) "
         << "Passed\n"
-	<< "------------------------------------------------------------"<<emph);
+        << "------------------------------------------------------------"<<emph);
 
     return ( res );
 }
@@ -1711,10 +1711,10 @@ benchmarkBgFlow(const Vec_t &SFb, Vec_t &vel, value_type tol) const
     COUTDEBUG("----------------------------------");
 
     //    if (this->interaction_.HasInteraction()){
-	this->updateFarField();
-	axpy(static_cast<value_type>(1), pos_vel_, SFb, pos_vel_);
+        this->updateFarField();
+        axpy(static_cast<value_type>(1), pos_vel_, SFb, pos_vel_);
     // } else {
-    // 	axpy(static_cast<value_type>(1), SFb, pos_vel_);
+    //         axpy(static_cast<value_type>(1), SFb, pos_vel_);
     // }
 
     axpy(static_cast<value_type>(-1), vel, pos_vel_, vel);
