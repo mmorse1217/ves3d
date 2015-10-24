@@ -227,7 +227,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             t += dt;
         }
 
-        CHK( F_->reparam() );
+        F_->reparam(); //CHK( F_->reparam() ); // @bug why terminate if reparam did not converge?
         AreaVolumeCorrection(area, vol);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );

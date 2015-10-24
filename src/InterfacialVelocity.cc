@@ -1241,11 +1241,199 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     u2 ->replicate(Surf->getPosition());
     wrk->replicate(Surf->getPosition());
 
+    std::vector<value_type> pole_quad;
+    { // compute quadrature to find pole
+      size_t p=Surf->getShOrder();
+
+      //Gauss-Legendre quadrature nodes and weights
+      std::vector<double> x(p+1),w(p+1);
+      cgqf(p+1, 1, 0.0, 0.0, -1.0, 1.0, &x[0], &w[0]);
+
+      std::vector<double> leg((p+1)*(p+1));
+      LegPoly(&x[0],x.size(),p+1,&leg[0]);
+      pole_quad.resize(p+1);
+      for(size_t i=0;i<pole_quad.size();i++) pole_quad[i]=0;
+      for(size_t j=0;j<p+1;j++){
+        for(size_t i=0;i<p+1;i++){
+          pole_quad[i]+=leg[j*(p+1)+i]*sqrt(2.0*j+1.0);
+        }
+      }
+      for(size_t i=0;i<p+1;i++){
+        pole_quad[i]*=w[i]*0.25/p;
+      }
+    }
+
+    ii=-1;
     while ( ++ii < params_.rep_maxit )
-    {
-        Surf->getSmoothedShapePosition(*u1);
+    { // rearrange mesh points in nearly regular grid.
+        { // compute u1  (break loop if mesh is good)
+          const Vec_t& v=Surf->getPosition();
+          int sh_order=v.getShOrder();
+          size_t omp_p=omp_get_max_threads();
+          size_t N_ves   =v.getNumSubs(); // Number of vesicles
+          size_t M_ves   =(1+sh_order)*(2*sh_order);
+          size_t M_ves_  =(3+sh_order)*(2*sh_order);
+
+          std::vector<value_type> vx(N_ves*M_ves_);
+          std::vector<value_type> vy(N_ves*M_ves_);
+          std::vector<value_type> vz(N_ves*M_ves_);
+
+          #pragma omp parallel for
+          for(size_t tid=0;tid<omp_p;tid++){
+            size_t a=((tid+0)*N_ves)/omp_p;
+            size_t b=((tid+1)*N_ves)/omp_p;
+            for(size_t i=a;i<b;i++){
+              const value_type* x=v.getSubN_begin(i)+0*M_ves;
+              const value_type* y=v.getSubN_begin(i)+1*M_ves;
+              const value_type* z=v.getSubN_begin(i)+2*M_ves;
+
+              for(size_t j=0;j<M_ves;j++){
+                vx[i*M_ves_+j +2*sh_order]=x[j];
+                vy[i*M_ves_+j +2*sh_order]=y[j];
+                vz[i*M_ves_+j +2*sh_order]=z[j];
+              }
+
+              value_type pole[2*COORD_DIM];
+              for(size_t j=0;j<2*COORD_DIM;j++) pole[j]=0;
+              for(size_t k0=0;k0<(1+sh_order);k0++){
+                for(size_t k1=0;k1<(2*sh_order);k1++){
+                  size_t k=k1+k0*(2*sh_order);
+                  pole[0*COORD_DIM+0]+=pole_quad[sh_order-k0]*x[k];
+                  pole[0*COORD_DIM+1]+=pole_quad[sh_order-k0]*y[k];
+                  pole[0*COORD_DIM+2]+=pole_quad[sh_order-k0]*z[k];
+                  pole[1*COORD_DIM+0]+=pole_quad[         k0]*x[k];
+                  pole[1*COORD_DIM+1]+=pole_quad[         k0]*y[k];
+                  pole[1*COORD_DIM+2]+=pole_quad[         k0]*z[k];
+                }
+              }
+              for(size_t j=0;j<2*sh_order;j++){
+                vx[i*M_ves_+       j  ]=pole[0*COORD_DIM+0];
+                vy[i*M_ves_+       j  ]=pole[0*COORD_DIM+1];
+                vz[i*M_ves_+       j  ]=pole[0*COORD_DIM+2];
+                vx[i*M_ves_+M_ves_-j-1]=pole[1*COORD_DIM+0];
+                vy[i*M_ves_+M_ves_-j-1]=pole[1*COORD_DIM+1];
+                vz[i*M_ves_+M_ves_-j-1]=pole[1*COORD_DIM+2];
+              }
+            }
+            for(size_t i=a;i<b;i++){
+              value_type* x=u1->getSubN_begin(i)+0*M_ves;
+              value_type* y=u1->getSubN_begin(i)+1*M_ves;
+              value_type* z=u1->getSubN_begin(i)+2*M_ves;
+              for(size_t k0=0;k0<(1+sh_order);k0++){
+                for(size_t k1=0;k1<(2*sh_order);k1++){
+                  size_t k=k1+k0*(2*sh_order);
+                  x[k]=0;
+                  y[k]=0;
+                  z[k]=0;
+
+                  size_t k1_0=((2*sh_order+k1-1)%(2*sh_order));
+                  size_t k1_1=((2*sh_order+k1+1)%(2*sh_order));
+
+
+
+                  value_type dx;
+                  value_type dy;
+                  value_type dz;
+
+                  dx=(vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1_0]-vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dy=(vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1_0]-vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dz=(vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1_0]-vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type r0=sqrt(dx*dx+dy*dy+dz*dz);
+
+                  dx=(vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]-vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dy=(vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]-vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dz=(vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]-vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type r1=sqrt(dx*dx+dy*dy+dz*dz);
+
+                  dx=(vx[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]-vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dy=(vy[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]-vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dz=(vz[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]-vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type r2=sqrt(dx*dx+dy*dy+dz*dz);
+
+                  dx=(vx[i*M_ves_ +(k0+2)*(2*sh_order)+k1  ]-vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dy=(vy[i*M_ves_ +(k0+2)*(2*sh_order)+k1  ]-vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  dz=(vz[i*M_ves_ +(k0+2)*(2*sh_order)+k1  ]-vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type r3=sqrt(dx*dx+dy*dy+dz*dz);
+
+
+
+                  value_type r=r0+r1+r2+r3;
+
+                  x[k]+=vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1_0]*r0/r;
+                  y[k]+=vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1_0]*r0/r;
+                  z[k]+=vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1_0]*r0/r;
+
+                  x[k]+=vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]*r1/r;
+                  y[k]+=vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]*r1/r;
+                  z[k]+=vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]*r1/r;
+
+                  x[k]+=vx[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]*r2/r;
+                  y[k]+=vy[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]*r2/r;
+                  z[k]+=vz[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]*r2/r;
+
+                  x[k]+=vx[i*M_ves_ +(k0+2)*(2*sh_order)+k1  ]*r3/r;
+                  y[k]+=vy[i*M_ves_ +(k0+2)*(2*sh_order)+k1  ]*r3/r;
+                  z[k]+=vz[i*M_ves_ +(k0+2)*(2*sh_order)+k1  ]*r3/r;
+                }
+              }
+            }
+          }
+
+          { // check if mesh is good
+            value_type max_ratio=1.0;
+            for(size_t i=0;i<N_ves;i++){
+              for(size_t k0=0;k0<(1+sh_order);k0++){
+                value_type max_=0   ;
+                value_type min_=1e10;
+                for(size_t k1=0;k1<(2*sh_order);k1++){
+                  size_t k=k1+k0*(2*sh_order);
+                  size_t k1_1=((2*sh_order+k1+1)%(2*sh_order));
+                  value_type dx=(vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]-vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type dy=(vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]-vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type dz=(vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1_1]-vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type r=sqrt(dx*dx+dy*dy+dz*dz);
+                  max_=std::max(max_,r);
+                  min_=std::min(min_,r);
+                }
+                max_ratio=std::max(max_ratio,max_/min_);
+              }
+              for(size_t k1=0;k1<(2*sh_order);k1++){
+                value_type max_=0   ;
+                value_type min_=1e10;
+                for(size_t k0=0;k0<=(1+sh_order);k0++){
+                  size_t k=k1+k0*(2*sh_order);
+                  value_type dx=(vx[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]-vx[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type dy=(vy[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]-vy[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type dz=(vz[i*M_ves_ +(k0+0)*(2*sh_order)+k1  ]-vz[i*M_ves_ +(k0+1)*(2*sh_order)+k1]);
+                  value_type r=sqrt(dx*dx+dy*dy+dz*dz);
+                  max_=std::max(max_,r);
+                  min_=std::min(min_,r);
+                }
+                max_ratio=std::max(max_ratio,max_/min_);
+              }
+            }
+            COUTDEBUG("Iteration = "<<ii<<", Mesh-irregularity = "<<max_ratio);
+            if(ii==0 && max_ratio<4) break;
+            else if(ii>0 && max_ratio<2) break;
+          }
+
+          { // project to sph space
+            Vec_t wrk[3];
+            wrk[0].resize(v.getNumSubs(), sh_order);
+            wrk[1].resize(v.getNumSubs(), sh_order);
+            wrk[2].resize(v.getNumSubs(), sh_order/2);
+
+            Resample(   *u1, sht_upsample_, sht_, wrk[0], wrk[1], wrk[2]);
+            Resample(wrk[2], sht_, sht_upsample_, wrk[0], wrk[1],    *u1);
+          }
+        }
         axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
         Surf->mapToTangentSpace(*u1, false /* upsample */);
+
+        //checks
+        GeometricDot(*u1,*u1,*wrk);
+        vel = MaxAbs(*wrk);
+        vel = std::sqrt(vel);
 
         //Advecting tension (useless for implicit)
         if (params_.scheme != GloballyImplicit){
@@ -1254,26 +1442,93 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             else {
                 Surf->grad(tension_, *u2);
                 GeometricDot(*u2, *u1, *wrk);
-                axpy(ts, *wrk, tension_, tension_);
+                axpy(ts/vel, *wrk, tension_, tension_);
             }
         }
 
         //updating position
-        axpy(ts, *u1, Surf->getPosition(), Surf->getPositionModifiable());
+        axpy(ts/vel, *u1, Surf->getPosition(), Surf->getPositionModifiable());
+
+        COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
+    }
+    INFO("Iterations = "<<ii<<", |vel| = "<<vel);
+
+    ii=-1;
+    vel=(params_.rep_tol+1);
+    last_vel=(vel+1);
+    for(value_type ts_=ts;ts_>1e-8;ts_*=0.5)
+    while ( ++ii < params_.rep_maxit )
+    {
+        Surf->getSmoothedShapePosition(*u1);
+        axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
+
+        Surf->mapToTangentSpace(*u1, false /* upsample */);
 
         //checks
         GeometricDot(*u1,*u1,*wrk);
         vel = MaxAbs(*wrk);
         vel = std::sqrt(vel);
 
+        //Advecting tension (useless for implicit)
+        if (params_.scheme != GloballyImplicit){
+            if (params_.rep_upsample)
+                WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
+            else {
+                Surf->grad(tension_, *u2);
+                GeometricDot(*u2, *u1, *wrk);
+                axpy(ts_/vel, *wrk, tension_, tension_);
+            }
+        }
+
+        //updating position
+        axpy(ts_/vel, *u1, Surf->getPosition(), Surf->getPositionModifiable());
+
         COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
-	if (vel<params_.rep_tol || last_vel < vel) {
-	    flag=0;
-	    if (last_vel < vel) WARN("Residual is increasing, stopping");
-	    break;
-	}
+        if (vel<params_.rep_tol || last_vel < vel) {
+            flag=0;
+            //if (last_vel < vel) WARN("Residual is increasing, stopping");
+            break;
+        }
 
         last_vel = vel;
+    }
+
+    { // print log(coeff)
+      std::auto_ptr<Vec_t> shc = checkoutVec();
+      std::auto_ptr<Vec_t> w   = checkoutVec();
+      shc->replicate(Surf->getPosition());
+      w  ->replicate(Surf->getPosition());
+      sht_upsample_.forward(Surf->getPosition(), *w, *shc);
+
+      {
+          size_t p=shc->getShOrder();
+          int ns = shc->getNumSubFuncs();
+          std::vector<value_type> coeff_norm(p+1,0);
+          for(int ii=0; ii<= p; ++ii){
+              value_type* inPtr = shc->begin() + ii;
+
+              int len = 2*ii + 1 - (ii/p);
+              for(int jj=0; jj< len; ++jj){
+
+                  int dist = (p + 1 - (jj + 1)/2);
+                  for(int ss=0; ss<ns; ++ss){
+                      coeff_norm[ii] += (*inPtr)*(*inPtr);
+                      inPtr += dist;
+                  }
+                  inPtr--;
+                  inPtr += jj%2;
+              }
+          }
+
+          std::cout<<"Sph-Coeff: ";
+          for(int ii=0; ii<= p; ++ii){
+            std::cout<<-(int)(0.5-log(coeff_norm[ii])/log(10.0))<<' ';
+          }
+          std::cout<<'\n';
+      }
+
+      recycle(shc);
+      recycle(w);
     }
 
     if (params_.rep_upsample)
