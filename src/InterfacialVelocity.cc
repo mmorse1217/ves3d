@@ -1520,11 +1520,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
               }
           }
 
-          std::cout<<"Sph-Coeff: ";
+          std::stringstream ss;
+          ss<<"SPH-Coeff: ";
           for(int ii=0; ii<= p; ++ii){
-            std::cout<<-(int)(0.5-log(coeff_norm[ii])/log(10.0))<<' ';
+            ss<<-(int)(0.5-log(sqrt(coeff_norm[ii]))/log(10.0))<<' ';
           }
-          std::cout<<'\n';
+          ss<<'\n';
+          INFO(ss);
       }
 
       recycle(shc);
