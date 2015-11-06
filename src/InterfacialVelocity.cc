@@ -1526,7 +1526,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             ss<<-(int)(0.5-log(sqrt(coeff_norm[ii]))/log(10.0))<<' ';
           }
           ss<<'\n';
-          INFO(ss);
+          INFO(ss.str());
       }
 
       recycle(shc);

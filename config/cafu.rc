@@ -6,10 +6,12 @@ module load mkl
 module load openmpi
 module load cuda
 module load matlab
-module load petsc
+module load petsc/3.3-p2-cxx-opt
 
 export CUDA_DIR=${CUDA_LIB}/../
 export CUDA_PATH=${CUDA_LIB}/../
 
 export FFTW_ROOT=/org/groups/padas/lula_packages/fftw
 export OMP_NUM_THREADS=2
+
+export VES3D_PLATFORM=cafu

@@ -19,7 +19,7 @@ time-precond : DiagonalSpectral
 singular-stokes : Direct
 error-factor : 10
 solve-for-velocity
-# time-adaptive
+#time-adaptive
 
 ## reparametrization -------------------------
 rep-max-iter : 1000
@@ -28,7 +28,7 @@ rep-tol : 1e-10
 
 ## checkpoint/monitor ------------------------
 checkpoint
-checkpoint-file : experiment/periodic_fmm_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+checkpoint-file : experiment/taylor6_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
 
 ## far filed ---------------------------------
 bg-flow-type : TaylorFlow

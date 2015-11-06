@@ -1,17 +1,17 @@
 ## spherical harmonics -----------------------
-sh-order : 6
+sh-order : 16
 rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
-n-surfs : 1
+n-surfs : 2
 bending-modulus : .01
 init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
 cent-file : experiment/shear_centers.txt
 
 ## time stepping -----------------------------
-time-horizon : 5e1
-timestep : .5
+time-horizon : 100
+timestep : 1e-1
 time-tol : 1e-5
 time-iter-max : 40
 time-scheme : GloballyImplicit
@@ -21,13 +21,18 @@ error-factor : .01
 solve-for-velocity
 
 ## reparametrization -------------------------
-rep-max-iter : 1000
-rep-tol : 1e-4
+rep-max-iter : 5000
+rep-timestep : 1e-3
+rep-tol : 1e-10
 
 ## checkpoint/monitor ------------------------
 checkpoint
 checkpoint-file : experiment/shear_{{time_idx}}.chk
+checkpoint-stride : 1
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow
 bg-flow-param : 0.1
+
+## misc  -------------------------------------
+num-threads : 16
