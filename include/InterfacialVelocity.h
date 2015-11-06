@@ -16,6 +16,7 @@
 #include "BgFlowBase.h"
 #include "OperatorsMats.h"
 #include "ParallelLinSolverInterface.h"
+#include "legendre_rule.h"
 
 #ifdef HAVE_PVFMM
 #include "StokesVelocity.h"
@@ -38,6 +39,7 @@ class InterfacialVelocity
     typedef typename PSolver_t::matvec_type POp_t;
     typedef typename PSolver_t::vec_type PVec_t;
     typedef StokesVelocity<SurfContainer> Stokes_t;
+    typedef SHTrans<Sca_t, SHTMats<value_type, device_type> > SHtrans_t;
 
     InterfacialVelocity(SurfContainer &S_in, const Interaction &inter,
         const Mats_t &mats, const Parameters<value_type> &params,
@@ -114,8 +116,8 @@ class InterfacialVelocity
     Sca_t quad_weights_;
     Sca_t quad_weights_up_;
 
-    SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_;
-    SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_upsample_;
+    SHtrans_t sht_;
+    SHtrans_t sht_upsample_;
 
     mutable Stokes_t stokes_;
     mutable MovePole<Sca_t,Mats_t> move_pole;

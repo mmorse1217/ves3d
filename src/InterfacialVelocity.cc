@@ -1224,6 +1224,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
     int ii(-1);
     SurfContainer* Surf;
+    SHtrans_t* sh_trans;
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
@@ -1233,8 +1234,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         INFO("Upsampling for reparametrization");
         S_.resample(params_.upsample_freq, &S_up_);
         Surf = S_up_;
+        sh_trans = &sht_upsample_;
     } else {
         Surf = &S_;
+        sh_trans = &sht_;
     }
 
     u1 ->replicate(Surf->getPosition());
@@ -1263,7 +1266,6 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
       }
     }
 
-    ii=-1;
     while ( ++ii < params_.rep_maxit )
     { // rearrange mesh points in nearly regular grid.
         { // compute u1  (break loop if mesh is good)
@@ -1293,26 +1295,26 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                 vz[i*M_ves_+j +2*sh_order]=z[j];
               }
 
-              value_type pole[2*COORD_DIM];
-              for(size_t j=0;j<2*COORD_DIM;j++) pole[j]=0;
+              value_type pole[2*DIM];
+              for(size_t j=0;j<2*DIM;j++) pole[j]=0;
               for(size_t k0=0;k0<(1+sh_order);k0++){
                 for(size_t k1=0;k1<(2*sh_order);k1++){
                   size_t k=k1+k0*(2*sh_order);
-                  pole[0*COORD_DIM+0]+=pole_quad[sh_order-k0]*x[k];
-                  pole[0*COORD_DIM+1]+=pole_quad[sh_order-k0]*y[k];
-                  pole[0*COORD_DIM+2]+=pole_quad[sh_order-k0]*z[k];
-                  pole[1*COORD_DIM+0]+=pole_quad[         k0]*x[k];
-                  pole[1*COORD_DIM+1]+=pole_quad[         k0]*y[k];
-                  pole[1*COORD_DIM+2]+=pole_quad[         k0]*z[k];
+                  pole[0*DIM+0]+=pole_quad[sh_order-k0]*x[k];
+                  pole[0*DIM+1]+=pole_quad[sh_order-k0]*y[k];
+                  pole[0*DIM+2]+=pole_quad[sh_order-k0]*z[k];
+                  pole[1*DIM+0]+=pole_quad[         k0]*x[k];
+                  pole[1*DIM+1]+=pole_quad[         k0]*y[k];
+                  pole[1*DIM+2]+=pole_quad[         k0]*z[k];
                 }
               }
               for(size_t j=0;j<2*sh_order;j++){
-                vx[i*M_ves_+       j  ]=pole[0*COORD_DIM+0];
-                vy[i*M_ves_+       j  ]=pole[0*COORD_DIM+1];
-                vz[i*M_ves_+       j  ]=pole[0*COORD_DIM+2];
-                vx[i*M_ves_+M_ves_-j-1]=pole[1*COORD_DIM+0];
-                vy[i*M_ves_+M_ves_-j-1]=pole[1*COORD_DIM+1];
-                vz[i*M_ves_+M_ves_-j-1]=pole[1*COORD_DIM+2];
+                vx[i*M_ves_+       j  ]=pole[0*DIM+0];
+                vy[i*M_ves_+       j  ]=pole[0*DIM+1];
+                vz[i*M_ves_+       j  ]=pole[0*DIM+2];
+                vx[i*M_ves_+M_ves_-j-1]=pole[1*DIM+0];
+                vy[i*M_ves_+M_ves_-j-1]=pole[1*DIM+1];
+                vz[i*M_ves_+M_ves_-j-1]=pole[1*DIM+2];
               }
             }
             for(size_t i=a;i<b;i++){
@@ -1421,10 +1423,11 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             Vec_t wrk[3];
             wrk[0].resize(v.getNumSubs(), sh_order);
             wrk[1].resize(v.getNumSubs(), sh_order);
-            wrk[2].resize(v.getNumSubs(), sh_order/2);
+            wrk[2].resize(v.getNumSubs(), sh_order);
 
-            Resample(   *u1, sht_upsample_, sht_, wrk[0], wrk[1], wrk[2]);
-            Resample(wrk[2], sht_, sht_upsample_, wrk[0], wrk[1],    *u1);
+            //@bug: resampling only needed when upsampled, also can be filtered
+            Resample(   *u1, *sh_trans, sht_, wrk[0], wrk[1], wrk[2]);
+            Resample(wrk[2], sht_, *sh_trans, wrk[0], wrk[1],    *u1);
           }
         }
         axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
@@ -1451,54 +1454,58 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
         COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
     }
-    INFO("Iterations = "<<ii<<", |vel| = "<<vel);
+    INFO("Laplacian iterations = "<<ii<<", |vel| = "<<vel);
 
     ii=-1;
-    vel=(params_.rep_tol+1);
-    last_vel=(vel+1);
-    for(value_type ts_=ts;ts_>1e-8;ts_*=0.5)
-    while ( ++ii < params_.rep_maxit )
+    vel=params_.rep_tol+1;
+    for (value_type ts_=ts;ts_>1e-8;ts_*=0.5)
     {
-        Surf->getSmoothedShapePosition(*u1);
-        axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
+        last_vel=vel+1;
+        while ( ii < params_.rep_maxit )
+        {
+            Surf->getSmoothedShapePosition(*u1);
+            axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
 
-        Surf->mapToTangentSpace(*u1, false /* upsample */);
+            Surf->mapToTangentSpace(*u1, false /* upsample */);
 
-        //checks
-        GeometricDot(*u1,*u1,*wrk);
-        vel = MaxAbs(*wrk);
-        vel = std::sqrt(vel);
+            //checks
+            GeometricDot(*u1,*u1,*wrk);
+            vel = MaxAbs(*wrk);
+            vel = std::sqrt(vel);
 
-        //Advecting tension (useless for implicit)
-        if (params_.scheme != GloballyImplicit){
-            if (params_.rep_upsample)
-                WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
-            else {
-                Surf->grad(tension_, *u2);
-                GeometricDot(*u2, *u1, *wrk);
-                axpy(ts_/vel, *wrk, tension_, tension_);
+            //Advecting tension (useless for implicit)
+            if (params_.scheme != GloballyImplicit){
+                if (params_.rep_upsample)
+                    WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
+                else {
+                    Surf->grad(tension_, *u2);
+                    GeometricDot(*u2, *u1, *wrk);
+                    axpy(ts_/vel, *wrk, tension_, tension_);
+                }
             }
+
+            //updating position
+            axpy(ts_/vel, *u1, Surf->getPosition(), Surf->getPositionModifiable());
+
+            COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
+            if (vel<params_.rep_tol || last_vel < vel) {
+                flag=0;
+                //if (last_vel < vel) WARN("Residual is increasing, stopping");
+                break;
+            }
+            last_vel = vel;
+            ++ii;
         }
-
-        //updating position
-        axpy(ts_/vel, *u1, Surf->getPosition(), Surf->getPositionModifiable());
-
-        COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
-        if (vel<params_.rep_tol || last_vel < vel) {
-            flag=0;
-            //if (last_vel < vel) WARN("Residual is increasing, stopping");
-            break;
-        }
-
-        last_vel = vel;
     }
+    INFO("Iterations = "<<ii<<", |vel| = "<<vel);
 
+    if(0)
     { // print log(coeff)
       std::auto_ptr<Vec_t> shc = checkoutVec();
       std::auto_ptr<Vec_t> w   = checkoutVec();
       shc->replicate(Surf->getPosition());
       w  ->replicate(Surf->getPosition());
-      sht_upsample_.forward(Surf->getPosition(), *w, *shc);
+      sh_trans->forward(Surf->getPosition(), *w, *shc);
 
       {
           size_t p=shc->getShOrder();
@@ -1525,7 +1532,6 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
           for(int ii=0; ii<= p; ++ii){
             ss<<-(int)(0.5-log(sqrt(coeff_norm[ii]))/log(10.0))<<' ';
           }
-          ss<<'\n';
           INFO(ss.str());
       }
 
@@ -1536,8 +1542,6 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     if (params_.rep_upsample)
         Resample(Surf->getPosition(), sht_upsample_, sht_, *u1, *u2,
             S_.getPositionModifiable());
-
-    INFO("Iterations = "<<ii<<", |vel| = "<<vel);
 
     recycle(u1);
     recycle(u2);

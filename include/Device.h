@@ -191,8 +191,8 @@ class Device
     //! Arguments:
     //!      TRANSA, TRANSB : transpose A or B ('N', 'T', or 'C')
     //!      M : rows of op(A),C
-    //!      N : columns of columns of op(B),C)
-    //!      K : columns of op(B)/rows of op(B)
+    //!      N : columns of op(B),C
+    //!      K : columns of op(A)/rows of op(B)
     //!      LDA, LDB, LDC: Leading dimension of A,B,or C (needed for correct transpose)
     //!
     //! Consult BLAS documentation for more detail of the syntax.

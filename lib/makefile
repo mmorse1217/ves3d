@@ -16,7 +16,8 @@ LIB_SRC = ${VES3D_SRCDIR}/CPUKernels.cc 	\
 	  ${VES3D_SRCDIR}/Enums.cc      	\
 	  ${VES3D_SRCDIR}/Error.cc      	\
 	  ${VES3D_SRCDIR}/DataIO.cc 		\
-	  ${VES3D_SRCDIR}/anyoption.cc
+	  ${VES3D_SRCDIR}/anyoption.cc		\
+	  ${VES3D_SRCDIR}/legendre_rule.cc
 
 LIB_SRC_GPU = ${VES3D_SRCDIR}/CudaKernels.cu
 ifeq (${VES3D_USE_GPU},yes)

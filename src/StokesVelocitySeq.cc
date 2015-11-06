@@ -2,6 +2,25 @@
 #include <iostream>
 #include "Surface.h"
 
+template<typename Real_t>
+static void LegPoly(const Real_t* x, size_t n, size_t q, Real_t* y){
+  if(q>0) for(size_t i=0;i<n;i++) y[i]=1.0;
+  if(q>1) for(size_t i=0;i<n;i++) y[n+i]=x[i];
+  for(size_t j=2;j<q;j++){
+    Real_t inv_j=1.0/j;
+    for(size_t i=0;i<n;i++){
+      y[j*n+i]=((2.0*j-1.0)*x[i]*y[(j-1)*n+i] - (j-1.0)*y[(j-2)*n+i])*inv_j;
+    }
+  }
+
+  // Normalize
+  for(size_t j=0;j<q;j++){
+    for(size_t i=0;i<n;i++){
+      y[j*n+i]*=sqrt(2.0*j+1.0);
+    }
+  }
+}
+
 template<typename Surf_t>
 StokesVelocity<Surf_t>::StokesVelocity(
     const OperatorsMats<Arr_t> &mats,

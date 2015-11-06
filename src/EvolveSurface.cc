@@ -227,11 +227,12 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             t += dt;
         }
 
-        F_->reparam(); //CHK( F_->reparam() ); // @bug why terminate if reparam did not converge?
+        F_->reparam();
         AreaVolumeCorrection(area, vol);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
 
+#if HAVE_PVFMM
         if(0){ // Write VTK file
           static unsigned long iter=0;
           unsigned long skip=1;
@@ -239,11 +240,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             char fname[1000];
             sprintf(fname, "vis/test%05d", (int)(iter/skip));
             WriteVTK(*S_,fname);
-          }
+            }
           iter++;
         }
+#endif // HAVE_PVFMM
     }
-
     PROFILEEND("",0);
     return ErrorEvent::Success;
 }
@@ -255,10 +256,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     static GaussLegendreIntegrator<Sca_t> integrator;
     const DT& device=Sca_t::getDevice();
     int N_ves=S_->getNumberOfSurfaces();
+    int iter(-1);
 
-    while(1){
-        S_->resample(params_->upsample_freq, &S_up_); // up-sample
+    S_->resample(params_->upsample_freq, &S_up_); // up-sample
 
+    while (++iter < params_->rep_maxit){
         const Vec_t& Normal  =S_up_->getNormal();
         const Sca_t& AreaElem=S_up_->getAreaElement();
         const Sca_t& MeanCurv=S_up_->getMeanCurv();
@@ -288,6 +290,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
 
                 value_type area_max_err=device.MaxAbs<value_type>(area_err.begin(),N_ves)/device.MaxAbs<value_type>(area.begin(),N_ves);
                 value_type  vol_max_err=device.MaxAbs<value_type>( vol_err.begin(),N_ves)/device.MaxAbs<value_type>( vol.begin(),N_ves);
+                COUTDEBUG("Iteration = "<<iter<<", area error="<<area_max_err<<", vol error="<<vol_max_err);
                 if(std::max(area_max_err, vol_max_err)<tol) break;
             }
 
@@ -364,8 +367,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
             axpy(1, dS, position, position);
         }
 
-        S_up_->resample(params_->sh_order, &S_); // down-sample
     }
+    INFO("Number of iterations : "<<iter);
+    S_up_->resample(params_->sh_order, &S_); // down-sample
 
     return ErrorEvent::Success;
 }

@@ -60,29 +60,31 @@ int main(int argc, char **argv)
   {
     Param_t params;
     real_t ts(1e-4);
-    params.n_surfs		= 2;
-    params.sh_order		= 6;
-    params.upsample_freq    	= 12;
-    params.ts		    	= ts;
+    params.n_surfs              = 2;
+    params.sh_order             = 6;
+    params.ts                   = ts;
     params.time_horizon	    	= 2*ts;
-    params.scheme		= GloballyImplicit;
-    params.time_precond		= DiagonalSpectral;
+    params.scheme               = GloballyImplicit;
+    params.time_precond         = DiagonalSpectral;
     params.pseudospectral       = false;
-    params.bg_flow_param	= 5e-2;
+    params.bg_flow_param        = 5e-2;
     params.checkpoint           = true;
     params.checkpoint_stride    = ts;
     params.checkpoint_file_name = "SimulationTest_a_{{rank}}_{{time_idx}}.chk";
-    params.init_file_name	= "precomputed/dumbbell_{{sh_order}}_{{precision}}.txt";
-    params.cntrs_file_name	= "experiment/shear_centers.txt";
+    params.init_file_name       = "precomputed/dumbbell_{{sh_order}}_{{precision}}.txt";
+    params.cntrs_file_name      = "experiment/shear_centers.txt";
+    params.rep_ts               = ts;
     params.expand_templates(&dict);
 
     Sim_t sim1(params);
     CHK(sim1.Run());
     const Sim_t::Vec_t &xref(sim1.time_stepper()->S_->getPosition());
+
+    INFO("Setting up the second simulation");
     params.load_checkpoint      = "test/SimulationTest_a_{{rank}}_00001.chk";
     params.expand_templates(&dict);
-
     Sim_t sim2(params);
+
     sim2.run_params()->checkpoint_file_name = "SimulationTest_b_{{rank}}_{{time_idx}}.chk";
     sim2.run_params()->time_horizon = ts;
     sim2.run_params()->expand_templates(&dict);
@@ -130,6 +132,7 @@ int main(int argc, char **argv)
     ASSERT(maxerr<5e-7, "inconsistent checkpoints, error="<<maxerr);
   }
 
+  COUT(emph<<"** SimulationTest passed **"<<emph);
 #ifdef HAS_PETSC
   PetscFinalize();
 #endif

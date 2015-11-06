@@ -43,7 +43,6 @@ Simulation<DT,DEVICE>::Simulation(const Param_t &ip) :
     timestepper_(NULL)
 {
     CHK(prepare_run_params());
-    INFO("Run options:\n"<<run_params_);
 }
 
 template<typename DT, const DT &DEVICE>
@@ -57,10 +56,11 @@ Error_t Simulation<DT,DEVICE>::Run()
 {
     setup_basics();
     if (load_checkpoint_)
-	setup_from_checkpoint();
+        setup_from_checkpoint();
     else
-	setup_from_options();
+        setup_from_options();
 
+    INFO("Run options:\n"<<run_params_);
     CHK(timestepper_->Evolve());
     return ErrorEvent::Success;
 }
@@ -153,13 +153,13 @@ template<typename DT, const DT &DEVICE>
 Error_t Simulation<DT,DEVICE>::prepare_run_params()
 {
     if (input_params_.load_checkpoint != ""){
-	std::string fname = FullPath(input_params_.load_checkpoint);
-	INFO("Loading checkpoint file "<<fname);
-	DataIO::SlurpFile(fname.c_str(), checkpoint_data_);
-	load_checkpoint_ = true;
+        std::string fname = FullPath(input_params_.load_checkpoint);
+        INFO("Loading checkpoint file "<<fname);
+        DataIO::SlurpFile(fname.c_str(), checkpoint_data_);
+        load_checkpoint_ = true;
     } else {
-	input_params_.pack(checkpoint_data_, Streamable::ASCII);
-	load_checkpoint_ = false;
+        input_params_.pack(checkpoint_data_, Streamable::ASCII);
+        load_checkpoint_ = false;
     }
 
     run_params_.unpack(checkpoint_data_, Streamable::ASCII);

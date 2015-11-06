@@ -13,7 +13,7 @@ cent-file : experiment/shear_centers.txt
 time-horizon : 100
 timestep : 1e-1
 time-tol : 1e-5
-time-iter-max : 40
+time-iter-max : 120
 time-scheme : GloballyImplicit
 time-precond : DiagonalSpectral
 singular-stokes : Direct
@@ -21,9 +21,9 @@ error-factor : .01
 solve-for-velocity
 
 ## reparametrization -------------------------
-rep-max-iter : 5000
+rep-max-iter : 2000
 rep-timestep : 1e-3
-rep-tol : 1e-10
+rep-tol : 5e-7
 
 ## checkpoint/monitor ------------------------
 checkpoint
