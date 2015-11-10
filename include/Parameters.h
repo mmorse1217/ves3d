@@ -11,6 +11,7 @@
 #include <typeinfo>
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <map>
 
 

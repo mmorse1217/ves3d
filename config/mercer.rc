@@ -1,0 +1,13 @@
+# -*- mode: sh; -*-
+#
+# fftw also loads openmpi 1.6.5 and intel 14.0.2
+# petsc also loads a ton of other modules
+module load fftw/openmpi/intel/3.3.4
+module load petsc/openmpi/intel/3.5.3
+module load matlab
+
+export OMP_NUM_THREADS=16
+export VES3D_DIR=/home/ar4171/projects/ves3d/cxx/
+export VES3D_PLATFORM=mercer
+export PETSC_DIR=${PETSC_ROOT}
+export MAKE=/usr/bin/make
