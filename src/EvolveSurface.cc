@@ -169,8 +169,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             value_type A0, V0;
             static Sca_t area0, vol0;
             size_t N_ves=S_->getPosition().getNumSubs();
-            area0.replicate(S_->getPosition()); S_->area  (area0);
-            vol0 .replicate(S_->getPosition()); S_->volume( vol0);
+            S_->resample(params_->upsample_freq, &S_up_); // up-sample
+            area0.replicate(S_up_->getPosition()); S_up_->area  (area0);
+            vol0 .replicate(S_up_->getPosition()); S_up_->volume( vol0);
             A0=Sca_t::getDevice().MaxAbs(area0.begin(), N_ves);
             V0=Sca_t::getDevice().MaxAbs( vol0.begin(), N_ves);
 
@@ -181,8 +182,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             // Compute area/volume error
             value_type A_err, V_err;
             static Sca_t area_err, vol_err;
-            area_err.replicate(S_->getPosition()); S_->area  (area_err);
-            vol_err .replicate(S_->getPosition()); S_->volume( vol_err);
+            S_->resample(params_->upsample_freq, &S_up_); // up-sample
+            area_err.replicate(S_up_->getPosition()); S_up_->area  (area_err);
+            vol_err .replicate(S_up_->getPosition()); S_up_->volume( vol_err);
             axpy(static_cast<value_type>(-1.0), area0, area_err, area_err);
             axpy(static_cast<value_type>(-1.0),  vol0,  vol_err,  vol_err);
             A_err=Sca_t::getDevice().MaxAbs(area_err.begin(), N_ves);
@@ -239,7 +241,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
           if(iter%skip==0){
             char fname[1000];
             sprintf(fname, "vis/test%05d", (int)(iter/skip));
-            WriteVTK(*S_,fname);
+            S_->resample(params_->upsample_freq, &S_up_); // up-sample
+            WriteVTK(*S_up_,fname);
             }
           iter++;
         }
@@ -258,9 +261,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     int N_ves=S_->getNumberOfSurfaces();
     int iter(-1);
 
-    S_->resample(params_->upsample_freq, &S_up_); // up-sample
-
     while (++iter < params_->rep_maxit){
+        S_->resample(params_->upsample_freq, &S_up_); // up-sample
+
         const Vec_t& Normal  =S_up_->getNormal();
         const Sca_t& AreaElem=S_up_->getAreaElement();
         const Sca_t& MeanCurv=S_up_->getMeanCurv();
@@ -367,9 +370,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
             axpy(1, dS, position, position);
         }
 
+        S_up_->resample(params_->sh_order, &S_); // down-sample
     }
     INFO("Number of iterations : "<<iter);
-    S_up_->resample(params_->sh_order, &S_); // down-sample
 
     return ErrorEvent::Success;
 }
