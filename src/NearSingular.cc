@@ -805,7 +805,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
           r2_near=coord_setup.r_near;
           r2_near*=r2_near;
         }
-        Real_t s=std::pow(0.5,tree_depth);
+        Real_t s=std::pow(0.5,(int)tree_depth);
 
         size_t FLOP=0;
         size_t a=((tid+0)*tree_mid.Dim())/omp_p;
@@ -1030,6 +1030,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
     pvfmm::Vector<char>& is_extr_pt=coord_setup.is_extr_pt;
     PVFMMVec_t& proj_patch_param=coord_setup.proj_patch_param;
     PVFMMVec_t& proj_coord      =coord_setup.proj_coord      ;
+    PVFMMVec_t& repl_force      =coord_setup.repl_force      ;
 
     size_t M_ves = VES_STRIDE;                 // Points per vesicle
     size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
@@ -1038,6 +1039,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
     size_t N_trg=trg_coord.Dim()/COORD_DIM;
     proj_patch_param.ReInit(N_trg*        2);
     proj_coord      .ReInit(N_trg*COORD_DIM);
+    repl_force      .ReInit(N_trg*COORD_DIM);
     is_extr_pt      .ReInit(N_trg          );
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Setup
@@ -1060,12 +1062,39 @@ void NearSingular<Surf_t>::SetupCoordData(){
             is_extr_pt[trg_idx]=
             patch.project(&  trg_coord[trg_idx*COORD_DIM],x,y);
             patch.eval(x,y,&proj_coord[trg_idx*COORD_DIM]);
+
+            { // repulsion
+              Real_t dx=proj_coord[trg_idx*COORD_DIM+0]-trg_coord[trg_idx*COORD_DIM+0];
+              Real_t dy=proj_coord[trg_idx*COORD_DIM+1]-trg_coord[trg_idx*COORD_DIM+1];
+              Real_t dz=proj_coord[trg_idx*COORD_DIM+2]-trg_coord[trg_idx*COORD_DIM+2];
+              Real_t r2=dx*dx+dy*dy+dz*dz;
+
+              Real_t r2_near=coord_setup.r_near*coord_setup.r_near;
+              Real_t f=1.0/r2*exp(-1000*r2/r2_near);
+              repl_force[trg_idx*COORD_DIM+0]=dx*f;
+              repl_force[trg_idx*COORD_DIM+1]=dy*f;
+              repl_force[trg_idx*COORD_DIM+2]=dz*f;
+            }
           }
         }
       }
     }
     pvfmm::Profile::Toc();
   }
+
+  { // repulsion
+    PVFMMVec_t& repl_force=coord_setup.repl_force;
+    VelocityScatter(repl_force);
+    assert(repl_force.Dim()==T.Dim());
+  }
+
+}
+
+template<typename Surf_t>
+const NearSingular<Surf_t>::PVFMMVec_t&  NearSingular<Surf_t>::ForceRepul(){
+  SetupCoordData();
+  PVFMMVec_t& repl_force=coord_setup.repl_force;
+  return repl_force;
 }
 
 template<typename Surf_t>
@@ -1365,7 +1394,7 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
                                 trg_coord[trg_idx*COORD_DIM+1]-interp_coord0[1],
                                 trg_coord[trg_idx*COORD_DIM+2]-interp_coord0[2]};
           Real_t dR_norm=sqrt(dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
-          //if(!is_extr_pt[trg_idx]) dR_norm=-dR_norm;
+          if(!is_extr_pt[trg_idx]) dR_norm=-dR_norm; // always use exterior normal
           Real_t OOdR=1.0/dR_norm;
           if(dR_norm<eps_sqrt){
             dR_norm=0;
@@ -1403,7 +1432,7 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
               Real_t mesh_fd[3*3*COORD_DIM];
               size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
               QuadraticPatch::patch_mesh(mesh_fd, sh_order_, M_patch_interp, k_, &force_double[0][i*M_ves*COORD_DIM]);
-              Real_t scal=0.5; if(is_extr_pt[trg_idx]) scal=-0.5;
+              Real_t scal=0.5; if(!is_extr_pt[trg_idx]) scal=-0.5;
               for(size_t k=0;k<3*3*COORD_DIM;k++) mesh[k]+=scal*mesh_fd[k];
             }
             patch=QuadraticPatch(&mesh[0],COORD_DIM);
@@ -1640,7 +1669,7 @@ int NearSingular<Surf_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
     direc-=dR[0]*sgrad[2]*sgrad[3+1];
     direc-=dR[1]*sgrad[0]*sgrad[3+2];
     direc-=dR[2]*sgrad[1]*sgrad[3+0];
-    return (direc<0);
+    return (direc>0);
   }
 }
 

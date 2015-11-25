@@ -26,6 +26,8 @@ class NearSingular{
     void SubtractDirect(PVFMMVec_t& vel_fmm);
     const PVFMMVec_t& operator()(bool update=true);
 
+    const PVFMMVec_t& ForceRepul();
+
   private:
 
     NearSingular(const NearSingular &);
@@ -71,8 +73,9 @@ class NearSingular{
       pvfmm::Vector<char>   is_surf_pt;       // If a target point is a surface point
       pvfmm::Vector<char>   is_extr_pt;       // If a target point is an exterior point
 
-      PVFMMVec_t            proj_patch_param; // Projection patch prameter coordinates
+      PVFMMVec_t            proj_patch_param; // Projection patch parameter coordinates
       PVFMMVec_t            proj_coord;       // Projection coordinates (x,y,z)
+      PVFMMVec_t            repl_force;       // Repulsive force (x,y,z)
     } coord_setup;
 
     const PVFMMVec_t* S;

@@ -88,6 +88,7 @@ class StokesVelocity{
     PVFMMVec_t trg_coord;
     bool trg_is_surf;
 
+    Vec_t F_repl;
     Vec_t S_vel;
     Vec_t SL_vel;
     Vec_t DL_vel;

@@ -310,6 +310,40 @@ void StokesVelocity<Surf_t>::Upsample(const Vec_t& v, Vec_t* v_out,  PVFMMVec_t*
 
 template<typename Surf_t>
 void StokesVelocity<Surf_t>::Setup(){
+
+  if(force_single && force_single!=&F_repl){ // Add repulsion
+    const PVFMMVec_t& f_repl=near_singular.ForceRepul();
+    F_repl.resize(force_single->getNumSubs(), sh_order);
+    size_t omp_p=omp_get_max_threads();
+
+    Vec_t& x=F_repl;
+    size_t N_ves = x.getNumSubs(); // Number of vesicles
+    size_t M_ves = x.getStride(); // Points per vesicle
+    assert(M_ves==x.getGridDim().first*x.getGridDim().second);
+    assert(N_ves*M_ves*COORD_DIM==f_repl.Dim());
+
+    #pragma omp parallel for
+    for(size_t tid=0;tid<omp_p;tid++){ // Set tree pt data
+      size_t a=((tid+0)*N_ves)/omp_p;
+      size_t b=((tid+1)*N_ves)/omp_p;
+      for(size_t i=a;i<b;i++){
+        // read each component of x
+        Real_t* xk=x.getSubN_begin(i)+0*M_ves;
+        Real_t* yk=x.getSubN_begin(i)+1*M_ves;
+        Real_t* zk=x.getSubN_begin(i)+2*M_ves;
+
+        for(size_t j=0;j<M_ves;j++){
+          xk[j]=f_repl[(i*M_ves+j)*COORD_DIM+0];
+          yk[j]=f_repl[(i*M_ves+j)*COORD_DIM+1];
+          zk[j]=f_repl[(i*M_ves+j)*COORD_DIM+2];
+        }
+      }
+    }
+
+    axpy(1.0,*force_single,F_repl,F_repl);
+    force_single=&F_repl;
+  }
+
   assert(S);
   size_t omp_p=omp_get_max_threads();
   if(fmm_flag & StokesVelocity::UpdateSrcCoord){ // Compute src_coord_up
