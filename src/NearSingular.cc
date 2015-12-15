@@ -483,9 +483,10 @@ void NearSingular<Surf_t>::SetupCoordData(){
           }
           pvfmm::omp_par::merge_sort(&shared_pair[0],&shared_pair[0]+shared_pair.Dim());
         }
-        { // Set snode_cnt, snode_idx
+        { // Set snode_cnt, snode_id
           snode_cnt.SetZero();
           snode_id.ReInit(shared_pair.Dim());
+          // TODO: parallelize this loop
           for(size_t i=0;i<shared_pair.Dim();i++){
             snode_cnt[shared_pair[i].key]++;
             snode_id[i]=shared_pair[i].data;
@@ -498,6 +499,21 @@ void NearSingular<Surf_t>::SetupCoordData(){
 
         snode_dsp[0]=0; pvfmm::omp_par::scan(&snode_cnt[0], &snode_dsp[0], snode_cnt.Dim());
         rnode_dsp[0]=0; pvfmm::omp_par::scan(&rnode_cnt[0], &rnode_dsp[0], rnode_cnt.Dim());
+
+        { // Sort snode_id for each process
+          #pragma omp parallel for
+          for(size_t tid=0;tid<omp_p;tid++){
+            size_t a=(tid+0)*shared_pair.Dim()/omp_p;
+            size_t b=(tid+1)*shared_pair.Dim()/omp_p;
+            size_t pid_a=(a<shared_pair.Dim()?shared_pair[a].key:np);
+            size_t pid_b=(b<shared_pair.Dim()?shared_pair[b].key:np);
+            for(size_t i=pid_a;i<pid_b;i++){
+              a=(i+0<np?snode_dsp[i+0]:shared_pair.Dim());
+              b=(i+1<np?snode_dsp[i+1]:shared_pair.Dim());
+              if(a<b) std::sort(&snode_id[0]+a,&snode_id[0]+b);
+            }
+          }
+        }
       }
 
 
