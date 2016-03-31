@@ -157,7 +157,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             }
 
             INFO("Time-adaptive: error/dt = "<<error/dt<<", error/dt^2 = "<<error/dt/dt<<", dt_new = "<<dt_new);
-            assert(std::typeid(T)==std::typeid(double));
+            assert(typeid(T)==typeid(double));
             MPI_Allreduce(&dt_new, &dt, 1, MPI_DOUBLE, MPI_MIN, VES3D_COMM_WORLD); // @bug this only works for T==double
         }else if(time_adap==TimeAdapErrAreaVol){ // Adaptive using area, volume error
             Error_t err=ErrorEvent::Success;
@@ -222,7 +222,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             }
 
             INFO("Time-adaptive: A_err/dt = "<<(A_err/A0)/dt<<", V_err/dt = "<<(V_err/V0)/dt<<", dt_new = "<<dt_new);
-            assert(std::typeid(T)==std::typeid(double));
+            assert(typeid(T)==typeid(double));
             MPI_Allreduce(&dt_new, &dt, 1, MPI_DOUBLE, MPI_MIN, VES3D_COMM_WORLD); // @bug this only works for T==double
         }else if(time_adap==TimeAdapNone){ // No adaptive
             CHK( (F_->*updater)(*S_, dt, dx) );
