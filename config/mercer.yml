@@ -1,0 +1,4 @@
+queue: s48
+userlist: rahimian@cims.nyu.edu
+init-basedir: ${SCRATCH}/ves3d/
+modules: [openmpi,intel,fftw]
