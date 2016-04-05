@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 '''Manages the execution of a job. This creates pbs job file, job-specific
-option file, etc.'''
+option file, etc.
+
+This reads a hostfile to set the default values based on the machine.
+The machine dependent options can be set there.
+'''
 
 from __future__ import absolute_import, division, print_function
 
@@ -17,7 +21,6 @@ import datetime
 import os
 import sys
 import time
-import yaml
 import subprocess as sp
 
 class CustomArgFormatter(ap.ArgumentDefaultsHelpFormatter,
@@ -29,8 +32,9 @@ class Job(object):
         self._opts = self._parse_cl(**kwargs)
 
         if self.host is None:
-            host = sp.Popen(['hostname', '-s'], stdout=sp.PIPE).communicate()
-            self.host = host[0].strip()
+            self.host = os.path.expandvars('${VES3D_PLATFORM}')
+            #host = sp.Popen(['hostname', '-s'], stdout=sp.PIPE).communicate()
+            #self.host = host[0].strip()
         self._host_opts = self._load_host_opts()
 
         self.set_defaults()
@@ -55,12 +59,12 @@ class Job(object):
                          help='Queue management system', choices=('svg','torque'),
                          default='torque')
 
-        clp.add_argument('--host', '-H', help='Hostname')
-        clp.add_argument('--hostfile', '-F', help='Hostname')
+        clp.add_argument('--host'    , '-H', help='Hostname')
+        clp.add_argument('--hostfile', '-F', help='Hostfile to read machine defaults (if unset, it is assumed to be <host>.yml)')
 
         #queue
         clp.add_argument('--account'   , '-A' , help='Account number')
-        clp.add_argument('--job-name'  , '-N' , help='Job name')
+        clp.add_argument('--job-name'  , '-N' , help='Job name (default to inputfile + timestamp)')
         clp.add_argument('--queue'     , '-q' , help='Destination queue')
 
         #logging/notification
@@ -82,11 +86,11 @@ class Job(object):
         clp.add_argument('--no-manifest'  , help='Skip manifest file', action='store_true')
 
         #executable
-        clp.add_argument('--exec-name'    , '-E' , help='Executable name (required)',required=True)
-        clp.add_argument('--optfile'      , '-I' , help='Input option file for the executable)')
-        clp.add_argument('--init-basedir' , '-i' , help='Init directory')
-        clp.add_argument('--vars'         , '-v' , help='Variable list (comma separated)')
-        clp.add_argument('--modules'      ,        help='modules to load')
+        clp.add_argument('--exec-name'    , '-E' , help='Executable name (required)',default='bin/ves3d')
+        clp.add_argument('--optfile'      , '-I' , help='Input option file for the executable',required=True)
+        clp.add_argument('--init-basedir' , '-i' , help='Init directory (the location where the job is setup, submitted, and files stored)',default='${SCRATCH}/ves3d/')
+        clp.add_argument('--vars'         , '-v' , help='Variable list (copied verbatim)')
+        clp.add_argument('--modules'      ,        help='modules to load',nargs='*')
 
         if callback is not None: callback(clp)
         return vars(clp.parse_args())
@@ -96,11 +100,15 @@ class Job(object):
         if hostfile is None:
             hostfile = 'config/%s.yml' % self.host
 
-        with open(hostfile, 'r') as stream:
-            try:
-                mopts = yaml.load(stream)
-            except yaml.YAMLError as exc:
-                print(exc)
+        if not os.path.exists(hostfile):
+            return dict()
+
+        print('loading host file %s' % hostfile)
+        fh = open(hostfile, 'r')
+        import yaml
+        #if missing, use pip install PyYAML
+        mopts = yaml.load(fh)
+        fh.close()
 
         for k,v in mopts.items():
             nk = k.replace('-','_')
@@ -121,7 +129,7 @@ class Job(object):
         if self.job_name is None and self.optfile is not None:
             jname = os.path.basename(self.optfile)
             if len(jname):
-                self.job_name = '%s.%s' % (jname,stamp)
+                self.job_name = '%s.%s.pbs' % (jname,stamp)
 
         if self.walltime is not None:
             h = m = 0
@@ -154,7 +162,7 @@ class Job(object):
                      ('memory','-l mem='), ('resources','-l ')]
         append_args(resources)
 
-        exe       = [('init_dir','-d '), ('vars','-v ')]
+        exe       = [('vars','-v ')]
         append_args(exe)
 
         return args
@@ -202,24 +210,19 @@ class Job(object):
         ofile = os.path.basename(fnames['optfile'])
         assert os.path.samefile(edir,self.init_dir), 'inconsistent dir name'
 
-        cmd  = '${MPI_ROOT}/bin/mpiexec -np ${NT} -pernode'
-        cmd += ' -x PATH -x LD_LIBRARY_PATH -x OMP_NUM_THREADS'
-        cmd += ' -wdir ${PBS_O_WORKDIR} ${PBS_O_WORKDIR}/%s -f %s' % (efile,ofile)
+        cmd  = 'mpiexec -pernode -x PATH -x LD_LIBRARY_PATH %s -f %s' % (efile,ofile)
 
         mods = 'module purge\n'
         for m in self.modules:
             mods += 'module load %s\n' % m
+        mods += 'module list\n'
 
-        if self.host=='octane':
+        if self.host=='mercer':
             cmds = [
-                'cd ${PBS_O_WORKDIR}',
-                '',
-                '#set number of OpenMP threads per node, NT=number of MPI nodes (not threads)',
-                'export OMP_NUM_THREADS=${PBS_NUM_PPN}',
-                'export NT=$((PBS_NP/PBS_NUM_PPN))',
-                '',
+                'cd ${PBS_O_WORKDIR}\n',
+                'export VES3D_DIR=%s\n' % self.init_dir,
                 mods,
-                'CMD='+cmd,
+                'CMD="%s"'%cmd,
                 'echo running ${CMD}',
                 '${CMD}',
                 ]
@@ -241,14 +244,14 @@ class Job(object):
         content += self.exec_cmd(fnames)
         content += ['\n','#EOF']
 
-        with open(jname,'w') as fh:
-            for l in content:
-                fh.write(l+'\n')
+        fh = open(jname,'w')
+        for l in content: fh.write(l+'\n')
+        fh.close()
 
         return jname
 
     def prepare_dir(self):
-        print('preparing init ldir', self.init_dir)
+        print('preparing init dir', self.init_dir)
         os.makedirs(self.init_dir,0770)
 
         #executable
@@ -275,9 +278,10 @@ class Job(object):
         #file manifest
         if not self.no_manifest:
             mfile = os.path.join(self.init_dir,'manifest')
-            with open(mfile, 'w') as fh:
-                sp.Popen('hg summary',shell=True,stdout=fh,stderr=fh)
-                sp.Popen('hg status',shell=True,stdout=fh,stderr=fh)
+            fh = open(mfile, 'w')
+            sp.Popen('hg summary',shell=True,stdout=fh,stderr=fh)
+            sp.Popen('hg status',shell=True,stdout=fh,stderr=fh)
+            fh.close()
 
         return dict(execname=execname,optfile=optfile)
 

@@ -28,7 +28,7 @@ void Parameters<T>::init()
     filter_freq             = 8;
     interaction_upsample    = false;
     n_surfs                 = 1;
-    num_threads             = 4;
+    num_threads             = -1;
     position_solver_iter    = 15;
     position_solver_restart = 1;
     position_solver_tol	    = (typeid(T) == typeid(float)) ? 1e-4: 1e-8;
@@ -125,9 +125,9 @@ Error_t Parameters<T>::expand_templates(const DictString_t *dict){
 
     //overwriting the defaults
     if (dict != NULL){
-	DictString_t::const_iterator iter(dict->begin());
-	for (;iter != dict->end(); ++iter)
-	    d[iter->first] = iter->second;
+        DictString_t::const_iterator iter(dict->begin());
+        for (;iter != dict->end(); ++iter)
+            d[iter->first] = iter->second;
     }
     CHK(::expand_template(&init_file_name      , d));
     CHK(::expand_template(&cntrs_file_name     , d));

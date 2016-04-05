@@ -31,5 +31,5 @@ LDFLAGS        += ${BLAS_LDFLAGS}
 LDLIBS         += $(BLAS_LDLIBS) -lpthread
 
 # hacks
-MAKE = /usr/bin/make #b/c the admin compiled with their local make!
+MAKE = /usr/bin/make #b/c the admin compiled petsc with their local make!
 

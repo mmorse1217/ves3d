@@ -67,8 +67,12 @@ Error_t Simulation<DT,DEVICE>::Run()
 
 template<typename DT, const DT &DEVICE>
 Error_t Simulation<DT,DEVICE>::setup_basics(){
-    INFO("Setting OMP num thread to "<<run_params_.num_threads);
-    omp_set_num_threads(run_params_.num_threads);
+    if (run_params_.num_threads>0){
+        INFO("Setting OMP num threads to "<<run_params_.num_threads);
+        omp_set_num_threads(run_params_.num_threads);
+    } else {
+        INFO("OMP max threads is "<<omp_get_max_threads());
+    }
 
     //Reading Operators From File
     Mats_ = new Mats_t(true /*readFromFile*/, run_params_);
