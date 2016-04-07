@@ -31,10 +31,7 @@ class Job(object):
     def __init__(self,**kwargs):
         self._opts = self._parse_cl(**kwargs)
 
-        if self.host is None:
-            self.host = os.path.expandvars('${VES3D_PLATFORM}')
-            #host = sp.Popen(['hostname', '-s'], stdout=sp.PIPE).communicate()
-            #self.host = host[0].strip()
+        self.host = os.path.expandvars(self.host)
         self._host_opts = self._load_host_opts()
 
         self.set_defaults()
@@ -59,36 +56,37 @@ class Job(object):
                          help='Queue management system', choices=('svg','torque'),
                          default='torque')
 
-        clp.add_argument('--host'    , '-H', help='Hostname')
+        clp.add_argument('--host'    , '-H', help='Hostname (if an evironment variable, it is expanded)', default='${VES3D_PLATFORM}')
         clp.add_argument('--hostfile', '-F', help='Hostfile to read machine defaults (if unset, it is assumed to be <host>.yml)')
 
         #queue
         clp.add_argument('--account'   , '-A' , help='Account number')
-        clp.add_argument('--job-name'  , '-N' , help='Job name (default to inputfile + timestamp)')
+        clp.add_argument('--job-name'  , '-N' , help='Job name (default to optfile + timestamp)')
         clp.add_argument('--queue'     , '-q' , help='Destination queue')
+        clp.add_argument('--no-stage'  ,        help='Skip submitting the job', action='store_true')
 
         #logging/notification
-        clp.add_argument('--outfile'   , '-o' , help='Output file',default='localhost:${PBS_O_WORKDIR}/')
-        clp.add_argument('--errfile'   , '-e' , help='Error file')
-        clp.add_argument('--join'      , '-j' , help='Join out/err files' ,default='oe')
-        clp.add_argument('--mail'      ,        help='Mail options [begin, abort, end]', default='n', choices=('b','e','a','s','n'))
-        clp.add_argument('--userlist'  ,        help='List of users (to notify)')
+        clp.add_argument('--outfile'   , '-o' , help='Output file', default='localhost:${PBS_O_WORKDIR}/')
+        clp.add_argument('--errfile'   , '-e' , help='Error file (by default joined to outfile)')
+        clp.add_argument('--join'      , '-j' , help='Join out/err files', default='oe')
+        clp.add_argument('--mail'      ,        help='Mail options [begin, end, abort, none]', default='ea', choices=('b','e','a','s','n'))
+        clp.add_argument('--userlist'  ,        help='List of users to notify')
 
         #resources
         clp.add_argument('--nodes'     , '-n' , help='Number of nodes')
         clp.add_argument('--ppn'       , '-p' , help='Processor per node')
         clp.add_argument('--walltime'  , '-w' , help='Wall clock time (use suffix h for hour, otherwise interpreted as minutes)')
         clp.add_argument('--memory'    , '-m' , help='Memory per node (GB)')
-        clp.add_argument('--resources' , '-l' , help='Extra resources (comma separated)')
+        clp.add_argument('--resources' , '-l' , help='Extra resources (copied verbatim)')
 
         #setup (not for pbs)
         clp.add_argument('--no-bin'       , help='Skip copying binary file and symlink', action='store_true')
         clp.add_argument('--no-manifest'  , help='Skip manifest file', action='store_true')
 
         #executable
-        clp.add_argument('--exec-name'    , '-E' , help='Executable name (required)',default='bin/ves3d')
-        clp.add_argument('--optfile'      , '-I' , help='Input option file for the executable',required=True)
-        clp.add_argument('--init-basedir' , '-i' , help='Init directory (the location where the job is setup, submitted, and files stored)',default='${SCRATCH}/ves3d/')
+        clp.add_argument('--exec-name'    , '-E' , help='Executable name', default='bin/ves3d')
+        clp.add_argument('--optfile'      , '-I' , help='Input option file for the executable', required=True)
+        clp.add_argument('--init-basedir' , '-i' , help='Init directory--the location where the job is setup, submitted, and output files stored (environment variables are expanded)',default='${SCRATCH}/ves3d/')
         clp.add_argument('--vars'         , '-v' , help='Variable list (copied verbatim)')
         clp.add_argument('--modules'      ,        help='modules to load',nargs='*')
 
@@ -158,7 +156,7 @@ class Job(object):
                      ('mail','-m '), ('userlist','-M ')]
         append_args(logging)
 
-        resources = [('nodes','-l node='), ('walltime','-l walltime='),
+        resources = [('nodes','-l nodes='), ('walltime','-l walltime='),
                      ('memory','-l mem='), ('resources','-l ')]
         append_args(resources)
 
@@ -210,18 +208,24 @@ class Job(object):
         ofile = os.path.basename(fnames['optfile'])
         assert os.path.samefile(edir,self.init_dir), 'inconsistent dir name'
 
-        cmd  = 'mpiexec -pernode -x PATH -x LD_LIBRARY_PATH %s -f %s' % (efile,ofile)
-
         mods = 'module purge\n'
         for m in self.modules:
             mods += 'module load %s\n' % m
         mods += 'module list\n'
 
         if self.host=='mercer':
+            # bind-to-core to avoid switching CPU of an mpi process
+            # need bynode so each mpi process is in a different node (works for openmpi)
+            #mpirun --bind-to-core --bynode -np $PBS_NP
+            cmd  = 'mpiexec --bind-to-core --bynode -np ${PBS_NUM_NODES}'
+            cmd += ' -x PATH -x LD_LIBRARY_PATH ./%s -f %s' % (efile,ofile)
+
             cmds = [
                 'cd ${PBS_O_WORKDIR}\n',
-                'export VES3D_DIR=%s\n' % self.init_dir,
+                'export VES3D_DIR=%s' % self.init_dir,
+                'export OMP_NUM_THREADS=${PBS_NUM_PPN}\n',
                 mods,
+                'echo Environment variables:\nenv\n\n',
                 'CMD="%s"'%cmd,
                 'echo running ${CMD}',
                 '${CMD}',
@@ -279,8 +283,8 @@ class Job(object):
         if not self.no_manifest:
             mfile = os.path.join(self.init_dir,'manifest')
             fh = open(mfile, 'w')
-            sp.Popen('hg summary',shell=True,stdout=fh,stderr=fh)
-            sp.Popen('hg status',shell=True,stdout=fh,stderr=fh)
+            sp.Popen(['hg', 'summary'],shell=False,stdout=fh,stderr=fh).wait()
+            sp.Popen(['hg', 'status'],shell=False,stdout=fh,stderr=fh).wait()
             fh.close()
 
         return dict(execname=execname,optfile=optfile)
@@ -290,11 +294,13 @@ class Job(object):
         jname  = self.prepare_job_file(fnames)
 
         return fnames, jname
-    def submit(self):
+
+    def stage(self):
         fnames, jname = self.prepare()
 
-        print('submitting %s (%s)' % (self.job_name, jname))
-        os.chdir(self.init_dir)
-        sp.call(['qsub', jname])
+        if not self.no_stage:
+            print('submitting %s (%s)' % (self.job_name, jname))
+            os.chdir(self.init_dir)
+            sp.call(['qsub', jname])
 
-Job().submit()
+Job().stage()
