@@ -19,6 +19,7 @@ __copyright__ = 'Copyright (c) 2016, Abtin Rahimian'
 import argparse as ap
 import datetime
 import os
+import re
 import sys
 import time
 import subprocess as sp
@@ -41,6 +42,7 @@ class Job(object):
 
         self.exec_name    = os.path.abspath(self.exec_name)
         self.optfile      = os.path.abspath(self.optfile)
+        self.epilogue     = os.path.abspath(self.epilogue)
 
     def __getattr__(self,name):
         return self._opts[name]
@@ -76,8 +78,9 @@ class Job(object):
         clp.add_argument('--nodes'     , '-n' , help='Number of nodes')
         clp.add_argument('--ppn'       , '-p' , help='Processor per node')
         clp.add_argument('--walltime'  , '-w' , help='Wall clock time (use suffix h for hour, otherwise interpreted as minutes)')
-        clp.add_argument('--memory'    , '-m' , help='Memory per node (GB)')
+        clp.add_argument('--memory'    , '-m' , help='Memory per node (GB if no unit)')
         clp.add_argument('--resources' , '-l' , help='Extra resources (copied verbatim)')
+        clp.add_argument('--epilogue'  ,        help='Epilogue script to run after code', default='utils/epilogue.sh')
 
         #setup (not for pbs)
         clp.add_argument('--no-bin'       , help='Skip copying binary file and symlink', action='store_true')
@@ -138,12 +141,15 @@ class Job(object):
             self.walltime = '%02d:%02d:00' % (h,m)
 
         if self.memory is not None:
-            self.memory += 'G'
+            if re.search('[kKmMgG]', self.memory) is None:
+                self.memory += 'G'
 
         if self.ppn is not None:
             self.nodes +=':ppn=%s'%self.ppn
 
-    def pbs_args(self):
+        if len(self.epilogue)==0: self.epilogue=None
+
+    def pbs_args(self,files):
         args = []
         def append_args(lst):
             for k1,k2 in lst:
@@ -159,6 +165,10 @@ class Job(object):
         resources = [('nodes','-l nodes='), ('walltime','-l walltime='),
                      ('memory','-l mem='), ('resources','-l ')]
         append_args(resources)
+
+        epilogue = files.get('epilogue', None)
+        if  epilogue is not None:
+            args.append(('-l epilogue=', os.path.basename(epilogue)))
 
         exe       = [('vars','-v ')]
         append_args(exe)
@@ -187,10 +197,10 @@ class Job(object):
         header = ['echo '+l for l in header]
         return header
 
-    def pbs_job_header(self):
+    def pbs_job_header(self,files):
 
         pbs  = ['#!/bin/bash\n']
-        args = self.pbs_args()
+        args = self.pbs_args(files)
 
         for k,v in args:
             if k is None: pbs.append('')
@@ -241,7 +251,7 @@ class Job(object):
         print('preparing job file %s' % jname)
 
         content  = []
-        content  = self.pbs_job_header()
+        content  = self.pbs_job_header(fnames)
         content += ['\n']
         content += self.pbs_log_header()
         content += ['\n']
@@ -257,11 +267,12 @@ class Job(object):
     def prepare_dir(self):
         print('preparing init dir', self.init_dir)
         os.makedirs(self.init_dir,0770)
-
+        files = dict()
         #executable
         execdir  = os.path.dirname(self.exec_name)
         execname = os.path.basename(self.exec_name)
         execname = os.path.join(self.init_dir,execname)
+        files['execname'] = execname
 
         if self.no_bin:
             os.symlink(self.exec_name,execname)
@@ -272,6 +283,7 @@ class Job(object):
         optfile = os.path.basename(self.optfile)
         optfile = os.path.join(self.init_dir,optfile)
         sp.call(['cp',self.optfile,optfile])
+        files['optfile'] = optfile
 
         #precomputed
         precomp = os.path.expandvars('${VES3D_DIR}')
@@ -287,7 +299,14 @@ class Job(object):
             sp.Popen(['hg', 'status'],shell=False,stdout=fh,stderr=fh).wait()
             fh.close()
 
-        return dict(execname=execname,optfile=optfile)
+        #epilogue file
+        if self.epilogue is not None:
+            epilogue = os.path.basename(self.epilogue)
+            epilogue = os.path.join(self.init_dir,epilogue)
+            sp.call(['cp',self.epilogue,epilogue])
+            os.chmod(epilogue,0511)
+            files['epilogue'] = epilogue
+        return files
 
     def prepare(self):
         fnames = self.prepare_dir()
