@@ -821,7 +821,7 @@ void NearSingular<Surf_t>::SetupCoordData(){
           r2_near=coord_setup.r_near;
           r2_near*=r2_near;
         }
-        Real_t s=std::pow(0.5,(int)tree_depth);
+        Real_t s=pow(0.5,tree_depth);
 
         size_t FLOP=0;
         size_t a=((tid+0)*tree_mid.Dim())/omp_p;

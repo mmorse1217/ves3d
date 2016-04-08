@@ -53,7 +53,7 @@ VES3D_CHKEXT   ?= chk
 # PETSC (needs to be first b/c it overwrites make variables!)
 ifeq ($(strip ${VES3D_USE_PETSC}),yes)
   include ${PETSC_DIR}/conf/variables
-  CXXFLAGS += ${PETSC_CC_INCLUDES} -I${PETSC_INC} -DHAS_PETSC
+  CXXFLAGS += ${PETSC_CC_INCLUDES} -DHAS_PETSC
   LDLIBS   += ${PETSC_LIB_BASIC}
   LDFLAGS  += -L${PETSC_LIB_DIR}
 endif

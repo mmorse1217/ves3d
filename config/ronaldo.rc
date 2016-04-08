@@ -1,7 +1,12 @@
-module load autoconf
+# -*- mode: sh; -*-
 module load intel
-module load mkl 
-module load matlab
+module load mkl
 module load openmpi
+module list
+
+export VES3D_DIR=${PRJ_DIR}/ves3d/cxx
+export VES3D_PLATFORM=ronaldo
 
 export FFTW_DIR=/org/groups/padas/packages/fftw
+export PETSC_DIR=/h2/rahimian/padas/packages/petsc/3.5.4/openmpi/intel
+export LD_LIBRARY_PATH=/h2/rahimian/padas/packages/petsc/3.5.4/openmpi/intel/lib:${LD_LIBRARY_PATH}

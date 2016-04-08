@@ -87,6 +87,7 @@ if [[ ${JOBDIR} =~ "scratch" ]]; then
     NEWNAME="${JOBDIRDIR}/comp.${NEWNAME}.${STAMP}"
     echo "moving job from '${JOBDIR}' to '${NEWNAME}'"
     mv ${JOBDIR} ${NEWNAME}
+    ln -s ${NEWNAME} ${JOBDIR}
 fi
 
 exit 0
