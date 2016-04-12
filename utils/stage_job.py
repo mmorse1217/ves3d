@@ -75,8 +75,10 @@ class Job(object):
         clp.add_argument('--userlist'  ,        help='List of users to notify')
 
         #resources
-        clp.add_argument('--nodes'     , '-n' , help='Number of nodes')
-        clp.add_argument('--ppn'       , '-p' , help='Processor per node')
+        clp.add_argument('--nodes'     , '-n' , help='Number of nodes',type=int)
+        clp.add_argument('--cpu'       , '-c' , help='Number of cpus per node',type=int)
+        clp.add_argument('--ppn'       , '-p' , help='Number of mpi processes per node',type=int,default=1)
+        clp.add_argument('--threads'   , '-t' , help='Number of threads per process',type=int)
         clp.add_argument('--walltime'  , '-w' , help='Wall clock time (use suffix h for hour, otherwise interpreted as minutes)')
         clp.add_argument('--memory'    , '-m' , help='Memory per node (GB if no unit)')
         clp.add_argument('--resources' , '-l' , help='Extra resources (copied verbatim)')
@@ -144,8 +146,8 @@ class Job(object):
             if re.search('[kKmMgG]', self.memory) is None:
                 self.memory += 'G'
 
-        if self.ppn is not None:
-            self.nodes +=':ppn=%s'%self.ppn
+        if self.cpu is not None:
+            self.nodes ='%d:ppn=%d'% (self.nodes,self.cpu)
 
         if len(self.epilogue)==0: self.epilogue=None
 
@@ -223,17 +225,27 @@ class Job(object):
             mods += 'module load %s\n' % m
         mods += 'module list\n'
 
+        if self.threads is None:
+            if self.cpu is None:
+                omp_threads='OMP_NUM_THREADS=$((PBS_NUM_PPN/%d))'%self.ppn
+            else:
+                omp_threads='OMP_NUM_THREADS=%d'% (self.cpu/self.ppn)
+        else:
+            omp_threads='OMP_NUM_THREADS=%d'%self.threads
+
         if self.host=='mercer':
             # bind-to-core to avoid switching CPU of an mpi process
             # need bynode so each mpi process is in a different node (works for openmpi)
             #mpirun --bind-to-core --bynode -np $PBS_NP
-            cmd  = 'mpiexec --bind-to-core --bynode -np ${PBS_NUM_NODES}'
-            cmd += ' -x PATH -x LD_LIBRARY_PATH ./%s -f %s' % (efile,ofile)
+            cmd  = 'mpiexec --bind-to-core -bynode -loadbalance -np ${NP}'
+            cmd += ' -x OMP_NUM_THREADS -x PATH -x LD_LIBRARY_PATH ./%s -f %s' % (efile,ofile)
 
             cmds = [
                 'cd ${PBS_O_WORKDIR}\n',
                 'export VES3D_DIR=%s' % self.init_dir,
-                'export OMP_NUM_THREADS=${PBS_NUM_PPN}\n',
+                'export %s'%omp_threads,
+                'NP=$((PBS_NUM_NODES*%d))'%self.ppn,
+                '',
                 mods,
                 'echo Environment variables:\nenv\n\n',
                 'CMD="%s"'%cmd,
@@ -304,7 +316,7 @@ class Job(object):
             epilogue = os.path.basename(self.epilogue)
             epilogue = os.path.join(self.init_dir,epilogue)
             sp.call(['cp',self.epilogue,epilogue])
-            os.chmod(epilogue,0511)
+            os.chmod(epilogue,0755)
             files['epilogue'] = epilogue
         return files
 

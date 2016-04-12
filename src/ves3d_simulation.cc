@@ -72,6 +72,7 @@ Error_t Simulation<DT,DEVICE>::setup_basics(){
         omp_set_num_threads(run_params_.num_threads);
     } else {
         INFO("OMP max threads is "<<omp_get_max_threads());
+        omp_set_num_threads(omp_get_max_threads());
     }
 
     //Reading Operators From File

@@ -59,7 +59,17 @@ get_wct () {
     if [[ $1 =~ $re ]]; then
 	STR=${BASH_REMATCH[1]}
     fi
-    echo $(date -d $STR +"%s")
+
+    dd=$(echo $STR | cut -sf1 -d+)
+    hh=$(echo $STR | cut -sf1 -d:)
+    mm=$(echo $STR | cut -sf2 -d:)
+    ss=$(echo $STR | cut -sf3 -d:)
+
+    hh=$((hh+24*dd))
+    mm=$((mm+60*hh))
+    ss=$((ss+60*mm))
+
+    echo ${ss}
 }
 
 MEML=$(get_mem ${RESOURCE_LIM})
