@@ -16,7 +16,8 @@
 #
 #
 
-echo "########################## EPILOGUE SCRIPT ###########################"
+HOSTNAME=`hostname`
+echo "########################## EPILOGUE SCRIPT ON ${HOSTNAME} ###########################"
 JOBNAME=$4
 RESOURCE_LIM=$6
 RESOURCES=$7
@@ -25,6 +26,7 @@ JOBDIR=${PBS_O_WORKDIR%/}
 
 #- time stamp
 STAMP=`date +%m%d.%H%M%S`
+
 
 #- print and check resource usage
 echo "Requested resources: ${RESOURCE_LIM}"
@@ -95,9 +97,15 @@ if [[ ${JOBDIR} =~ "scratch" ]]; then
     JOBDIRDIR=$(dirname ${JOBDIR})
     NEWNAME=$(basename ${JOBDIR})
     NEWNAME="${JOBDIRDIR}/comp.${NEWNAME}.${STAMP}"
-    echo "moving job from '${JOBDIR}' to '${NEWNAME}'"
-    mv ${JOBDIR} ${NEWNAME}
-    ln -s ${NEWNAME} ${JOBDIR}
+
+    if [[ -L ${JOBDIR} ]]; then
+	echo "${JOBDIR} is already a symlink"
+    else
+	#the race condition is ignored for now
+	echo "moving job from '${JOBDIR}' to '${NEWNAME}'"
+	mv ${JOBDIR} ${NEWNAME}
+	ln -s ${NEWNAME} ${JOBDIR}
+    fi
 fi
 
 exit 0

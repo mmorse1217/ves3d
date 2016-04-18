@@ -11,16 +11,17 @@ rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
-n-surfs : 8
+n-surfs : 6
 bending-modulus : .2
 init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
-cent-file : experiment/centers_8.txt
+cent-file : precomputed/lattice_centers_rand_50.txt
+#lattice_centers has centers for a 50x50x50 lattice, ordered concenterically
 
 ## time stepping -----------------------------
-time-horizon : 100
-timestep : 1e-1
+time-horizon : 5000
+timestep : 1e-2
 time-tol : 1e-5
-time-iter-max : 120
+time-iter-max : 200
 time-scheme : GloballyImplicit
 time-precond : DiagonalSpectral
 singular-stokes : Direct
@@ -29,14 +30,14 @@ solve-for-velocity
 #time-adaptive
 
 ## reparametrization -------------------------
-rep-max-iter : 1000
-rep-timestep : 1e-3
-rep-tol : 1e-8
+rep-max-iter : 5000
+rep-timestep : 1e-4
+rep-tol : 1e-7
 
 ## checkpoint/monitor ------------------------
 checkpoint
-checkpoint-file : experiment/sed_periodic_{{time_idx}}.chk
-checkpoint-stride : .5
+checkpoint-file : sed_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+checkpoint-stride : 0
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow
@@ -45,4 +46,4 @@ excess-density : 1
 #periodic-length : 8
 
 ## misc  -------------------------------------
-num-threads : 16
+#num-threads : 16

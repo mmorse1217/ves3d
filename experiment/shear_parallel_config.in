@@ -29,11 +29,11 @@ rep-tol : 1e-4
 
 ##initialization ############################
 init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
-cent-file : experiment/centers_64.txt
+cent-file : precomputed/centers_64.txt
 
 ##checkpoint/monitor ########################
 checkpoint
-checkpoint-file : experiment/shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+checkpoint-file : shear_parallel_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
 error-factor : .01
 
 ##far filed #################################

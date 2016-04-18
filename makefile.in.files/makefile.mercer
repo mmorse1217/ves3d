@@ -2,7 +2,7 @@
 MAKE_DEP += ${VES3D_MKDIR}/makefile.mercer
 
 # flags for default
-VES3D_TESTING    = yes
+VES3D_TESTING    = no
 VES3D_USE_GPU    = no
 VES3D_USE_PVFMM  = yes
 VES3D_USE_PETSC  = yes
@@ -13,7 +13,7 @@ include ${VES3D_MKDIR}/makefile.default
 
 # customization ##########################################
 
-ifeq ($(COMPILER_VENDOR),intel)
+ifeq ($(strip ${COMPILER_VENDOR}),intel)
  BLASPKG         = HAS_MKL
  BLAS_LDFLAGS    =
  BLAS_LDLIBS     = -mkl
