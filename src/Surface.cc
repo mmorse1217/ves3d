@@ -129,6 +129,19 @@ getSmoothedShapePosition(Vec_t &smthd_pos) const
 
 template <typename ScalarContainer, typename VectorContainer>
 void Surface<ScalarContainer, VectorContainer>::
+getSmoothedShapePositionReparam(Vec_t &smthd_pos) const
+{
+    PROFILESTART();
+    std::auto_ptr<Vec_t> wrk(checkoutVec());
+    std::auto_ptr<Vec_t> shc(checkoutVec());
+    sht_rep_filter_.lowPassFilterReparam(x_, *wrk, *shc, smthd_pos);
+    recycle(wrk);
+    recycle(shc);
+    PROFILEEND("",0);
+}
+
+template <typename ScalarContainer, typename VectorContainer>
+void Surface<ScalarContainer, VectorContainer>::
 mapToTangentSpace(Vec_t &vec_fld, bool upsample) const
 {
     PROFILESTART();

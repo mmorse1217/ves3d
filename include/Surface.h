@@ -61,6 +61,7 @@ class Surface : public Streamable
     void getCenters(Vec_t &centers) const;
 
     void getSmoothedShapePosition(Vec_t &smthd_pos) const;
+    void getSmoothedShapePositionReparam(Vec_t &smthd_pos) const;
     void mapToTangentSpace(Vec_t &vec_fld, bool upsample=true) const;
     void linearizedMeanCurv(const Vec_t &x_new, Sca_t &h_lin) const;
 

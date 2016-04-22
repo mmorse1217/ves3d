@@ -11,7 +11,8 @@ SHTrans<Container, Mats>::SHTrans(int p_in, const Mats &mats, int filter_freq) :
     p(p_in),
     dft_size(2*p),
     filter_freq_(filter_freq),
-    filter_coeff_((value_type*) device_.Malloc(p * (p + 2) * sizeof(value_type)))
+    filter_coeff_((value_type*) device_.Malloc(p * (p + 2) * sizeof(value_type))),
+    filter_coeff_reparam_((value_type*) device_.Malloc(p * (p + 2) * sizeof(value_type)))
 {
     filter_freq_ = (filter_freq_ == -1) ? 2*p/3 : filter_freq_;
     INFO("Initializing with p="<<p<<", filter_freq="<<filter_freq_);
@@ -28,6 +29,19 @@ SHTrans<Container, Mats>::SHTrans(int p_in, const Mats &mats, int filter_freq) :
     device_.Memcpy(filter_coeff_, buffer, p *(p + 2) * sizeof(value_type),
         device_type::MemcpyHostToDevice);
 
+    idx = 0;
+    for(int ii=0; ii< 2 * p; ++ii)
+    {
+        len = p + 1 - (ii+1)/2;
+        for(int jj=0; jj < len; ++jj){
+            int order = p + 1 - len + jj;
+            buffer[idx++] = (1.0 - std::pow(order*1.0/filter_freq_,4))*(order>filter_freq_?0.0:1.0);
+        }
+    }
+
+    device_.Memcpy(filter_coeff_reparam_, buffer, p *(p + 2) * sizeof(value_type),
+        device_type::MemcpyHostToDevice);
+
     free(buffer);
 }
 
@@ -35,6 +49,7 @@ template<typename Container, typename Mats>
 SHTrans<Container, Mats>::~SHTrans()
 {
     device_.Free(filter_coeff_);
+    device_.Free(filter_coeff_reparam_);
 }
 
 template<typename Container, typename Mats>
@@ -158,6 +173,16 @@ void SHTrans<Container, Mats>::lowPassFilter(const Container &in, Container &wor
     int n_funs = in.getNumSubFuncs();
     forward(in, work, shc);
     ScaleFreq(shc.begin(), n_funs, this->filter_coeff_, shc.begin());
+    backward(shc, work, out);
+}
+
+template<typename Container, typename Mats>
+void SHTrans<Container, Mats>::lowPassFilterReparam(const Container &in, Container &work,
+    Container &shc, Container &out) const
+{
+    int n_funs = in.getNumSubFuncs();
+    forward(in, work, shc);
+    ScaleFreq(shc.begin(), n_funs, this->filter_coeff_reparam_, shc.begin());
     backward(shc, work, out);
 }
 

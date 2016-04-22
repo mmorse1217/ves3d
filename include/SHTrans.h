@@ -50,6 +50,9 @@ class SHTrans
     void lowPassFilter(const Container &in, Container &work,
         Container &shc, Container &out) const;
 
+    void lowPassFilterReparam(const Container &in, Container &work,
+        Container &shc, Container &out) const;
+
     void collectSameOrder(const Container &in, Container &out) const;
     void collectSameFreq(const Container &in, Container &out) const;
 
@@ -97,6 +100,7 @@ class SHTrans
         value_type *dft) const;
 
     value_type* filter_coeff_;
+    value_type* filter_coeff_reparam_;
 };
 
 #include "SHTrans.cc"
