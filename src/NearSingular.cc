@@ -812,8 +812,9 @@ void NearSingular<Surf_t>::SetupCoordData(){
     { // Find near trg, ves points
       pvfmm::Profile::Tic("NearPair",&comm,true);
       std::vector<std::vector<std::pair<size_t, size_t> > > near_pair_(omp_p); // (loc_trg_id, S_let.pt_id)
-      #pragma omp parallel for
-      for(size_t tid=0;tid<omp_p;tid++){
+      #pragma omp parallel num_threads(omp_p)
+      {
+        size_t tid=omp_get_thread_num();
         std::vector<std::pair<size_t, size_t> >& near_pair=near_pair_[tid];
         size_t tree_depth; Real_t r2_near;
         { // Set tree_depth, r_near
@@ -1192,7 +1193,7 @@ void NearSingular<Surf_t>::VelocityScatter(PVFMMVec_t& trg_vel){
     trg_vel.ReInit(T.Dim());
     trg_vel.SetZero();
   }
-  if(coord_setup.near_trg_pt_id.Dim()){ // Scatter trg_vel+=Scatter(trg_vel_in)
+  { // Scatter trg_vel+=Scatter(trg_vel_in)
     pvfmm::Profile::Tic("ScatterTrg",&comm,true);
     pvfmm::Vector<size_t>& trg_scatter=coord_setup.near_trg_scatter;
     pvfmm::Vector<size_t>&   trg_pt_id=coord_setup.near_trg_pt_id;
