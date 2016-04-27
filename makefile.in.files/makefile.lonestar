@@ -1,0 +1,31 @@
+# -*- mode: makefile -*-
+MAKE_DEP += ${VES3D_MKDIR}/makefile.lonestar
+
+# flags for default
+VES3D_TESTING    = no
+VES3D_USE_GPU    = no #ignore GPU for now until cpu code is robust
+VES3D_USE_PVFMM  = yes
+VES3D_USE_PETSC  = yes
+VES3D_PETSC_VER  = 36
+COMPILER_VENDOR  = intel
+
+include ${VES3D_MKDIR}/makefile.default
+
+# customization ##########################################
+
+ifeq ($(COMPILER_VENDOR),intel)
+ BLASPKG         = HAS_MKL
+ BLAS_LDFLAGS    =
+ BLAS_LDLIBS     = -mkl
+ BLAS_INCLUDE    = -I ${MKLROOT}/include
+else
+ BLASPKG        = HAS_BLAS
+ BLAS_LDFLAGS   = -L/usr/lib64/
+ BLAS_LDLIBS    = /usr/lib64/liblapack.so.3.0.3 -lblas
+ BLAS_INCLUDE   =
+endif
+CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}
+
+# linker
+LDFLAGS        += ${BLAS_LDFLAGS}
+LDLIBS         += $(BLAS_LDLIBS) -lpthread
