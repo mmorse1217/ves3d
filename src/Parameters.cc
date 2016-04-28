@@ -37,6 +37,8 @@ void Parameters<T>::init()
     rep_tol                 = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
     rep_ts                  = 1;
     rep_upsample            = false;
+    rep_type                = PolyKReparam;
+    rep_exponent            = 4.0;
     scheme                  = JacobiBlockImplicit;
     sh_order                = 12;
     singular_stokes         = ViaSpHarm;
@@ -175,11 +177,15 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --position-restart      Maximum number of restarts for the position solver" );
   opt->addUsage( "     --position-tol          The tolerence for the position solver" );
   opt->addUsage( "     --pseudospectral        Form and solve the system for function values on grid points (otherwise Galerkin)" );
+
   opt->addUsage( "     --rep-filter-freq       The filter freq for the reparametrization" );
   opt->addUsage( "     --rep-max-iter          Maximum number of reparametrization steps" );
   opt->addUsage( "     --rep-timestep          The Time step for the reparametrization (default to timestep)" );
   opt->addUsage( "     --rep-tol               The absolute value tol on the velocity of reparametrization" );
   opt->addUsage( "     --rep-upsample          Flag to whether upsample the surfaces for reparametrization" );
+  opt->addUsage( "     --rep-type              Reparametrization type [Box|PolyK]" );
+  opt->addUsage( "     --rep-exponent          Attenuation coefficient exponent for PolyK type (float)" );
+
   opt->addUsage( "     --sh-order              The spherical harmonics order" );
   opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "     --solve-for-velocity    If true, set up the linear system to solve for velocity and tension otherwise for position" );
@@ -233,10 +239,14 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "position-iter-max" );
   opt->setOption( "position-restart" );
   opt->setOption( "position-tol" );
+
+  opt->setOption( "rep-type" );
   opt->setOption( "rep-filter-freq" );
   opt->setOption( "rep-max-iter" );
   opt->setOption( "rep-timestep" );
   opt->setOption( "rep-tol" );
+  opt->setOption( "rep-exponent" );
+
   opt->setOption( "checkpoint-stride" );
   opt->setOption( "sh-order" );
   opt->setOption( "singular-stokes" );
@@ -364,6 +374,14 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "position-tol" ) != NULL  )
     this->position_solver_tol =  atof(opt->getValue( "position-tol" ));
 
+  if( opt->getValue( "rep-type"  ) != NULL  ){
+    this->rep_type = EnumifyReparam(opt->getValue( "rep-type" ));
+    ASSERT(this->rep_type != UnknownReparam, "Failed to parse the reparametrization type");
+  }
+
+  if( opt->getValue( "rep-exponent"  ) != NULL  )
+    this->rep_exponent =  atof(opt->getValue( "rep-exponent" ));
+
   if( opt->getValue( "rep-max-iter" ) != NULL  )
     this->rep_maxit =  atoi(opt->getValue( "rep-max-iter" ));
 
@@ -449,11 +467,13 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"time_precond: "<<time_precond<<"\n";
     os<<"bg_flow: "<< bg_flow<<"\n";
     os<<"singular_stokes: "<< singular_stokes<<"\n";
+    os<<"rep_type: "<<rep_type<<"\n";
     os<<"rep_maxit: "<<rep_maxit<<"\n";
     os<<"rep_upsample: "<<rep_upsample<<"\n";
     os<<"rep_filter_freq: "<<rep_filter_freq<<"\n";
     os<<"rep_ts: "<<rep_ts<<"\n";
     os<<"rep_tol: "<<rep_tol<<"\n";
+    os<<"rep_exponent: "<<rep_exponent<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
     os<<"periodic_length: "<<periodic_length<<"\n";
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
@@ -509,11 +529,16 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>s;          		ASSERT(key=="singular_stokes:", "Unexpected key (expected  singular_stokes)");
     singular_stokes=EnumifyStokesRot(s.c_str());
 
+    is>>key>>s;	ASSERT(key=="rep_type:", "Unexpected key (expected  rep_type)");
+    rep_type=EnumifyReparam(s.c_str());
+
     is>>key>>rep_maxit;			ASSERT(key=="rep_maxit:", "Unexpected key (expected rep_maxit)");
     is>>key>>rep_upsample;		ASSERT(key=="rep_upsample:", "Unexpected key (expected rep_upsample)");
     is>>key>>rep_filter_freq;		ASSERT(key=="rep_filter_freq:", "Unexpected key (expected rep_filter_freq)");
     is>>key>>rep_ts;			ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
     is>>key>>rep_tol;			ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
+    is>>key>>rep_exponent;  	ASSERT(key=="rep_exponent:", "Unexpected key (expected rep_exponent)");
+
     is>>key>>bg_flow_param;		ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
     is>>key>>periodic_length;		ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
     is>>key>>interaction_upsample;	ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
@@ -586,10 +611,12 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
 
     output<<"------------------------------------"<<std::endl;
     output<<" Reparametrization:"<<std::endl;
+    output<<"   Rep type                 : "<<par.rep_type<<std::endl;
     output<<"   Rep maxit                : "<<par.rep_maxit<<std::endl;
     output<<"   Rep step size            : "<<par.rep_ts<<std::endl;
     output<<"   Rep tol                  : "<<par.rep_tol<<std::endl;
     output<<"   Rep upsample             : "<<std::boolalpha<<par.rep_upsample<<std::endl;
+    output<<"   Rep exponent             : "<<par.rep_exponent<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Initialization:"<<std::endl;

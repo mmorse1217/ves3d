@@ -70,9 +70,10 @@ int main(int argc, char **argv)
     params.bg_flow_param        = 5e-2;
     params.checkpoint           = true;
     params.checkpoint_stride    = ts;
+    params.rep_maxit            = 100;
     params.checkpoint_file_name = "SimulationTest_a_{{rank}}_{{time_idx}}.chk";
     params.init_file_name       = "precomputed/dumbbell_{{sh_order}}_{{precision}}.txt";
-    params.cntrs_file_name      = "experiment/shear_centers.txt";
+    params.cntrs_file_name      = "precomputed/shear_centers.txt";
     params.rep_ts               = ts;
     params.expand_templates(&dict);
 

@@ -9,13 +9,16 @@ template <typename ScalarContainer, typename VectorContainer>
 Surface<ScalarContainer, VectorContainer>::Surface(
     int sh_order, const OperatorsMats<Arr_t> &mats,
     const Vec_t *x_in, int diff_filter_freq,
-    int rep_filter_freq) :
+    int rep_filter_freq, ReparamType rep_type,
+    value_type rep_exponent
+    ) :
     sh_order_(sh_order),
     diff_filter_freq_((diff_filter_freq == -1) ? 2*sh_order_/3 : diff_filter_freq),
     reparam_filter_freq_((rep_filter_freq == -1) ? sh_order_/2 : rep_filter_freq),
+    reparam_type_(rep_type),
     mats_(&mats),
     sht_(sh_order_, mats.getShMats(sh_order_), diff_filter_freq_), ///@todo make sht_ autonomous
-    sht_rep_filter_(sh_order, mats.getShMats(sh_order_), reparam_filter_freq_),
+    sht_rep_filter_(sh_order, mats.getShMats(sh_order_), reparam_filter_freq_,rep_exponent),
     sht_resample_(NULL),
     containers_are_stale_(true),
     first_forms_are_stale_(true),
@@ -31,7 +34,8 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     INFO("Initializing with sh_order="<<sh_order_
 	<<", diff_filter_freq="<<diff_filter_freq_
         <<", reparam_filter_freq="<<reparam_filter_freq_
-        <<", sh order="<<sht_.getShOrder()
+        <<", reparam_type="<<reparam_type_
+        <<", sh_order="<<sht_.getShOrder()
         <<", sht_rep_filter="<<sht_rep_filter_.getShOrder()
         <<", sht_resample="<<sht_resample_->getShOrder()
 	 );
@@ -134,7 +138,10 @@ getSmoothedShapePositionReparam(Vec_t &smthd_pos) const
     PROFILESTART();
     std::auto_ptr<Vec_t> wrk(checkoutVec());
     std::auto_ptr<Vec_t> shc(checkoutVec());
-    sht_rep_filter_.lowPassFilterReparam(x_, *wrk, *shc, smthd_pos);
+    if (reparam_type_ == BoxReparam)
+        sht_rep_filter_.lowPassFilter(x_, *wrk, *shc, smthd_pos);
+    else
+        sht_rep_filter_.lowPassFilterPoly(x_, *wrk, *shc, smthd_pos);
     recycle(wrk);
     recycle(shc);
     PROFILEEND("",0);
@@ -608,9 +615,11 @@ Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
     os<<"sh_order: "<<x_.getShOrder()<<"\n";
     os<<"SHT_order: "<<sht_.getShOrder()<<"\n";
     os<<"SHT_rep_order: "<<sht_rep_filter_.getShOrder()<<"\n";
+    os<<"SHT_rep_exponent: "<<sht_rep_filter_.getShFilterExponent()<<"\n";
     os<<"SHT_resample_order: "<<sht_resample_->getShOrder()<<"\n";
     os<<"diff_filter_freq: "<<diff_filter_freq_<<"\n";
     os<<"reparam_filter_freq: "<<reparam_filter_freq_<<"\n";
+    os<<"reparam_type: "<<reparam_type_<<"\n";
     x_.pack(os,format);
     os<<"/SURFACE\n";
 
@@ -622,6 +631,7 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s,key;
     int ii;
+    value_type v;
 
     is>>s;
     ASSERT(s=="SURFACE", "Bad input string (missing header).");
@@ -640,17 +650,25 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     ASSERT(key=="SHT_rep_order:", "bad key SHT_rep_order");
     ASSERT(ii==sht_rep_filter_.getShOrder(), "incompatible data (different sh_order), cannot unpack");
 
+    is>>key>>v;
+    ASSERT(key=="SHT_rep_exponent:", "bad key SHT_rep_exponent");
+    ASSERT(v==sht_rep_filter_.getShFilterExponent(), "incompatible data (different sh_filter_exponent), cannot unpack");
+
     is>>key>>ii;
     ASSERT(key=="SHT_resample_order:", "bad key SHT_resample_order");
     ASSERT(ii==sht_resample_->getShOrder(), "incompatible data (different sh_order), cannot unpack");
 
     is>>key>>ii;
     ASSERT(key=="diff_filter_freq:", "bad key diff_filter_freq");
-    ASSERT(ii==diff_filter_freq_, "incompatible data (different sh_order), cannot unpack");
+    ASSERT(ii==diff_filter_freq_, "incompatible data (different filter_freq), cannot unpack");
 
     is>>key>>ii;
     ASSERT(key=="reparam_filter_freq:", "bad key reparam_filter_freq");
-    ASSERT(ii==reparam_filter_freq_, "incompatible data (different sh_order), cannot unpack");
+    ASSERT(ii==reparam_filter_freq_, "incompatible data (different rep_filter_freq), cannot unpack");
+
+    is>>key>>s;
+    ASSERT(key=="reparam_type:", "bad key reparam_type");
+    reparam_type_ = EnumifyReparam(s.c_str());
 
     x_.unpack(is, format);
     is>>s;

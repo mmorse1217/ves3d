@@ -28,7 +28,7 @@ rep-tol : 5e-7
 ## checkpoint/monitor ------------------------
 checkpoint
 checkpoint-file : shear_{{time_idx}}.chk
-checkpoint-stride : 1
+checkpoint-stride : .5
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow

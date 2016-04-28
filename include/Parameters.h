@@ -60,11 +60,13 @@ class Parameters : public Streamable
     enum SingularStokesRot singular_stokes;
 
     //Reparametrization
+    enum ReparamType rep_type;
     int  rep_maxit;
     int  rep_filter_freq;
     bool rep_upsample;
     T    rep_ts;
     T    rep_tol;
+    T    rep_exponent;
 
     //Background flow
     T bg_flow_param;

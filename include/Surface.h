@@ -36,8 +36,9 @@ class Surface : public Streamable
 
     ///@todo add a default constructor
     Surface(int sh_order, const OperatorsMats<Arr_t> &mats,
-	const Vec_t *x_in, int diff_filter_freq = -1,
-	int rep_filter_freq=-1);
+        const Vec_t *x_in, int diff_filter_freq = -1,
+        int rep_filter_freq=-1, ReparamType rep_type=PolyKReparam,
+        value_type rep_exponent=4.0);
 
     ~Surface();
 
@@ -95,6 +96,7 @@ class Surface : public Streamable
     int sh_order_;
     int diff_filter_freq_;
     int reparam_filter_freq_;
+    ReparamType reparam_type_;
 
     const OperatorsMats<Arr_t> *mats_;
     typedef SHTMats<value_type, device_type> Mats_t;

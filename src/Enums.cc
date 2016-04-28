@@ -73,6 +73,17 @@ enum SingularStokesRot EnumifyStokesRot(const char * name)
     return Direct;
 }
 
+enum ReparamType EnumifyReparam(const char * name)
+{
+  std::string ns(name);
+  if ( ns.compare(0,3,"Box") == 0 )
+    return BoxReparam;
+  else if ( ns.compare(0,5,"PolyK") == 0 )
+    return PolyKReparam;
+  else
+    return UnknownReparam;
+}
+
 std::ostream& operator<<(std::ostream& output,
     const enum CoordinateOrder &O)
 {
@@ -179,6 +190,23 @@ std::ostream& operator<<(std::ostream& output, const enum SingularStokesRot &SS)
         case DirectEagerEval:
             output<<"DirectEagerEval";
             break;
+    }
+
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const enum ReparamType &RT)
+{
+    switch (RT)
+    {
+        case BoxReparam:
+            output<<"BoxReparam";
+            break;
+        case PolyKReparam:
+            output<<"PolyKReparam";
+            break;
+        default:
+            output<<"UnknownReparam";
     }
 
     return output;

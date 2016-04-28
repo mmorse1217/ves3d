@@ -78,12 +78,18 @@ enum BgFlowType {ShearFlow,
 ///and cache some of the expected results
 enum SingularStokesRot {Direct, ViaSpHarm, DirectEagerEval};
 
+///The reparametrization
+enum ReparamType {BoxReparam,             /* Linear box filter */
+                  PolyKReparam,           /* Linear filter with n^k attenuation coefficents */
+                  UnknownReparam};
+
 ///String to enums functions
 enum CoordinateOrder EnumifyCoordinateOrder(const char * co);
 enum SolverScheme EnumifyScheme(const char * name);
 enum PrecondScheme EnumifyPrecond(const char * name);
 enum BgFlowType EnumifyBgFlow(const char * name);
 enum SingularStokesRot EnumifyStokesRot(const char * name);
+enum ReparamType EnumifyReparam(const char * name);
 
 std::ostream& operator<<(
     std::ostream& output,
@@ -104,5 +110,9 @@ std::ostream& operator<<(
 std::ostream& operator<<(
     std::ostream& output,
     const enum SingularStokesRot &SS);
+
+std::ostream& operator<<(
+    std::ostream& output,
+    const enum ReparamType &RT);
 
 #endif //_ENUMS_H_

@@ -20,10 +20,13 @@ class SHTrans
     typedef typename Container::value_type value_type;
 
   public:
-     SHTrans(int sh_order_in, const Mats &mats, int filter_freq = -1);
+    SHTrans(int sh_order_in, const Mats &mats, int filter_freq = -1,
+            value_type filter_exponent=4.0);
     ~SHTrans();
 
     int getShOrder() const {return(p);}
+    int getShFilterFreq() const {return(filter_freq_);}
+    value_type getShFilterExponent() const {return(filter_exponent_);}
 
     /**
      * The Synthesis method. The input is in real space and the output
@@ -50,7 +53,7 @@ class SHTrans
     void lowPassFilter(const Container &in, Container &work,
         Container &shc, Container &out) const;
 
-    void lowPassFilterReparam(const Container &in, Container &work,
+    void lowPassFilterPoly(const Container &in, Container &work,
         Container &shc, Container &out) const;
 
     void collectSameOrder(const Container &in, Container &out) const;
@@ -71,6 +74,7 @@ class SHTrans
     int p;
     int dft_size;
     int filter_freq_;
+    value_type filter_exponent_;
 
     /**
      * The forward and inverse Legendre transform. The case of forward
@@ -100,7 +104,7 @@ class SHTrans
         value_type *dft) const;
 
     value_type* filter_coeff_;
-    value_type* filter_coeff_reparam_;
+    value_type* filter_coeff_poly_;
 };
 
 #include "SHTrans.cc"

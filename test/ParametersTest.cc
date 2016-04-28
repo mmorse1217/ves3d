@@ -88,8 +88,10 @@ bool ParametersTest<P>::TestStream(const P &p)
     ASSERT(p.bg_flow == pc. bg_flow					, "incorrect  bg_flow");
     ASSERT(p.singular_stokes == pc. singular_stokes			, "incorrect  singular_stokes");
     ASSERT(p.rep_maxit == pc.rep_maxit					, "incorrect rep_maxit");
+    ASSERT(p.rep_type == pc.rep_type					, "incorrect rep_type");
     ASSERT(p.rep_ts == pc.rep_ts					, "incorrect rep_ts");
     ASSERT(p.rep_tol == pc.rep_tol					, "incorrect rep_tol");
+    ASSERT(p.rep_exponent == pc.rep_exponent				, "incorrect rep_exponent");
     ASSERT(p.bg_flow_param == pc.bg_flow_param				, "incorrect bg_flow_param");
     ASSERT(p.interaction_upsample == pc.interaction_upsample		, "incorrect interaction_upsample");
     ASSERT(p.checkpoint == pc.checkpoint        			, "incorrect checkpoint");
@@ -109,7 +111,6 @@ bool ParametersTest<P>::TestStream(const P &p)
 
 int main(int, char**){
 
-    int argc(15);
     char *argv[] = {"execname",
 		    "--n-surfs", "5",
 		    "--sh-order", "13",
@@ -118,9 +119,14 @@ int main(int, char**){
 		    "--rep-upsample",
 		    "--interaction-upsample",
 		    "--excess-density", "5",
-		    "--gravity-field", "1.1 2e1 -3",
-    };
+            "--gravity-field", "1.1 2e1 -3",
+            "--rep-type", "Box",
+  		    "--rep-exponent", "5",
+    }; /* adjust argc */
+    int argc(sizeof(argv)/sizeof(argv[0]));
+
     Parameters<double> p(argc, argv);
+    COUT(p);
     ParametersTest<Parameters<double> > p_test;
     p_test(p);
 }

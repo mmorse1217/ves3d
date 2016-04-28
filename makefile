@@ -50,6 +50,7 @@ clean:
 
 distclean:
 	${MAKE} clean
+	${MAKE} -C ${VES3D_TSTDIR} distclean
 	-${RM} $(addprefix ${VES3D_BINDIR}/,${VES3D_BINS})
 
 # include dependency file for templates (generated when making bin files)
