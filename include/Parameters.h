@@ -77,6 +77,7 @@ class Parameters : public Streamable
     //Startup and Monitoring
     bool checkpoint;
     T checkpoint_stride;
+    bool write_vtk;
     std::string init_file_name;
     std::string cntrs_file_name;
     std::string checkpoint_file_name;

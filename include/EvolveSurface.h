@@ -81,11 +81,12 @@ class EvolveSurface : public Streamable
 
     Error_t Evolve();
 
+    Error_t getSurfaceUp(const Sur_t *&) const;
     Params_t *params_;
     const Mats_t &mats_;
 
     Sur_t *S_;
-    Sur_t *S_up_;
+    mutable Sur_t *S_up_;
     BgFlow_t *vInf_;
     PSolver_t *parallel_solver_;
     Monitor_t *monitor_;

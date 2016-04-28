@@ -74,6 +74,18 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             INFO("Writing data to file "<<fname);
             IO_.DumpFile(fname.c_str(), ss);
             ++last_checkpoint_;
+
+#if HAVE_PVFMM
+            if(params_->write_vtk){
+                std::string vtkfbase("snapshot_");
+                vtkfbase += suffix;
+                INFO("Writing VTK file");
+
+                const typename EvolveSurface::Sur_t *S_up;
+                CHK( state->getSurfaceUp(S_up));
+                WriteVTK(*S_up,vtkfbase.c_str());
+            }
+#endif // HAVE_PVFMM
         }
     }
 

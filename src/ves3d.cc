@@ -22,7 +22,8 @@ int main(int argc, char **argv)
     MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
 #endif
     std::stringstream snp, sr;
-    snp<<nproc; sr<<rank;
+    snp<<nproc;
+    sr<<std::setfill('0')<<std::setw(6)<<rank;
     dict["nprocs"] = snp.str();
     dict["rank"]   = sr.str();
 

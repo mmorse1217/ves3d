@@ -24,6 +24,7 @@ void Parameters<T>::init()
     bg_flow_param           = 1e-1;
     checkpoint              = false;
     checkpoint_stride	    = -1;
+    write_vtk               = false;
     error_factor            = 1;
     filter_freq             = 8;
     interaction_upsample    = false;
@@ -203,6 +204,8 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --viscosity-contrast    The viscosity contrast of vesicles" );
   opt->addUsage( "     --excess-density        The difference between the density of fluids inside and outside" );
   opt->addUsage( "     --gravity-field         The gravitational field vector (space separated)" );
+
+  opt->addUsage( "     --write-vtk             Write VTK file along with checkpoint" );
 }
 
 template<typename T>
@@ -219,6 +222,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setFlag( "solve-for-velocity" );
   opt->setFlag( "pseudospectral" );
   opt->setFlag( "time-adaptive" );
+  opt->setFlag( "write-vtk" );
 
   //an option (takes an argument), supporting long and short forms
   opt->setOption( "init-file", 'i');
@@ -280,6 +284,11 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
       this->checkpoint = true;
   else
       this->checkpoint = false;
+
+  if( opt->getFlag( "write-vtk" ) )
+      this->write_vtk = true;
+  else
+      this->write_vtk = false;
 
   if( opt->getFlag( "interaction-upsample" ) )
       this->interaction_upsample = true;
@@ -479,6 +488,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
     os<<"checkpoint: "<<checkpoint<<"\n";
     os<<"checkpoint_stride: "<<checkpoint_stride<<"\n";
+    os<<"write_vtk: "<<write_vtk<<"\n";
     os<<"init_file_name: "<<init_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"cntrs_file_name: "<<cntrs_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"checkpoint_file_name: "<<checkpoint_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
@@ -544,6 +554,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>interaction_upsample;	ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
     is>>key>>checkpoint;		ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
     is>>key>>checkpoint_stride;		ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
+    is>>key>>write_vtk;		ASSERT(key=="write_vtk:", "Unexpected key (expected write_vtk)");
 
     is>>key>>s;		                ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
     if (s!="|"){init_file_name=s; is>>s; /* consume | */}else{init_file_name="";}
@@ -629,6 +640,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Checkpoint file name     : "<<par.checkpoint_file_name<<std::endl;
     output<<"   Checkpoint stride        : "<<par.checkpoint_stride<<std::endl;
     output<<"   Load checkpoint          : "<<par.load_checkpoint<<std::endl;
+    output<<"   Write VTK                : "<<par.write_vtk<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Background flow:"<<std::endl;
@@ -654,16 +666,17 @@ Error_t expand_template(std::string *pattern, const DictString_t &dict){
     DictString_t::const_iterator iter(dict.begin());
     for (;iter != dict.end(); ++iter)
     {
-	std::size_t idx(0);
-	do{
-	    idx = pattern->find("{{"+iter->first+"}}",idx);
-	    if (idx!=std::string::npos){
-		pattern->replace(idx,iter->first.length()+4,iter->second);
-		++idx;
-	    } else {
-		break;
-	    }
-	} while (true);
+        std::size_t idx(0);
+        do{
+            idx = pattern->find("{{"+iter->first+"}}",idx);
+            if (idx!=std::string::npos){
+                pattern->replace(idx,iter->first.length()+4 /*4 is for brackets */,
+                                 iter->second);
+                ++idx;
+            } else {
+                break;
+            }
+        } while (true);
     }
     return ErrorEvent::Success;
 }

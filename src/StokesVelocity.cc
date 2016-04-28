@@ -1095,10 +1095,8 @@ void StokesVelocity<Surf_t>::Test(){
   pvfmm::Profile::Toc();
 }
 
-
-
 template<typename Surf_t>
-void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=MPI_COMM_WORLD){
+void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD){
   typedef typename Surf_t::value_type Real_t;
   typedef typename Surf_t::Vec_t Vec_t;
   typedef float VTKReal_t;
@@ -1210,7 +1208,7 @@ void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=MPI_COMM_WORLD){
 
   //Open file for writing.
   std::stringstream vtufname;
-  vtufname<<fname<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
+  vtufname<<fname<<"_"<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
   std::ofstream vtufile;
   vtufile.open(vtufname.str().c_str());
   if(vtufile.fail()) return;

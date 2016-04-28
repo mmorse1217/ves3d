@@ -242,20 +242,6 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         AreaVolumeCorrection(area, vol);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
         CHK( (*monitor_)( this, t, dt) );
-
-#if HAVE_PVFMM
-        if(0){ // Write VTK file
-          static unsigned long iter=0;
-          unsigned long skip=1;
-          if(iter%skip==0){
-            char fname[1000];
-            sprintf(fname, "vis/test%05d", (int)(iter/skip));
-            S_->resample(params_->upsample_freq, &S_up_); // up-sample
-            WriteVTK(*S_up_,fname);
-            }
-          iter++;
-        }
-#endif // HAVE_PVFMM
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -424,5 +410,14 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
     is>>s;
     ASSERT(s=="/EVOLVE", "Bad input string (missing footer).");
 
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE,
+         typename Interact, typename Repart>
+Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::getSurfaceUp(const Sur_t *&S_up) const
+{
+    S_->resample(params_->upsample_freq, &S_up_);
+    S_up = S_up_;
     return ErrorEvent::Success;
 }
