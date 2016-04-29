@@ -5,10 +5,10 @@
 
 MAKE_DEP += ${VES3D_MKDIR}/makefile.intel
 
-CXXFLAGS += -openmp -fPIC -early-template-check -fno-exceptions -msse4 -Wall -Werror
+CXXFLAGS += -openmp -fPIC -early-template-check -fno-exceptions -msse4 -Wall
 
-ifeq ($(VES3D_DEBUG),yes)
-  CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline
+ifeq ($(strip ${VES3D_DEBUG}),yes)
+  CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline -Werror
 else
   CXXFLAGS+= -O3 -finline  -unroll-aggressive -malign-double
 endif

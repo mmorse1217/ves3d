@@ -7,7 +7,7 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.gnu
 
 CXXFLAGS += -fopenmp -fPIC -fno-exceptions -w
 
-ifeq ($(VES3D_DEBUG),yes)
+ifeq ($(strip ${VES3D_DEBUG}),yes)
   CXXFLAGS += -O0 -g -pedantic #-gstabs+
 else
   CXXFLAGS += -O3 -finline-functions -funroll-loops -w	\

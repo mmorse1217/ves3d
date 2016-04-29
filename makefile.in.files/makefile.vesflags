@@ -8,9 +8,9 @@ ifeq ($(strip ${VES3D_PROFILE}),yes)
   CXXFLAGS += -DPROFILING
 endif
 
-ifeq (${VES3D_VERBOSE},3)
+ifeq ($(strip ${VES3D_VERBOSE}),3)
   CXXFLAGS += -DQUIET
-else ifeq (${VES3D_VERBOSE},1)
+else ifeq ($(strip ${VES3D_VERBOSE}),1)
   CXXFLAGS += -DVERBOSE
 endif
 
@@ -24,11 +24,11 @@ else
   CXXFLAGS += -DDOUBLE_PREC
 endif
 
-ifeq (${VES3D_USE_PVFMM},yes)
+ifeq ($(strip ${VES3D_USE_PVFMM}),yes)
   VES3D_USE_MPI = yes
 endif
 
-ifeq (${VES3D_USE_PETSC},yes)
+ifeq ($(strip ${VES3D_USE_PETSC}),yes)
   CXXFLAGS += -DHAS_PETSC
   VES3D_USE_MPI = yes
 endif

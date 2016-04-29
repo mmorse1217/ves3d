@@ -42,14 +42,15 @@ ${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP}
 	${CXX} -MM -MT ${VES3D_SRCDIR}/$*.o ${CXXFLAGS} ${CPPFLAGS} -c -o ${VES3D_SRCDIR}/$*.d ${VES3D_SRCDIR}/$*.cc
 
 clean:
-	${MAKE} -C ${VES3D_LIBDIR} clean
 	${MAKE} -C ${VES3D_TSTDIR} clean
+	${MAKE} -C ${VES3D_LIBDIR} clean
 	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d
 	-${RM} -r ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
 	-${RM} *.${VES3D_CHKEXT} ${VES3D_EXPRDIR}/*.${VES3D_CHKEXT}
 
 distclean:
 	${MAKE} clean
+	${MAKE} -C ${VES3D_LIBDIR} distclean
 	${MAKE} -C ${VES3D_TSTDIR} distclean
 	-${RM} $(addprefix ${VES3D_BINDIR}/,${VES3D_BINS})
 

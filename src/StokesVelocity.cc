@@ -1281,7 +1281,7 @@ void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD
     std::string pathname = vtupath.str();
     unsigned found = pathname.find_last_of("/\\");
     std::string fname_ = pathname.substr(found+1);
-    for(int i=0;i<np;i++) pvtufile<<"      <Piece Source=\""<<fname_<<std::setfill('0')<<std::setw(6)<<i<<".vtp\"/>\n";
+    for(int i=0;i<np;i++) pvtufile<<"      <Piece Source=\""<<fname_<<"_"<<std::setfill('0')<<std::setw(6)<<i<<".vtp\"/>\n";
   }
   pvtufile<<"  </PPolyData>\n";
   pvtufile<<"</VTKFile>\n";
