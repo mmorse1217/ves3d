@@ -1,0 +1,9 @@
+# -*- mode: sh; -*-
+
+module load fftw3
+module load petsc
+
+export FFTW_ROOT=$TACC_FFTW3_DIR
+export OMP_NUM_THREADS=24
+
+export VES3D_PLATFORM=lonestar
