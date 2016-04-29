@@ -11,7 +11,7 @@ rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
-n-surfs : 6
+n-surfs : 9
 bending-modulus : .2
 init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
 cent-file : precomputed/lattice_centers_rand_50.txt
@@ -38,6 +38,7 @@ rep-tol : 1e-7
 checkpoint
 checkpoint-file : sed_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
 checkpoint-stride : 0
+write-vtk
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow
