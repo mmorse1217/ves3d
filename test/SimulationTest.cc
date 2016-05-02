@@ -82,13 +82,17 @@ int main(int argc, char **argv)
     const Sim_t::Vec_t &xref(sim1.time_stepper()->S_->getPosition());
 
     INFO("Setting up the second simulation");
-    params.load_checkpoint      = "test/SimulationTest_a_{{rank}}_00001.chk";
+    params.load_checkpoint      = "test/SimulationTest_a_{{rank}}_000001.chk";
     params.expand_templates(&dict);
+    int itermax(params.time_iter_max);
+    params.time_iter_max  += 1; //checking overriding
+
     Sim_t sim2(params);
 
     sim2.run_params()->checkpoint_file_name = "SimulationTest_b_{{rank}}_{{time_idx}}.chk";
     sim2.run_params()->time_horizon = ts;
     sim2.run_params()->expand_templates(&dict);
+    ASSERT(sim2.rum_params()==itermax+1, "Bad overriding");
     CHK(sim2.Run());
 
     //final state of sim1 and sim2 should match
@@ -102,7 +106,7 @@ int main(int argc, char **argv)
 
   {
     //checkpoints of a and b should match
-    std::string s, fa("SimulationTest_a_{{rank}}_00002.chk"), fb("SimulationTest_b_{{rank}}_00001.chk");
+    std::string s, fa("SimulationTest_a_{{rank}}_000002.chk"), fb("SimulationTest_b_{{rank}}_000001.chk");
     expand_template(&fa, dict);
     expand_template(&fb, dict);
 

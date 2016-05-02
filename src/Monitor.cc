@@ -62,10 +62,12 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             ++time_idx_;
             std::string fname(params_->checkpoint_file_name);
             char suffix[6];
-            sprintf(suffix, "%05d", time_idx_);
+            sprintf(suffix, "%06d", time_idx_);
             d_["time_idx"] = std::string(suffix);
             expand_template(&fname, d_);
 
+            //This order of packing is used when loading checkpoints
+            //in ves3d_simulation file
             std::stringstream ss;
             ss<<std::scientific<<std::setprecision(16);
             params_->pack(ss, Streamable::ASCII);

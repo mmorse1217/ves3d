@@ -668,7 +668,8 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
 
     is>>key>>s;
     ASSERT(key=="reparam_type:", "bad key reparam_type");
-    reparam_type_ = EnumifyReparam(s.c_str());
+    ReparamType rt(EnumifyReparam(s.c_str()));
+    if(rt!=reparam_type_) WARN("Reparametrization type switched from "<<rt<<" to "<<reparam_type_);
 
     x_.unpack(is, format);
     is>>s;

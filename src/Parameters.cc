@@ -149,6 +149,27 @@ void Parameters<T>::adjustFreqs()
 }
 
 template<typename T>
+void Parameters<T>::overrideNonState(const Parameters<T> &rhs)
+{
+    // switching safe parameters. Ohter parameters can also be
+    // switched but need more care
+    time_horizon  = rhs.time_horizon;
+    time_tol      = rhs.time_tol;
+    time_iter_max = rhs.time_iter_max;
+
+    rep_type     = rhs.rep_type;
+    rep_maxit    = rhs.rep_maxit;
+    rep_ts       = rhs.rep_ts;
+    rep_tol      = rhs.rep_tol;
+    rep_exponent = rhs.rep_exponent;
+
+    checkpoint           = rhs.checkpoint;
+    checkpoint_stride    = rhs.checkpoint_stride;
+    write_vtk            = rhs.write_vtk;
+    checkpoint_file_name = rhs.checkpoint_file_name;
+}
+
+template<typename T>
 void Parameters<T>::setUsage(AnyOption *opt)
 {
   opt->addUsage( "List of options: " );

@@ -167,6 +167,10 @@ Error_t Simulation<DT,DEVICE>::prepare_run_params()
         load_checkpoint_ = false;
     }
 
+    //consume the first part of checkpoint (see Monitor for how
+    //it is dumped
     run_params_.unpack(checkpoint_data_, Streamable::ASCII);
+    run_params_.overrideNonState(input_params_);
+
     return ErrorEvent::Success;
 }
