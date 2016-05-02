@@ -42,7 +42,9 @@ class Job(object):
 
         self.exec_name    = os.path.abspath(self.exec_name)
         self.optfile      = os.path.abspath(self.optfile)
-        self.epilogue     = os.path.abspath(self.epilogue)
+
+        if self.epilogue is not None:
+            self.epilogue     = os.path.abspath(self.epilogue)
 
     def __getattr__(self,name):
         return self._opts[name]
@@ -55,11 +57,10 @@ class Job(object):
             )
 
         clp.add_argument('--queue-manager', '-Q',
-                         help='Queue management system', choices=('svg','torque'),
-                         default='torque')
+                         help='Queue management system', choices=('svg','torque','slurm')) #doesn't have default so that hostfile can override
 
         clp.add_argument('--host'    , '-H', help='Hostname (if an evironment variable, it is expanded)', default='${VES3D_PLATFORM}')
-        clp.add_argument('--hostfile', '-F', help='Hostfile to read machine defaults (if unset, it is assumed to be <host>.yml)')
+        clp.add_argument('--hostfile', '-F', help='Hostfile to read machine defaults (if unset, it is assumed to be config/<host>.yml)')
 
         #queue
         clp.add_argument('--account'   , '-A' , help='Account number')
@@ -68,23 +69,23 @@ class Job(object):
         clp.add_argument('--no-stage'  ,        help='Skip submitting the job', action='store_true')
 
         #logging/notification
-        clp.add_argument('--outfile'   , '-o' , help='Output file', default='localhost:${PBS_O_WORKDIR}/')
+        clp.add_argument('--outfile'   , '-o' , help='Output file')
         clp.add_argument('--errfile'   , '-e' , help='Error file (by default joined to outfile)')
         clp.add_argument('--join'      , '-j' , help='Join out/err files', default='oe')
-        clp.add_argument('--mail'      ,        help='Mail options [begin, end, abort, none]', default='ea', choices=('b','e','a','s','n'))
+        clp.add_argument('--mail'      ,        help='Mail options (depending on the manager)')
         clp.add_argument('--userlist'  ,        help='List of users to notify')
 
         #resources
         clp.add_argument('--nodes'     , '-n' , help='Number of nodes',type=int)
-        clp.add_argument('--cpu'       , '-c' , help='Number of cpus per node',type=int)
-        clp.add_argument('--ppn'       , '-p' , help='Number of mpi processes per node',type=int,default=1)
+        clp.add_argument('--cpu'       , '-c' , help='Number of cpus per node or task (depending on queue manager)',type=int)
+        clp.add_argument('--ppn'       , '-p' , help='Number of mpi processes (task) per node',type=int,default=1)
         clp.add_argument('--threads'   , '-t' , help='Number of threads per process',type=int)
         clp.add_argument('--walltime'  , '-w' , help='Wall clock time (use suffix h for hour, otherwise interpreted as minutes)')
         clp.add_argument('--memory'    , '-m' , help='Memory per node (GB if no unit)')
         clp.add_argument('--resources' , '-l' , help='Extra resources (copied verbatim)')
-        clp.add_argument('--epilogue'  ,        help='Epilogue script to run after code', default='utils/epilogue.sh')
+        clp.add_argument('--epilogue'  ,        help='Epilogue script to run after code')
 
-        #setup (not for pbs)
+        #setup (not for the queue manager)
         clp.add_argument('--no-bin'       , help='Skip copying binary file and symlink', action='store_true')
         clp.add_argument('--no-manifest'  , help='Skip manifest file', action='store_true')
 
@@ -129,10 +130,28 @@ class Job(object):
             if getattr(self,k) is None:
                 setattr(self,k,v)
 
-        if self.job_name is None and self.optfile is not None:
-            jname = os.path.basename(self.optfile)
-            if len(jname):
-                self.job_name = '%s.%s.pbs' % (jname,stamp)
+        if self.queue_manager is None:
+            #if not set through host file
+            self.queue_manager = 'torque'
+
+        _qm = {'svg':'pbs','torque':'pbs','slurm':'sbatch'}
+        self._qm = _qm[self.queue_manager]
+
+        if self.job_name is None:
+            self.job_name = os.path.basename(self.optfile)            
+        self.job_name = '%s.%s.%s' % (self.job_name,stamp,self._qm)
+                
+        if self.outfile is None:
+            if self._qm=='sbatch':
+                self.outfile = '%s.o.%s' % (self.job_name,'%j')
+            else:
+                self.outfile = 'localhost:${PBS_O_WORKDIR}/'
+
+        if self.mail is None:
+            if self._qm=='sbatch':
+                self.mail = 'none'
+            else:
+                self.mail = 'n'
 
         if self.walltime is not None:
             h = m = 0
@@ -147,9 +166,17 @@ class Job(object):
                 self.memory += 'G'
 
         if self.cpu is not None:
-            self.nodes ='%d:ppn=%d'% (self.nodes,self.cpu)
+            if self._qm=='pbs':
+                self.nodes ='%d:ppn=%d'% (self.nodes,self.cpu)
 
-        if len(self.epilogue)==0: self.epilogue=None
+        if self._qm=='sbatch' and self.ppn is not None:
+            self.ppn *= self.nodes
+
+        if self.epilogue is None:
+            if self._qm=='pbs':
+                self.epilogue = 'utils/epilogue.%s.sh' % self._qm
+        else:
+            if len(self.epilogue)==0: self.epilogue=None
 
     def pbs_args(self,files):
         args = []
@@ -177,6 +204,31 @@ class Job(object):
 
         return args
 
+    def slurm_args(self,files):
+        args = []
+        def append_args(lst):
+            for k1,k2 in lst:
+                args.append((k2,getattr(self,k1)))
+
+        queue     = [('account','-A '), ('job_name','-J '), ('queue','-p ')]
+        append_args(queue)
+
+        logging   = [('outfile','-o '), ('errfile','-e ')]
+                     #('mail','--mail-type'), ('userlist','--mail-user=')] unsupported on lonestar
+        append_args(logging)
+
+        resources = [('nodes','-N '), ('ppn','-n '), ('cpu','-c '), 
+                     ('walltime','-t '), ('memory','--mem ')]
+        append_args(resources)
+
+        args.append(('-m ','cyclic:cyclic'))
+
+        epilogue = files.get('epilogue', None)
+        if  epilogue is not None:
+            args.append(('--epilog ', os.path.basename(epilogue)))
+
+        return args
+
     def pbs_log_header(self):
         header = [
             '----------------------------------------------------------------------',
@@ -194,10 +246,14 @@ class Job(object):
             'PBS: NP = ${PBS_NP}',
             'PBS: NUM_PPN = ${PBS_NUM_PPN}',
             '----------------------------------------------------------------------',
+            '',
             ]
 
         header = ['echo '+l for l in header]
         return header
+
+    def slurm_log_header(self):
+        return []
 
     def pbs_job_header(self,files):
 
@@ -208,7 +264,42 @@ class Job(object):
             if k is None: pbs.append('')
             if v is not None: pbs.append('#PBS %s%s'%(k,v))
 
+        pbs += ['\n']
         return pbs
+
+    def slurm_job_header(self,files):
+
+        slurm = ['#!/bin/bash\n']
+        args  = self.slurm_args(files)
+
+        for k,v in args:
+            if k is None: slurm.append('')
+            if v is not None: slurm.append('#SBATCH %s%s'%(k,v))
+
+        slurm += ['\n']
+        return slurm
+
+    def pbs_exec_header(self):
+        if self.threads is None:
+            if self.cpu is None:
+                omp_threads='OMP_NUM_THREADS=$((SLURM_JOB_CPUS_PER_NODE/%d))'%self.ppn
+            else:
+                omp_threads='OMP_NUM_THREADS=%d'% self.cpu
+        else:
+            omp_threads='OMP_NUM_THREADS=%d'%self.threads
+
+        return ['export %s' % omp_threads,'\n']
+
+    def slurm_exec_header(self):
+        if self.threads is None:
+            if self.cpu is None:
+                omp_threads='OMP_NUM_THREADS=$((SLURM_TASKS_PER_NODE/%d))'% (self.ppn/self.nodes)
+            else:
+                omp_threads='OMP_NUM_THREADS=%d'% (2*self.cpu) #hyperthreads
+        else:
+            omp_threads='OMP_NUM_THREADS=%d'%self.threads
+
+        return ['export %s' % omp_threads,'\n']
 
     def exec_cmd(self,fnames):
 
@@ -225,14 +316,6 @@ class Job(object):
             mods += 'module load %s\n' % m
         mods += 'module list\n'
 
-        if self.threads is None:
-            if self.cpu is None:
-                omp_threads='OMP_NUM_THREADS=$((PBS_NUM_PPN/%d))'%self.ppn
-            else:
-                omp_threads='OMP_NUM_THREADS=%d'% (self.cpu/self.ppn)
-        else:
-            omp_threads='OMP_NUM_THREADS=%d'%self.threads
-
         if self.host=='mercer':
             # bind-to-core to avoid switching CPU of an mpi process
             # need bynode so each mpi process is in a different node (works for openmpi)
@@ -243,7 +326,6 @@ class Job(object):
             cmds = [
                 'cd ${PBS_O_WORKDIR}\n',
                 'export VES3D_DIR=%s' % self.init_dir,
-                'export %s'%omp_threads,
                 'NP=$((PBS_NUM_NODES*%d))'%self.ppn,
                 '',
                 mods,
@@ -252,10 +334,54 @@ class Job(object):
                 'echo running ${CMD}',
                 '${CMD}',
                 ]
+
+        elif self.host=='lonestar':
+            cmd  = 'ibrun tacc_affinity ./%s -f %s' % (efile,ofile)
+
+            cmds = [
+                'export VES3D_DIR=%s' % self.init_dir,
+                '',
+                mods,
+                'echo Environment variables:\nenv\n\n',
+                'CMD="%s"'%cmd,
+                'echo running ${CMD}',
+                '${CMD}',
+                ]
+
         else:
             raise 'Do not know how to run executable on %s' % self.host
 
         return cmds
+
+    def job_header(self,fnames):
+        if self._qm=='pbs':
+            cb=self.pbs_job_header
+        elif self._qm=='sbatch':
+            cb=self.slurm_job_header
+        else:
+            raise NotImplementedError
+
+        return cb(fnames)
+
+    def log_header(self):
+        if self._qm=='pbs':
+            cb=self.pbs_log_header
+        elif self._qm=='sbatch':
+            cb=self.slurm_log_header
+        else:
+            raise NotImplementedError
+
+        return cb()
+    
+    def exec_header(self):
+        if self._qm=='pbs':
+            cb=self.pbs_exec_header
+        elif self._qm=='sbatch':
+            cb=self.slurm_exec_header
+        else:
+            raise NotImplementedError
+
+        return cb()
 
     def prepare_job_file(self,fnames):
 
@@ -263,12 +389,11 @@ class Job(object):
         print('preparing job file %s' % jname)
 
         content  = []
-        content  = self.pbs_job_header(fnames)
-        content += ['\n']
-        content += self.pbs_log_header()
-        content += ['\n']
+        content  = self.job_header(fnames)
+        content += self.log_header()
+        content += self.exec_header()
         content += self.exec_cmd(fnames)
-        content += ['\n','#EOF']
+        content += ['','#EOF']
 
         fh = open(jname,'w')
         for l in content: fh.write(l+'\n')
@@ -329,9 +454,10 @@ class Job(object):
     def stage(self):
         fnames, jname = self.prepare()
 
+        stager = {'svg':'qsub','torque':'qsub','slurm':'sbatch'}
         if not self.no_stage:
             print('submitting %s (%s)' % (self.job_name, jname))
             os.chdir(self.init_dir)
-            sp.call(['qsub', jname])
+            sp.call([stager[self.queue_manager], jname])
 
 Job().stage()
