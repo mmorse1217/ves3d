@@ -61,7 +61,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
         {
             ++time_idx_;
             std::string fname(params_->checkpoint_file_name);
-            char suffix[6];
+            char suffix[7];
             sprintf(suffix, "%06d", time_idx_);
             d_["time_idx"] = std::string(suffix);
             expand_template(&fname, d_);
