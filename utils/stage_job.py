@@ -137,14 +137,13 @@ class Job(object):
         _qm = {'svg':'pbs','torque':'pbs','slurm':'sbatch'}
         self._qm = _qm[self.queue_manager]
 
-        if self.job_name is None and self.optfile is not None:
-            jname = os.path.basename(self.optfile)
-            if len(jname):
-                self.job_name = '%s.%s.%s' % (jname,stamp,self._qm)
-
+        if self.job_name is None:
+            self.job_name = os.path.basename(self.optfile)            
+        self.job_name = '%s.%s.%s' % (self.job_name,stamp,self._qm)
+                
         if self.outfile is None:
             if self._qm=='sbatch':
-                self.outfile = '%s%s.o' % (self.job_name,'%j')
+                self.outfile = '%s.o.%s' % (self.job_name,'%j')
             else:
                 self.outfile = 'localhost:${PBS_O_WORKDIR}/'
 

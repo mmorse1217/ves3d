@@ -11,14 +11,14 @@ rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
-n-surfs : 9
-bending-modulus : .2
+n-surfs : 27
+bending-modulus : .05
 init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
 cent-file : precomputed/lattice_centers_rand_50.txt
 #lattice_centers has centers for a 50x50x50 lattice, ordered concenterically
 
 ## time stepping -----------------------------
-time-horizon : 5000
+time-horizon : 50
 timestep : 1e-2
 time-tol : 1e-5
 time-iter-max : 200
@@ -36,8 +36,8 @@ rep-tol : 1e-7
 
 ## checkpoint/monitor ------------------------
 checkpoint
-checkpoint-file : sed_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
-checkpoint-stride : 0
+checkpoint-file : sed_ns{{n_surfs}}_nproc{{nprocs}}_{{time_idx}}_rank{{rank}}.chk
+checkpoint-stride : 1e-1
 write-vtk
 
 ## far filed ---------------------------------

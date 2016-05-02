@@ -6,6 +6,7 @@ VES3D_TESTING    = no
 VES3D_USE_GPU    = no #ignore GPU for now until cpu code is robust
 VES3D_USE_PVFMM  = yes
 VES3D_USE_PETSC  = yes
+VES3D_PROFILE    = yes
 VES3D_PETSC_VER  = 36
 COMPILER_VENDOR  = intel
 
