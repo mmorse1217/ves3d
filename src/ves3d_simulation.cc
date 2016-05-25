@@ -34,7 +34,6 @@
 
 template<typename DT, const DT &DEVICE>
 Simulation<DT,DEVICE>::Simulation(const Param_t &ip) :
-    input_params_(ip),
     load_checkpoint_(false),
     Mats_(NULL),
     vInf_(NULL),
@@ -42,7 +41,19 @@ Simulation<DT,DEVICE>::Simulation(const Param_t &ip) :
     interaction_(NULL),
     timestepper_(NULL)
 {
-    CHK(prepare_run_params());
+    CHK(prepare_run_params(ip));
+}
+
+template<typename DT, const DT &DEVICE>
+Simulation<DT,DEVICE>::Simulation(int argc, char** argv, const DictString_t *dict) :
+    load_checkpoint_(false),
+    Mats_(NULL),
+    vInf_(NULL),
+    ksp_(NULL),
+    interaction_(NULL),
+    timestepper_(NULL)
+{
+    CHK(prepare_run_params(argc,argv,dict));
 }
 
 template<typename DT, const DT &DEVICE>
@@ -155,22 +166,34 @@ Error_t Simulation<DT,DEVICE>::cleanup_run()
 }
 
 template<typename DT, const DT &DEVICE>
-Error_t Simulation<DT,DEVICE>::prepare_run_params()
+Error_t Simulation<DT,DEVICE>::prepare_run_params(int argc, char **argv, const DictString_t *dict)
 {
-    if (input_params_.load_checkpoint != ""){
-        std::string fname = FullPath(input_params_.load_checkpoint);
+    Param_t ip;
+    CHK(ip.parseInput(argc, argv, dict));
+    Error_t rval(prepare_run_params(ip));
+
+    //reparse to override the checkpoint
+    if (load_checkpoint_) run_params_.parseInput(argc, argv, dict);
+
+    return rval;
+}
+
+template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::prepare_run_params(const Param_t &ip)
+{
+    if (ip.load_checkpoint != ""){
+        std::string fname = FullPath(ip.load_checkpoint);
         INFO("Loading checkpoint file "<<fname);
         DataIO::SlurpFile(fname.c_str(), checkpoint_data_);
         load_checkpoint_ = true;
     } else {
-        input_params_.pack(checkpoint_data_, Streamable::ASCII);
+        ip.pack(checkpoint_data_, Streamable::ASCII);
         load_checkpoint_ = false;
     }
 
     //consume the first part of checkpoint (see Monitor for how
     //it is dumped
     run_params_.unpack(checkpoint_data_, Streamable::ASCII);
-    run_params_.overrideNonState(input_params_);
 
     return ErrorEvent::Success;
 }

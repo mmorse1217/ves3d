@@ -92,10 +92,6 @@ class Parameters : public Streamable
     //Adjust the frequencies according to the sh_order
     void adjustFreqs();
 
-    //override paramters that can be changed on the fly
-    //provided for overriding parameters loaded from checkpoint
-    void overrideNonState(const Parameters<T> &rhs);
-
     // From streamable class --------------------------------------------------
     // ------------------------------------------------------------------------
     virtual Error_t pack(std::ostream &os, Format format) const;

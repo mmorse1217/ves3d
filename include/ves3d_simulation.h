@@ -66,6 +66,7 @@ class Simulation{
     typedef ParallelLinSolver<real_t> LinSol_t;
 
     Simulation(const Param_t &ip);
+    Simulation(int argc, char **argv, const DictString_t *dict);
     ~Simulation();
 
     Error_t Run();
@@ -77,10 +78,10 @@ class Simulation{
     Error_t setup_from_options();
     Error_t setup_from_checkpoint();
     Error_t cleanup_run();
-    Error_t prepare_run_params();
+    Error_t prepare_run_params(const Param_t &ip);
+    Error_t prepare_run_params(int argc, char **argv, const DictString_t *dict);
 
   private:
-    const Param_t &input_params_;
     Param_t run_params_;
     std::stringstream checkpoint_data_;
 

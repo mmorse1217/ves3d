@@ -24,32 +24,31 @@ void Parameters<T>::init()
     bg_flow_param           = 1e-1;
     checkpoint              = false;
     checkpoint_stride	    = -1;
-    write_vtk               = false;
     error_factor            = 1;
+    excess_density          = 0.0;
     filter_freq             = 8;
+    gravity_field[0]        = 0;
+    gravity_field[1]        = 0;
+    gravity_field[2]        = -1.0;
     interaction_upsample    = false;
     n_surfs                 = 1;
     num_threads             = -1;
+    periodic_length         = -1;
     position_solver_iter    = 15;
     position_solver_restart = 1;
     position_solver_tol	    = (typeid(T) == typeid(float)) ? 1e-4: 1e-8;
+    pseudospectral          = false;
+    rep_exponent            = 4.0;
     rep_filter_freq         = 4;
     rep_maxit               = 10;
     rep_tol                 = (typeid(T) == typeid(float)) ? 1e-3 : 1e-4;
-    rep_ts                  = 1;
-    rep_upsample            = false;
+    rep_ts                  = -1.0;
     rep_type                = PolyKReparam;
-    rep_exponent            = 4.0;
+    rep_upsample            = false;
     scheme                  = JacobiBlockImplicit;
     sh_order                = 12;
     singular_stokes         = ViaSpHarm;
     solve_for_velocity      = false;
-    periodic_length         = -1;
-    gravity_field[0]        = 0;
-    gravity_field[1]        = 0;
-    gravity_field[2]        = -1.0;
-    excess_density          = 0.0;
-    pseudospectral          = false;
     tension_solver_iter	    = 15;
     tension_solver_restart  = 1;
     tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
@@ -61,6 +60,7 @@ void Parameters<T>::init()
     ts                      = 1;
     upsample_freq           = 24;
     viscosity_contrast      = 1.0;
+    write_vtk               = false;
 }
 
 template<typename T>
@@ -70,7 +70,6 @@ Parameters<T>::~Parameters()
 template<typename T>
 Error_t Parameters<T>::parseInput(int argc, char** argv, const DictString_t *dict)
 {
-  // 1. CREATE AN OBJECT
   AnyOption opt;
 
   // 2. SET PREFERENCES
@@ -79,10 +78,10 @@ Error_t Parameters<T>::parseInput(int argc, char** argv, const DictString_t *dic
   opt.autoUsagePrint(true); // print usage for bad options
 
   // 3. SET THE USAGE/HELP
-  this->setUsage(&opt);
+  setUsage(&opt);
 
   // 4. SET THE OPTIONS
-  this->setOptions(&opt);
+  setOptions(&opt);
 
   // 5. PROCESS THE COMMANDLINE AND RESOURCE FILE
   opt.processCommandArgs( argc, argv );
@@ -97,7 +96,7 @@ Error_t Parameters<T>::parseInput(int argc, char** argv, const DictString_t *dic
       if (!opt.processFile(opt.getValue('f')))
           return ErrorEvent::InvalidParameterError;
   }
-  // reporcess time commandline to override the file content
+  // reporcess commandline to override the file content
   opt.processCommandArgs( argc, argv );
 
   //print usage if no options
@@ -106,13 +105,11 @@ Error_t Parameters<T>::parseInput(int argc, char** argv, const DictString_t *dic
           " either through command-line or file.",
           "",
           opt.printUsage());
-      opt.printUsage();
-
       return ErrorEvent::InvalidParameterError;
   }
 
   // 6. GET THE VALUES
-  this->getOptionValues(&opt);
+  getOptionValues(&opt);
   expand_templates(dict);
   return ErrorEvent::Success;
 }
@@ -143,30 +140,9 @@ Error_t Parameters<T>::expand_templates(const DictString_t *dict){
 template<typename T>
 void Parameters<T>::adjustFreqs()
 {
-  this->filter_freq     = 2 * this->sh_order / 3;
-  this->upsample_freq   = 2 * this->sh_order;
-  this->rep_filter_freq =     this->sh_order / 2;
-}
-
-template<typename T>
-void Parameters<T>::overrideNonState(const Parameters<T> &rhs)
-{
-    // switching safe parameters. Ohter parameters can also be
-    // switched but need more care
-    time_horizon  = rhs.time_horizon;
-    time_tol      = rhs.time_tol;
-    time_iter_max = rhs.time_iter_max;
-
-    rep_type     = rhs.rep_type;
-    rep_maxit    = rhs.rep_maxit;
-    rep_ts       = rhs.rep_ts;
-    rep_tol      = rhs.rep_tol;
-    rep_exponent = rhs.rep_exponent;
-
-    checkpoint           = rhs.checkpoint;
-    checkpoint_stride    = rhs.checkpoint_stride;
-    write_vtk            = rhs.write_vtk;
-    checkpoint_file_name = rhs.checkpoint_file_name;
+  filter_freq     = 2 * sh_order / 3;
+  upsample_freq   = 2 * sh_order;
+  rep_filter_freq =     sh_order / 2;
 }
 
 template<typename T>
@@ -208,7 +184,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --rep-type              Reparametrization type [Box|PolyK]" );
   opt->addUsage( "     --rep-exponent          Attenuation coefficient exponent for PolyK type (float)" );
 
-  opt->addUsage( "     --sh-order              The spherical harmonics order" );
+  opt->addUsage( "     --sh-order              The spherical harmonics order (if set, other frequencies, which are not set explicitly, are adjusted)" );
   opt->addUsage( "     --singular-stokes       The scheme for the singular stokes evaluation" );
   opt->addUsage( "     --solve-for-velocity    If true, set up the linear system to solve for velocity and tension otherwise for position" );
   opt->addUsage( "     --tension-iter-max      Maximum number of iterations for the tension solver" );
@@ -302,69 +278,57 @@ template<typename T>
 void Parameters<T>::getOptionValues(AnyOption *opt)
 {
   if( opt->getFlag( "checkpoint" ) || opt->getFlag( 's' ) )
-      this->checkpoint = true;
-  else
-      this->checkpoint = false;
+      checkpoint = true;
 
   if( opt->getFlag( "write-vtk" ) )
-      this->write_vtk = true;
-  else
-      this->write_vtk = false;
+      write_vtk = true;
 
   if( opt->getFlag( "interaction-upsample" ) )
-      this->interaction_upsample = true;
-  else
-      this->interaction_upsample = false;
+      interaction_upsample = true;
 
   if( opt->getFlag( "rep-upsample" ) )
-      this->rep_upsample = true;
-  else
-      this->rep_upsample = false;
+      rep_upsample = true;
 
   if( opt->getFlag( "solve-for-velocity" ) )
-      this->solve_for_velocity = true;
-  else
-      this->solve_for_velocity = false;
+      solve_for_velocity = true;
 
   if( opt->getFlag( "pseudospectral" ) )
-      this->pseudospectral = true;
-  else
-      this->pseudospectral = false;
+      pseudospectral = true;
 
   //an option (takes an argument), supporting long and short forms
   if( opt->getValue( "init-file" ) != NULL || opt->getValue( 'i' ) !=NULL )
-    this->init_file_name = opt->getValue( 'i' );
+    init_file_name = opt->getValue( 'i' );
 
   if( opt->getValue( 'o' ) !=NULL || opt->getValue( "checkpoint-file") !=NULL )
-    this->checkpoint_file_name = opt->getValue( 'o' );
+    checkpoint_file_name = opt->getValue( 'o' );
 
   if( opt->getValue( 'l' ) !=NULL || opt->getValue( "load-checkpoint") !=NULL )
-    this->load_checkpoint = opt->getValue( 'l' );
+    load_checkpoint = opt->getValue( 'l' );
 
   //shOrder set first so that the adjusted frequencies can be overridden
   if( opt->getValue( "sh-order" ) != NULL  )
   {
-    this->sh_order =  atoi(opt->getValue( "sh-order" ));
-    this->adjustFreqs();
+    sh_order =  atoi(opt->getValue( "sh-order" ));
+    adjustFreqs();
   }
 
   if( opt->getValue( "upsample-freq" ) != NULL  )
-    this->upsample_freq =  atoi(opt->getValue( "upsample-freq" ));
+    upsample_freq =  atoi(opt->getValue( "upsample-freq" ));
 
   if( opt->getValue( "filter-freq" ) != NULL  )
-    this->filter_freq =  atoi(opt->getValue( "filter-freq" ));
+    filter_freq =  atoi(opt->getValue( "filter-freq" ));
 
   if( opt->getValue( "rep-filter-freq"  ) != NULL  )
-    this->rep_filter_freq =  atoi(opt->getValue( "rep-filter-freq"  ));
+    rep_filter_freq =  atoi(opt->getValue( "rep-filter-freq"  ));
 
   if( opt->getValue( "bending-modulus" ) != NULL  )
-    this->bending_modulus = atof(opt->getValue( "bending-modulus" ));
+    bending_modulus = atof(opt->getValue( "bending-modulus" ));
 
   if( opt->getValue( "viscosity-contrast" ) != NULL  )
-    this->viscosity_contrast = atof(opt->getValue( "viscosity-contrast" ));
+    viscosity_contrast = atof(opt->getValue( "viscosity-contrast" ));
 
   if( opt->getValue( "excess-density" ) != NULL )
-      this->excess_density = atof(opt->getValue( "excess-density" ));
+      excess_density = atof(opt->getValue( "excess-density" ));
 
   if( opt->getValue( "gravity-field" ) != NULL  ){
       char* next(opt->getValue("gravity-field"));
@@ -374,96 +338,92 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   }
 
   if( opt->getValue( "bg-flow-type" ) != NULL  )
-    this->bg_flow = EnumifyBgFlow(opt->getValue( "bg-flow-type" ));
-  ASSERT(this->bg_flow != UnknownFlow, "Failed to parse the background flow name");
+    bg_flow = EnumifyBgFlow(opt->getValue( "bg-flow-type" ));
+  ASSERT(bg_flow != UnknownFlow, "Failed to parse the background flow name");
 
   if( opt->getValue( "bg-flow-param" ) != NULL  )
-    this->bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
+    bg_flow_param =  atof(opt->getValue( "bg-flow-param" ));
 
   if( opt->getValue( "periodic-length" ) != NULL  )
-    this->periodic_length =  atof(opt->getValue( "periodic-length" ));
+    periodic_length =  atof(opt->getValue( "periodic-length" ));
 
   if( opt->getValue( "cent-file") !=NULL )
-    this->cntrs_file_name = opt->getValue( "cent-file" );
+    cntrs_file_name = opt->getValue( "cent-file" );
 
   if( opt->getValue( "error-factor" ) != NULL  )
-    this->error_factor =  atof(opt->getValue( "error-factor" ));
+    error_factor =  atof(opt->getValue( "error-factor" ));
 
   if( opt->getValue( "n-surfs" ) != NULL  )
-    this->n_surfs =  atoi(opt->getValue( "n-surfs" ));
+    n_surfs =  atoi(opt->getValue( "n-surfs" ));
 
   if( opt->getValue( "num-threads" ) != NULL  )
-    this->num_threads =  atoi(opt->getValue( "num-threads" ));
+    num_threads =  atoi(opt->getValue( "num-threads" ));
 
   if( opt->getValue( "position-iter-max" ) != NULL  )
-    this->position_solver_iter =  atoi(opt->getValue( "position-iter-max" ));
+    position_solver_iter =  atoi(opt->getValue( "position-iter-max" ));
 
   if( opt->getValue( "position-restart" ) != NULL  )
-    this->position_solver_restart =  atoi(opt->getValue( "position-restart" ));
+    position_solver_restart =  atoi(opt->getValue( "position-restart" ));
 
   if( opt->getValue( "position-tol" ) != NULL  )
-    this->position_solver_tol =  atof(opt->getValue( "position-tol" ));
+    position_solver_tol =  atof(opt->getValue( "position-tol" ));
 
-  if( opt->getValue( "rep-type"  ) != NULL  ){
-    this->rep_type = EnumifyReparam(opt->getValue( "rep-type" ));
-    ASSERT(this->rep_type != UnknownReparam, "Failed to parse the reparametrization type");
-  }
+  if( opt->getValue( "rep-type"  ) != NULL  )
+    rep_type = EnumifyReparam(opt->getValue( "rep-type" ));
+  ASSERT(rep_type != UnknownReparam, "Failed to parse the reparametrization type");
 
   if( opt->getValue( "rep-exponent"  ) != NULL  )
-    this->rep_exponent =  atof(opt->getValue( "rep-exponent" ));
+    rep_exponent =  atof(opt->getValue( "rep-exponent" ));
 
   if( opt->getValue( "rep-max-iter" ) != NULL  )
-    this->rep_maxit =  atoi(opt->getValue( "rep-max-iter" ));
+    rep_maxit =  atoi(opt->getValue( "rep-max-iter" ));
 
   if( opt->getValue( "rep-tol" ) != NULL  )
-    this->rep_tol =  atof(opt->getValue( "rep-tol" ));
+    rep_tol =  atof(opt->getValue( "rep-tol" ));
 
   if( opt->getValue( "checkpoint-stride" ) != NULL  )
-    this->checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
+    checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
 
-  if( opt->getValue( "time-scheme" ) != NULL  ){
-    this->scheme = EnumifyScheme(opt->getValue( "time-scheme" ));
-    ASSERT(this->scheme != UnknownScheme, "Failed to parse the time scheme name");
-  }
+  if( opt->getValue( "time-scheme" ) != NULL  )
+    scheme = EnumifyScheme(opt->getValue( "time-scheme" ));
+  ASSERT(scheme != UnknownScheme, "Failed to parse the time scheme name");
 
   if( opt->getValue( "time-precond" ) != NULL  )
-      this->time_precond = EnumifyPrecond(opt->getValue( "time-precond" ));
-  ASSERT(this->time_precond != UnknownPrecond, "Failed to parse the preconditioner name" );
+    time_precond = EnumifyPrecond(opt->getValue( "time-precond" ));
+  ASSERT(time_precond != UnknownPrecond, "Failed to parse the preconditioner name" );
 
   if( opt->getValue( "singular-stokes" ) != NULL  )
-    this->singular_stokes = EnumifyStokesRot(opt->getValue( "singular-stokes" ));
+    singular_stokes = EnumifyStokesRot(opt->getValue( "singular-stokes" ));
 
   if( opt->getValue( "tension-iter-max" ) != NULL  )
-    this->tension_solver_iter =  atoi(opt->getValue( "tension-iter-max" ));
+    tension_solver_iter =  atoi(opt->getValue( "tension-iter-max" ));
 
   if( opt->getValue( "tension-restart" ) != NULL  )
-    this->tension_solver_restart =  atoi(opt->getValue( "tension-restart" ));
+    tension_solver_restart =  atoi(opt->getValue( "tension-restart" ));
 
   if( opt->getValue( "tension-tol" ) != NULL  )
-    this->tension_solver_tol =  atof(opt->getValue( "tension-tol" ));
+    tension_solver_tol =  atof(opt->getValue( "tension-tol" ));
 
   if( opt->getValue( "time-horizon" ) != NULL  )
-    this->time_horizon =  atof(opt->getValue( "time-horizon" ));
+    time_horizon =  atof(opt->getValue( "time-horizon" ));
 
   if( opt->getValue( "timestep" ) != NULL  ){
-      this->ts =  atof(opt->getValue( "timestep" ));
-      this->rep_ts = this->ts;
+      ts =  atof(opt->getValue( "timestep" ));
+      if(rep_ts<0) rep_ts = ts;
   }
 
   // adjusted based on timestep (see above)
   if( opt->getValue( "rep-timestep" ) != NULL  )
-    this->rep_ts =  atof(opt->getValue( "rep-timestep" ));
+    rep_ts =  atof(opt->getValue( "rep-timestep" ));
 
   if( opt->getValue( "time-tol" ) != NULL  )
-    this->time_tol =  atof(opt->getValue( "time-tol" ));
+    time_tol =  atof(opt->getValue( "time-tol" ));
 
   if( opt->getValue( "time-iter-max" ) != NULL  )
-    this->time_iter_max =  atof(opt->getValue( "time-iter-max" ));
+    time_iter_max =  atof(opt->getValue( "time-iter-max" ));
 
   if( opt->getFlag( "time-adaptive" ) )
-      this->time_adaptive = true;
-  else
-      this->time_adaptive = false;
+      time_adaptive = true;
 
 //   other methods: (bool) opt.getFlag( ... long or short ... )
 }

@@ -11,7 +11,10 @@ int main(int argc, char **argv)
     PROFILESTART();
 
 #ifdef HAS_PETSC
-    PetscInitialize(&argc, &argv, NULL, NULL);
+    //don't use petsc for commandline argument parsing
+    int pargc(0);
+    char **pargv(NULL);
+    PetscInitialize(&pargc, &pargv, NULL, NULL);
 #endif
 
     DictString_t dict;
@@ -27,13 +30,11 @@ int main(int argc, char **argv)
     dict["nprocs"] = snp.str();
     dict["rank"]   = sr.str();
 
-    Param_t input_params;
-    CHK(input_params.parseInput(argc, argv, &dict));
-
-    {	// putting sim in block so that it is deconstructed before
-	// petscfinalize
-	Sim_t sim(input_params);
-	CHK(sim.Run());
+    {
+        // putting sim in block so that it is deconstructed before
+        // petscfinalize
+        Sim_t sim(argc,argv,&dict);
+        CHK(sim.Run());
     }
 
     PROFILEEND("",0);
