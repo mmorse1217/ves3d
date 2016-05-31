@@ -17,6 +17,7 @@
 #include "OperatorsMats.h"
 #include "ParallelLinSolverInterface.h"
 #include "legendre_rule.h"
+#include "VesicleProps.h"
 
 #ifdef HAVE_PVFMM
 #include "StokesVelocity.h"
@@ -40,10 +41,11 @@ class InterfacialVelocity
     typedef typename PSolver_t::vec_type PVec_t;
     typedef StokesVelocity<SurfContainer> Stokes_t;
     typedef SHTrans<Sca_t, SHTMats<value_type, device_type> > SHtrans_t;
+    typedef VesicleProperties<Arr_t> VProp_t;
 
     InterfacialVelocity(SurfContainer &S_in, const Interaction &inter,
         const Mats_t &mats, const Parameters<value_type> &params,
-        const BgFlowBase<Vec_t> &bgFlow,
+        const VProp_t &ves_props, const BgFlowBase<Vec_t> &bgFlow,
 	PSolver_t *parallel_solver=NULL);
 
     ~InterfacialVelocity();
@@ -85,6 +87,7 @@ class InterfacialVelocity
     const Interaction &interaction_;
     const BgFlowBase<Vec_t> &bg_flow_;
     const Parameters<value_type> &params_;
+    const VProp_t &ves_props_;
 
     InterfacialForce<SurfContainer> Intfcl_force_;
     BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
@@ -125,7 +128,6 @@ class InterfacialVelocity
     mutable Sca_t tension_;
     mutable Sca_t position_precond;
     mutable Sca_t tension_precond;
-    mutable Arr_t vel_coeff_, dl_coeff_;
 
     //Workspace
     mutable SurfContainer* S_up_;

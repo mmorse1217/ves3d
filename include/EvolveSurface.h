@@ -68,11 +68,13 @@ class EvolveSurface : public Streamable
     typedef typename Repart::GlobalRepart_t GlobalRepart_t;
 
     typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
+    typedef typename IntVel_t::VProp_t VProp_t;
     typedef Error_t (IntVel_t::*Scheme_t)(const Sur_t &, const value_type &, Vec_t &);
 
-    EvolveSurface(Params_t *params, const Mats_t &mats, BgFlow_t *vInf,
-	Monitor_t *M = NULL, Interaction_t *I = NULL, Repartition_t *R=NULL,
-	PSolver_t *parallel_solver=NULL, Vec_t *x0=NULL);
+    EvolveSurface(Params_t *params, const Mats_t &mats,
+        BgFlow_t *vInf,	Monitor_t *M = NULL, Interaction_t *I = NULL,
+        Repartition_t *R=NULL,PSolver_t *parallel_solver=NULL,
+        Vec_t *x0=NULL, VProp_t *ves_props=NULL);
 
     ~EvolveSurface();
 
@@ -83,6 +85,7 @@ class EvolveSurface : public Streamable
 
     Error_t getSurfaceUp(const Sur_t *&) const;
     Params_t *params_;
+    VProp_t *ves_props_;
     const Mats_t &mats_;
 
     Sur_t *S_;
@@ -94,7 +97,7 @@ class EvolveSurface : public Streamable
     Repartition_t *repartition_;
     IntVel_t *F_;
 
-    bool objsOnHeap_[3];//for monitor, interaction, and repartition
+    bool ownedObjs_[4];//for monitor, interaction, repartition, and ves_props
 
   private:
 

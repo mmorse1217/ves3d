@@ -165,7 +165,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
   opt->addUsage( "     --bg-flow-type          Type of the background flow" );
   opt->addUsage( "     --cent-file             The file containing the initial center points");
-  opt->addUsage( "     --ves-props-file        The file containing the properties of each vesicle");
+  opt->addUsage( "     --ves-props-file        The file containing the properties of each vesicle (overrides commandline)");
   opt->addUsage( "     --checkpoint-stride     The frequency of saving to file (in time scale)" );
   opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
   opt->addUsage( "     --filter-freq           The differentiation filter frequency" );

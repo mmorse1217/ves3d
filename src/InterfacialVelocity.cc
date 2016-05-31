@@ -2,13 +2,14 @@ template<typename SurfContainer, typename Interaction>
 InterfacialVelocity<SurfContainer, Interaction>::
 InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     const OperatorsMats<Arr_t> &mats,
-    const Parameters<value_type> &params, const BgFlowBase<Vec_t> &bgFlow,
-    PSolver_t *parallel_solver) :
+    const Parameters<value_type> &params, const VProp_t &ves_props,
+    const BgFlowBase<Vec_t> &bgFlow, PSolver_t *parallel_solver) :
     S_(S_in),
     interaction_(Inter),
     bg_flow_(bgFlow),
-    Intfcl_force_(params,mats),
     params_(params),
+    ves_props_(ves_props),
+    Intfcl_force_(params,ves_props_,mats),
     //
     parallel_solver_(parallel_solver),
     psolver_configured_(false),
@@ -28,6 +29,9 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
 {
     pos_vel_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
+
+    pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
+    tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -220,11 +224,9 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     dx.replicate(S_.getPosition());
     if (params_.solve_for_velocity){
-        //axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
         axpy(dt, pos_vel_, dx);
     } else {
-        //S_.setPosition(pos_vel_);
-        axpy(-1, S_.getPosition(), pos_vel_, dx);
+        axpy(-1.0, S_.getPosition(), pos_vel_, dx);
     }
 
     PROFILEEND("",0);
@@ -249,8 +251,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
 {
     PROFILESTART();
 
-    if (pos_vel_.size() != S_.getPosition().size() ||
-        dl_coeff_.size() != S_.getPosition().getNumSubs() ){
+    if (pos_vel_.size() != S_.getPosition().size()){
 
       COUTDEBUG("Resizing the containers");
       pos_vel_.replicate(S_.getPosition());
@@ -259,32 +260,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
       COUTDEBUG("zeroing content of velocity and tension arrays");
       pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
       tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
-
-      //Permitting the viscosity constrast to be different for each vesicle
-      size_t     nves(pos_vel_.getNumSubs());
-      value_type lambda(params_.viscosity_contrast);
-      value_type *buffer = new  value_type[nves];
-
-      dl_coeff_.resize(nves);
-      for (size_t iV(0); iV<nves; ++iV) buffer[iV] = (1.0 - lambda);
-      dl_coeff_.getDevice().Memcpy(dl_coeff_.begin(),
-                                   buffer,
-                                   nves * sizeof(value_type),
-                                   device_type::MemcpyHostToDevice);
-
-      vel_coeff_.resize(nves);
-      for (size_t iV(0); iV<nves; ++iV) buffer[iV] = 0.5*(1.0 + lambda);
-      vel_coeff_.getDevice().Memcpy(vel_coeff_.begin(),
-                                    buffer,
-                                    nves * sizeof(value_type),
-                                    device_type::MemcpyHostToDevice);
-      delete[] buffer;
     }
 
-    ASSERT(   pos_vel_.size() ==   S_.getPosition().size(), "inccorrect size");
-    ASSERT( 3*tension_.size() ==   S_.getPosition().size(), "inccorrect size");
-    ASSERT(  dl_coeff_.size() ==   S_.getPosition().getNumSubs(), "inccorrect size");
-    ASSERT( vel_coeff_.size() ==   S_.getPosition().getNumSubs(), "inccorrect size");
+    ASSERT(pos_vel_.size() == S_.getPosition().size(), "inccorrect size");
+    ASSERT(3*tension_.size() == S_.getPosition().size(), "inccorrect size");
+    ASSERT(ves_props_.dl_coeff.size() == S_.getPosition().getNumSubs(), "inccorrect size");
+    ASSERT(ves_props_.vel_coeff.size() == S_.getPosition().getNumSubs(), "inccorrect size");
+    ASSERT(ves_props_.bending_modulus.size() == S_.getPosition().getNumSubs(), "inccorrect size");
 
     INFO("Setting interaction source and target");
     stokes_.SetSrcCoord(S_);
@@ -494,11 +476,11 @@ AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     pRhs2->replicate(S_.getPosition());
     CHK(BgFlow(*pRhs, dt));
 
-    if( fabs(params_.viscosity_contrast-1.0)>1e-12){
-        COUTDEBUG("Computing the rhs due to viscosity difference");
+    if( ves_props_.has_contrast ){
+        COUTDEBUG("Computing the rhs due to viscosity contrast");
         std::auto_ptr<Vec_t> x  = checkoutVec();
         std::auto_ptr<Vec_t> Dx = checkoutVec();
-        av(dl_coeff_, S_.getPosition(), *x);
+        av(ves_props_.dl_coeff, S_.getPosition(), *x);
         stokes_.SetDensitySL(NULL);
         stokes_.SetDensityDL(x.get());
         stokes_(*Dx);
@@ -514,7 +496,7 @@ AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     std::auto_ptr<Sca_t> tRhs = checkoutSca();
     S_.div(*pRhs, *tRhs);
 
-    av(vel_coeff_, S_.getPosition(), *pRhs2);
+    av(ves_props_.vel_coeff, S_.getPosition(), *pRhs2);
     axpy(static_cast<value_type>(1.0), *pRhs, *pRhs2, *pRhs);
 
     ASSERT( pRhs->getDevice().isNumeric(pRhs->begin(), pRhs->size()), "Non-numeric rhs");
@@ -635,9 +617,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
     }
     stokes_.SetDensitySL(f.get());
 
-    if( fabs(params_.viscosity_contrast-1.0)>1e-12){
+    if( ves_props_.has_contrast ){
         COUTDEBUG("Setting the double-layer density");
-        av(dl_coeff_, vox, *Du);
+        av(ves_props_.dl_coeff, vox, *Du);
         stokes_.SetDensityDL(Du.get());
     } else {
         stokes_.SetDensityDL(NULL);
@@ -655,8 +637,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
     S_.div(*Sf, ten);
     axpy((value_type) -1.0, ten, ten);
 
-    if( fabs(params_.viscosity_contrast-1.0)>1e-12)
-        av(vel_coeff_, vox, vox);
+    if( ves_props_.has_contrast )
+        av(ves_props_.vel_coeff, vox, vox);
 
     axpy((value_type) -1.0, *Sf, vox, vox);
 
@@ -811,6 +793,7 @@ Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &s
     CHK(parallel_solver_->Solve(parallel_rhs_, parallel_u_));
     typename PVec_t::size_type        iter;
     CHK(parallel_solver_->IterationNumber(iter));
+    WHENCHATTY(COUT(""));
     INFO("Parallel solver returned after "<<iter<<" iteration(s).");
     INFO("Parallal solver report:");
     Error_t err=parallel_solver_->ViewReport();

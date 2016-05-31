@@ -7,6 +7,7 @@
 #include "SHTMats.h"
 #include "Logger.h"
 #include "HelperFuns.h"
+#include "VesicleProps.h"
 
 template<typename SurfContainer>
 class InterfacialForce
@@ -17,9 +18,10 @@ class InterfacialForce
     typedef typename SurfContainer::Arr_t Arr_t;
     typedef typename SurfContainer::value_type value_type;
     typedef typename SurfContainer::device_type device_type;
+    typedef VesicleProperties<Arr_t> VProp_t;
 
-    value_type bending_modulus_;
     const Parameters<value_type> &params_;
+    const VProp_t &ves_props_;
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_   ;
     SHTrans<Sca_t, SHTMats<value_type, device_type> > sht_up_;
 
@@ -30,7 +32,8 @@ class InterfacialForce
 
   public:
     InterfacialForce(const Parameters<value_type> &params,
-                     const OperatorsMats<Arr_t> &mats);
+        const VProp_t &ves_porps,
+        const OperatorsMats<Arr_t> &mats);
     ~InterfacialForce();
 
     void bendingForce(const SurfContainer &S, Vec_t &Fb) const;

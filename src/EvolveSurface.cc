@@ -1,9 +1,10 @@
 template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
 EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
-    const Mats_t &mats, BgFlow_t *vInf,  Monitor_t *M,
-    Interaction_t *I, Repartition_t *R, PSolver_t *parallel_solver, Vec_t *x0):
+    const Mats_t &mats, BgFlow_t *vInf,  Monitor_t *M, Interaction_t *I,
+    Repartition_t *R, PSolver_t *parallel_solver, Vec_t *x0,VProp_t *ves_props):
     params_(params),
+    ves_props_(ves_props),
     mats_(mats),
     S_up_(NULL),
     vInf_(vInf),
@@ -13,7 +14,7 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     repartition_(R),
     F_(NULL)
 {
-    objsOnHeap_[0] = objsOnHeap_[1] = objsOnHeap_[2] = false;
+    ownedObjs_[0] = ownedObjs_[1] = ownedObjs_[2] = ownedObjs_[3] = false;
 
     S_ = new Sur_t(params->sh_order, mats_, x0, params_->filter_freq,
         params_->rep_filter_freq,params_->rep_type,params_->rep_exponent);
@@ -22,20 +23,28 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     if ( monitor_ == NULL)
     {
         monitor_ = new Monitor<EvolveSurface>(params_);
-        objsOnHeap_[0] = true;
+        ownedObjs_[0] = true;
     }
 
     if ( interaction_ == NULL)
     {
         interaction_ = new Interaction_t();
-        objsOnHeap_[1] = true;
+        ownedObjs_[1] = true;
     }
 
     if ( repartition_ == NULL)
     {
         repartition_ = new Repartition_t();
-        objsOnHeap_[2] = true;
+        ownedObjs_[2] = true;
     }
+
+    if (ves_props_ == NULL)
+    {
+        ves_props_ = new VProp_t();
+        ownedObjs_[3] = true;
+    }
+
+    set_name("evolve_object");
     INFO("Created a new object");
 }
 
@@ -46,9 +55,10 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
     delete S_;
     delete F_;
 
-    if ( objsOnHeap_[0] ) delete monitor_;
-    if ( objsOnHeap_[1] ) delete interaction_;
-    if ( objsOnHeap_[2] ) delete repartition_;
+    if ( ownedObjs_[0] ) delete monitor_;
+    if ( ownedObjs_[1] ) delete interaction_;
+    if ( ownedObjs_[2] ) delete repartition_;
+    if ( ownedObjs_[3] ) delete ves_props_;
     if (S_up_) delete S_up_;
 }
 
@@ -62,7 +72,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     T time_horizon(params_->time_horizon);
 
     delete F_;
-    F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *vInf_, parallel_solver_);
+    F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *ves_props_,
+        *vInf_, parallel_solver_);
 
     //Deciding on the updater type
     Scheme_t updater(NULL);
@@ -382,6 +393,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::pack(
     os<<"EVOLVE\n";
     os<<"version: "<<VERSION<<"\n";
     os<<"name: "<<Streamable::name_<<"\n";
+    ves_props_->pack(os,format);
     S_->pack(os,format);
     os<<"/EVOLVE\n";
 
@@ -406,6 +418,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
 
     is>>key>>Streamable::name_;
     ASSERT(key=="name:", "bad key name");
+    ves_props_->unpack(is,format);
     S_->unpack(is,format);
     is>>s;
     ASSERT(s=="/EVOLVE", "Bad input string (missing footer).");

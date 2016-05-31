@@ -1,9 +1,10 @@
 template<typename SurfContainer>
 InterfacialForce<SurfContainer>::InterfacialForce(
     const Parameters<value_type> &params,
+    const VProp_t &ves_props,
     const OperatorsMats<Arr_t> &mats) :
-    bending_modulus_(params.bending_modulus),
     params_(params),
+    ves_props_(ves_props),
     sht_   (mats.p_   , mats.mats_p_   ),
     sht_up_(mats.p_up_, mats.mats_p_up_),
     cen(1, 1, std::make_pair(1,1)),
@@ -37,7 +38,7 @@ void InterfacialForce<SurfContainer>::bendingForce(const SurfContainer &S,
 
     axpy(static_cast<typename SurfContainer::value_type>(2), s2, s1, s1);
     xv(s1, S_up->getNormal(), Fb_up);
-    axpy(-bending_modulus_, Fb_up, Fb_up);
+    av(ves_props_.bending_coeff,Fb_up, Fb_up);
 
     { // downsample Fb
       Vec_t wrk[2]; // TODO: Pre-allocate
@@ -79,7 +80,7 @@ void InterfacialForce<SurfContainer>::linearBendingForce(const SurfContainer &S,
     axpy(static_cast<typename SurfContainer::value_type>(2), s2, s1, s1);
 
     xv(s1, S_up->getNormal(), Fb_up);
-    axpy(-bending_modulus_, Fb_up, Fb_up);
+    av(ves_props_.bending_coeff, Fb_up, Fb_up);
 
     { // downsample Fb
       Vec_t wrk[2]; // TODO: Pre-allocate
@@ -126,10 +127,11 @@ template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const
 {
     value_type zero(0);
+    value_type one(1.0);
 
-    if(fabs(params_.excess_density)<1e-14){
-	Vec_t::getDevice().Memset(Fg.begin(), zero, Fg.mem_size());
-	return;
+    if(!ves_props_.has_excess_density){
+        Vec_t::getDevice().Memset(Fg.begin(), zero, Fg.mem_size());
+        return;
     }
 
     /*
@@ -144,8 +146,6 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
     axpy((value_type) -1.0, cen, cen);
     Vec_t::getDevice().apx(cen.begin(), x.begin(), x.getStride(), x.getNumSubFuncs(), Fg.begin());
 
-    // Check without subtracting center
-    // Higher p
     Sca_t s;
     Vec_t w;
     s.replicate(x);
@@ -156,11 +156,14 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
     int m(1), k(DIM), n(x.size()/DIM);
 
     Vec_t::getDevice().gemm("N","N", &m, &n, &k,
-	&params_.excess_density, params_.gravity_field, &m,
-	w.begin(), &k,
-	&zero, s.begin(), &m);
+        &one, params_.gravity_field, &m,
+        w.begin(), &k,
+        &zero, s.begin(), &m);
 
     xv(s,S.getNormal(),Fg);
+
+    // scale by excess density
+    av(ves_props_.excess_density,Fg,Fg);
 }
 
 template<typename SurfContainer>

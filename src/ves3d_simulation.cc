@@ -35,6 +35,7 @@
 template<typename DT, const DT &DEVICE>
 Simulation<DT,DEVICE>::Simulation(const Param_t &ip) :
     load_checkpoint_(false),
+    ves_props_(NULL),
     Mats_(NULL),
     vInf_(NULL),
     ksp_(NULL),
@@ -47,6 +48,7 @@ Simulation<DT,DEVICE>::Simulation(const Param_t &ip) :
 template<typename DT, const DT &DEVICE>
 Simulation<DT,DEVICE>::Simulation(int argc, char** argv, const DictString_t *dict) :
     load_checkpoint_(false),
+    ves_props_(NULL),
     Mats_(NULL),
     vInf_(NULL),
     ksp_(NULL),
@@ -115,8 +117,11 @@ Error_t Simulation<DT,DEVICE>::setup_from_checkpoint(){
 
 template<typename DT, const DT &DEVICE>
 Error_t Simulation<DT,DEVICE>::setup_from_options(){
+
+    int nves(run_params_.n_surfs);
+
     //Initial vesicle positions
-    Vec_t x0(run_params_.n_surfs, run_params_.sh_order);
+    Vec_t x0(nves, run_params_.sh_order);
 
     //reading the prototype form file
     DataIO myIO;
@@ -130,21 +135,77 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
 
     //reading centers file
     if (run_params_.cntrs_file_name.size()){
-	INFO("Reading centers from file");
-	Arr_t cntrs(DIM * run_params_.n_surfs * nproc);
+        INFO("Reading centers from file");
+        Arr_t cntrs(DIM * nves * nproc);
 
-	myIO.ReadData( FullPath(run_params_.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
+        myIO.ReadData( FullPath(run_params_.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
 
-	INFO("Populating the initial configuration using centers");
-	Arr_t my_centers(DIM * run_params_.n_surfs);
+        INFO("Populating the initial configuration using centers");
+        Arr_t my_centers(DIM * nves);
     	cntrs.getDevice().Memcpy(my_centers.begin(),
-	    cntrs.begin() + rank * DIM * run_params_.n_surfs,
-	    DIM * run_params_.n_surfs * sizeof(Arr_t::value_type),
-	    Arr_t::device_type::MemcpyDeviceToDevice);
+            cntrs.begin() + rank * DIM * nves,
+            DIM * nves * sizeof(Arr_t::value_type),
+            Arr_t::device_type::MemcpyDeviceToDevice);
         Populate(x0, my_centers);
     };
 
-    timestepper_ = new Evolve_t(&run_params_, *Mats_, vInf_, NULL, interaction_, NULL, ksp_, &x0);
+    //setting vesicle properties
+    ves_props_ = new VProp_t();
+    int nprops(VProp_t::n_props);
+
+    if (run_params_.vesicle_props_fname.size()) {
+        INFO("Loading vesicle properties from file: "<<run_params_.vesicle_props_fname);
+        Arr_t propsf( nprops * nves * nproc);
+        Arr_t props( nprops * nves * nproc);
+
+        myIO.ReadData( FullPath(run_params_.vesicle_props_fname), propsf,
+            DataIO::ASCII, 0, propsf.size());
+
+        //order by property (column)
+        props.getDevice().Transpose(propsf.begin(),nves*nproc,nprops,props.begin());
+
+        for (int iP(0);iP<nprops;++iP){
+            typename VProp_t::container_type* prp(ves_props_->getPropIdx(iP));
+            prp->resize(nves);
+            prp->getDevice().Memcpy(prp->begin(),
+                props.begin() + (iP*nproc + rank)*nves,
+                nves * sizeof(VProp_t::value_type),
+                DT::MemcpyDeviceToDevice);
+        }
+    } else { /* populate the properties from commandline */
+        INFO("Populating vesicle properties from commandline arguments");
+        typename VProp_t::value_type *buffer = new typename VProp_t::value_type[nves];
+        typename VProp_t::container_type* prp(NULL);
+
+        prp=&ves_props_->bending_modulus;
+        prp->resize(nves);
+        for (int i(0);i<nves;++i) buffer[i]=run_params_.bending_modulus;
+        prp->getDevice().Memcpy(prp->begin(),buffer, nves * sizeof(VProp_t::value_type),
+            DT::MemcpyHostToDevice);
+
+        prp=&ves_props_->excess_density;
+        prp->resize(nves);
+        for (int i(0);i<nves;++i) buffer[i]=run_params_.excess_density;
+        prp->getDevice().Memcpy(prp->begin(),buffer, nves * sizeof(VProp_t::value_type),
+            DT::MemcpyHostToDevice);
+
+        prp=&ves_props_->viscosity_contrast;
+        prp->resize(nves);
+        for (int i(0);i<nves;++i) buffer[i]=run_params_.viscosity_contrast;
+        prp->getDevice().Memcpy(prp->begin(),buffer, nves * sizeof(VProp_t::value_type),
+            DT::MemcpyDeviceToDevice);
+
+        delete buffer;
+        // check
+        for (int iP(0);iP<nprops;++iP){
+            typename VProp_t::container_type* prp(ves_props_->getPropIdx(iP));
+            ASSERT(prp->size()==nves,"property has wrong size (maybe uninitialized)");
+        }
+    }
+    ves_props_->update();
+
+    timestepper_ = new Evolve_t(&run_params_, *Mats_, vInf_, NULL,
+        interaction_, NULL, ksp_, &x0, ves_props_);
 
     return ErrorEvent::Success;
 }
@@ -153,9 +214,10 @@ template<typename DT, const DT &DEVICE>
 Error_t Simulation<DT,DEVICE>::cleanup_run()
 {
     INFO("Cleaning up after run");
-    delete Mats_;        Mats_	  = NULL;
-    delete vInf_;        vInf_	  = NULL;
-    delete ksp_;         ksp_	  = NULL;
+    delete ves_props_;   ves_props_   = NULL;
+    delete Mats_;        Mats_        = NULL;
+    delete vInf_;        vInf_	      = NULL;
+    delete ksp_;         ksp_	      = NULL;
     delete interaction_; interaction_ = NULL;
     delete timestepper_; timestepper_ = NULL;
 

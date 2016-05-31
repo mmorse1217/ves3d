@@ -58,6 +58,7 @@ class Simulation{
   public:
     typedef EvolveSurface<real_t, DT, DEVICE> Evolve_t;
     typedef typename Evolve_t::Params_t Param_t;
+    typedef typename Evolve_t::VProp_t VProp_t;
     typedef typename Evolve_t::Arr_t Arr_t;
     typedef typename Evolve_t::Vec_t Vec_t;
     typedef typename Evolve_t::Interaction_t Inter_t;
@@ -86,6 +87,7 @@ class Simulation{
     std::stringstream checkpoint_data_;
 
     bool load_checkpoint_;
+    VProp_t *ves_props_;
     Mats_t *Mats_;
     Flow_t *vInf_;
     LinSol_t *ksp_;

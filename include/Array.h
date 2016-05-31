@@ -62,6 +62,7 @@ class Array : public Streamable
     typedef DT device_type;
     typedef T* iterator;
     typedef const T* const_iterator;
+    typedef size_t size_type;
 
     explicit Array(size_t size = 0);
     explicit Array(std::istream &is, Format format);
