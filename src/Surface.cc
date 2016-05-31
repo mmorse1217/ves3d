@@ -14,7 +14,7 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     ) :
     sh_order_(sh_order),
     diff_filter_freq_((diff_filter_freq == -1) ? 2*sh_order_/3 : diff_filter_freq),
-    reparam_filter_freq_((rep_filter_freq == -1) ? sh_order_/2 : rep_filter_freq),
+    reparam_filter_freq_((rep_filter_freq == -1) ? sh_order_ : rep_filter_freq),
     reparam_type_(rep_type),
     mats_(&mats),
     sht_(sh_order_, mats.getShMats(sh_order_), diff_filter_freq_), ///@todo make sht_ autonomous

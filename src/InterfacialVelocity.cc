@@ -1264,7 +1264,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             vel = MaxAbs(*wrk);
             vel = std::sqrt(vel);
 
-            value_type u1u3=AlgebraicDot(*u1,*u3)/sqrt(AlgebraicDot(*u1,*u1)*AlgebraicDot(*u3,*u3));
+            value_type u1u3=AlgebraicDot(*u1,*u3);
             if (vel<params_.rep_tol || u1u3<0 /*last_vel < vel*/) {
                 flag=0;
                 //if (last_vel < vel) WARN("Residual is increasing, stopping");
