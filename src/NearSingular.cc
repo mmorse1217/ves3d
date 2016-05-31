@@ -106,6 +106,8 @@ void NearSingular<Surf_t>::SetupCoordData(){
   MPI_Comm_rank(comm,&rank);
   size_t omp_p=omp_get_max_threads();
 
+  pvfmm::Profile::Tic("NearSetup",&comm,true);
+  bool prof_state=pvfmm::Profile::Enable(false);
   struct{
     pvfmm::Vector<pvfmm::MortonId> mid; // MortonId of leaf nodes
     pvfmm::Vector<size_t> pt_cnt;       // Point count
@@ -1104,7 +1106,8 @@ void NearSingular<Surf_t>::SetupCoordData(){
     VelocityScatter(repl_force);
     assert(repl_force.Dim()==T.Dim());
   }
-
+  pvfmm::Profile::Enable(prof_state);
+  pvfmm::Profile::Toc();
 }
 
 template<typename Surf_t>
