@@ -41,10 +41,6 @@ ifeq (${VES3D_USE_PETSC},yes)
           InterfacialVelocityTest.exe
 endif
 
-ifeq (${VES3D_DEBUG},yes)
-  TEST +=BenchmarkInterfacialVel.exe
-endif
-
 RUNEXE   = 0
 FAILFILE = test_results.txt
 EXECLOG  = tests.log
