@@ -112,6 +112,7 @@ class StokesVelocity{
     Sca_t w_sph_inv_;                 // for singular integration  (sh_order)
     Sca_t sing_quad_weights_;         // for singular integration  (sh_order_self)
     Sca_t w_sph_sing_quad_weights_;   // for singular integration  (sh_order_self)
+    PVFMMVec_t SLMatrix, DLMatrix;
     PVFMMVec_t pole_quad;
 
     MPI_Comm comm;
