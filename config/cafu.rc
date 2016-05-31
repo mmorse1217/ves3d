@@ -1,17 +1,11 @@
 # -*- mode: sh; -*-
-module load sl6
 
-module load intel
-module load mkl
-module load openmpi
-module load cuda
-module load matlab
-module load petsc/3.3-p2-cxx-opt
+module load c7 intel mpich2 fftw3 mkl matlab petsc
 
 export CUDA_DIR=${CUDA_LIB}/../
 export CUDA_PATH=${CUDA_LIB}/../
 
-export FFTW_ROOT=/org/groups/padas/lula_packages/fftw
-export OMP_NUM_THREADS=2
+export FFTW_ROOT=$FFTW_DIR
+export OMP_NUM_THREADS=16
 
 export VES3D_PLATFORM=cafu
