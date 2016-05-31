@@ -130,6 +130,7 @@ Error_t Parameters<T>::expand_templates(const DictString_t *dict){
             d[iter->first] = iter->second;
     }
     CHK(::expand_template(&init_file_name      , d));
+    CHK(::expand_template(&vesicle_props_fname , d));
     CHK(::expand_template(&cntrs_file_name     , d));
     CHK(::expand_template(&checkpoint_file_name, d));
     CHK(::expand_template(&load_checkpoint     , d));
@@ -164,6 +165,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
   opt->addUsage( "     --bg-flow-param         Single parameter passed to the background flow class" );
   opt->addUsage( "     --bg-flow-type          Type of the background flow" );
   opt->addUsage( "     --cent-file             The file containing the initial center points");
+  opt->addUsage( "     --ves-props-file        The file containing the properties of each vesicle");
   opt->addUsage( "     --checkpoint-stride     The frequency of saving to file (in time scale)" );
   opt->addUsage( "     --error-factor          The permissible increase factor in area and volume error");
   opt->addUsage( "     --filter-freq           The differentiation filter frequency" );
@@ -232,6 +234,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "bg-flow-param" );
   opt->setOption( "bg-flow-type" );
   opt->setOption( "cent-file");
+  opt->setOption( "ves-props-file");
   opt->setOption( "error-factor" );
   opt->setOption( "filter-freq" );
   opt->setOption( "n-surfs" );
@@ -347,6 +350,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "periodic-length" ) != NULL  )
     periodic_length =  atof(opt->getValue( "periodic-length" ));
 
+  if( opt->getValue( "ves-props-file") !=NULL )
+    vesicle_props_fname = opt->getValue( "ves-props-file" );
+
   if( opt->getValue( "cent-file") !=NULL )
     cntrs_file_name = opt->getValue( "cent-file" );
 
@@ -354,7 +360,7 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     error_factor =  atof(opt->getValue( "error-factor" ));
 
   if( opt->getValue( "n-surfs" ) != NULL  )
-    n_surfs =  atoi(opt->getValue( "n-surfs" ));
+      n_surfs =  atoi(opt->getValue( "n-surfs" ));
 
   if( opt->getValue( "num-threads" ) != NULL  )
     num_threads =  atoi(opt->getValue( "num-threads" ));
@@ -472,6 +478,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"write_vtk: "<<write_vtk<<"\n";
     os<<"init_file_name: "<<init_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"cntrs_file_name: "<<cntrs_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
+    os<<"vesicle_props_fname: "<<vesicle_props_fname<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"checkpoint_file_name: "<<checkpoint_file_name<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"load_checkpoint: "<<load_checkpoint<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"error_factor: "<<error_factor<<"\n";
@@ -541,6 +548,8 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     if (s!="|"){init_file_name=s; is>>s; /* consume | */}else{init_file_name="";}
     is>>key>>s;          		ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
     if (s!="|"){cntrs_file_name=s; is>>s; /* consume | */}else{cntrs_file_name="";}
+    is>>key>>s;          		ASSERT(key=="vesicle_props_fname:", "Unexpected key (expected vesicle_props_fname)");
+    if (s!="|"){vesicle_props_fname=s; is>>s; /* consume | */}else{vesicle_props_fname="";}
     is>>key>>s;         		ASSERT(key=="checkpoint_file_name:", "Unexpected key (expected checkpoint_file_name)");
     if (s!="|"){checkpoint_file_name=s; is>>s;/* consume | */}else{checkpoint_file_name="";}
     is>>key>>s;         		ASSERT(key=="load_checkpoint:", "Unexpected key (expected load_checkpoint)");
@@ -614,6 +623,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<" Initialization:"<<std::endl;
     output<<"   Init file name           : "<<par.init_file_name<<std::endl;
     output<<"   Centers file name        : "<<par.cntrs_file_name<<std::endl;
+    output<<"   Vesicle properties file  : "<<par.vesicle_props_fname<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Checkpointing:"<<std::endl;

@@ -79,6 +79,7 @@ class Parameters : public Streamable
     T checkpoint_stride;
     bool write_vtk;
     std::string init_file_name;
+    std::string vesicle_props_fname;
     std::string cntrs_file_name;
     std::string checkpoint_file_name;
     std::string load_checkpoint;
