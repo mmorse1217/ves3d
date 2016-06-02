@@ -172,37 +172,10 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
                 nves * sizeof(VProp_t::value_type),
                 DT::MemcpyDeviceToDevice);
         }
+        ves_props_->update();
     } else { /* populate the properties from commandline */
-        INFO("Populating vesicle properties from commandline arguments");
-        typename VProp_t::value_type *buffer = new typename VProp_t::value_type[nves];
-        typename VProp_t::container_type* prp(NULL);
-
-        prp=&ves_props_->bending_modulus;
-        prp->resize(nves);
-        for (int i(0);i<nves;++i) buffer[i]=run_params_.bending_modulus;
-        prp->getDevice().Memcpy(prp->begin(),buffer, nves * sizeof(VProp_t::value_type),
-            DT::MemcpyHostToDevice);
-
-        prp=&ves_props_->excess_density;
-        prp->resize(nves);
-        for (int i(0);i<nves;++i) buffer[i]=run_params_.excess_density;
-        prp->getDevice().Memcpy(prp->begin(),buffer, nves * sizeof(VProp_t::value_type),
-            DT::MemcpyHostToDevice);
-
-        prp=&ves_props_->viscosity_contrast;
-        prp->resize(nves);
-        for (int i(0);i<nves;++i) buffer[i]=run_params_.viscosity_contrast;
-        prp->getDevice().Memcpy(prp->begin(),buffer, nves * sizeof(VProp_t::value_type),
-            DT::MemcpyDeviceToDevice);
-
-        delete buffer;
-        // check
-        for (int iP(0);iP<nprops;++iP){
-            typename VProp_t::container_type* prp(ves_props_->getPropIdx(iP));
-            ASSERT(prp->size()==nves,"property has wrong size (maybe uninitialized)");
-        }
+        CHK(ves_props_->setFromParams(run_params_));
     }
-    ves_props_->update();
 
     timestepper_ = new Evolve_t(&run_params_, *Mats_, vInf_, NULL,
         interaction_, NULL, ksp_, &x0, ves_props_);

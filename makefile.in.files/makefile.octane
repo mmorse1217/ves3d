@@ -4,7 +4,7 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.octane
 # flags for default
 COMPILER_VENDOR ?= intel
 VES3D_USE_PETSC ?= yes
-VES3D_TESTING   ?= no
+VES3D_TESTING   ?= yes
 VES3D_USE_PVFMM ?= yes
 
 include ${VES3D_MKDIR}/makefile.default

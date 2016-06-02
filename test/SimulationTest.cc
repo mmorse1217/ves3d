@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     sim2.run_params()->checkpoint_file_name = "SimulationTest_b_{{rank}}_{{time_idx}}.chk";
     sim2.run_params()->time_horizon = ts;
     sim2.run_params()->expand_templates(&dict);
-    ASSERT(sim2.rum_params()==itermax+1, "Bad overriding");
+    ASSERT(sim2.run_params()->time_iter_max==itermax+1, "Bad overriding");
     CHK(sim2.Run());
 
     //final state of sim1 and sim2 should match

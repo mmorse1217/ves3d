@@ -88,7 +88,7 @@ Error_t Vectors<T, DT, DEVICE>::pack(std::ostream &os, Streamable::Format format
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
     os<<"VECTORS\n";
-    os<<"name: "<<Streamable::name_<<"\n";
+    os<<"version: "<<VERSION<<"\n";
     os<<"CoordinateOrder: "<<point_order_<<"\n";
     scalars_type::pack(os, format);
     os<<"/VECTORS\n";
@@ -101,17 +101,30 @@ Error_t Vectors<T, DT, DEVICE>::unpack(std::istream &is, Streamable::Format form
 {
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s, key;
+    int version(0);
+
     is>>s;
     ASSERT(s=="VECTORS", "Bad input string (missing header).");
 
-    is>>key>>Streamable::name_;
-    ASSERT(key=="name:", "bad key");
-    is>>key>>s;
-    ASSERT(key=="CoordinateOrder:", "bad key");
+    is>>key;
+    if (key=="version:") {
+        is>>version>>key;
+        if (key=="+") {++version;is>>key;}
+    };
+
+    if (version<=590) {
+        is>>s;
+        ASSERT(key=="name:", "bad key ");
+        is>>key;
+    }
+
+    is>>s;
+    ASSERT(key=="CoordinateOrder:", "bad key "<<s);
     setPointOrder(EnumifyCoordinateOrder(s.c_str()));
     scalars_type::unpack(is, format);
     is>>s;
     ASSERT(s=="/VECTORS", "Bad input string (missing footer).");
 
+    COUTDEBUG("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
     return ErrorEvent::Success;
 }

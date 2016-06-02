@@ -41,10 +41,11 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
     if (ves_props_ == NULL)
     {
         ves_props_ = new VProp_t();
+        ves_props_->setFromParams(*params_);
         ownedObjs_[3] = true;
     }
 
-    set_name("evolve_object");
+    set_name("evolve_surface");
     INFO("Created a new object");
 }
 
@@ -407,22 +408,29 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::unpack(
 
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s,key;
-    int ii;
+    int version;
 
     is>>s;
     ASSERT(s=="EVOLVE", "Bad input string (missing header).");
 
-    is>>key>>s;
+    is>>key>>version;
     ASSERT(key=="version:", "bad key version");
-    INFO("Unpacking checkpoint from version "<<s<<" (current version "<<VERSION<<")");
 
-    is>>key>>Streamable::name_;
+    is>>key;
+    if (key=="+") {++version;is>>key;}
+    is>>Streamable::name_;
     ASSERT(key=="name:", "bad key name");
-    ves_props_->unpack(is,format);
+
+    if (version>590){
+        ves_props_->unpack(is,format);
+    } else {
+        ves_props_->setFromParams(*params_);
+    }
     S_->unpack(is,format);
     is>>s;
     ASSERT(s=="/EVOLVE", "Bad input string (missing footer).");
 
+    INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
     return ErrorEvent::Success;
 }
 

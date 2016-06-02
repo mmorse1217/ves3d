@@ -121,7 +121,8 @@ Error_t Array<T, DT, DEVICE>::pack(std::ostream &os, Format format) const
     }
 
     os<<"ARRAY\n";
-    os<<"name: "<<name_<<"\n";
+    os<<"version: "<<VERSION<<"\n";
+    os<<"name: "<<Streamable::name_<<"\n";
     os<<"size: "<<size()<<"\n";
     os<<"data: ";
     pack_array(os, format, buffer, size());
@@ -138,11 +139,18 @@ Error_t Array<T, DT, DEVICE>::unpack(std::istream &is, Format format)
 {
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s, key;
+    int version(0);
     is>>s;
     ASSERT(s=="ARRAY", "Bad input string (missing header).");
 
+    is>>key;
+    if (key=="version:") {
+        is>>version>>key;
+        if (key=="+") {++version;is>>key;}
+    };
+
     size_t sz(0);
-    is>>key>>name_;
+    is>>Streamable::name_;
     ASSERT(key=="name:", "bad key");
     is>>key>>sz;
     ASSERT(key=="size:", "bad key");
@@ -152,6 +160,8 @@ Error_t Array<T, DT, DEVICE>::unpack(std::istream &is, Format format)
     unpack_array(is, format, begin(), sz);
     is>>s;
     ASSERT(s=="/ARRAY", "Bad input string (missing footer).");
+
+    INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 
     return ErrorEvent::Success;
 }

@@ -38,6 +38,7 @@
 #include "Logger.h"
 #include "Error.h"
 #include "Streamable.h"
+#include "Parameters.h"
 
 template <typename T>
 struct VesicleProperties : public Streamable
@@ -50,6 +51,7 @@ struct VesicleProperties : public Streamable
     VesicleProperties();
     Error_t update();
     T* getPropIdx(int i); /* for loading convenience */
+    Error_t setFromParams(Parameters<value_type> &params);
 
     Error_t pack(std::ostream &os, Streamable::Format format) const;
     Error_t unpack(std::istream &is, Streamable::Format format);

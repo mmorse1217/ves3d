@@ -73,10 +73,45 @@ T* VesicleProperties<T>::getPropIdx(int i){
 }
 
 template<typename T>
+Error_t VesicleProperties<T>::setFromParams(Parameters<value_type> &params){
+
+    INFO("Populating vesicle properties from parameters");
+    int nves(params.n_surfs);
+    value_type *buffer = new value_type[nves];
+
+    bending_modulus.resize(nves);
+    for (int i(0);i<nves;++i) buffer[i]=params.bending_modulus;
+    bending_modulus.getDevice().Memcpy(bending_modulus.begin(),buffer,
+        nves * sizeof(value_type), T::device_type::MemcpyHostToDevice);
+
+    excess_density.resize(nves);
+    for (int i(0);i<nves;++i) buffer[i]=params.excess_density;
+    excess_density.getDevice().Memcpy(excess_density.begin(),buffer,
+        nves * sizeof(value_type),T::device_type::MemcpyHostToDevice);
+
+    viscosity_contrast.resize(nves);
+    for (int i(0);i<nves;++i) buffer[i]=params.viscosity_contrast;
+    viscosity_contrast.getDevice().Memcpy(viscosity_contrast.begin(),buffer,
+        nves * sizeof(value_type), T::device_type::MemcpyDeviceToDevice);
+
+    delete buffer;
+    // check
+    for (int iP(0);iP<n_props;++iP){
+        T* prp(getPropIdx(iP));
+        ASSERT(prp->size()==nves,"property has wrong size (maybe uninitialized)");
+    }
+
+    update();
+
+    return ErrorEvent::Success;
+}
+
+template<typename T>
 Error_t VesicleProperties<T>::pack(std::ostream &os, Format format) const
 {
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     os<<"VESICLEPROPS\n";
+    os<<"version: "<<VERSION<<"\n";
     os<<"name: "<<Streamable::name_<<"\n";
     bending_modulus   .pack(os,format);
     viscosity_contrast.pack(os,format);
@@ -90,13 +125,19 @@ Error_t VesicleProperties<T>::unpack(std::istream &is, Format format)
 {
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s,key;
+    int version(0);
+
     is>>s;
     ASSERT(s=="VESICLEPROPS", "Bad input string (missing header).");
 
-    is>>key>>Streamable::name_;
+    is>>key;
+    if (key=="version:") {
+        is>>version>>key;
+        if (key=="+") {++version;is>>key;}
+    };
+    is>>Streamable::name_;
     ASSERT(key=="name:", "bad key name");
 
-    COUT("unpacking vesprops: "<<name_);
     bending_modulus   .unpack(is,format);
     viscosity_contrast.unpack(is,format);
     excess_density    .unpack(is,format);
@@ -104,6 +145,7 @@ Error_t VesicleProperties<T>::unpack(std::istream &is, Format format)
     is>>s;
     ASSERT(s=="/VESICLEPROPS", "Bad input string (missing footer).");
     update();
+    INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 
     return ErrorEvent::Success;
 }

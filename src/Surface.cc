@@ -611,6 +611,7 @@ Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
     os<<"SURFACE\n";
+    os<<"version: "<<VERSION<<"\n";
     os<<"name: "<<Streamable::name_<<"\n";
     os<<"sh_order: "<<x_.getShOrder()<<"\n";
     os<<"SHT_order: "<<sht_.getShOrder()<<"\n";
@@ -630,13 +631,19 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
 
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s,key;
-    int ii;
+    int ii,version(0);
     value_type v;
 
     is>>s;
     ASSERT(s=="SURFACE", "Bad input string (missing header).");
 
-    is>>key>>Streamable::name_;
+    is>>key;
+    if (key=="version:") {
+        is>>version>>key;
+        if (key=="+") {++version;is>>key;}
+    };
+
+    is>>Streamable::name_;
     ASSERT(key=="name:", "bad key name");
 
     is>>key>>ii;
@@ -674,6 +681,8 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     x_.unpack(is, format);
     is>>s;
     ASSERT(s=="/SURFACE", "Bad input string (missing footer).");
+
+    INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 
     return ErrorEvent::Success;
 }

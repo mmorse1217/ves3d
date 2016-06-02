@@ -71,9 +71,12 @@ void test_array(){
 	a.set_name("AAA");
 
 	std::stringstream s1,s2,s3,s4;
-	std::string ref("ARRAY\nname: AAA\nsize: 11\ndata: 0 1 8 27 64 125 216 343 512 729 1000\n/ARRAY\n");
+	std::string ref("ARRAY\nversion: ");
+    ref +=VERSION;
+    ref +="\nname: AAA\nsize: 11\ndata: 0 1 8 27 64 125 216 343 512 729 1000\n/ARRAY\n";
 	a.pack(s1, Streamable::ASCII);
 
+    COUT(a);
 	ASSERT(s1.str()==ref, "bad stream a");
 	b.unpack(s1, Streamable::ASCII);
 

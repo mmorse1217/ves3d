@@ -39,6 +39,7 @@
 #include "Surface.h"
 #include "BgFlow.h"
 #include "ParallelLinSolver_Petsc.h"
+#include "VesicleProps.h"
 
 #define DT CPU
 typedef Device<DT> Dev;
@@ -56,6 +57,7 @@ int main(int argc, char** argv){
     typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
     typedef OperatorsMats<Arr_t> Mats_t;
     typedef ParallelLinSolverPetsc<real_t> PSol_t;
+    typedef VesicleProperties<Arr_t> VProp_t;
 
     SET_ERR_CALLBACK(&cb_abort);
 
@@ -70,46 +72,57 @@ int main(int argc, char** argv){
     sim_par.rep_filter_freq = p;
     sim_par.ts              = ts;
     sim_par.time_precond    = DiagonalSpectral;
-    sim_par.init_file_name  = "precomputed/Bmark_TwoVes_Exp_p{{sh_order}}_float_x0.txt";
+    sim_par.init_file_name  = "precomputed/biconcave_ra85_{{sh_order}}";
+    sim_par.cntrs_file_name = "precomputed/lattice_centers_rand_50.txt";
     sim_par.expand_templates();
     COUT(sim_par);
 
-    DataIO myIO;
-    Vec_t x(nvec, p), dx(nvec, p);
-    Sca_t tension(nvec, p);
-    myIO.ReadData(FullPath(sim_par.init_file_name), x);
+    {
+        DataIO myIO;
+        Vec_t x(nvec, p), dxx(nvec, p), dxv(nvec, p);
+        Sca_t tension(nvec, p);
+        myIO.ReadData(FullPath(sim_par.init_file_name), x, DataIO::ASCII, 0, x.getSubLength());
 
-    //Reading Operators From
-    Mats_t Mats(true /* readFromFile */, sim_par);
+        Arr_t cntrs(DIM * nvec);
+        myIO.ReadData( FullPath(sim_par.cntrs_file_name), cntrs );
+        Populate(x, cntrs);
 
-    //Making The Surface, And Time Stepper
-    Sur_t S(p, Mats, &x);
+        //Reading Operators From
+        Mats_t Mats(true /* readFromFile */, sim_par);
 
-    //Setting the background flow
-    BgFlowBase<Vec_t> *vInf(NULL);
-    CHK(BgFlowFactory(sim_par, &vInf));
+        //Making The Surface, And Time Stepper
+        Sur_t S(p, Mats, &x);
 
-    Interaction_t interaction(&StokesAlltoAll);
-    PSol_t *ksp = new PSol_t(VES3D_COMM_WORLD);
-    IntVel_t *F = new IntVel_t(S, interaction, Mats, sim_par, *vInf, ksp);
+        //Setting the background flow
+        BgFlowBase<Vec_t> *vInf(NULL);
+        CHK(BgFlowFactory(sim_par, &vInf));
 
-    // testing
-    // INFO("Explicit update");
-    // F.updateJacobiExplicit(ts);
+        Interaction_t interaction(&StokesAlltoAll);
+        PSol_t ksp(VES3D_COMM_WORLD);
+        VProp_t vp;
+        vp.setFromParams(sim_par);
+        IntVel_t F(S, interaction, Mats, sim_par, vp, *vInf, &ksp);
 
-    // INFO("Gauss-Seidel update");
-    // F.updateJacobiGaussSeidel(ts);
+        // testing
+        // INFO("Explicit update");
+        // F.updateJacobiExplicit(ts);
 
-    INFO("Globally implicit update (solve for velocity)");
-    sim_par.solve_for_velocity=true;
-    F->updateImplicit(S,ts,dx);
+        // INFO("Gauss-Seidel update");
+        // F.updateJacobiGaussSeidel(ts);
 
-    INFO("Globally implicit update (solve for position)");
-    sim_par.solve_for_velocity=false;
-    F->updateImplicit(S,ts,dx);
+        INFO("Globally implicit update (solve for velocity)");
+        sim_par.solve_for_velocity=true;
+        F.updateImplicit(S,ts,dxv);
 
-    delete F;
-    delete ksp;
+        INFO("Globally implicit update (solve for position)");
+        sim_par.solve_for_velocity=false;
+        F.updateImplicit(S,ts,dxx);
 
+        axpy(-1.0,dxv,dxx,dxv);
+        real_t err(MaxAbs(dxv));
+        ASSERT(err<5e-5,"large error between velocity and position solve");
+
+        delete vInf;
+    }
     PetscFinalize();
 }

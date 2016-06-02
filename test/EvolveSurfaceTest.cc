@@ -65,8 +65,13 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
 
 int main(int argc, char **argv)
 {
+#ifdef HAS_PETSC
+    PetscInitialize(&argc, &argv,NULL,NULL);
+#endif
+
     COUT("========================\n  EvolveSurface test: "
         <<"\n========================");
+
 
     typedef Parameters<real> Par_t;
     // Setting the parameters
@@ -110,4 +115,9 @@ int main(int argc, char **argv)
     PROFILEREPORT(SortFlopRate);
 
 #endif //GPU_ACTIVE
+
+#ifdef HAS_PETSC
+    PetscFinalize();
+#endif
+
 }

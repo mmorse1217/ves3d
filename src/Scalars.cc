@@ -222,7 +222,7 @@ Error_t Scalars<T, DT, DEVICE>::pack(std::ostream &os, Streamable::Format format
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
     os<<"SCALARS\n";
-    os<<"name: "<<Streamable::name_<<"\n";
+    os<<"version: "<<VERSION<<"\n";
     os<<"nsubs: "<<getNumSubs()<<"\n";
     os<<"shorder: "<<sh_order_<<"\n";
     os<<"gridx: "<<grid_dim_.first<<"\n";
@@ -239,15 +239,26 @@ Error_t Scalars<T, DT, DEVICE>::unpack(std::istream &is, Streamable::Format form
 {
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s,key;
+    int version(0);
     is>>s;
     ASSERT(s=="SCALARS", "Bad input string (missing header).");
+
+    is>>key;
+    if (key=="version:") {
+        is>>version>>key;
+        if (key=="+") {++version;is>>key;}
+    };
+
+    if (version<=590) {
+        is>>s;
+        ASSERT(key=="name:", "bad key ");
+        is>>key;
+    }
 
     size_t nsub, stride;
     int shorder, gridx, gridy;
 
-    is>>key>>Streamable::name_;
-    ASSERT(key=="name:", "bad key");
-    is>>key>>nsub;
+    is>>nsub;
     ASSERT(key=="nsubs:", "bad key");
     is>>key>>shorder;
     ASSERT(key=="shorder:", "bad key");
@@ -267,6 +278,8 @@ Error_t Scalars<T, DT, DEVICE>::unpack(std::istream &is, Streamable::Format form
     array_type::unpack(is, format);
     is>>s;
     ASSERT(s=="/SCALARS", "Bad input string (missing footer).");
+
+    COUTDEBUG("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 
     return ErrorEvent::Success;
 }

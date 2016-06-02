@@ -1,6 +1,7 @@
 template<typename T>
 Parameters<T>::Parameters(){
     init();
+    set_name("parameters");
 }
 
 template<typename T>
@@ -440,6 +441,8 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
 
     os<<"PARAMETERS\n";
+    os<<"version: "<<VERSION<<"\n";
+    os<<"name: "<<Streamable::name_<<"\n";
     os<<"n_surfs: "<<n_surfs<<"\n";
     os<<"sh_order: "<<sh_order<<"\n";
     os<<"filter_freq: "<<filter_freq<<"\n";
@@ -494,75 +497,91 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
 {
     ASSERT(format==Streamable::ASCII, "BIN is not supported yet");
     std::string s, key;
+    int version(0);
     is>>s;
     ASSERT(s=="PARAMETERS", "Bad input string (missing header).");
 
-    is>>key>>n_surfs;			ASSERT(key=="n_surfs:", "Unexpected key (expeded n_surfs)");
-    is>>key>>sh_order;			ASSERT(key=="sh_order:", "Unexpected key (expected sh_order)");
-    is>>key>>filter_freq;		ASSERT(key=="filter_freq:", "Unexpected key (expected filter_freq)");
-    is>>key>>upsample_freq;		ASSERT(key=="upsample_freq:", "Unexpected key (expected upsample_freq)");
-    is>>key>>bending_modulus;		ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
-    is>>key>>viscosity_contrast;	ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
-    is>>key>>position_solver_iter;	ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
-    is>>key>>tension_solver_iter;	ASSERT(key=="tension_solver_iter:", "Unexpected key (expected tension_solver_iter)");
-    is>>key>>position_solver_restart;	ASSERT(key=="position_solver_restart:", "Unexpected key (expected position_solver_restart)");
-    is>>key>>tension_solver_restart;	ASSERT(key=="tension_solver_restart:", "Unexpected key (expected tension_solver_restart)");
-    is>>key>>position_solver_tol;	ASSERT(key=="position_solver_tol:", "Unexpected key (expected position_solver_tol)");
-    is>>key>>tension_solver_tol;	ASSERT(key=="tension_solver_tol:", "Unexpected key (expected tension_solver_tol)");
-    is>>key>>time_horizon;		ASSERT(key=="time_horizon:", "Unexpected key (expected time_horizon)");
-    is>>key>>ts;			ASSERT(key=="ts:", "Unexpected key (expected ts)");
-    is>>key>>time_tol;			ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
-    is>>key>>time_iter_max;		ASSERT(key=="time_iter_max:", "Unexpected key (expected time_iter_max)");
-    is>>key>>time_adaptive;	        ASSERT(key=="time_adaptive:", "Unexpected key (expected time_adaptive)");
-    is>>key>>solve_for_velocity;	ASSERT(key=="solve_for_velocity:", "Unexpected key (expected solve_for_velocity)");
-    is>>key>>pseudospectral;     	ASSERT(key=="pseudospectral:", "Unexpected key (expected pseudospectral)");
+    is>>key;
+    if (key=="version:") {
+        is>>version>>key;
+        if (key=="+") {++version;is>>key;}
+    };
+
+    if (version>590){
+        ASSERT(key=="name:", "Unexpected key (expeded name)");
+        is>>Streamable::name_>>key;
+    }
+
+    is>>n_surfs; ASSERT(key=="n_surfs:", "Unexpected key (expeded n_surfs)");
+    is>>key>>sh_order; ASSERT(key=="sh_order:", "Unexpected key (expected sh_order)");
+    is>>key>>filter_freq; ASSERT(key=="filter_freq:", "Unexpected key (expected filter_freq)");
+    is>>key>>upsample_freq; ASSERT(key=="upsample_freq:", "Unexpected key (expected upsample_freq)");
+    is>>key>>bending_modulus; ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
+    is>>key>>viscosity_contrast; ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
+    is>>key>>position_solver_iter; ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
+    is>>key>>tension_solver_iter; ASSERT(key=="tension_solver_iter:", "Unexpected key (expected tension_solver_iter)");
+    is>>key>>position_solver_restart; ASSERT(key=="position_solver_restart:", "Unexpected key (expected position_solver_restart)");
+    is>>key>>tension_solver_restart; ASSERT(key=="tension_solver_restart:", "Unexpected key (expected tension_solver_restart)");
+    is>>key>>position_solver_tol; ASSERT(key=="position_solver_tol:", "Unexpected key (expected position_solver_tol)");
+    is>>key>>tension_solver_tol; ASSERT(key=="tension_solver_tol:", "Unexpected key (expected tension_solver_tol)");
+    is>>key>>time_horizon; ASSERT(key=="time_horizon:", "Unexpected key (expected time_horizon)");
+    is>>key>>ts; ASSERT(key=="ts:", "Unexpected key (expected ts)");
+    is>>key>>time_tol; ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
+    is>>key>>time_iter_max; ASSERT(key=="time_iter_max:", "Unexpected key (expected time_iter_max)");
+    is>>key>>time_adaptive; ASSERT(key=="time_adaptive:", "Unexpected key (expected time_adaptive)");
+    is>>key>>solve_for_velocity; ASSERT(key=="solve_for_velocity:", "Unexpected key (expected solve_for_velocity)");
+    is>>key>>pseudospectral; ASSERT(key=="pseudospectral:", "Unexpected key (expected pseudospectral)");
 
     //enums
-    is>>key>>s; 			ASSERT(key=="scheme:", "Unexpected key (expected scheme)");
+    is>>key>>s; ASSERT(key=="scheme:", "Unexpected key (expected scheme)");
     scheme=EnumifyScheme(s.c_str());
-    is>>key>>s;          		ASSERT(key=="time_precond:", "Unexpected key (expected time_precond)");
+    is>>key>>s; ASSERT(key=="time_precond:", "Unexpected key (expected time_precond)");
     time_precond=EnumifyPrecond(s.c_str());
-    is>>key>>s; 			ASSERT(key=="bg_flow:", "Unexpected key (expected  bg_flow)");
+    is>>key>>s; ASSERT(key=="bg_flow:", "Unexpected key (expected  bg_flow)");
     bg_flow=EnumifyBgFlow(s.c_str());
-    is>>key>>s;          		ASSERT(key=="singular_stokes:", "Unexpected key (expected  singular_stokes)");
+    is>>key>>s; ASSERT(key=="singular_stokes:", "Unexpected key (expected  singular_stokes)");
     singular_stokes=EnumifyStokesRot(s.c_str());
 
-    is>>key>>s;	ASSERT(key=="rep_type:", "Unexpected key (expected  rep_type)");
+    is>>key>>s; ASSERT(key=="rep_type:", "Unexpected key (expected  rep_type)");
     rep_type=EnumifyReparam(s.c_str());
 
-    is>>key>>rep_maxit;			ASSERT(key=="rep_maxit:", "Unexpected key (expected rep_maxit)");
-    is>>key>>rep_upsample;		ASSERT(key=="rep_upsample:", "Unexpected key (expected rep_upsample)");
-    is>>key>>rep_filter_freq;		ASSERT(key=="rep_filter_freq:", "Unexpected key (expected rep_filter_freq)");
-    is>>key>>rep_ts;			ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
-    is>>key>>rep_tol;			ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
-    is>>key>>rep_exponent;  	ASSERT(key=="rep_exponent:", "Unexpected key (expected rep_exponent)");
+    is>>key>>rep_maxit; ASSERT(key=="rep_maxit:", "Unexpected key (expected rep_maxit)");
+    is>>key>>rep_upsample; ASSERT(key=="rep_upsample:", "Unexpected key (expected rep_upsample)");
+    is>>key>>rep_filter_freq; ASSERT(key=="rep_filter_freq:", "Unexpected key (expected rep_filter_freq)");
+    is>>key>>rep_ts; ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
+    is>>key>>rep_tol; ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
+    is>>key>>rep_exponent; ASSERT(key=="rep_exponent:", "Unexpected key (expected rep_exponent)");
 
-    is>>key>>bg_flow_param;		ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
-    is>>key>>periodic_length;		ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
-    is>>key>>interaction_upsample;	ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
-    is>>key>>checkpoint;		ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
-    is>>key>>checkpoint_stride;		ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
-    is>>key>>write_vtk;		ASSERT(key=="write_vtk:", "Unexpected key (expected write_vtk)");
+    is>>key>>bg_flow_param; ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
+    is>>key>>periodic_length; ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
+    is>>key>>interaction_upsample; ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
+    is>>key>>checkpoint; ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
+    is>>key>>checkpoint_stride; ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
+    is>>key>>write_vtk; ASSERT(key=="write_vtk:", "Unexpected key (expected write_vtk)");
 
-    is>>key>>s;		                ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
+    is>>key>>s; ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
     if (s!="|"){init_file_name=s; is>>s; /* consume | */}else{init_file_name="";}
-    is>>key>>s;          		ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
+    is>>key>>s; ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
     if (s!="|"){cntrs_file_name=s; is>>s; /* consume | */}else{cntrs_file_name="";}
-    is>>key>>s;          		ASSERT(key=="vesicle_props_fname:", "Unexpected key (expected vesicle_props_fname)");
-    if (s!="|"){vesicle_props_fname=s; is>>s; /* consume | */}else{vesicle_props_fname="";}
-    is>>key>>s;         		ASSERT(key=="checkpoint_file_name:", "Unexpected key (expected checkpoint_file_name)");
+    if (version>590) {
+        is>>key>>s; ASSERT(key=="vesicle_props_fname:", "Unexpected key (expected vesicle_props_fname)");
+        if (s!="|"){vesicle_props_fname=s; is>>s; /* consume | */}else{vesicle_props_fname="";}
+    }
+    is>>key>>s; ASSERT(key=="checkpoint_file_name:", "Unexpected key (expected checkpoint_file_name)");
     if (s!="|"){checkpoint_file_name=s; is>>s;/* consume | */}else{checkpoint_file_name="";}
-    is>>key>>s;         		ASSERT(key=="load_checkpoint:", "Unexpected key (expected load_checkpoint)");
+    is>>key>>s; ASSERT(key=="load_checkpoint:", "Unexpected key (expected load_checkpoint)");
     if (s!="|"){load_checkpoint=s; is>>s; /* consume | */}else{load_checkpoint="";}
-    is>>key>>error_factor;		ASSERT(key=="error_factor:", "Unexpected key (expected error_factor)");
-    is>>key>>num_threads;		ASSERT(key=="num_threads:", "Unexpected key (expected num_threads)");
-    is>>key>>excess_density;		ASSERT(key=="excess_density:", "Unexpected key (expected excess_density)");
+    is>>key>>error_factor; ASSERT(key=="error_factor:", "Unexpected key (expected error_factor)");
+    is>>key>>num_threads; ASSERT(key=="num_threads:", "Unexpected key (expected num_threads)");
+    is>>key>>excess_density; ASSERT(key=="excess_density:", "Unexpected key (expected excess_density)");
 
     is>>key>>gravity_field[0]>>gravity_field[1]>>gravity_field[2];
     ASSERT(key=="gravity_field:", "Unexpected key (expected gravity_field)");
 
     is>>s;
     ASSERT(s=="/PARAMETERS", "Bad input string (missing footer).");
+
+    INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 
     return ErrorEvent::Success;
 }

@@ -14,7 +14,6 @@ TEST = 	ArrayTest.exe			\
 	EnumsTest.exe			\
 	ErrorTest.exe			\
 	EvolveSurfaceTest.exe		\
-	EvolveSurfaceTestMultThread.exe \
 	LoggerTest.exe			\
 	MovePoleTest.exe		\
 	ParametersTest.exe		\
@@ -45,7 +44,7 @@ RUNEXE   = 0
 FAILFILE = test_results.txt
 EXECLOG  = tests.log
 EXECNAME =
-SHELL = /bin/bash
+SHELL=/bin/bash -o pipefail
 
 all: ${TEST}
 
