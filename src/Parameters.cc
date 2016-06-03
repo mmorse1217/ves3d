@@ -35,9 +35,6 @@ void Parameters<T>::init()
     n_surfs                 = 1;
     num_threads             = -1;
     periodic_length         = -1;
-    position_solver_iter    = 15;
-    position_solver_restart = 1;
-    position_solver_tol	    = (typeid(T) == typeid(float)) ? 1e-4: 1e-8;
     pseudospectral          = false;
     rep_exponent            = 4.0;
     rep_filter_freq         = 4;
@@ -50,9 +47,6 @@ void Parameters<T>::init()
     sh_order                = 12;
     singular_stokes         = ViaSpHarm;
     solve_for_velocity      = false;
-    tension_solver_iter	    = 15;
-    tension_solver_restart  = 1;
-    tension_solver_tol	    = (typeid(T) == typeid(float)) ? 5e-4: 1e-8;
     time_adaptive           = false;
     time_horizon            = 1;
     time_iter_max           = 100;
@@ -241,9 +235,6 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "n-surfs" );
   opt->setOption( "num-threads" );
   opt->setOption( "periodic-length" );
-  opt->setOption( "position-iter-max" );
-  opt->setOption( "position-restart" );
-  opt->setOption( "position-tol" );
 
   opt->setOption( "rep-type" );
   opt->setOption( "rep-filter-freq" );
@@ -255,9 +246,6 @@ void Parameters<T>::setOptions(AnyOption *opt)
   opt->setOption( "checkpoint-stride" );
   opt->setOption( "sh-order" );
   opt->setOption( "singular-stokes" );
-  opt->setOption( "tension-iter-max" );
-  opt->setOption( "tension-restart" );
-  opt->setOption( "tension-tol" );
   opt->setOption( "time-horizon" );
   opt->setOption( "time-iter-max" );
   opt->setOption( "time-precond" );
@@ -366,15 +354,6 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
   if( opt->getValue( "num-threads" ) != NULL  )
     num_threads =  atoi(opt->getValue( "num-threads" ));
 
-  if( opt->getValue( "position-iter-max" ) != NULL  )
-    position_solver_iter =  atoi(opt->getValue( "position-iter-max" ));
-
-  if( opt->getValue( "position-restart" ) != NULL  )
-    position_solver_restart =  atoi(opt->getValue( "position-restart" ));
-
-  if( opt->getValue( "position-tol" ) != NULL  )
-    position_solver_tol =  atof(opt->getValue( "position-tol" ));
-
   if( opt->getValue( "rep-type"  ) != NULL  )
     rep_type = EnumifyReparam(opt->getValue( "rep-type" ));
   ASSERT(rep_type != UnknownReparam, "Failed to parse the reparametrization type");
@@ -401,15 +380,6 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
   if( opt->getValue( "singular-stokes" ) != NULL  )
     singular_stokes = EnumifyStokesRot(opt->getValue( "singular-stokes" ));
-
-  if( opt->getValue( "tension-iter-max" ) != NULL  )
-    tension_solver_iter =  atoi(opt->getValue( "tension-iter-max" ));
-
-  if( opt->getValue( "tension-restart" ) != NULL  )
-    tension_solver_restart =  atoi(opt->getValue( "tension-restart" ));
-
-  if( opt->getValue( "tension-tol" ) != NULL  )
-    tension_solver_tol =  atof(opt->getValue( "tension-tol" ));
 
   if( opt->getValue( "time-horizon" ) != NULL  )
     time_horizon =  atof(opt->getValue( "time-horizon" ));
@@ -449,12 +419,6 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"upsample_freq: "<<upsample_freq<<"\n";
     os<<"bending_modulus: "<<bending_modulus<<"\n";
     os<<"viscosity_contrast: "<<viscosity_contrast<<"\n";
-    os<<"position_solver_iter: "<<position_solver_iter<<"\n";
-    os<<"tension_solver_iter: "<<tension_solver_iter<<"\n";
-    os<<"position_solver_restart: "<<position_solver_restart<<"\n";
-    os<<"tension_solver_restart: "<<tension_solver_restart<<"\n";
-    os<<"position_solver_tol: "<<position_solver_tol<<"\n";
-    os<<"tension_solver_tol: "<<tension_solver_tol<<"\n";
     os<<"time_horizon: "<<time_horizon<<"\n";
     os<<"ts: "<<ts<<"\n";
     os<<"time_tol: "<<time_tol<<"\n";
@@ -518,12 +482,16 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>upsample_freq; ASSERT(key=="upsample_freq:", "Unexpected key (expected upsample_freq)");
     is>>key>>bending_modulus; ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
     is>>key>>viscosity_contrast; ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
-    is>>key>>position_solver_iter; ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
-    is>>key>>tension_solver_iter; ASSERT(key=="tension_solver_iter:", "Unexpected key (expected tension_solver_iter)");
-    is>>key>>position_solver_restart; ASSERT(key=="position_solver_restart:", "Unexpected key (expected position_solver_restart)");
-    is>>key>>tension_solver_restart; ASSERT(key=="tension_solver_restart:", "Unexpected key (expected tension_solver_restart)");
-    is>>key>>position_solver_tol; ASSERT(key=="position_solver_tol:", "Unexpected key (expected position_solver_tol)");
-    is>>key>>tension_solver_tol; ASSERT(key=="tension_solver_tol:", "Unexpected key (expected tension_solver_tol)");
+    if (version<592){
+        INFO("Ignoring deprecated parameters in checkpoint from version "<<version);
+        // removed deprecated options
+        is>>key>>s; ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
+        is>>key>>s; ASSERT(key=="tension_solver_iter:", "Unexpected key (expected tension_solver_iter)");
+        is>>key>>s; ASSERT(key=="position_solver_restart:", "Unexpected key (expected position_solver_restart)");
+        is>>key>>s; ASSERT(key=="tension_solver_restart:", "Unexpected key (expected tension_solver_restart)");
+        is>>key>>s; ASSERT(key=="position_solver_tol:", "Unexpected key (expected position_solver_tol)");
+        is>>key>>s; ASSERT(key=="tension_solver_tol:", "Unexpected key (expected tension_solver_tol)");
+    }
     is>>key>>time_horizon; ASSERT(key=="time_horizon:", "Unexpected key (expected time_horizon)");
     is>>key>>ts; ASSERT(key=="ts:", "Unexpected key (expected ts)");
     is>>key>>time_tol; ASSERT(key=="time_tol:", "Unexpected key (expected time_tol)");
@@ -606,15 +574,6 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   viscosity contrast       : "<<par.viscosity_contrast<<std::endl;
     output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
     output<<"   Excess density           : "<<par.excess_density<<std::endl;
-
-    output<<"------------------------------------"<<std::endl;
-    output<<" Solver:"<<std::endl;
-    output<<"   Position solver iter     : "<<par.position_solver_iter<<std::endl;
-    output<<"   tension solver iter      : "<<par.tension_solver_iter<<std::endl;
-    output<<"   Position solver restart  : "<<par.position_solver_restart<<std::endl;
-    output<<"   Tension solver restart   : "<<par.tension_solver_restart<<std::endl;
-    output<<"   Position solver tol      : "<<par.position_solver_tol<<std::endl;
-    output<<"   Tension solver tol       : "<<par.tension_solver_tol<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Time stepper:"<<std::endl;

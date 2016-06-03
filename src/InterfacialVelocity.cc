@@ -166,9 +166,9 @@ updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx
         S_.getPosition().size() * sizeof(value_type),
         u2->getDevice().MemcpyDeviceToDevice);
 
-    int iter(params_.position_solver_iter);
-    int rsrt(params_.position_solver_restart);
-    value_type tol(params_.position_solver_tol),relres(params_.position_solver_tol);
+    int iter(params_.time_iter_max);
+    int rsrt(params_.time_iter_max);
+    value_type tol(params_.time_tol),relres(params_.time_tol);
 
     enum BiCGSReturn solver_ret;
     Error_t ret_val(ErrorEvent::Success);
@@ -1037,9 +1037,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::getTension(
     //! this just negates rhs (not a bug; bad naming for overleaded axpy)
     axpy(static_cast<value_type>(-1), *rhs, *rhs);
 
-    int iter(params_.tension_solver_iter);
-    int rsrt(params_.tension_solver_restart);
-    value_type tol(params_.tension_solver_tol),relres(params_.tension_solver_tol);
+    int iter(params_.time_iter_max);
+    int rsrt(params_.time_iter_max);
+    value_type tol(params_.time_tol),relres(params_.time_tol);
     enum BiCGSReturn solver_ret;
     Error_t ret_val(ErrorEvent::Success);
 

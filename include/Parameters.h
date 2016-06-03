@@ -37,14 +37,6 @@ class Parameters : public Streamable
     T viscosity_contrast;
     T excess_density;
 
-    //Solver parameters
-    int position_solver_iter;
-    int tension_solver_iter;
-    int position_solver_restart;
-    int tension_solver_restart;
-    T position_solver_tol;
-    T tension_solver_tol;
-
     //Time stepper
     T time_horizon;
     T ts;
