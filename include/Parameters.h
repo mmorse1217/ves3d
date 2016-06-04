@@ -70,9 +70,9 @@ class Parameters : public Streamable
     bool checkpoint;
     T checkpoint_stride;
     bool write_vtk;
-    std::string init_file_name;
-    std::string vesicle_props_fname;
-    std::string cntrs_file_name;
+    std::string shape_gallery_file;
+    std::string vesicle_props_file;
+    std::string vesicle_geometry_file;
     std::string checkpoint_file_name;
     std::string load_checkpoint;
     T error_factor;

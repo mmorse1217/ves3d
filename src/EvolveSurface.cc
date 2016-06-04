@@ -72,6 +72,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     T dt(params_->ts);
     T time_horizon(params_->time_horizon);
 
+    INFO("The vesicle's material properties:\n"<<ves_props_);
+
     delete F_;
     F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *ves_props_,
         *vInf_, parallel_solver_);

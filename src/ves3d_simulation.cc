@@ -125,7 +125,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
 
     //reading the prototype form file
     DataIO myIO;
-    myIO.ReadData( FullPath(run_params_.init_file_name), x0, DataIO::ASCII, 0, x0.getSubLength());
+    myIO.ReadData( FullPath(run_params_.shape_gallery_file), x0, DataIO::ASCII, 0, x0.getSubLength());
 
     int nproc(1), rank(0);
 #ifdef HAVE_PVFMM
@@ -134,11 +134,11 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
 #endif
 
     //reading centers file
-    if (run_params_.cntrs_file_name.size()){
+    if (run_params_.vesicle_geometry_file.size()){
         INFO("Reading centers from file");
         Arr_t cntrs(DIM * nves * nproc);
 
-        myIO.ReadData( FullPath(run_params_.cntrs_file_name), cntrs, DataIO::ASCII, 0, cntrs.size());
+        myIO.ReadData( FullPath(run_params_.vesicle_geometry_file), cntrs, DataIO::ASCII, 0, cntrs.size());
 
         INFO("Populating the initial configuration using centers");
         Arr_t my_centers(DIM * nves);
@@ -153,12 +153,12 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
     ves_props_ = new VProp_t();
     int nprops(VProp_t::n_props);
 
-    if (run_params_.vesicle_props_fname.size()) {
-        INFO("Loading vesicle properties from file: "<<run_params_.vesicle_props_fname);
+    if (run_params_.vesicle_props_file.size()) {
+        INFO("Loading vesicle properties from file: "<<run_params_.vesicle_props_file);
         Arr_t propsf( nprops * nves * nproc);
         Arr_t props( nprops * nves * nproc);
 
-        myIO.ReadData( FullPath(run_params_.vesicle_props_fname), propsf,
+        myIO.ReadData( FullPath(run_params_.vesicle_props_file), propsf,
             DataIO::ASCII, 0, propsf.size());
 
         //order by property (column)
