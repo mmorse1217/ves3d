@@ -116,16 +116,28 @@ Error_t Simulation<DT,DEVICE>::setup_from_checkpoint(){
 }
 
 template<typename DT, const DT &DEVICE>
-Error_t Simulation<DT,DEVICE>::setup_from_options(){
-
+Error_t Simulation<DT,DEVICE>::setup_from_options()
+{
+    DataIO io;
     int nves(run_params_.n_surfs);
-
-    //Initial vesicle positions
     Vec_t x0(nves, run_params_.sh_order);
 
-    //reading the prototype form file
-    DataIO myIO;
-    myIO.ReadData( FullPath(run_params_.shape_gallery_file), x0, DataIO::ASCII, 0, x0.getSubLength());
+    // loading *all* shapes
+    ASSERT(run_params_.shape_gallery_file.size()>0,"shape gallery file is required");
+    std::string fname(FullPath(run_params_.shape_gallery_file));
+    INFO("Reading shape gallery file "<<fname);
+    std::vector<value_type> shapes;
+    io.ReadData(fname, shapes, DataIO::ASCII);
+
+    int nshapes(shapes.size()/x0.getStride()/DIM);
+    INFO("Loaded "<<nshapes<<" shape(s)");
+
+    // load centers and transformations for current mpi process
+    ASSERT(run_params_.vesicle_geometry_file.size()>0,"geometry file is required");
+    fname = FullPath(run_params_.vesicle_geometry_file);
+    INFO("Reading geometry file "<<fname);
+    std::vector<value_type> all_geo_spec;
+    io.ReadData(fname, all_geo_spec, DataIO::ASCII);
 
     int nproc(1), rank(0);
 #ifdef HAVE_PVFMM
@@ -133,21 +145,19 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
     MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
 #endif
 
-    //reading centers file
-    if (run_params_.vesicle_geometry_file.size()){
-        INFO("Reading centers from file");
-        Arr_t cntrs(DIM * nves * nproc);
+    /*
+     * slicing the geometry data for current process. expected
+     * number of fields per line is currently 8: shape_idx scale center_x
+     * center_y center_z rot_z, rot_y, rot_z
+     */
+    int stride(8*nves);
+    ASSERT(all_geo_spec.size()>=nproc*stride,"bad initialization file");
+    std::vector<value_type> geo_spec(all_geo_spec.begin() + rank     * stride,
+                                     all_geo_spec.begin() + (rank+1) * stride);
 
-        myIO.ReadData( FullPath(run_params_.vesicle_geometry_file), cntrs, DataIO::ASCII, 0, cntrs.size());
-
-        INFO("Populating the initial configuration using centers");
-        Arr_t my_centers(DIM * nves);
-    	cntrs.getDevice().Memcpy(my_centers.begin(),
-            cntrs.begin() + rank * DIM * nves,
-            DIM * nves * sizeof(Arr_t::value_type),
-            Arr_t::device_type::MemcpyDeviceToDevice);
-        Populate(x0, my_centers);
-    };
+    //Initial vesicle position container
+    INFO("Initializing the starting shapes");
+    InitializeShapes(x0, shapes, geo_spec);
 
     //setting vesicle properties
     ves_props_ = new VProp_t();
@@ -158,7 +168,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options(){
         Arr_t propsf( nprops * nves * nproc);
         Arr_t props( nprops * nves * nproc);
 
-        myIO.ReadData( FullPath(run_params_.vesicle_props_file), propsf,
+        io.ReadData( FullPath(run_params_.vesicle_props_file), propsf,
             DataIO::ASCII, 0, propsf.size());
 
         //order by property (column)

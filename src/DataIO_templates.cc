@@ -71,6 +71,35 @@ bool DataIO::ReadData(const std::string &file_name, Container &data,
     }
 }
 
+template<typename T>
+bool DataIO::ReadData(const std::string &file_name, std::vector<T> &data,
+    DataIO::IOFormat frmt)
+{
+    ASSERT(frmt == DataIO::ASCII, "binary loading is not implemented");
+
+    COUTDEBUG("Reading ASCII file: "<<file_name);
+    std::ifstream data_file(file_name.c_str(), std::ios::in);
+
+    if(!data_file.good())
+        CERR_LOC("Cannot open the file for reading: "<<file_name,"", exit(1));
+
+    T d;
+    std::string line;
+    while( getline(data_file, line)){
+        if (line.empty()) continue;
+        std::istringstream is(line);
+        while (is.good()){
+            while (is.peek()==' ') is.get();
+            if (is.peek()=='#') break;
+            is>>d;
+            data.push_back(d);
+        }
+    }
+
+    data_file.close();
+    return(true);
+}
+
 template<typename Container>
 bool DataIO::WriteData(const std::string &file_name, const Container &data,
     IOFormat frmt, std::ios_base::openmode mode) const

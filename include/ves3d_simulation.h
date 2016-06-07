@@ -61,6 +61,7 @@ class Simulation{
     typedef typename Evolve_t::VProp_t VProp_t;
     typedef typename Evolve_t::Arr_t Arr_t;
     typedef typename Evolve_t::Vec_t Vec_t;
+    typedef typename Evolve_t::value_type value_type;
     typedef typename Evolve_t::Interaction_t Inter_t;
     typedef typename Evolve_t::Mats_t Mats_t;
     typedef BgFlowBase<Vec_t> Flow_t;

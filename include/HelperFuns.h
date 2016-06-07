@@ -95,6 +95,10 @@ inline void CircShift(const typename ScalarContainer::value_type *x_in,
 template<typename VectorContainer, typename CentCont>
 inline void Populate(VectorContainer &x, const CentCont &centers);
 
+template<typename Vec_t, typename E>
+inline void InitializeShapes(Vec_t &x, const E &shape_gallery,
+    const E &geo_spec);
+
 template<typename Container>
 inline typename Container::value_type MaxAbs(Container &x);
 

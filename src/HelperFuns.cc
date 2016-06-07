@@ -311,6 +311,115 @@ inline void Populate(VectorContainer &x, const CentCont &centers)
         x.begin());
 }
 
+template<typename val_t, typename E>
+void _rotation_matrix_zyz(val_t rot_z1, val_t rot_y, val_t rot_z2, E &rot)
+{
+    /* utility function for initializaiton */
+    val_t R1[] = { cos(rot_z1),-sin(rot_z1), 0.0,
+                   sin(rot_z1), cos(rot_z1), 0.0,
+                   0.0        , 0.0        , 1.0};
+    val_t R2[] = { cos(rot_y) , 0.0        , sin(rot_y),
+                   0.0        , 1.0        , 0.0,
+                  -sin(rot_y) , 0.0        , cos(rot_y)};
+    val_t R3[] = { cos(rot_z2),-sin(rot_z2), 0.0,
+                   sin(rot_z2), cos(rot_z2), 0.0,
+                   0.0        , 0.0        , 1.0};
+
+    val_t Ri[DIM*DIM], R[DIM*DIM];
+
+    /* these can be coded in, but leaving as is for debugging */
+    for (int i(0);i<DIM;++i)
+        for (int j(0);j<DIM;++j){
+            Ri[i*DIM+j] = 0;
+            for (int k(0);k<DIM;++k)
+                Ri[i*DIM+j] += R2[i*DIM+k]*R1[k*DIM+j];
+        }
+    for (int i(0);i<DIM;++i)
+        for (int j(0);j<DIM;++j){
+            R[i*DIM+j] = 0;
+            for (int k(0);k<DIM;++k)
+                R[i*DIM+j] += R3[i*DIM+k]*Ri[k*DIM+j];
+        }
+
+    for (int i(0);i<DIM*DIM;++i)
+        rot.push_back(R[i]);
+}
+
+template<typename val_t>
+void _transform_point(val_t &x, val_t &y, val_t &z,
+    val_t scale, const val_t *rot, const val_t *cen)
+{
+    /* utility function for initializaiton */
+    val_t xyz[] = {x*scale, y*scale, z*scale};
+    val_t XYZ[] = {0,0,0};
+
+    for (int i(0);i<DIM;++i)
+        for (int j(0);j<DIM;++j)
+            XYZ[i] += rot[i*DIM+j]*xyz[j];
+
+    x = XYZ[0] + cen[0];
+    y = XYZ[1] + cen[1];
+    z = XYZ[2] + cen[2];
+}
+
+template<typename Vec_t, typename E>
+inline void InitializeShapes(Vec_t &x, const E &shape_gallery,
+    const E &geo_spec)
+{
+    typedef typename E::value_type val_t;
+    typedef typename E::size_type  sz_t;
+    typedef typename Vec_t::device_type  device_type;
+
+    int nves(x.getNumSubs());
+    int stride(x.getStride());
+
+    // extract info
+    int nfields(8);
+    E shape, scale, cen, rot;
+    for (int iV(0); iV<nves; ++iV){
+        sz_t offset(iV*nfields);
+        shape.push_back(geo_spec[offset++]);
+        scale.push_back(geo_spec[offset++]);
+
+        for (int iC(0); iC<DIM; ++iC)
+            cen.push_back(geo_spec[offset++]);
+
+        _rotation_matrix_zyz(
+            geo_spec[offset++] /* rz1 */,
+            geo_spec[offset++] /* ry  */,
+            geo_spec[offset++] /* rz2 */,
+            rot);
+    }
+
+    // transform and fill
+    E xi(nves*stride*DIM);
+    for (int iV(0); iV<nves; ++iV) {
+        sz_t shape_offset(shape[iV]*DIM*stride);
+        sz_t ves_offset  (iV       *DIM*stride);
+
+        val_t *R = &(rot[iV*DIM*DIM]);
+        val_t *C = &(cen[iV*DIM    ]);
+
+        for (int iP(0);iP<stride;++iP) {
+            val_t x = shape_gallery[shape_offset+         iP];
+            val_t y = shape_gallery[shape_offset+  stride+iP];
+            val_t z = shape_gallery[shape_offset+2*stride+iP];
+            _transform_point(x,y,z,scale[iV],R,C);
+
+            xi[ves_offset+         iP] = x;
+            xi[ves_offset+  stride+iP] = y;
+            xi[ves_offset+2*stride+iP] = z;
+        }
+    }
+
+    // copy
+    ASSERT(x.size()==xi.size(), "incorrect initialization");
+    x.getDevice().Memcpy(x.begin(),
+        &(xi[0]),
+        x.size()*sizeof(val_t),
+        device_type::MemcpyHostToDevice);
+}
+
 template<typename ScalarContainer>
 typename ScalarContainer::value_type AlgebraicDot(const ScalarContainer &x,
     const ScalarContainer &y)

@@ -16,6 +16,7 @@
 #include <string>
 #include <cassert>
 #include <memory>
+#include <vector>
 
 #include "Logger.h"
 #include "Error.h"
@@ -41,6 +42,10 @@ class DataIO
     template<typename Container>
     bool ReadData(const std::string &file_name, Container &data,
         IOFormat frmt = ASCII, int offset = 0 , int length = -1) const;
+
+    template<typename T>
+    bool ReadData(const std::string &file_name, std::vector<T> &data,
+        IOFormat frmt = ASCII);
 
     template<typename Container>
     bool WriteData(const std::string &file_name, const Container &data,
