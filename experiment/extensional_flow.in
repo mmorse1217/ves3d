@@ -1,13 +1,13 @@
 ## spherical harmonics -----------------------
-sh-order : 6
+sh-order : 16
 rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
 n-surfs : 2
 bending-modulus : .01
-init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
-cent-file : experiment/centers_extensional.txt
+shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
+vesicle-geometry-file : precomputed/extensional_geometry_spec.txt
 
 ## time stepping -----------------------------
 time-horizon : 2
@@ -29,7 +29,8 @@ rep-tol : 1e-4
 ## checkpoint/monitor ------------------------
 checkpoint
 #checkpoint-stride : 5e-1
-checkpoint-file : experiment/extensional_ns{{n_surfs}}_p{{sh_order}}_{{time_idx}}.chk
+checkpoint-file : extensional_ns{{n_surfs}}_p{{sh_order}}_{{time_idx}}.chk
+write-vtk
 
 ## far filed ---------------------------------
 bg-flow-type : ExtensionalFlow

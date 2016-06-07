@@ -6,8 +6,8 @@ interaction-upsample
 ## initial shape -----------------------------
 n-surfs : 2
 bending-modulus : .01
-shape-gallery-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
-vesicle-geometry-file : precomputed/lattice_centers_rand_50.txt
+shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
+vesicle-geometry-file : precomputed/lattice_geometry_spec.txt
 
 ## time stepping -----------------------------
 time-horizon : 100
@@ -29,6 +29,7 @@ rep-tol : 5e-7
 checkpoint
 checkpoint-file : shear_{{time_idx}}.chk
 checkpoint-stride : 0.1
+write-vtk
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow

@@ -11,10 +11,10 @@ rep-upsample
 interaction-upsample
 
 ## initial shape -----------------------------
-n-surfs : 27
+n-surfs : 8
 bending-modulus : .05
-init-file : precomputed/dumbbell_{{sh_order}}_{{precision}}.txt
-cent-file : precomputed/lattice_centers_rand_50.txt
+shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
+vesicle-geometry-file : precomputed/lattice_geometry_spec.txt
 #lattice_centers has centers for a 50x50x50 lattice, ordered concenterically
 
 ## time stepping -----------------------------
