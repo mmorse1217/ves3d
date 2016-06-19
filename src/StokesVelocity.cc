@@ -717,10 +717,25 @@ class SphericalHarmonics{
     }
 
     static void StokesSingularInteg(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix=NULL, pvfmm::Vector<Real>* DLMatrix=NULL){
-      pvfmm::Vector<Real> _SLMatrix, _DLMatrix;
-      if(SLMatrix && DLMatrix) StokesSingularInteg_< true,  true>(S, p0, p1, *SLMatrix, *DLMatrix);
-      else        if(SLMatrix) StokesSingularInteg_< true, false>(S, p0, p1, *SLMatrix, _DLMatrix);
-      else        if(DLMatrix) StokesSingularInteg_<false,  true>(S, p0, p1, _SLMatrix, *DLMatrix);
+      long Ngrid=2*p0*(p0+1);
+      long Ncoef=  p0*(p0+2);
+      long Nves=S.Dim()/(Ngrid*COORD_DIM);
+      if(SLMatrix) SLMatrix->ReInit(Nves*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM));
+      if(DLMatrix) DLMatrix->ReInit(Nves*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM));
+
+      long BLOCK_SIZE=omp_get_max_threads();
+      for(long a=0;a<Nves;a+=BLOCK_SIZE){
+        long b=std::min(a+BLOCK_SIZE, Nves);
+
+        pvfmm::Vector<Real> _SLMatrix, _DLMatrix, _S;
+        if(SLMatrix) _SLMatrix.ReInit((b-a)*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM),&SLMatrix[0][a*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM)],false);
+        if(DLMatrix) _DLMatrix.ReInit((b-a)*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM),&DLMatrix[0][a*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM)],false);
+        _S                    .ReInit((b-a)*(Ngrid*COORD_DIM)                  ,&S          [a*(Ngrid*COORD_DIM)                  ],false);
+
+        if(SLMatrix && DLMatrix) StokesSingularInteg_< true,  true>(_S, p0, p1, _SLMatrix, _DLMatrix);
+        else        if(SLMatrix) StokesSingularInteg_< true, false>(_S, p0, p1, _SLMatrix, _DLMatrix);
+        else        if(DLMatrix) StokesSingularInteg_<false,  true>(_S, p0, p1, _SLMatrix, _DLMatrix);
+      }
     }
 
   private:
@@ -1782,7 +1797,7 @@ const StokesVelocity<Surf_t>::Vec_t& StokesVelocity<Surf_t>::SelfInteraction(boo
           pvfmm::Vector<Real_t> Vgrid(nv*COORD_DIM*Ngrid,(Real_t*)DL_vel.begin(),false), Vshc;
           SphericalHarmonics<Real_t>::Grid2SHC(Vgrid,sh_order,sh_order,Vshc);
           for(long i=0;i<nv*COORD_DIM*Ncoef;i++) err=std::max(err,fabs(Vshc[i]-V_[i]));
-          INFO("StokesVelocity: SL-Error: "<<err);
+          INFO("StokesVelocity: DL-Error: "<<err);
           #endif
         }
         pvfmm::Vector<Real_t> V(nv*COORD_DIM*Ngrid,(Real_t*)DL_vel.begin(),false);
@@ -1839,6 +1854,9 @@ StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int 
   bool update_far =(flag & StokesVelocity::UpdateFar );
   size_t omp_p=omp_get_max_threads();
 
+#ifdef __ENABLE_PVFMM_PROFILER__
+  bool prof_state=pvfmm::Profile::Enable(true);
+#endif
   SelfInteraction(update_self);
   const PVFMMVec_t& near_vel=NearInteraction(update_near);
   const PVFMMVec_t& far_vel=FarInteraction(update_far);
@@ -1877,6 +1895,7 @@ StokesVelocity<Surf_t>::Real_t* StokesVelocity<Surf_t>::operator()(unsigned int 
     }
   }
 #ifdef __ENABLE_PVFMM_PROFILER__
+  pvfmm::Profile::Enable(prof_state);
   pvfmm::Profile::print(&comm);
 #endif
   return &trg_vel[0];
@@ -1946,13 +1965,13 @@ StokesVelocity<Surf_t>::Real_t StokesVelocity<Surf_t>::MonitorError(){
   Real_t* velocity_self=S_vel.begin();
 
 #if HAVE_PVFMM
-  if(0){ // Write VTK file
+  if(1){ // Write VTK file
     static unsigned long iter=0;
     unsigned long skip=1;
     if(iter%skip==0){
       char fname[1000];
       sprintf(fname, "vis/test1_%05d", (int)(iter/skip));
-      WriteVTK(*S, fname, MPI_COMM_WORLD, &S_vel);
+      WriteVTK(*S, fname, MPI_COMM_WORLD, &S_vel, S->getShOrder()*2);
     }
     iter++;
   }
@@ -2250,13 +2269,13 @@ void StokesVelocity<Surf_t>::Test(){
 }
 
 template<typename Surf_t>
-void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD, const typename Surf_t::Vec_t* v_ptr=NULL){
+void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD, const typename Surf_t::Vec_t* v_ptr=NULL, int order=-1){
   typedef typename Surf_t::value_type Real_t;
   typedef typename Surf_t::Vec_t Vec_t;
   typedef double VTKReal_t;
   int data__dof=COORD_DIM;
   size_t p0=S.getShOrder();
-  size_t p1=p0; // upsample
+  size_t p1=(order>0?order:p0); // upsample
 
   pvfmm::Vector<Real_t> X, Xp, V, Vp;
   { // Upsample X
