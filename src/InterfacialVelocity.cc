@@ -1195,25 +1195,126 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     return ErrorEvent::Success;
 }
 
+template <class Vec_t, class SHT>
+static std::vector<typename Vec_t::value_type> inner_prod(const Vec_t& v1, const Vec_t& v2, SHT* sh_trans, int rep_exp){
+  typedef typename Vec_t::value_type value_type;
+
+  static Vec_t w, v1_, v2_;
+  { // Set v1_
+    v1_.replicate(v1);
+    w  .replicate(v1);
+    sh_trans->forward(v1, w, v1_);
+  }
+  { // Set v2_
+    v2_.replicate(v2);
+    w  .replicate(v2);
+    sh_trans->forward(v2, w, v2_);
+  }
+  size_t p=v1.getShOrder();
+  int ns_x = v1.getNumSubFuncs();
+
+  assert(p<256);
+  assert(rep_exp<128);
+  static std::vector<value_type> A_[256*128];
+  std::vector<value_type>& A=A_[rep_exp*256+p];
+  if(!A.size()){
+    A.resize(p+1);
+    long filter_freq_=(rep_exp?p/2:p/3);
+    for(int ii=0; ii<= p; ++ii){
+      value_type a = 1.0 - (rep_exp?std::pow(ii*1.0/filter_freq_,rep_exp):0);
+      a *= (ii > filter_freq_ ? 0.0 : 1.0 );
+      A[ii] = 1.0 - a;
+    }
+  }
+
+  std::vector<value_type> E(ns_x/COORD_DIM,0);
+  for(int ii=0; ii<= p; ++ii){
+    value_type* inPtr_v1 = v1_.begin() + ii;
+    value_type* inPtr_v2 = v2_.begin() + ii;
+    int len = 2*ii + 1 - (ii/p);
+    for(int jj=0; jj< len; ++jj){
+      int dist = (p + 1 - (jj + 1)/2);
+      for(int ss=0; ss<ns_x; ++ss){
+        E[ss/COORD_DIM] += A[ii]*(*inPtr_v1)*(*inPtr_v2);
+        inPtr_v1 += dist;
+        inPtr_v2 += dist;
+      }
+      inPtr_v1--;
+      inPtr_v2--;
+      inPtr_v1 += jj%2;
+      inPtr_v2 += jj%2;
+    }
+  }
+
+  return E;
+}
+
+template <class Vec_t, class SHT>
+static void sht_filter(const Vec_t& v1, Vec_t& v2, SHT* sh_trans, int rep_exp){
+  typedef typename Vec_t::value_type value_type;
+
+  static Vec_t w, v1_;
+  { // Set v1_
+    v1_.replicate(v1);
+    w  .replicate(v1);
+    sh_trans->forward(v1, w, v1_);
+  }
+  size_t p=v1.getShOrder();
+  int ns_x = v1.getNumSubFuncs();
+
+  assert(p<256);
+  assert(rep_exp<128);
+  static std::vector<value_type> A_[256*128];
+  std::vector<value_type>& A=A_[rep_exp*256+p];
+  if(!A.size()){
+    A.resize(p+1);
+    long filter_freq_=(rep_exp?p/2:p/3);
+    for(int ii=0; ii<= p; ++ii){
+      value_type a = 1.0 - (rep_exp?std::pow(ii*1.0/filter_freq_,rep_exp):0);
+      a *= (ii > filter_freq_ ? 0.0 : 1.0 );
+      A[ii] = 1.0 - a;
+    }
+  }
+
+  value_type E=0;
+  for(int ii=0; ii<= p; ++ii){
+    value_type* inPtr_v1 = v1_.begin() + ii;
+    int len = 2*ii + 1 - (ii/p);
+    for(int jj=0; jj< len; ++jj){
+      int dist = (p + 1 - (jj + 1)/2);
+      for(int ss=0; ss<ns_x; ++ss){
+        inPtr_v1[0] *= -A[ii];
+        inPtr_v1 += dist;
+      }
+      inPtr_v1--;
+      inPtr_v1 += jj%2;
+    }
+  }
+
+  { // Set v2
+    v2 .replicate(v1);
+    sh_trans->backward(v1_, w, v2);
+  }
+}
+
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
     PROFILESTART();
 
     value_type ts(params_.rep_ts);
-    value_type vel(params_.rep_tol+1);
-    value_type last_vel(vel+1);
-    int flag(1);
+    value_type rep_tol(params_.rep_tol);
+    long rep_maxit(params_.rep_maxit);
+    long rep_exp=params_.rep_exponent;
+    if(params_.rep_type==BoxReparam) rep_exp=0;
 
-    int ii(-1);
+    // Set default values
+    if(ts<0) ts=1e-3;
+    if(rep_tol<0) rep_tol=1e-6;
+    if(rep_maxit<0) rep_maxit=4000;
+
     SurfContainer* Surf;
     SHtrans_t* sh_trans;
-
-    std::auto_ptr<Vec_t> u1 = checkoutVec();
-    std::auto_ptr<Vec_t> u2 = checkoutVec();
-    std::auto_ptr<Vec_t> u3 = checkoutVec();
-    std::auto_ptr<Sca_t> wrk = checkoutSca();
-
     if (params_.rep_upsample){
         INFO("Upsampling for reparametrization");
         S_.resample(params_.upsample_freq, &S_up_);
@@ -1224,62 +1325,111 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         sh_trans = &sht_;
     }
 
+    std::auto_ptr<Vec_t> u1 = checkoutVec();
+    std::auto_ptr<Vec_t> u2 = checkoutVec();
+    std::auto_ptr<Sca_t> wrk = checkoutSca();
     u1 ->replicate(Surf->getPosition());
     u2 ->replicate(Surf->getPosition());
-    u3 ->replicate(Surf->getPosition());
     wrk->replicate(Surf->getPosition());
+    long N_ves = u1->getNumSubs();
 
-    ii=-1;
-    vel=params_.rep_tol+1;
-    for (value_type ts_=ts;ts_>1e-8;ts_*=0.5)
+    value_type E0=0;
+    { // Compute energy E0
+        std::vector<value_type>  x2=inner_prod(Surf->getPosition(), Surf->getPosition(), sh_trans, rep_exp);
+        for(long i=0;i<x2.size();i++) E0+=x2[i];
+    }
+
+    int ii(0);
+    std::vector<value_type> E;
+    while ( ii < rep_maxit )
     {
-        last_vel=vel+1;
-        axpy(static_cast<value_type>(0.0), *u1, *u3);
-        while ( ii < params_.rep_maxit )
-        {
-            Surf->getSmoothedShapePositionReparam(*u1);
-            axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
+        //Surf->getSmoothedShapePositionReparam(*u1);
+        //axpy(static_cast<value_type>(-1), Surf->getPosition(), *u1, *u1);
+        sht_filter(Surf->getPosition(), *u1, sh_trans, rep_exp);
+        Surf->mapToTangentSpace(*u1, false /* upsample */);
+        { // Filter u1
+            static Vec_t u_, w;
+            u_.replicate(*u1);
+            w .replicate(*u1);
+            sh_trans->forward(*u1, w, u_);
+            sh_trans->backward(u_, w, *u1);
+        }
+        Surf->mapToTangentSpace(*u1, false /* upsample */);
+        { // Filter u1
+            static Vec_t u_, w;
+            u_.replicate(*u1);
+            w .replicate(*u1);
+            sh_trans->forward(*u1, w, u_);
+            sh_trans->backward(u_, w, *u1);
+        }
 
-            Surf->mapToTangentSpace(*u1, false /* upsample */);
-
-            //checks
-            GeometricDot(*u1,*u1,*wrk);
-            vel = MaxAbs(*wrk);
-            vel = std::sqrt(vel);
-
-            value_type u1u3=AlgebraicDot(*u1,*u3);
-            if (vel<params_.rep_tol || u1u3<0 /*last_vel < vel*/) {
-                flag=0;
-                //if (last_vel < vel) WARN("Residual is increasing, stopping");
-                break;
-            }
-            axpy(static_cast<value_type>(1.0), *u1, *u3);
-            last_vel = vel;
-
-            //Advecting tension (useless for implicit)
-            if (params_.scheme != GloballyImplicit){
-                if (params_.rep_upsample)
-                    WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
-                else {
-                    Surf->grad(tension_, *u2);
-                    GeometricDot(*u2, *u1, *wrk);
-                    axpy(ts_/vel, *wrk, tension_, tension_);
+        { // normalize u1 for each vesicle
+            long N = u1->getNumSubFuncs();
+            long M=u1->size()/N;
+            value_type* u=u1->begin();
+            for(long i=0;i<N/COORD_DIM;i++){
+                value_type max_v=0;
+                for(long j=0;j<M;j++){
+                    value_type x=u[j+M*(0+i*COORD_DIM)];
+                    value_type y=u[j+M*(1+i*COORD_DIM)];
+                    value_type z=u[j+M*(2+i*COORD_DIM)];
+                    max_v=std::max(max_v, sqrt(x*x+y*y+z*z));
+                }
+                for(long j=0;j<M;j++){
+                    u[j+M*(0+i*COORD_DIM)]/=max_v;
+                    u[j+M*(1+i*COORD_DIM)]/=max_v;
+                    u[j+M*(2+i*COORD_DIM)]/=max_v;
                 }
             }
-
-            //updating position
-            axpy(ts_/vel, *u1, Surf->getPosition(), Surf->getPositionModifiable());
-
-            COUTDEBUG("Iteration = "<<ii<<", |vel| = "<<vel);
-            ++ii;
         }
-    }
-    INFO("Iterations = "<<ii<<", |vel| = "<<vel);
 
-    if(0)
+        std::vector<value_type>  x_dot_x =inner_prod(Surf->getPosition(), Surf->getPosition(), sh_trans, rep_exp);
+        std::vector<value_type>  x_dot_u1=inner_prod(Surf->getPosition(),                 *u1, sh_trans, rep_exp);
+        std::vector<value_type> u1_dot_u1=inner_prod(                *u1,                 *u1, sh_trans, rep_exp);
+
+        value_type dt_max(0);
+        std::vector<value_type> dt(x_dot_u1.size(),0);
+        for(long i=0; i<N_ves; i++){
+            dt[i]=std::min(ts, -x_dot_u1[i]/u1_dot_u1[i]);
+            if( dt[i]<rep_tol || (E.size() && (E[i]==0 /*|| E[i]-x_dot_x[i]<rep_tol*rep_tol*E[i]*/ )) ){
+                x_dot_x[i]=0;
+                dt[i]=0;
+            }
+            dt_max=std::max(dt_max,dt[i]);
+
+            long N=u1->getStride()*DIM;
+            value_type* u1_=u1->getSubN_begin(i);
+            for(long j=0;j<N;j++) u1_[j]*=dt[i];
+        }
+        if(dt_max==0) break;
+        E=x_dot_x;
+
+        //Advecting tension (useless for implicit)
+        if (params_.scheme != GloballyImplicit){
+            if (params_.rep_upsample)
+                WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
+            else {
+                Surf->grad(tension_, *u2);
+                GeometricDot(*u2, *u1, *wrk);
+                axpy(1.0, *wrk, tension_, tension_);
+            }
+        }
+
+        //updating position
+        axpy(1.0, *u1, Surf->getPosition(), Surf->getPositionModifiable());
+
+        COUTDEBUG("Iteration = "<<ii<<", dt = "<<dt_max);
+        ++ii;
+    }
+
+    value_type E1=0;
+    { // Compute energy E1
+        std::vector<value_type>  x2=inner_prod(Surf->getPosition(), Surf->getPosition(), sh_trans, rep_exp);
+        for(long i=0;i<x2.size();i++) E1+=x2[i];
+    }
+    INFO("Iterations = "<<ii<<", Energy = "<<E1<<", dE = "<<E1-E0);
     { // print log(coeff)
-      std::auto_ptr<Vec_t> x   = checkoutVec();
-      std::auto_ptr<Sca_t> a   = checkoutSca();
+      std::auto_ptr<Vec_t> x = checkoutVec();
       { // Set x
         std::auto_ptr<Vec_t> w   = checkoutVec();
         x  ->replicate(Surf->getPosition());
@@ -1287,40 +1437,23 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         sh_trans->forward(Surf->getPosition(), *w, *x);
         recycle(w);
       }
-      { // Set a
-        std::auto_ptr<Sca_t> w   = checkoutSca();
-        a  ->replicate(Surf->getAreaElement());
-        w  ->replicate(Surf->getAreaElement());
-        sht_upsample_.forward(Surf->getAreaElement(), *w, *a);
-        recycle(w);
-      }
-
       {
           size_t p=x->getShOrder();
           int ns_x = x->getNumSubFuncs();
-          int ns_a = a->getNumSubFuncs();
           std::vector<value_type> coeff_norm0(p+1,0);
-          std::vector<value_type> coeff_norm1(p+1,0);
           for(int ii=0; ii<= p; ++ii){
               value_type* inPtr_x = x->begin() + ii;
-              value_type* inPtr_a = a->begin() + ii;
 
               int len = 2*ii + 1 - (ii/p);
               for(int jj=0; jj< len; ++jj){
 
                   int dist = (p + 1 - (jj + 1)/2);
                   for(int ss=0; ss<ns_x; ++ss){
-                      coeff_norm0[ii] += (*inPtr_x)*(*inPtr_x);
+                      coeff_norm0[ii] = std::max(coeff_norm0[ii], (*inPtr_x)*(*inPtr_x));
                       inPtr_x += dist;
                   }
-                  for(int ss=0; ss<ns_a; ++ss){
-                      coeff_norm1[ii] += (*inPtr_a)*(*inPtr_a);
-                      inPtr_a += dist;
-                  }
                   inPtr_x--;
-                  inPtr_a--;
                   inPtr_x += jj%2;
-                  inPtr_a += jj%2;
               }
           }
 
@@ -1330,16 +1463,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             ss<<-(int)(0.5-10*log(sqrt(coeff_norm0[ii]))/log(10.0))*0.1<<' ';
           }
           ss<<'\n';
-          ss<<"SPH-Coeff1: ";
-          for(int ii=0; ii<= p; ++ii){
-            ss<<-(int)(0.5-10*log(sqrt(coeff_norm1[ii]))/log(10.0))*0.1<<' ';
-          }
-          ss<<'\n';
           INFO(ss.str());
       }
-
       recycle(x);
-      recycle(a);
     }
 
     if (params_.rep_upsample)
@@ -1348,11 +1474,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
     recycle(u1);
     recycle(u2);
-    recycle(u3);
     recycle(wrk);
     PROFILEEND("",0);
 
-    return (flag) ? ErrorEvent::DivergenceError : ErrorEvent::Success;
+    return ErrorEvent::Success;
 }
 
 template<typename SurfContainer, typename Interaction>
