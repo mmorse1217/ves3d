@@ -1984,7 +1984,7 @@ StokesVelocity<Surf_t>::Real_t StokesVelocity<Surf_t>::MonitorError(){
     if(iter%skip==0){
       char fname[1000];
       sprintf(fname, "vis/test1_%05d", (int)(iter/skip));
-      WriteVTK(*S, fname, MPI_COMM_WORLD, &S_vel, S->getShOrder()*2);
+      WriteVTK(*S, fname, MPI_COMM_WORLD, &S_vel, S->getShOrder()*2, box_size_);
     }
     iter++;
   }
@@ -2282,7 +2282,7 @@ void StokesVelocity<Surf_t>::Test(){
 }
 
 template<typename Surf_t>
-void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD, const typename Surf_t::Vec_t* v_ptr=NULL, int order=-1){
+void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD, const typename Surf_t::Vec_t* v_ptr=NULL, int order=-1, typename Surf_t::value_type period=0){
   typedef typename Surf_t::value_type Real_t;
   typedef typename Surf_t::Vec_t Vec_t;
   typedef double VTKReal_t;
@@ -2315,15 +2315,31 @@ void WriteVTK(const Surf_t& S, const char* fname, MPI_Comm comm=VES3D_COMM_WORLD
     size_t N_ves = X.Dim()/(2*p1*(p1+1)*COORD_DIM); // Number of vesicles
     assert(Xp.Dim() == N_ves*(2*p1*(p1+1)*COORD_DIM));
     for(size_t k=0;k<N_ves;k++){ // Set point_coord
+      Real_t C[COORD_DIM]={0,0,0};
+      if(period>0){
+        for(long l=0;l<COORD_DIM;l++) C[l]=0;
+        for(size_t i=0;i<p1+1;i++){
+          for(size_t j=0;j<2*p1;j++){
+            for(size_t l=0;l<COORD_DIM;l++){
+              C[l]+=X[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))];
+            }
+          }
+        }
+        for(size_t l=0;l<COORD_DIM;l++) C[l]+=Xp[0+2*(l+k*COORD_DIM)];
+        for(size_t l=0;l<COORD_DIM;l++) C[l]+=Xp[1+2*(l+k*COORD_DIM)];
+        for(long l=0;l<COORD_DIM;l++) C[l]/=2*p1*(p1+1)+2;
+        for(long l=0;l<COORD_DIM;l++) C[l]=(round(C[l]/period))*period;
+      }
+
       for(size_t i=0;i<p1+1;i++){
         for(size_t j=0;j<2*p1;j++){
           for(size_t l=0;l<COORD_DIM;l++){
-            point_coord.push_back(X[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))]);
+            point_coord.push_back(X[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))]-C[l]);
           }
         }
       }
-      for(size_t l=0;l<COORD_DIM;l++) point_coord.push_back(Xp[0+2*(l+k*COORD_DIM)]);
-      for(size_t l=0;l<COORD_DIM;l++) point_coord.push_back(Xp[1+2*(l+k*COORD_DIM)]);
+      for(size_t l=0;l<COORD_DIM;l++) point_coord.push_back(Xp[0+2*(l+k*COORD_DIM)]-C[l]);
+      for(size_t l=0;l<COORD_DIM;l++) point_coord.push_back(Xp[1+2*(l+k*COORD_DIM)]-C[l]);
     }
 
     if(v_ptr)
