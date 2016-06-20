@@ -836,13 +836,13 @@ class SphericalHarmonics{
         long M1=2*p1*(p1+1);
         long N=trg.Dim()/(2*COORD_DIM);
         assert(X.Dim()==M1*COORD_DIM*N);
-        if(SLayer && SL0.Dim()!=N*2*COORD_DIM*COORD_DIM*M1) SL0.ReInit(2*N*COORD_DIM*COORD_DIM*M1);
-        if(DLayer && DL0.Dim()!=N*2*COORD_DIM*COORD_DIM*M1) DL0.ReInit(2*N*COORD_DIM*COORD_DIM*M1);
+        if(SLayer && SL0.Dim()!=N*2*6*M1) SL0.ReInit(2*N*6*M1);
+        if(DLayer && DL0.Dim()!=N*2*6*M1) DL0.ReInit(2*N*6*M1);
         pvfmm::Vector<Real>& qw=SphericalHarmonics<Real>::SingularWeights(p1);
 
         const Real scal_const_dl = 3.0/(4.0*M_PI);
         const Real scal_const_sl = 1.0/(8.0*M_PI);
-        Real eps=-1;
+        static Real eps=-1;
         if(eps<0){
           eps=1;
           while(eps*(Real)0.5+(Real)1.0>1.0) eps*=0.5;
@@ -906,28 +906,22 @@ class SphericalHarmonics{
                   if(DLayer){
                     Real rinv5=rinv2*rinv2*rinv;
                     Real r_dot_n_rinv5=scal_const_dl*qw[j0*t+(p1-j0)*(1-t)] * (nx*dx+ny*dy+nz*dz)*rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+0)*M1+s]=dx*dx*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+1)*M1+s]=dx*dy*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+2)*M1+s]=dx*dz*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+3)*M1+s]=dy*dx*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+4)*M1+s]=dy*dy*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+5)*M1+s]=dy*dz*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+6)*M1+s]=dz*dx*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+7)*M1+s]=dz*dy*r_dot_n_rinv5;
-                    DL0[((i*2+t)*COORD_DIM*COORD_DIM+8)*M1+s]=dz*dz*r_dot_n_rinv5;
+                    DL0[((i*2+t)*6+0)*M1+s]=dx*dx*r_dot_n_rinv5;
+                    DL0[((i*2+t)*6+1)*M1+s]=dx*dy*r_dot_n_rinv5;
+                    DL0[((i*2+t)*6+2)*M1+s]=dx*dz*r_dot_n_rinv5;
+                    DL0[((i*2+t)*6+3)*M1+s]=dy*dy*r_dot_n_rinv5;
+                    DL0[((i*2+t)*6+4)*M1+s]=dy*dz*r_dot_n_rinv5;
+                    DL0[((i*2+t)*6+5)*M1+s]=dz*dz*r_dot_n_rinv5;
                   }
                   if(SLayer){
                     Real area_rinv =scal_const_sl*qw[j0*t+(p1-j0)*(1-t)] * area_elem*rinv;
                     Real area_rinv2=area_rinv*rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+0)*M1+s]=area_rinv+dx*dx*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+1)*M1+s]=          dx*dy*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+2)*M1+s]=          dx*dz*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+3)*M1+s]=          dy*dx*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+4)*M1+s]=area_rinv+dy*dy*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+5)*M1+s]=          dy*dz*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+6)*M1+s]=          dz*dx*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+7)*M1+s]=          dz*dy*area_rinv2;
-                    SL0[((i*2+t)*COORD_DIM*COORD_DIM+8)*M1+s]=area_rinv+dz*dz*area_rinv2;
+                    SL0[((i*2+t)*6+0)*M1+s]=area_rinv+dx*dx*area_rinv2;
+                    SL0[((i*2+t)*6+1)*M1+s]=          dx*dy*area_rinv2;
+                    SL0[((i*2+t)*6+2)*M1+s]=          dx*dz*area_rinv2;
+                    SL0[((i*2+t)*6+3)*M1+s]=area_rinv+dy*dy*area_rinv2;
+                    SL0[((i*2+t)*6+4)*M1+s]=          dy*dz*area_rinv2;
+                    SL0[((i*2+t)*6+5)*M1+s]=area_rinv+dz*dz*area_rinv2;
                   }
                 }
               }
@@ -947,17 +941,19 @@ class SphericalHarmonics{
 
       pvfmm::Profile::Tic("RotateTranspose");
       static pvfmm::Vector<Real> SL2, DL2;
-      SphericalHarmonics<Real>::RotateTranspose(SL1, p0, 2*COORD_DIM*COORD_DIM, SL2);
-      SphericalHarmonics<Real>::RotateTranspose(DL1, p0, 2*COORD_DIM*COORD_DIM, DL2);
+      SphericalHarmonics<Real>::RotateTranspose(SL1, p0, 2*6, SL2);
+      SphericalHarmonics<Real>::RotateTranspose(DL1, p0, 2*6, DL2);
       pvfmm::Profile::Toc();
 
 
       pvfmm::Profile::Tic("Rearrange");
+      static pvfmm::Vector<Real> SL3, DL3;
       { // Transpose
         long Ncoef=p0*(p0+2);
         long Ngrid=2*p0*(p0+1);
         { // Transpose SL2
-          long N=SL2.Dim()/(COORD_DIM*COORD_DIM*Ncoef*Ngrid);
+          long N=SL2.Dim()/(6*Ncoef*Ngrid);
+          SL3.ReInit(N*COORD_DIM*Ncoef*COORD_DIM*Ngrid);
           #pragma omp parallel
           {
             long tid=omp_get_thread_num();
@@ -967,13 +963,21 @@ class SphericalHarmonics{
             long a=(tid+0)*N/omp_p;
             long b=(tid+1)*N/omp_p;
             for(long i=a;i<b;i++){
-              pvfmm::Matrix<Real> M0(Ngrid*COORD_DIM, COORD_DIM*Ncoef, &SL2[i*COORD_DIM*Ngrid*COORD_DIM*Ncoef], false);
-              for(long k=0;k<B.Dim(0);k++){ // Transpose
-                for(long j=0;j<B.Dim(1);j++){ // TODO: needs blocking
-                  B[k][j]=M0[j][k];
+              pvfmm::Matrix<Real> M0(Ngrid*6, Ncoef, &SL2[i*Ngrid*6*Ncoef], false);
+              for(long k=0;k<Ncoef;k++){ // Transpose
+                for(long j=0;j<Ngrid;j++){ // TODO: needs blocking
+                  B[k+Ncoef*0][j*COORD_DIM+0]=M0[j*6+0][k];
+                  B[k+Ncoef*1][j*COORD_DIM+0]=M0[j*6+1][k];
+                  B[k+Ncoef*2][j*COORD_DIM+0]=M0[j*6+2][k];
+                  B[k+Ncoef*0][j*COORD_DIM+1]=M0[j*6+1][k];
+                  B[k+Ncoef*1][j*COORD_DIM+1]=M0[j*6+3][k];
+                  B[k+Ncoef*2][j*COORD_DIM+1]=M0[j*6+4][k];
+                  B[k+Ncoef*0][j*COORD_DIM+2]=M0[j*6+2][k];
+                  B[k+Ncoef*1][j*COORD_DIM+2]=M0[j*6+4][k];
+                  B[k+Ncoef*2][j*COORD_DIM+2]=M0[j*6+5][k];
                 }
               }
-              pvfmm::Matrix<Real> M1(Ncoef*COORD_DIM, COORD_DIM*Ngrid, &SL2[i*COORD_DIM*Ncoef*COORD_DIM*Ngrid], false);
+              pvfmm::Matrix<Real> M1(Ncoef*COORD_DIM, COORD_DIM*Ngrid, &SL3[i*COORD_DIM*Ncoef*COORD_DIM*Ngrid], false);
               for(long k=0;k<B.Dim(0);k++){ // Rearrange
                 for(long j0=0;j0<COORD_DIM;j0++){
                   for(long j1=0;j1<p0+1;j1++){
@@ -986,7 +990,8 @@ class SphericalHarmonics{
           }
         }
         { // Transpose DL2
-          long N=DL2.Dim()/(COORD_DIM*COORD_DIM*Ncoef*Ngrid);
+          long N=DL2.Dim()/(6*Ncoef*Ngrid);
+          DL3.ReInit(N*COORD_DIM*Ncoef*COORD_DIM*Ngrid);
           #pragma omp parallel
           {
             long tid=omp_get_thread_num();
@@ -996,13 +1001,21 @@ class SphericalHarmonics{
             long a=(tid+0)*N/omp_p;
             long b=(tid+1)*N/omp_p;
             for(long i=a;i<b;i++){
-              pvfmm::Matrix<Real> M0(Ngrid*COORD_DIM, COORD_DIM*Ncoef, &DL2[i*COORD_DIM*Ngrid*COORD_DIM*Ncoef], false);
-              for(long k=0;k<B.Dim(0);k++){ // Transpose
-                for(long j=0;j<B.Dim(1);j++){ // TODO: needs blocking
-                  B[k][j]=M0[j][k];
+              pvfmm::Matrix<Real> M0(Ngrid*6, Ncoef, &DL2[i*Ngrid*6*Ncoef], false);
+              for(long k=0;k<Ncoef;k++){ // Transpose
+                for(long j=0;j<Ngrid;j++){ // TODO: needs blocking
+                  B[k+Ncoef*0][j*COORD_DIM+0]=M0[j*6+0][k];
+                  B[k+Ncoef*1][j*COORD_DIM+0]=M0[j*6+1][k];
+                  B[k+Ncoef*2][j*COORD_DIM+0]=M0[j*6+2][k];
+                  B[k+Ncoef*0][j*COORD_DIM+1]=M0[j*6+1][k];
+                  B[k+Ncoef*1][j*COORD_DIM+1]=M0[j*6+3][k];
+                  B[k+Ncoef*2][j*COORD_DIM+1]=M0[j*6+4][k];
+                  B[k+Ncoef*0][j*COORD_DIM+2]=M0[j*6+2][k];
+                  B[k+Ncoef*1][j*COORD_DIM+2]=M0[j*6+4][k];
+                  B[k+Ncoef*2][j*COORD_DIM+2]=M0[j*6+5][k];
                 }
               }
-              pvfmm::Matrix<Real> M1(Ncoef*COORD_DIM, COORD_DIM*Ngrid, &DL2[i*COORD_DIM*Ncoef*COORD_DIM*Ngrid], false);
+              pvfmm::Matrix<Real> M1(Ncoef*COORD_DIM, COORD_DIM*Ngrid, &DL3[i*COORD_DIM*Ncoef*COORD_DIM*Ngrid], false);
               for(long k=0;k<B.Dim(0);k++){ // Rearrange
                 for(long j0=0;j0<COORD_DIM;j0++){
                   for(long j1=0;j1<p0+1;j1++){
@@ -1019,8 +1032,8 @@ class SphericalHarmonics{
 
 
       pvfmm::Profile::Tic("Grid2SHC");
-      SphericalHarmonics<Real>::Grid2SHC(SL2, p0, p0, SL);
-      SphericalHarmonics<Real>::Grid2SHC(DL2, p0, p0, DL);
+      SphericalHarmonics<Real>::Grid2SHC(SL3, p0, p0, SL);
+      SphericalHarmonics<Real>::Grid2SHC(DL3, p0, p0, DL);
       pvfmm::Profile::Toc();
 
     }
