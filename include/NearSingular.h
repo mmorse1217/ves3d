@@ -1,15 +1,13 @@
-#ifdef HAVE_PVFMM
 #ifndef _NEAR_SINGULAR_H_
 #define _NEAR_SINGULAR_H_
 
 #include <mpi.h>
 #include <vector.hpp>
+#include <matrix.hpp>
 
-template<typename Surf_t>
+template<typename Real_t>
 class NearSingular{
 
-    typedef typename Surf_t::Vec_t Vec_t;
-    typedef typename Surf_t::value_type Real_t;
     typedef typename pvfmm::Vector<Real_t> PVFMMVec_t;
 
   public:
@@ -113,4 +111,3 @@ class NearSingular{
 #include "NearSingular.cc"
 
 #endif // _NEAR_SINGULAR_H_
-#endif

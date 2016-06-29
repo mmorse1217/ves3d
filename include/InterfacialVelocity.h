@@ -18,12 +18,7 @@
 #include "ParallelLinSolverInterface.h"
 #include "legendre_rule.h"
 #include "VesicleProps.h"
-
-#ifdef HAVE_PVFMM
 #include "StokesVelocity.h"
-#else
-#include "StokesVelocitySeq.h"
-#endif
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -39,7 +34,7 @@ class InterfacialVelocity
     typedef ParallelLinSolver<value_type> PSolver_t;
     typedef typename PSolver_t::matvec_type POp_t;
     typedef typename PSolver_t::vec_type PVec_t;
-    typedef StokesVelocity<SurfContainer> Stokes_t;
+    typedef StokesVelocity<value_type> Stokes_t;
     typedef SHTrans<Sca_t, SHTMats<value_type, device_type> > SHtrans_t;
     typedef VesicleProperties<Arr_t> VProp_t;
 

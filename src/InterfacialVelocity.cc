@@ -24,7 +24,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
-    stokes_(mats,params_),
+    stokes_(params_.sh_order,params_.sh_order*2,params_.periodic_length),
     S_up_(NULL)
 {
     pos_vel_.replicate(S_.getPosition());
@@ -269,8 +269,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     ASSERT(ves_props_.bending_modulus.size() == S_.getPosition().getNumSubs(), "inccorrect size");
 
     INFO("Setting interaction source and target");
-    stokes_.SetSrcCoord(S_);
-    stokes_.SetTrgCoord(S_);
+    stokes_.SetSrcCoord(S_.getPosition());
 
     if (!precond_configured_ && params_.time_precond!=NoPrecond)
         ConfigurePrecond(params_.time_precond);

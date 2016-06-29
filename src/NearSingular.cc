@@ -1,5 +1,3 @@
-#ifdef HAVE_PVFMM
-
 #include <omp.h>
 #include <iostream>
 
@@ -12,13 +10,15 @@
 
 #define VES_STRIDE (2+(2*sh_order_)*(1+sh_order_))
 
-template<typename Surf_t>
-NearSingular<Surf_t>::NearSingular(int sh_order, Real_t box_size, MPI_Comm c){
+template<typename Real_t>
+NearSingular<Real_t>::NearSingular(int sh_order, Real_t box_size, MPI_Comm c){
   sh_order_=sh_order;
   box_size_=box_size;
   comm=c;
+  S=NULL;
   qforce_single=NULL;
   qforce_double=NULL;
+  force_double=NULL;
   S_vel=NULL;
 
   { // Precompute M_patch_interp
@@ -53,8 +53,8 @@ NearSingular<Surf_t>::NearSingular(int sh_order, Real_t box_size, MPI_Comm c){
 }
 
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::SetSrcCoord(const PVFMMVec_t& src_coord){
+template<typename Real_t>
+void NearSingular<Real_t>::SetSrcCoord(const PVFMMVec_t& src_coord){
   update_direct=update_direct | NearSingular::UpdateSrcCoord;
   update_interp=update_interp | NearSingular::UpdateSrcCoord;
   update_setup =update_setup  | NearSingular::UpdateSrcCoord;
@@ -67,15 +67,15 @@ void NearSingular<Surf_t>::SetSurfaceVel(const PVFMMVec_t* S_vel_ptr){
   S_vel=S_vel_ptr;
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::SetDensitySL(const PVFMMVec_t* qforce_single_){
+template<typename Real_t>
+void NearSingular<Real_t>::SetDensitySL(const PVFMMVec_t* qforce_single_){
   update_direct=update_direct | NearSingular::UpdateDensitySL;
   update_interp=update_interp | NearSingular::UpdateDensitySL;
   qforce_single=qforce_single_;
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::SetDensityDL(const PVFMMVec_t* qforce_double_, const PVFMMVec_t* force_double_){
+template<typename Real_t>
+void NearSingular<Real_t>::SetDensityDL(const PVFMMVec_t* qforce_double_, const PVFMMVec_t* force_double_){
   update_direct=update_direct | NearSingular::UpdateDensityDL;
   update_interp=update_interp | NearSingular::UpdateDensityDL;
   qforce_double=qforce_double_;
@@ -83,8 +83,8 @@ void NearSingular<Surf_t>::SetDensityDL(const PVFMMVec_t* qforce_double_, const 
 }
 
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_surf_){ // TODO: change to const Real_t*
+template<typename Real_t>
+void NearSingular<Real_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_surf_){ // TODO: change to const Real_t*
   update_direct=update_direct | NearSingular::UpdateTrgCoord;
   update_interp=update_interp | NearSingular::UpdateTrgCoord;
   update_setup =update_setup  | NearSingular::UpdateTrgCoord;
@@ -94,8 +94,8 @@ void NearSingular<Surf_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_
 
 
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::SetupCoordData(){
+template<typename Real_t>
+void NearSingular<Real_t>::SetupCoordData(){
   assert(S);
   Real_t near=2.0/sqrt((Real_t)sh_order_); // TODO: some function of sh_order and accuracy
   if(!(update_setup & (NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord))) return;
@@ -1110,15 +1110,15 @@ void NearSingular<Surf_t>::SetupCoordData(){
   pvfmm::Profile::Toc();
 }
 
-template<typename Surf_t>
-const NearSingular<Surf_t>::PVFMMVec_t&  NearSingular<Surf_t>::ForceRepul(){
+template<typename Real_t>
+const NearSingular<Real_t>::PVFMMVec_t&  NearSingular<Real_t>::ForceRepul(){
   SetupCoordData();
   PVFMMVec_t& repl_force=coord_setup.repl_force;
   return repl_force;
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
+template<typename Real_t>
+void NearSingular<Real_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
   if(update_direct){ // Compute vel_direct
     size_t omp_p=omp_get_max_threads();
     SetupCoordData();
@@ -1188,8 +1188,8 @@ void NearSingular<Surf_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
   }
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::VelocityScatter(PVFMMVec_t& trg_vel){
+template<typename Real_t>
+void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
   PVFMMVec_t trg_vel_in;
   { // Initialize trg_vel_in <-- trg_vel; trg_vel <-- Zeros(trg_count*COORD_DIM);
     trg_vel_in.Swap(trg_vel);
@@ -1349,8 +1349,8 @@ static inline Real_t InterPoly(Real_t x, int j, int deg){
   return y;
 }
 
-template<typename Surf_t>
-const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool update){
+template<typename Real_t>
+const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool update){
   if(!update || !update_interp){
     return vel_interp;
   }
@@ -1414,9 +1414,9 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
                                 trg_coord[trg_idx*COORD_DIM+1]-interp_coord0[1],
                                 trg_coord[trg_idx*COORD_DIM+2]-interp_coord0[2]};
           Real_t dR_norm=sqrt(dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
-          if(!is_extr_pt[trg_idx]) dR_norm=-dR_norm; // always use exterior normal
+          if(!is_extr_pt[trg_idx] && trg_is_surf) dR_norm=-dR_norm; // always use exterior normal
           Real_t OOdR=1.0/dR_norm;
-          if(dR_norm<eps_sqrt){
+          if(fabs(dR_norm)<eps_sqrt){
             dR_norm=0;
             OOdR=0;
           }
@@ -1452,7 +1452,7 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
               Real_t mesh_fd[3*3*COORD_DIM];
               size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
               QuadraticPatch::patch_mesh(mesh_fd, sh_order_, M_patch_interp, k_, &force_double[0][i*M_ves*COORD_DIM]);
-              Real_t scal=0.5; if(!is_extr_pt[trg_idx]) scal=-0.5;
+              Real_t scal=0.5; if(!is_extr_pt[trg_idx] && !trg_is_surf) scal=-0.5;
               for(size_t k=0;k<3*3*COORD_DIM;k++) mesh[k]+=scal*mesh_fd[k];
             }
             patch=QuadraticPatch(&mesh[0],COORD_DIM);
@@ -1529,8 +1529,8 @@ const NearSingular<Surf_t>::PVFMMVec_t& NearSingular<Surf_t>::operator()(bool up
 
 
 
-template<typename Surf_t>
-NearSingular<Surf_t>::QuadraticPatch::QuadraticPatch(Real_t* x, int dof_){
+template<typename Real_t>
+NearSingular<Real_t>::QuadraticPatch::QuadraticPatch(Real_t* x, int dof_){
   dof=dof_;
   coeff.resize(9*dof);
   for(size_t i=0;i<dof;i++){
@@ -1548,8 +1548,8 @@ NearSingular<Surf_t>::QuadraticPatch::QuadraticPatch(Real_t* x, int dof_){
   }
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::QuadraticPatch::eval(Real_t x, Real_t y, Real_t* val){
+template<typename Real_t>
+void NearSingular<Real_t>::QuadraticPatch::eval(Real_t x, Real_t y, Real_t* val){
   Real_t x_[3]={1,x,x*x};
   Real_t y_[3]={1,y,y*y};
   for(size_t k=0;k<dof;k++) val[k]=0;
@@ -1562,8 +1562,8 @@ void NearSingular<Surf_t>::QuadraticPatch::eval(Real_t x, Real_t y, Real_t* val)
   }
 }
 
-template<typename Surf_t>
-int NearSingular<Surf_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, Real_t&y){ // Find nearest point on patch
+template<typename Real_t>
+int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, Real_t&y){ // Find nearest point on patch
   static Real_t eps=-1;
   if(eps<0){
     #pragma omp critical
@@ -1693,8 +1693,8 @@ int NearSingular<Surf_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
   }
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size_t sh_order, pvfmm::Matrix<Real_t>& M_interp, size_t k_, const Real_t* s_value){
+template<typename Real_t>
+void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size_t sh_order, pvfmm::Matrix<Real_t>& M_interp, size_t k_, const Real_t* s_value){
   size_t k0_max=1+sh_order;
   size_t k1_max=2*sh_order;
   if(k_==0){ // Create patch
@@ -1788,8 +1788,8 @@ void NearSingular<Surf_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
   }
 }
 
-template<typename Surf_t>
-void NearSingular<Surf_t>::QuadraticPatch::grad(Real_t x, Real_t y, Real_t* val){
+template<typename Real_t>
+void NearSingular<Real_t>::QuadraticPatch::grad(Real_t x, Real_t y, Real_t* val){
   Real_t x_[3]={1,x,x*x};
   Real_t y_[3]={1,y,y*y};
   Real_t x__[3]={0,1,2*x};
@@ -1806,5 +1806,3 @@ void NearSingular<Surf_t>::QuadraticPatch::grad(Real_t x, Real_t y, Real_t* val)
 }
 
 #undef VES_STRIDE
-
-#endif

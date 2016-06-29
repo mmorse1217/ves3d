@@ -1,4 +1,3 @@
-#ifdef HAVE_PVFMM
 #ifndef _PVFMM_INTERFACE_H_
 #define _PVFMM_INTERFACE_H_
 
@@ -71,5 +70,4 @@ void PVFMMBoundingBox(size_t np, const T* x, T* scale_xr, T* shift_xr, MPI_Comm 
 #include "PVFMMInterface.cc"
 
 #endif // _PVFMM_INTERFACE_H_
-#endif
 

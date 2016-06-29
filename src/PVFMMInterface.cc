@@ -1,7 +1,3 @@
-#ifdef HAVE_PVFMM
-#include "Enums.h"
-#include "Logger.h"
-
 #include <cstring>
 #include <parUtils.h>
 #include <vector.hpp>
@@ -10,6 +6,8 @@
 #include <fmm_pts.hpp>
 #include <fmm_node.hpp>
 #include <fmm_tree.hpp>
+
+#include "Logger.h"
 
 template <class Real_t>
 static Real_t machine_eps(){
@@ -450,34 +448,34 @@ void PVFMMBoundingBox(size_t n_src, const T* x, T* scale_xr, T* shift_xr, MPI_Co
   T* shift_x= shift_xr;
 
   if(n_src>0){ // Compute bounding box
-    double loc_min_x[DIM];
-    double loc_max_x[DIM];
+    double loc_min_x[COORD_DIM];
+    double loc_max_x[COORD_DIM];
     assert(n_src>0);
-    for(size_t k=0;k<DIM;k++){
+    for(size_t k=0;k<COORD_DIM;k++){
       loc_min_x[k]=loc_max_x[k]=x[k];
     }
 
     for(size_t i=0;i<n_src;i++){
-      const T* x_=&x[i*DIM];
-      for(size_t k=0;k<DIM;k++){
+      const T* x_=&x[i*COORD_DIM];
+      for(size_t k=0;k<COORD_DIM;k++){
         if(loc_min_x[k]>x_[0]) loc_min_x[k]=x_[0];
         if(loc_max_x[k]<x_[0]) loc_max_x[k]=x_[0];
         ++x_;
       }
     }
 
-    double min_x[DIM];
-    double max_x[DIM];
-    MPI_Allreduce(loc_min_x, min_x, DIM, MPI_DOUBLE, MPI_MIN, comm);
-    MPI_Allreduce(loc_max_x, max_x, DIM, MPI_DOUBLE, MPI_MAX, comm);
+    double min_x[COORD_DIM];
+    double max_x[COORD_DIM];
+    MPI_Allreduce(loc_min_x, min_x, COORD_DIM, MPI_DOUBLE, MPI_MIN, comm);
+    MPI_Allreduce(loc_max_x, max_x, COORD_DIM, MPI_DOUBLE, MPI_MAX, comm);
 
     static T eps=machine_eps<T>()*64; // Points should be well within the box.
     scale_x=1.0/(max_x[0]-min_x[0]+2*eps);
-    for(size_t k=0;k<DIM;k++){
+    for(size_t k=0;k<COORD_DIM;k++){
       scale_x=std::min(scale_x,(T)(1.0/(max_x[k]-min_x[k]+2*eps)));
     }
     if(scale_x*0.0!=0.0) scale_x=1.0; // fix for scal_x=inf
-    for(size_t k=0;k<DIM;k++){
+    for(size_t k=0;k<COORD_DIM;k++){
       shift_x[k]=-min_x[k]*scale_x+eps;
     }
   }
@@ -526,7 +524,7 @@ void* PVFMMCreateContext(T box_size, int n, int m, int max_d,
   ctx->mat->Initialize(ctx->mult_order, ctx->comm, ctx->ker);
 
   // Set tree_data
-  ctx->tree_data.dim=DIM;
+  ctx->tree_data.dim=COORD_DIM;
   ctx->tree_data.max_depth=ctx->max_depth;
   ctx->tree_data.max_pts=ctx->max_pts;
   { // ctx->tree_data.pt_coord=... //Set points for initial tree.
@@ -598,7 +596,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
   const int* ker_dim=ctx->ker->ker_dim;
 
   pvfmm::Profile::Tic("FMM",&ctx->comm);
-  T scale_x, shift_x[DIM];
+  T scale_x, shift_x[COORD_DIM];
   if(ctx->box_size<=0){ // determine bounding box
     T s0, x0[COORD_DIM];
     T s1, x1[COORD_DIM];
@@ -632,7 +630,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
     pvfmm::Vector<T>& trg_scal_exp=ctx->ker->trg_scal;
     src_scal .ReInit(ctx->ker->src_scal.Dim());
     trg_scal .ReInit(ctx->ker->trg_scal.Dim());
-    surf_scal.ReInit(DIM      +src_scal.Dim());
+    surf_scal.ReInit(COORD_DIM+src_scal.Dim());
     for(size_t i=0;i<src_scal.Dim();i++){
       src_scal [i]=pow(scale_x, src_scal_exp[i]);
       surf_scal[i]=scale_x*src_scal[i];
@@ -677,21 +675,21 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
     { // Set src tree_data
       { // Scatter src data
         // Compute MortonId and copy coordinates and values.
-        src_coord .ReInit(       n_src            *DIM   );
-        src_value .ReInit(sl_den?n_src*(ker_dim[0]    ):0);
-        surf_value.ReInit(dl_den?n_src*(ker_dim[0]+DIM):0);
+        src_coord .ReInit(       n_src            *COORD_DIM);
+        src_value .ReInit(sl_den?n_src*(ker_dim[0]          ):0);
+        surf_value.ReInit(dl_den?n_src*(ker_dim[0]+COORD_DIM):0);
         pt_mid    .ReInit(n_src);
         #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           size_t a=((tid+0)*n_src)/omp_p;
           size_t b=((tid+1)*n_src)/omp_p;
           for(size_t i=a;i<b;i++){
-            for(size_t j=0;j<DIM;j++){
-              src_coord[i*DIM+j]=src_pos[i*DIM+j]*scale_x+shift_x[j];
-              while(src_coord[i*DIM+j]< 0.0) src_coord[i*DIM+j]+=1.0;
-              while(src_coord[i*DIM+j]>=1.0) src_coord[i*DIM+j]-=1.0;
+            for(size_t j=0;j<COORD_DIM;j++){
+              src_coord[i*COORD_DIM+j]=src_pos[i*COORD_DIM+j]*scale_x+shift_x[j];
+              while(src_coord[i*COORD_DIM+j]< 0.0) src_coord[i*COORD_DIM+j]+=1.0;
+              while(src_coord[i*COORD_DIM+j]>=1.0) src_coord[i*COORD_DIM+j]-=1.0;
             }
-            pt_mid[i]=pvfmm::MortonId(&src_coord[i*DIM]);
+            pt_mid[i]=pvfmm::MortonId(&src_coord[i*COORD_DIM]);
           }
           if(src_value.Dim()) for(size_t i=a;i<b;i++){
             for(size_t j=0;j<ker_dim[0];j++){
@@ -699,8 +697,8 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
             }
           }
           if(surf_value.Dim()) for(size_t i=a;i<b;i++){
-            for(size_t j=0;j<ker_dim[0]+DIM;j++){
-              surf_value[i*(ker_dim[0]+DIM)+j]=dl_den[i*(ker_dim[0]+DIM)+j]*surf_scal[j];
+            for(size_t j=0;j<ker_dim[0]+COORD_DIM;j++){
+              surf_value[i*(ker_dim[0]+COORD_DIM)+j]=dl_den[i*(ker_dim[0]+COORD_DIM)+j]*surf_scal[j];
             }
           }
         }
@@ -724,15 +722,15 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         for(size_t j=0;j<nodes.size();j++){
           size_t n_pts=part_indx[j+1]-part_indx[j];
           if(src_value.Dim()){
-            nodes[j]-> src_coord.ReInit(n_pts*(           DIM),& src_coord[0]+part_indx[j]*(           DIM),false);
-            nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]    ),& src_value[0]+part_indx[j]*(ker_dim[0]    ),false);
+            nodes[j]-> src_coord.ReInit(n_pts*( COORD_DIM),& src_coord[0]+part_indx[j]*( COORD_DIM),false);
+            nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]),& src_value[0]+part_indx[j]*(ker_dim[0]),false);
           }else{
             nodes[j]-> src_coord.ReInit(0,NULL,false);
             nodes[j]-> src_value.ReInit(0,NULL,false);
           }
           if(surf_value.Dim()){
-            nodes[j]->surf_coord.ReInit(n_pts*(           DIM),& src_coord[0]+part_indx[j]*(           DIM),false);
-            nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+DIM),false);
+            nodes[j]->surf_coord.ReInit(n_pts*(           COORD_DIM),& src_coord[0]+part_indx[j]*(           COORD_DIM),false);
+            nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+COORD_DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_DIM),false);
           }else{
             nodes[j]->surf_coord.ReInit(0,NULL,false);
             nodes[j]->surf_value.ReInit(0,NULL,false);
@@ -745,19 +743,19 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         trg_coord.ReInit(src_coord.Dim(),&src_coord[0],false);
       }else{
         // Compute MortonId and copy coordinates.
-        trg_coord.Resize(n_trg*DIM);
+        trg_coord.Resize(n_trg*COORD_DIM);
         pt_mid    .ReInit(n_trg);
         #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           size_t a=((tid+0)*n_trg)/omp_p;
           size_t b=((tid+1)*n_trg)/omp_p;
           for(size_t i=a;i<b;i++){
-            for(size_t j=0;j<DIM;j++){
-              trg_coord[i*DIM+j]=trg_pos[i*DIM+j]*scale_x+shift_x[j];
-              while(trg_coord[i*DIM+j]< 0.0) trg_coord[i*DIM+j]+=1.0;
-              while(trg_coord[i*DIM+j]>=1.0) trg_coord[i*DIM+j]-=1.0;
+            for(size_t j=0;j<COORD_DIM;j++){
+              trg_coord[i*COORD_DIM+j]=trg_pos[i*COORD_DIM+j]*scale_x+shift_x[j];
+              while(trg_coord[i*COORD_DIM+j]< 0.0) trg_coord[i*COORD_DIM+j]+=1.0;
+              while(trg_coord[i*COORD_DIM+j]>=1.0) trg_coord[i*COORD_DIM+j]-=1.0;
             }
-            pt_mid[i]=pvfmm::MortonId(&trg_coord[i*DIM]);
+            pt_mid[i]=pvfmm::MortonId(&trg_coord[i*COORD_DIM]);
           }
         }
 
@@ -778,7 +776,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         for(size_t j=0;j<nodes.size();j++){
           size_t n_pts=part_indx[j+1]-part_indx[j];
           {
-            nodes[j]-> trg_coord.ReInit(n_pts*(           DIM),& trg_coord[0]+part_indx[j]*(           DIM),false);
+            nodes[j]-> trg_coord.ReInit(n_pts*(COORD_DIM),& trg_coord[0]+part_indx[j]*(COORD_DIM),false);
           }
         }
       }
@@ -940,7 +938,7 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
   MPI_Comm comm=MPI_COMM_WORLD;
 
   // Get bounding box.
-  T scale_x, shift_x[DIM];
+  T scale_x, shift_x[COORD_DIM];
   PVFMMBoundingBox(nv*stride, x, &scale_x, shift_x, comm);
 
   pvfmm::Vector<pvfmm::MortonId> ves_mid(nv);
@@ -949,14 +947,14 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
     #pragma omp parallel for
     for(size_t i=0;i<nv;i++){
       T  x_ves[3]={0,0,0};
-      const T* x_=&x[i*DIM*stride];
+      const T* x_=&x[i*COORD_DIM*stride];
       for(size_t j=0;j<stride;j++){
-        for(size_t k=0;k<DIM;k++){
+        for(size_t k=0;k<COORD_DIM;k++){
           x_ves[k]+=x_[0];
           ++x_;
         }
       }
-      for(size_t k=0;k<DIM;k++){
+      for(size_t k=0;k<COORD_DIM;k++){
         x_ves[k]=x_ves[k]*scale_x+shift_x[k];
         assert(x_ves[k]>0.0);
         assert(x_ves[k]<1.0);
@@ -971,14 +969,14 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
 
   // Allocate memory for output.
   nvr[0]=scatter_index.Dim();
-  xr      [0]=new T[nvr[0]*stride*DIM];
-  tensionr[0]=new T[nvr[0]*stride    ];
+  xr      [0]=new T[nvr[0]*stride*COORD_DIM];
+  tensionr[0]=new T[nvr[0]*stride          ];
 
   { // Scatter x
-    pvfmm::Vector<T> data(nv*stride*DIM,(T*)x);
+    pvfmm::Vector<T> data(nv*stride*COORD_DIM,(T*)x);
     pvfmm::par::ScatterForward(data, scatter_index, comm);
 
-    assert(data.Dim()==nvr[0]*stride*DIM);
+    assert(data.Dim()==nvr[0]*stride*COORD_DIM);
     memcpy(xr[0],&data[0],data.Dim()*sizeof(T));
   }
 
@@ -990,6 +988,4 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
     memcpy(tensionr[0],&data[0],data.Dim()*sizeof(T));
   }
 }
-#endif
-
 
