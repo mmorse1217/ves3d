@@ -144,8 +144,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
             // Compute error
             axpy(static_cast<value_type>(-1.0), S_->getPosition(), x_coarse, x_coarse);
-            //value_type error=MaxAbs(x_coarse);
-            value_type error=sqrt(AlgebraicDot(x_coarse,x_coarse)/x_coarse.size());
+            value_type error=MaxAbs(x_coarse);
+            //value_type error=sqrt(AlgebraicDot(x_coarse,x_coarse)/x_coarse.size());
 
             int accept=1;
             value_type dt_new=dt;
