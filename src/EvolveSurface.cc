@@ -119,6 +119,28 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         //S_up_->resample(params_->sh_order, &S_); // down-sample
     }
 
+    { // Sanity check for time-stepper
+        Vec_t y0, y1;
+        Error_t err=ErrorEvent::Success;
+        if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, y0);
+        value_type max_y0=MaxAbs(y0);
+        if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, y1);
+        axpy(static_cast<value_type>(-1.0), y0, y1, y0);
+        value_type max_err=MaxAbs(y0);
+
+        { // max_err = MPI_MAX(max_err)
+          assert(typeid(T)==typeid(double)); // @bug this only works for T==double
+          value_type loc;
+
+          loc=max_y0;
+          MPI_Allreduce(&loc, &max_y0, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+
+          loc=max_err;
+          MPI_Allreduce(&loc, &max_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+        }
+        if(max_err>max_y0*params_->time_tol) CERR_LOC("Sanity check for time-stepper failed!", std::endl, exit(1));
+    }
+
     Vec_t dx, x0, x_coarse;
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
@@ -146,6 +168,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             axpy(static_cast<value_type>(-1.0), S_->getPosition(), x_coarse, x_coarse);
             value_type error=MaxAbs(x_coarse);
             //value_type error=sqrt(AlgebraicDot(x_coarse,x_coarse)/x_coarse.size());
+            { // error = MPI_MAX(error)
+              assert(typeid(T)==typeid(double)); // @bug this only works for T==double
+              value_type error_loc=error;
+              MPI_Allreduce(&error_loc, &error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            }
 
             int accept=1;
             value_type dt_new=dt;
@@ -162,12 +189,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                 beta=std::max(beta,0.5);
 
                 value_type beta_scale=std::pow(sqrt(0.9),timestep_order) * beta;
-                int accept_=(beta_scale<0.5?0:1);
-                value_type dt_new_=beta_scale * dt;
-
-                assert(typeid(T)==typeid(double));
-                MPI_Allreduce(&dt_new_, &dt_new, 1, MPI_DOUBLE, MPI_MIN, VES3D_COMM_WORLD); // @bug this only works for T==double
-                MPI_Allreduce(&accept_, &accept, 1, MPI_INT   , MPI_MIN, VES3D_COMM_WORLD);
+                accept=(beta_scale<0.5?0:1);
+                dt_new=beta_scale * dt;
             }
             if(accept){ // Increment t
                 t += 2*dt;
@@ -208,6 +231,16 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             axpy(static_cast<value_type>(-1.0),  vol0,  vol_err,  vol_err);
             A_err=Sca_t::getDevice().MaxAbs(area_err.begin(), N_ves);
             V_err=Sca_t::getDevice().MaxAbs( vol_err.begin(), N_ves);
+            { // error = MPI_MAX(error)
+              assert(typeid(T)==typeid(double)); // @bug this only works for T==double
+              value_type error_loc;
+
+              error_loc=A_err;
+              MPI_Allreduce(&error_loc, &A_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+
+              error_loc=V_err;
+              MPI_Allreduce(&error_loc, &V_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            }
 
             int accept=1;
             value_type dt_new=dt;
@@ -230,12 +263,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                 beta=std::max(beta,0.5);
 
                 value_type beta_scale=std::pow(sqrt(0.9),timestep_order) * beta;
-                int accept_=(beta_scale<0.5?0:1);
-                value_type dt_new_=beta_scale * dt;
-
-                assert(typeid(T)==typeid(double));
-                MPI_Allreduce(&dt_new_, &dt_new, 1, MPI_DOUBLE, MPI_MIN, VES3D_COMM_WORLD); // @bug this only works for T==double
-                MPI_Allreduce(&accept_, &accept, 1, MPI_INT   , MPI_MIN, VES3D_COMM_WORLD);
+                accept=(beta_scale<0.5?0:1);
+                dt_new=beta_scale * dt;
             }
             if(accept){ // Increment t
                 t += dt;
