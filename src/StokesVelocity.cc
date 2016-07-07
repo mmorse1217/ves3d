@@ -158,7 +158,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       SphericalHarmonics<Real>::SHC2Pole(scoord_shc, sh_order, scoord_pole);
       { // Set scoord_far
         long Nves=scoord_pole.Dim()/COORD_DIM/2;
-        long Mves=scoord_up  .Dim()/COORD_DIM/Nves;
+        long Mves=2*sh_order_up*(1+sh_order_up);
         scoord_far.ReInit(Nves*(Mves+2)*COORD_DIM);
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
@@ -178,7 +178,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       pvfmm::Profile::Tic("SCoordNear",&comm, true);
       { // Set scoord_repl
         long Nves=scoord_pole.Dim()/COORD_DIM/2;
-        long Mves=scoord     .Dim()/COORD_DIM/Nves;
+        long Mves=2*sh_order*(1+sh_order);
         scoord_repl.ReInit(Nves*Mves*COORD_DIM);
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
@@ -388,7 +388,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     SphericalHarmonics<Real>::SHC2Pole(Vcoef, sh_order, vel_pole);
     { // Set S_vel_up
       long Nves=vel_pole.Dim()/COORD_DIM/2;
-      long Mves=vel_up  .Dim()/COORD_DIM/Nves;
+      long Mves=2*sh_order_up*(1+sh_order_up);
       S_vel_up.ReInit(Nves*(Mves+2)*COORD_DIM);
       #pragma omp parallel for
       for(long i=0;i<Nves;i++){
@@ -506,6 +506,7 @@ Real StokesVelocity<Real>::MonitorError(){
   SetTrgCoord(NULL);
 
   const PVFMMVec& velocity=this->operator()();
+  const PVFMMVec& velocity_fmm=fmm_vel;
   const PVFMMVec& velocity_near=near_singular0();
   const PVFMMVec& velocity_self=S_vel;
 
@@ -526,7 +527,7 @@ Real StokesVelocity<Real>::MonitorError(){
     for(size_t i=0;i<N_ves*Ngrid*COORD_DIM;i++){
       norm_local[0]=std::max(norm_local[0],fabs(velocity_self[i]+0.5));
       norm_local[1]=std::max(norm_local[1],fabs(velocity_near[i]    ));
-      norm_local[2]=std::max(norm_local[2],fabs(velocity     [i]+0.5));
+      norm_local[2]=std::max(norm_local[2],fabs(velocity_fmm [i]    ));
     }
     MPI_Allreduce(&norm_local, &norm_glb, 3, pvfmm::par::Mpi_datatype<Real>::value(), pvfmm::par::Mpi_datatype<Real>::max(), comm);
   }
@@ -539,8 +540,10 @@ Real StokesVelocity<Real>::MonitorError(){
     if(!trg_is_surf_orig) SetTrgCoord(&tcoord_orig);
   }
 
-  INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
-  return norm_glb[0];
+  int rank;
+  MPI_Comm_rank(comm,&rank);
+  if(!rank) INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
+  return norm_glb[0]+norm_glb[1]+norm_glb[2];
 }
 
 template <class Real>
