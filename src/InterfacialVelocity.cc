@@ -24,7 +24,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
-    stokes_(params_.sh_order,params_.sh_order*2,params_.periodic_length),
+    stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length),
     S_up_(NULL)
 {
     pos_vel_.replicate(S_.getPosition());
