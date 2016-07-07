@@ -542,7 +542,7 @@ Error_t  ParallelLinSolverPetsc<T>::Configure()
 {
     COUTDEBUG("Configuring the linear solver");
     ierr = KSPSetFromOptions(ps_); CHK_PETSC(ierr);
-    ierr = KSPGMRESSetRestart(ps_, 120); CHK_PETSC(ierr);
+    ierr = KSPGMRESSetRestart(ps_, 300); CHK_PETSC(ierr);
     ierr = KSPMonitorSet(ps_, PetscKSPMonitor<T>,NULL, NULL);  CHK_PETSC(ierr);
     return ErrorEvent::Success;
 }
