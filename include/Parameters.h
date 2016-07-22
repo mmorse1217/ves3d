@@ -69,7 +69,7 @@ class Parameters : public Streamable
     //Startup and Monitoring
     bool checkpoint;
     T checkpoint_stride;
-    bool write_vtk;
+    std::string write_vtk;
     std::string shape_gallery_file;
     std::string vesicle_props_file;
     std::string vesicle_geometry_file;

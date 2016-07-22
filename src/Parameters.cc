@@ -55,7 +55,6 @@ void Parameters<T>::init()
     ts                      = 1;
     upsample_freq           = 24;
     viscosity_contrast      = 1.0;
-    write_vtk               = false;
 }
 
 template<typename T>
@@ -204,7 +203,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "      -s  --checkpoint         [F] Flag to save data to file" );
     opt->addUsage( "      -o  --checkpoint-file        The output file *template*");
     opt->addUsage( "          --checkpoint-stride      The frequency of saving to file (in time scale)" );
-    opt->addUsage( "          --write-vtk          [F] Write VTK file along with checkpoint" );
+    opt->addUsage( "          --write-vtk              Write VTK file along with checkpoint" );
     opt->addUsage( "" );
     opt->addUsage( "  Miscellaneous:" );
     opt->addUsage( "          --num-threads            The number OpenMP threads" );
@@ -225,7 +224,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setFlag( "solve-for-velocity" );
     opt->setFlag( "pseudospectral" );
     opt->setFlag( "time-adaptive" );
-    opt->setFlag( "write-vtk" );
+    opt->setOption( "write-vtk" );
 
     //an option (takes an argument), supporting long and short forms
     opt->setOption( "shape-gallery-file");
@@ -296,8 +295,8 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     if( opt->getFlag( "time-adaptive" ) )
         time_adaptive = true;
 
-    if( opt->getFlag( "write-vtk" ) )
-        write_vtk = true;
+    if( opt->getValue( "write-vtk" ) !=NULL )
+        write_vtk = opt->getValue( "write-vtk" );
 
     //an option (takes an argument), supporting long and short forms
     if( opt->getValue( "shape-gallery-file" ) != NULL )
@@ -451,7 +450,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
     os<<"checkpoint: "<<checkpoint<<"\n";
     os<<"checkpoint_stride: "<<checkpoint_stride<<"\n";
-    os<<"write_vtk: "<<write_vtk<<"\n";
+    os<<"write_vtk: "<<write_vtk<<" |\n";
     os<<"shape_gallery_file: "<<shape_gallery_file<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"vesicle_geometry_file: "<<vesicle_geometry_file<<" |\n"; //added | to stop >> from consuming next line if string is empty
     os<<"vesicle_props_file: "<<vesicle_props_file<<" |\n"; //added | to stop >> from consuming next line if string is empty
@@ -534,7 +533,8 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>interaction_upsample; ASSERT(key=="interaction_upsample:", "Unexpected key (expected interaction_upsample)");
     is>>key>>checkpoint; ASSERT(key=="checkpoint:", "Unexpected key (expected checkpoint)");
     is>>key>>checkpoint_stride; ASSERT(key=="checkpoint_stride:", "Unexpected key (expected checkpoint_stride)");
-    is>>key>>write_vtk; ASSERT(key=="write_vtk:", "Unexpected key (expected write_vtk)");
+    is>>key>>s; ASSERT(key=="write_vtk:", "Unexpected key (expected write_vtk)");
+    if (s!="|"){write_vtk=s; is>>s;/* consume | */}else{write_vtk="";}
 
     if (version<593){
         is>>key>>s; ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");

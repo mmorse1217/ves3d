@@ -78,14 +78,11 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             ++last_checkpoint_;
 
 #if HAVE_PVFMM
-            if(params_->write_vtk){
-                std::string vtkfbase("snapshot_");
+            if(params_->write_vtk.size()){
+                std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
                 INFO("Writing VTK file");
-
-                const typename EvolveSurface::Sur_t *S_up;
-                CHK( state->getSurfaceUp(S_up));
-                WriteVTK(*S_up,vtkfbase.c_str());
+                WriteVTK(*state->S_,vtkfbase.c_str());
             }
 #endif // HAVE_PVFMM
         }
