@@ -21,7 +21,6 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     dt_(params_.ts),
     sht_(mats.p_, mats.mats_p_),
     sht_upsample_(mats.p_up_, mats.mats_p_up_),
-    move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
     stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length),
@@ -1088,12 +1087,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     int numinputs = 3;
     const Sca_t* inputs[] = {&S_.getPosition(), &force, t1.get()};
     Sca_t* outputs[] = {v1.get(), v2.get(), t2.get()};
-    move_pole.setOperands(inputs, numinputs, params_.singular_stokes);
 
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)
         {
-            move_pole(ii, jj, outputs);
+            //move_pole(ii, jj, outputs);
+            assert(false); exit(1); //@bug: move_pole deprecated
 
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
@@ -1134,12 +1133,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
     int numinputs = 4;
     const Sca_t* inputs[] = {&S_.getPosition(), &S_.getNormal(),   &force, t1.get()};
     Sca_t*      outputs[] = { v1.get()        ,  v3.get()      , v2.get(), t2.get()};
-    move_pole.setOperands(inputs, numinputs, params_.singular_stokes);
 
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)
         {
-            move_pole(ii, jj, outputs);
+            //move_pole(ii, jj, outputs);
+            assert(false); exit(1); //@bug: move_pole deprecated
 
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);

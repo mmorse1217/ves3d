@@ -11,15 +11,6 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     int np = 2 * p_ * ( p_ + 1);
     int np_up = 2 * p_up_ * (p_up_ + 1);
 
-    int rot_mat_size =  0;
-    int spharm_rot_size = 0;
-
-    if (params.singular_stokes == Direct ||
-        params.singular_stokes == DirectEagerEval)
-        rot_mat_size =  np * np * (p_ + 1);
-    else
-        spharm_rot_size = (p_ + 1) * (p_ * (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
-
     value_type* data_ptr = data_.begin() +
         SHTMats<value_type,device_type>::getDataLength(p_) +
         SHTMats<value_type,device_type>::getDataLength(p_up_);
@@ -30,14 +21,7 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
     sing_quad_weights_up_ =data_ptr; data_ptr+= np_up;
     w_sph_                =data_ptr; data_ptr+= np;
     w_sph_up_             =data_ptr; data_ptr+= np_up;
-    all_rot_mats_         =data_ptr; data_ptr+= rot_mat_size;
-    sh_rot_mats_          =data_ptr; data_ptr+= spharm_rot_size;
     assert((data_ptr-data_.begin())==getDataLength(params));
-
-    if (rot_mat_size == 0)
-        all_rot_mats_ = NULL;
-    else
-        sh_rot_mats_ = NULL;
 
     DataIO fileIO;
 
@@ -59,17 +43,6 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
 
         sprintf(buffer,"precomputed/w_sph_%u_%s.txt", p_,tname.c_str());
         fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, w_sph_- data_.begin(), np);
-
-        if (rot_mat_size != 0)
-        {
-            sprintf(buffer,"precomputed/all_rot_mats_%u_%s.txt", p_,tname.c_str());
-            fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, all_rot_mats_- data_.begin(),
-                rot_mat_size);
-        } else {
-            sprintf(buffer,"precomputed/SpHarmRotMats_p%u_%s.txt", p_,tname.c_str());
-            fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, sh_rot_mats_- data_.begin(),
-                spharm_rot_size);
-        }
 
         //p
         sprintf(buffer,"precomputed/legTrans%u_%s.txt", p_,tname.c_str());
@@ -125,17 +98,8 @@ size_t OperatorsMats<Container>::getDataLength(const Parameters<value_type> &par
 {
     int np = 2 * p_ * ( p_ + 1);
     int np_up = 2 * p_up_ * ( p_up_ + 1);
-    int rot_mat_size = 0;
-    int spharm_rot_size = 0;
 
-    if (params.singular_stokes == Direct ||
-        params.singular_stokes == DirectEagerEval)
-        rot_mat_size =  np * np * (p_ + 1);
-    else
-        spharm_rot_size = (p_ + 1) * (p_ *
-            (4 * p_ * p_ -  1)/3 + 4 * p_ * p_);
-
-    return(3*np + 3*np_up + rot_mat_size +  spharm_rot_size +
+    return(3*np + 3*np_up +
         SHTMats<value_type, device_type>::getDataLength(p_)      +
         SHTMats<value_type, device_type>::getDataLength(p_up_));
 }

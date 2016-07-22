@@ -12,7 +12,6 @@
 #include <queue>
 #include <memory>
 #include "Enums.h"
-#include "MovePole.h"
 #include "BgFlowBase.h"
 #include "OperatorsMats.h"
 #include "ParallelLinSolverInterface.h"
@@ -118,7 +117,6 @@ class InterfacialVelocity
     SHtrans_t sht_upsample_;
 
     mutable Stokes_t stokes_;
-    mutable MovePole<Sca_t,Mats_t> move_pole;
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;
     mutable Sca_t position_precond;
