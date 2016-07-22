@@ -138,36 +138,41 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
           loc=max_err;
           MPI_Allreduce(&loc, &max_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
         }
-        if(max_err>max_y0*params_->time_tol) CERR_LOC("Sanity check for time-stepper failed!", std::endl, exit(1));
+        if(max_err>max_y0*dt*params_->time_tol) CERR_LOC("Sanity check for time-stepper failed!", std::endl, exit(1));
     }
 
-    Vec_t dx, x0, x_coarse;
+    Vec_t dx, x0, x_dt, x_2dt, x_coarse;
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
     while ( ERRORSTATUS() && t < time_horizon )
     {
         if(time_adap==TimeAdapErr){ // Adaptive using 2*dt time-step for error
+            dt=std::min((time_horizon-t)/2, dt);
             Error_t err=ErrorEvent::Success;
 
             // Copy S_->getPosition
             x0.replicate(S_->getPosition());
             axpy(static_cast<value_type>(0.0), S_->getPosition(), S_->getPosition(), x0);
 
-            // 2*dt time-step
-            x_coarse.replicate(S_->getPosition());
-            if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, 2*dt, dx);
-            axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_coarse);
-
-            // 2 x (dt time-step)
+            // dt time-step
+            x_dt.replicate(S_->getPosition());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
-            axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_dt);
+
+            // 2*dt time-step
+            x_2dt.replicate(S_->getPosition());
+            axpy(static_cast<value_type>(0.0), x0, x0, S_->getPositionModifiable());
+            if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, 2*dt, dx);
+            axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_2dt);
+
+            // dt time-step
+            axpy(static_cast<value_type>(0.0), x_dt, x_dt, S_->getPositionModifiable());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
 
             // Compute error
-            axpy(static_cast<value_type>(-1.0), S_->getPosition(), x_coarse, x_coarse);
-            value_type error=MaxAbs(x_coarse);
-            //value_type error=sqrt(AlgebraicDot(x_coarse,x_coarse)/x_coarse.size());
+            axpy(static_cast<value_type>(-1.0), S_->getPosition(), x_2dt, x_2dt);
+            value_type error=MaxAbs(x_2dt);
             { // error = MPI_MAX(error)
               assert(typeid(T)==typeid(double)); // @bug this only works for T==double
               value_type error_loc=error;
@@ -201,6 +206,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             INFO("Time-adaptive: error/dt = "<<error/dt<<", error/dt^2 = "<<error/dt/dt<<", dt_new = "<<dt_new);
             dt=dt_new;
         }else if(time_adap==TimeAdapErrAreaVol){ // Adaptive using area, volume error
+            dt=std::min(time_horizon-t, dt);
             Error_t err=ErrorEvent::Success;
 
             // Copy S_->getPosition
