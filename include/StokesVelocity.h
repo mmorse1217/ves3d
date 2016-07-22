@@ -56,7 +56,6 @@ class StokesVelocity{
 
     PVFMMVec scoord;
     PVFMMVec scoord_far;
-    PVFMMVec scoord_repl;
     PVFMMVec scoord_norm;
     PVFMMVec scoord_area;
 
@@ -70,6 +69,7 @@ class StokesVelocity{
 
     bool trg_is_surf;
     PVFMMVec tcoord;
+    PVFMMVec tcoord_repl;
     PVFMMVec trg_vel;
 
 
@@ -84,6 +84,7 @@ class StokesVelocity{
 
 
     // Far
+    bool fmm_setup;
     void* pvfmm_ctx;
     PVFMMVec fmm_vel;
 

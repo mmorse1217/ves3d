@@ -47,10 +47,10 @@ template<typename T>
 void PVFMMEval(const T* all_pos, const T* sl_den, size_t np, T* all_pot, void** ctx_);
 
 template<typename T>
-void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T* all_pot, void** ctx_);
+void PVFMMEval(const T* all_pos, const T* sl_den, const T* dl_den, size_t np, T* all_pot, void** ctx_, int setup=1);
 
 template<typename T>
-void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, const T* trg_pos, T* trg_vel, size_t n_trg, void** ctx_);
+void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, const T* trg_pos, T* trg_vel, size_t n_trg, void** ctx_, int setup=1);
 
 /**
  * Repartition nv vesicles by the MortonId of their center-of-mass between

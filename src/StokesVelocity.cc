@@ -4,12 +4,14 @@
 #include <SphericalHarmonics.h>
 
 #define __ENABLE_PVFMM_PROFILER__
+//#define __SH_FILTER__
 
 template<class Real>
 StokesVelocity<Real>::StokesVelocity(int sh_order_, int sh_order_up_, Real box_size_, MPI_Comm comm_):
   sh_order(sh_order_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(sh_order_up_, box_size_, comm_), near_singular1(sh_order_up_, box_size_, comm_)
 {
   pvfmm_ctx=PVFMMCreateContext<Real>(box_size_);
+  fmm_setup=true;
 }
 
 template <class Real>
@@ -21,12 +23,21 @@ StokesVelocity<Real>::~StokesVelocity(){
 template <class Real>
 void StokesVelocity<Real>::SetSrcCoord(const PVFMMVec& S){
   scoord.ReInit(S.Dim(), (Real*)&S[0], true);
+  { // filter
+    #ifdef __SH_FILTER__
+    pvfmm::Vector<Real>& V=scoord;
+    pvfmm::Vector<Real> tmp;
+    SphericalHarmonics<Real>::Grid2SHC(V,sh_order,sh_order,tmp);
+    SphericalHarmonics<Real>::SHC2Grid(tmp,sh_order,sh_order,V);
+    #endif
+  }
+  fmm_setup=true;
 
   SLMatrix.ReInit(0);
   DLMatrix.ReInit(0);
 
   scoord_far.ReInit(0);
-  scoord_repl.ReInit(0);
+  tcoord_repl.ReInit(0);
   scoord_norm.ReInit(0);
   scoord_area.ReInit(0);
 
@@ -54,11 +65,23 @@ void StokesVelocity<Real>::SetSrcCoord(const Vec& S){
 
 template <class Real>
 void StokesVelocity<Real>::SetDensitySL(const PVFMMVec* f){
-  if(f) force_single.ReInit(f->Dim(), (Real*)&f[0][0], true);
-  else{
+  if(f){
+    if(force_single.Dim()!=f->Dim()) fmm_setup=true;
+    force_single.ReInit(f->Dim(), (Real*)&f[0][0], true);
+  }else if(force_single.Dim()!=0){
+    fmm_setup=true;
     force_single.ReInit(0);
     near_singular0.SetDensitySL(NULL);
     near_singular1.SetDensitySL(NULL);
+  }
+
+  if(force_single.Dim()){ // filter
+    #ifdef __SH_FILTER__
+    pvfmm::Vector<Real>& V=force_single;
+    pvfmm::Vector<Real> tmp;
+    SphericalHarmonics<Real>::Grid2SHC(V,sh_order,sh_order,tmp);
+    SphericalHarmonics<Real>::SHC2Grid(tmp,sh_order,sh_order,V);
+    #endif
   }
 
   rforce_single.ReInit(0);
@@ -81,11 +104,23 @@ void StokesVelocity<Real>::SetDensitySL(const Vec* f){
 
 template <class Real>
 void StokesVelocity<Real>::SetDensityDL(const PVFMMVec* f){
-  if(f) force_double.ReInit(f->Dim(), (Real*)&f[0][0], true);
-  else{
+  if(f){
+    if(force_double.Dim()!=f->Dim()) fmm_setup=true;
+    force_double.ReInit(f->Dim(), (Real*)&f[0][0], true);
+  }else if(force_double.Dim()!=0){
+    fmm_setup=true;
     force_double.ReInit(0);
     near_singular0.SetDensityDL(NULL, NULL);
     near_singular1.SetDensityDL(NULL, NULL);
+  }
+
+  if(force_double.Dim()){ // filter
+    #ifdef __SH_FILTER__
+    pvfmm::Vector<Real>& V=force_double;
+    pvfmm::Vector<Real> tmp;
+    SphericalHarmonics<Real>::Grid2SHC(V,sh_order,sh_order,tmp);
+    SphericalHarmonics<Real>::SHC2Grid(tmp,sh_order,sh_order,V);
+    #endif
   }
 
   uforce_double.ReInit(0);
@@ -117,6 +152,7 @@ void StokesVelocity<Real>::SetTrgCoord(const PVFMMVec* T){
     tcoord.ReInit(0);
   }
 
+  fmm_setup=true;
   S_vel.ReInit(0);
   S_vel_up.ReInit(0);
   fmm_vel.ReInit(0);
@@ -147,9 +183,9 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     }
 
     if(!scoord_far.Dim()){
-      assert(!scoord_repl.Dim());
       assert(!scoord_norm.Dim());
       assert(!scoord_area.Dim());
+      assert(!tcoord_repl.Dim());
 
       pvfmm::Profile::Tic("SCoordFar",&comm, true);
       static PVFMMVec scoord_shc, scoord_up, X_theta, X_phi, scoord_pole;
@@ -176,20 +212,20 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       pvfmm::Profile::Toc();
 
       pvfmm::Profile::Tic("SCoordNear",&comm, true);
-      { // Set scoord_repl
+      { // Set tcoord_repl
         long Nves=scoord_pole.Dim()/COORD_DIM/2;
         long Mves=2*sh_order*(1+sh_order);
-        scoord_repl.ReInit(Nves*Mves*COORD_DIM);
+        tcoord_repl.ReInit(Nves*Mves*COORD_DIM);
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
           for(long j=0;j<Mves;j++){
             for(long k=0;k<COORD_DIM;k++){
-              scoord_repl[(i*Mves+j)*COORD_DIM+k]=scoord[(i*COORD_DIM+k)*Mves+j];
+              tcoord_repl[(i*Mves+j)*COORD_DIM+k]=scoord[(i*COORD_DIM+k)*Mves+j];
             }
           }
         }
       }
-      near_singular0.SetTrgCoord(&scoord_repl[0],scoord_repl.Dim()/COORD_DIM,true);
+      near_singular0.SetTrgCoord(&tcoord_repl[0],tcoord_repl.Dim()/COORD_DIM,true);
       near_singular0.SetSrcCoord(scoord_far);
       near_singular1.SetSrcCoord(scoord_far);
       pvfmm::Profile::Toc();
@@ -410,7 +446,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
   }
 
   NearSingular<Real>& near_singular=(trg_is_surf?near_singular0:near_singular1);
-  PVFMMVec& trg_coord=(trg_is_surf?scoord_repl:tcoord);
+  PVFMMVec& trg_coord=(trg_is_surf?tcoord_repl:tcoord);
   if(!fmm_vel.Dim()){ // Compute far interaction
     pvfmm::Profile::Tic("FarInteraction",&comm);
     bool prof_state=pvfmm::Profile::Enable(false);
@@ -419,7 +455,8 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
               (qforce_single.Dim()?&qforce_single[0]:NULL),
               (qforce_double.Dim()?&qforce_double[0]:NULL),
               scoord_far.Dim()/COORD_DIM,
-              &trg_coord[0], &fmm_vel[0], trg_coord.Dim()/COORD_DIM, &pvfmm_ctx);
+              &trg_coord[0], &fmm_vel[0], trg_coord.Dim()/COORD_DIM, &pvfmm_ctx, fmm_setup);
+    fmm_setup=false;
     near_singular.SubtractDirect(fmm_vel);
     pvfmm::Profile::Enable(prof_state);
     pvfmm::Profile::Toc();
@@ -453,6 +490,14 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         }
       }
       trg_vel.Swap(tmp);
+      { // filter
+        #ifdef __SH_FILTER__
+        pvfmm::Vector<Real>& V=trg_vel;
+        pvfmm::Vector<Real> tmp;
+        SphericalHarmonics<Real>::Grid2SHC(V,sh_order,sh_order,tmp);
+        SphericalHarmonics<Real>::SHC2Grid(tmp,sh_order,sh_order,V);
+        #endif
+      }
     }
     pvfmm::Profile::Enable(prof_state);
     pvfmm::Profile::Toc();

@@ -577,12 +577,12 @@ void PVFMMEval(const T* src_pos, const T* sl_den, size_t n_src, T* trg_vel, void
 }
 
 template<typename T>
-void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, T* trg_vel, void** ctx_){
-  PVFMMEval(src_pos, sl_den, dl_den, n_src, src_pos, trg_vel, n_src, ctx_);
+void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, T* trg_vel, void** ctx_, int setup){
+  PVFMMEval(src_pos, sl_den, dl_den, n_src, src_pos, trg_vel, n_src, ctx_, setup);
 }
 
 template<typename T>
-void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, const T* trg_pos, T* trg_vel, size_t n_trg, void** ctx_){
+void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src, const T* trg_pos, T* trg_vel, size_t n_trg, void** ctx_, int setup){
   PROFILESTART();
   long long prof_FLOPS=pvfmm::Profile::Add_FLOP(0);
   size_t omp_p=omp_get_max_threads();
@@ -718,22 +718,41 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           part_indx[j]=std::lower_bound(&pt_mid[0], &pt_mid[0]+pt_mid.Dim(), nodes[j]->GetMortonId())-&pt_mid[0];
         }
 
-        #pragma omp parallel for
-        for(size_t j=0;j<nodes.size();j++){
-          size_t n_pts=part_indx[j+1]-part_indx[j];
-          if(src_value.Dim()){
-            nodes[j]-> src_coord.ReInit(n_pts*( COORD_DIM),& src_coord[0]+part_indx[j]*( COORD_DIM),false);
-            nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]),& src_value[0]+part_indx[j]*(ker_dim[0]),false);
-          }else{
-            nodes[j]-> src_coord.ReInit(0,NULL,false);
-            nodes[j]-> src_value.ReInit(0,NULL,false);
+        if(setup){
+          #pragma omp parallel for
+          for(size_t j=0;j<nodes.size();j++){
+            size_t n_pts=part_indx[j+1]-part_indx[j];
+            if(src_value.Dim()){
+              nodes[j]-> src_coord.ReInit(n_pts*( COORD_DIM),& src_coord[0]+part_indx[j]*( COORD_DIM),false);
+              nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]),& src_value[0]+part_indx[j]*(ker_dim[0]),false);
+            }else{
+              nodes[j]-> src_coord.ReInit(0,NULL,false);
+              nodes[j]-> src_value.ReInit(0,NULL,false);
+            }
+            if(surf_value.Dim()){
+              nodes[j]->surf_coord.ReInit(n_pts*(           COORD_DIM),& src_coord[0]+part_indx[j]*(           COORD_DIM),false);
+              nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+COORD_DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_DIM),false);
+            }else{
+              nodes[j]->surf_coord.ReInit(0,NULL,false);
+              nodes[j]->surf_value.ReInit(0,NULL,false);
+            }
           }
-          if(surf_value.Dim()){
-            nodes[j]->surf_coord.ReInit(n_pts*(           COORD_DIM),& src_coord[0]+part_indx[j]*(           COORD_DIM),false);
-            nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+COORD_DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_DIM),false);
-          }else{
-            nodes[j]->surf_coord.ReInit(0,NULL,false);
-            nodes[j]->surf_value.ReInit(0,NULL,false);
+        }else{
+          #pragma omp parallel for
+          for(size_t j=0;j<nodes.size();j++){
+            size_t n_pts=part_indx[j+1]-part_indx[j];
+            if(src_value.Dim()){
+              assert(nodes[j]->src_coord.Dim()==n_pts*( COORD_DIM));
+              assert(nodes[j]->src_value.Dim()==n_pts*(ker_dim[0]));
+              //memcpy(&nodes[j]->src_coord[0],&src_coord[0]+part_indx[j]*( COORD_DIM),n_pts*( COORD_DIM)*sizeof(T));
+              memcpy(&nodes[j]->src_value[0],&src_value[0]+part_indx[j]*(ker_dim[0]),n_pts*(ker_dim[0])*sizeof(T));
+            }
+            if(surf_value.Dim()){
+              assert(nodes[j]->surf_coord.Dim()==n_pts*(           COORD_DIM));
+              assert(nodes[j]->surf_value.Dim()==n_pts*(ker_dim[0]+COORD_DIM));
+              //memcpy(&nodes[j]->surf_coord[0],& src_coord[0]+part_indx[j]*(           COORD_DIM),n_pts*(           COORD_DIM)*sizeof(T));
+              memcpy(&nodes[j]->surf_value[0],&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_DIM),n_pts*(ker_dim[0]+COORD_DIM)*sizeof(T));
+            }
           }
         }
       }
@@ -772,18 +791,29 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           part_indx[j]=std::lower_bound(&pt_mid[0], &pt_mid[0]+pt_mid.Dim(), nodes[j]->GetMortonId())-&pt_mid[0];
         }
 
-        #pragma omp parallel for
-        for(size_t j=0;j<nodes.size();j++){
-          size_t n_pts=part_indx[j+1]-part_indx[j];
-          {
-            nodes[j]-> trg_coord.ReInit(n_pts*(COORD_DIM),& trg_coord[0]+part_indx[j]*(COORD_DIM),false);
+        if(setup){
+          #pragma omp parallel for
+          for(size_t j=0;j<nodes.size();j++){
+            size_t n_pts=part_indx[j+1]-part_indx[j];
+            {
+              nodes[j]-> trg_coord.ReInit(n_pts*(COORD_DIM),& trg_coord[0]+part_indx[j]*(COORD_DIM),false);
+            }
+          }
+        }else{
+          #pragma omp parallel for
+          for(size_t j=0;j<nodes.size();j++){
+            size_t n_pts=part_indx[j+1]-part_indx[j];
+            {
+              assert(nodes[j]->trg_coord.Dim()==n_pts*(COORD_DIM));
+              //memcpy(&nodes[j]->trg_coord[0],&trg_coord[0]+part_indx[j]*(COORD_DIM),n_pts*(COORD_DIM)*sizeof(T));
+            }
           }
         }
       }
     }
   }
 
-  if(1){ // Optional stuff (redistribute, adaptive refine ...)
+  if(setup){ // Optional stuff (redistribute, adaptive refine ...)
     { //Output max tree depth.
       int np, myrank;
       MPI_Comm_size(ctx->comm, &np);
@@ -881,7 +911,8 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
   }
 
   // Setup tree for FMM.
-  ctx->tree->SetupFMM(ctx->mat);
+  if(setup) ctx->tree->SetupFMM(ctx->mat);
+  else ctx->tree->ClearFMMData();
   ctx->tree->RunFMM();
 
   //Write2File
