@@ -141,7 +141,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         if(max_err>max_y0*dt*params_->time_tol) CERR_LOC("Sanity check for time-stepper failed!", std::endl, exit(1));
     }
 
-    Vec_t dx, x0, x_dt, x_2dt, x_coarse;
+    Vec_t dx, x0, x_dt, x_2dt;
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
     while ( ERRORSTATUS() && t < time_horizon )
