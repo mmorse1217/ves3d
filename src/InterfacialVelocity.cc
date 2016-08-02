@@ -23,7 +23,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     sht_upsample_(mats.p_up_, mats.mats_p_up_),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
-    stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length),
+    stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length,params_.repul_dist),
     S_up_(NULL)
 {
     pos_vel_.replicate(S_.getPosition());
@@ -1191,6 +1191,20 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     recycle(u);
 
     return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+InterfacialVelocity<SurfContainer, Interaction>::value_type InterfacialVelocity<SurfContainer, Interaction>::
+StokesError(const Vec_t &x) const
+{
+    PROFILESTART();
+    stokes_.SetDensitySL(NULL);
+    stokes_.SetDensityDL(NULL);
+    stokes_.SetSrcCoord(x);
+    value_type stokes_error=stokes_.MonitorError();
+    PROFILEEND("",0);
+
+    return stokes_error;
 }
 
 template <class Vec_t, class SHT>

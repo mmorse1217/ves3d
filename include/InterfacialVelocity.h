@@ -40,7 +40,7 @@ class InterfacialVelocity
     InterfacialVelocity(SurfContainer &S_in, const Interaction &inter,
         const Mats_t &mats, const Parameters<value_type> &params,
         const VProp_t &ves_props, const BgFlowBase<Vec_t> &bgFlow,
-	PSolver_t *parallel_solver=NULL);
+        PSolver_t *parallel_solver=NULL);
 
     ~InterfacialVelocity();
 
@@ -73,6 +73,8 @@ class InterfacialVelocity
 
     Error_t operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const;
     Error_t operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
+
+    value_type StokesError(const Vec_t &x) const;
 
     Sca_t& tension(){ return tension_;}
 

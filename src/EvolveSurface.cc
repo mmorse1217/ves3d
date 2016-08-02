@@ -144,7 +144,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     Vec_t dx, x0, x_dt, x_2dt, x_coarse;
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
-    while ( ERRORSTATUS() && t < time_horizon )
+
+    while ( ERRORSTATUS() && t < time_horizon && dt>1e-10 )
     {
         if(time_adap==TimeAdapErr){ // Adaptive using 2*dt time-step for error
             dt=std::min((time_horizon-t)/2, dt);
@@ -159,6 +160,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_dt);
 
+            // Check integration error
+            value_type stokes_error=F_->StokesError(x_dt);
+
             // 2*dt time-step
             x_2dt.replicate(S_->getPosition());
             axpy(static_cast<value_type>(0.0), x0, x0, S_->getPositionModifiable());
@@ -169,6 +173,14 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             axpy(static_cast<value_type>(0.0), x_dt, x_dt, S_->getPositionModifiable());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+
+            // Check integration error
+            stokes_error=std::max(stokes_error, F_->StokesError(S_->getPosition()));
+            { // stokes_error = MPI_MAX(stokes_error)
+              assert(typeid(T)==typeid(double)); // @bug this only works for T==double
+              value_type error_loc=stokes_error;
+              MPI_Allreduce(&error_loc, &stokes_error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            }
 
             // Compute error
             axpy(static_cast<value_type>(-1.0), S_->getPosition(), x_2dt, x_2dt);
@@ -189,6 +201,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                 beta = (1.0/error) * (dt/time_horizon) * params_->error_factor;
                 beta = std::pow(beta, timestep_order);
                 if(err!=ErrorEvent::Success) beta=0.5;
+                if(stokes_error*dt>params_->time_tol) beta=0.5; // This is required for GMRES to converge
 
                 beta=std::min(beta,1.5);
                 beta=std::max(beta,0.5);

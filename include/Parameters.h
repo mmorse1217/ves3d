@@ -60,6 +60,9 @@ class Parameters : public Streamable
     T    rep_tol;
     T    rep_exponent;
 
+    //Repulsion
+    T    repul_dist;
+
     //Background flow
     T bg_flow_param;
     bool interaction_upsample;

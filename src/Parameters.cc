@@ -43,6 +43,7 @@ void Parameters<T>::init()
     rep_ts                  = -1.0;
     rep_type                = PolyKReparam;
     rep_upsample            = false;
+    repul_dist              = 5e-2;
     scheme                  = JacobiBlockImplicit;
     sh_order                = 12;
     singular_stokes         = ViaSpHarm;
@@ -251,6 +252,8 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "rep-tol" );
     opt->setOption( "rep-exponent" );
 
+    opt->setOption( "repul-dist" );
+
     opt->setOption( "checkpoint-stride" );
     opt->setOption( "sh-order" );
     opt->setOption( "singular-stokes" );
@@ -378,6 +381,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     if( opt->getValue( "rep-tol" ) != NULL  )
         rep_tol =  atof(opt->getValue( "rep-tol" ));
 
+    if( opt->getValue( "repul-dist" ) != NULL  )
+        repul_dist =  atof(opt->getValue( "repul-dist" ));
+
     if( opt->getValue( "checkpoint-stride" ) != NULL  )
         checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
 
@@ -445,6 +451,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"rep_ts: "<<rep_ts<<"\n";
     os<<"rep_tol: "<<rep_tol<<"\n";
     os<<"rep_exponent: "<<rep_exponent<<"\n";
+    os<<"repul_dist: "<<repul_dist<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
     os<<"periodic_length: "<<periodic_length<<"\n";
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
@@ -527,6 +534,8 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>rep_ts; ASSERT(key=="rep_ts:", "Unexpected key (expected rep_ts)");
     is>>key>>rep_tol; ASSERT(key=="rep_tol:", "Unexpected key (expected rep_tol)");
     is>>key>>rep_exponent; ASSERT(key=="rep_exponent:", "Unexpected key (expected rep_exponent)");
+
+    is>>key>>repul_dist; ASSERT(key=="repul_dist:", "Unexpected key (expected repul_dist)");
 
     is>>key>>bg_flow_param; ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
     is>>key>>periodic_length; ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
@@ -613,6 +622,10 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Rep tol                  : "<<par.rep_tol<<std::endl;
     output<<"   Rep upsample             : "<<std::boolalpha<<par.rep_upsample<<std::endl;
     output<<"   Rep exponent             : "<<par.rep_exponent<<std::endl;
+
+    output<<"------------------------------------"<<std::endl;
+    output<<" Repulsion:"<<std::endl;
+    output<<"   Repulsion distance       : "<<par.repul_dist<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Initialization:"<<std::endl;
