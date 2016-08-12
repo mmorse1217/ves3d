@@ -85,7 +85,8 @@ class Foo  : public Streamable{
     }
 };
 
-int main(int, char**){
+int main(int argc, char** argv){
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     Foo c(1.0,10.12345678901234567e12,3,8); c.set_name("c");
     Foo d(2.0,3.0,4,3); d.set_name("d");
 
@@ -114,4 +115,5 @@ int main(int, char**){
     	testtools::AssertAlmostEqual<float>(c.z[i], e.z[i], 1e-7, "bad (un)packed z");
 
     COUT("e:\n"<<std::scientific<<std::setprecision(16)<<&e<<"-------\nc:\n"<<&c);
+    VES3D_FINALIZE();
 }

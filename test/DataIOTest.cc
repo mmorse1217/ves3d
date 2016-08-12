@@ -230,6 +230,7 @@ extern const DevGPU gpu_dev(0);
 
 int main(int argc, char* argv[])
 {
+  VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
   COUT("==============================\n"
        <<" DataIO Test:"
        <<"\n==============================");
@@ -242,5 +243,6 @@ int main(int argc, char* argv[])
       io_gpu.PerformAll();
   #endif
 
+  VES3D_FINALIZE();
   return 0;
 }

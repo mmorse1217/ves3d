@@ -48,11 +48,11 @@ bool ParametersTest<P>::operator()(const P &p)
 {
     bool res = TestStream(p);
 
-    if (res)
-	COUT(emph<<"Parameters test passed"<<emph);
-    else
-	COUT(alert<<"Parameters test failed"<<alert);
-
+    if (res) {
+        COUT(emph<<"Parameters test passed"<<emph);
+    } else {
+        COUT(alert<<"Parameters test failed"<<alert);
+    }
     return res;
 }
 
@@ -103,9 +103,10 @@ bool ParametersTest<P>::TestStream(const P &p)
     return true;
 }
 
-int main(int, char**){
+int main(int argc, char** argv){
 
-    char *argv[] = {"execname",
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
+    char *t_argv[] = {"execname",
 		    "--n-surfs", "5",
 		    "--sh-order", "13",
 		    "-o", "out.txt",
@@ -120,9 +121,9 @@ int main(int, char**){
   		    "--vesicle-geometry-file", "geo",
   		    "--vesicle-props-file", "prp",
     };
-    int argc(sizeof(argv)/sizeof(argv[0]));
-    COUT(argc);
-    Parameters<double> p(argc, argv);
+    int t_argc(sizeof(t_argv)/sizeof(t_argv[0]));
+    COUT(t_argc);
+    Parameters<double> p(t_argc, t_argv);
     COUT(p);
     ParametersTest<Parameters<double> > p_test;
     p_test(p);

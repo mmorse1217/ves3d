@@ -118,7 +118,7 @@ void TestParallelVec(ParallelVec<T> *pv, size_t sz=10){
     WHENVERBOSE(pvp->View());
 
     MPI_Barrier(*pv->MPIComm());
-    COUTMASTER(emph<<"Prallel vector test passed\n"
+    COUT(emph<<"Prallel vector test passed\n"
 	<<"----------------------------------------------------------------------------"<<emph<<std::endl);
 }
 
@@ -212,7 +212,7 @@ void TestParallelOp(ParallelLinOp<T> *A,
     delete[] ref;
     MPI_Barrier(*A->MPIComm()); //for nicer print log
 
-    COUTMASTER(emph<<"Prallel linear operator test passed\n"
+    COUT(emph<<"Prallel linear operator test passed\n"
 	<<"----------------------------------------------------------------------------"<<emph<<std::endl);
 }
 
@@ -302,7 +302,7 @@ void TestParallelSolver(
     testtools::AssertTrue(err<1e3*rtol, "acceptable error", "large failed");
 
     MPI_Barrier(*KSP->MPIComm()); //for nicer print log
-    COUTMASTER(emph<<"Prallel linear solver test passed\n"
+    COUT(emph<<"Prallel linear solver test passed\n"
 	    <<"----------------------------------------------------------------------------"<<emph<<std::endl);
 
 }

@@ -37,6 +37,7 @@
 
 int main(int argc, char** argv){
 
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     {
         //Testing shared_ptr
         COUT(" - Default constructor");
@@ -101,4 +102,5 @@ int main(int argc, char** argv){
             sp[j]=p1;
     }
     COUT(emph<<" ** Tr1 test passed ** "<<emph);
+    VES3D_FINALIZE();
 }

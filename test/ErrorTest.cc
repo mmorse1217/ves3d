@@ -24,6 +24,7 @@ Error_t local_cb_b(const ErrorEvent &err)
 
 int main(int argc, char** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("\n ==============================\n"
         <<"  Error Test:"
         <<"\n ==============================\n");
@@ -60,4 +61,5 @@ int main(int argc, char** argv)
 
     PRINTERRORLOG();
     COUT(emph<<"** ErrorTest passed **"<<emph<<std::endl);
+    VES3D_FINALIZE();
 }

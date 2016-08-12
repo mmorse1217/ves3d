@@ -74,10 +74,11 @@ bool VectorsTest<V>::PerformAll()
 	&& TestStream()
         ;
 
-    if (test_result)
+    if (test_result){
         COUT(emph<<" *** Vector class passed ***"<<emph);
-    else
+    } else {
         COUT(alert<<" *** Vector class failed ***"<<alert);
+    }
     return test_result;
 }
 

@@ -54,6 +54,7 @@ extern const DGPU the_gpu_dev(0);
 
 int main(int argc, char **argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("\n ==============================\n"
         <<"  BiCGStab Test:"
         <<"\n ==============================");
@@ -136,5 +137,6 @@ int main(int argc, char **argv)
     COUT(gpu_o.str());
 #endif //GPU_ACTIVE
 
+   VES3D_FINALIZE();
    return 0;
 }

@@ -14,11 +14,11 @@ interaction-upsample
 n-surfs : 8
 bending-modulus : .05
 shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
-vesicle-geometry-file : precomputed/lattice_geometry_spec.txt
-#lattice_centers has centers for a 50x50x50 lattice, ordered concenterically
+vesicle-geometry-file : precomputed/sed_512_geometry_spec_rand.txt
+vesicle-props-file : precomputed/sed_512_props_rand.txt
 
 ## time stepping -----------------------------
-time-horizon : 50
+time-horizon : 100
 timestep : 1e-2
 time-tol : 1e-5
 time-iter-max : 200
@@ -38,7 +38,7 @@ rep-tol : 1e-7
 checkpoint
 checkpoint-file : sed_ns{{n_surfs}}_nproc{{nprocs}}_{{time_idx}}_rank{{rank}}.chk
 checkpoint-stride : 1e-1
-write-vtk
+write-vtk : sedimentation_ns{{n_surfs}}_np{{nprocs}}_
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow

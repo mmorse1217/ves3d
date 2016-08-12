@@ -6,18 +6,16 @@ bool DataIO::ReadData(const std::string &file_name, size_t size,
         return(ReadBin(file_name, size * sizeof(T),
                 reinterpret_cast<char*>(data)));
 
-    // ASCII input
-    COUTDEBUG("Reading ASCII file: "<<file_name);
-    std::ifstream data_file(file_name.c_str(), std::ios::in);
+    COUTDEBUG("Reading "<<size<<" items from ASCII file "<<file_name);
+    std::vector<T> content;
+    ReadDataStl(file_name, content, frmt, size);
+    COUTDEBUG("Read "<<content.size()<<" items (asked for "<<size<<")");
+    size_t idx(0);
+    for (;idx<content.size();++idx) data[idx]=content[idx];
 
-    if(!data_file.good())
-        CERR_LOC("Cannot open the file for reading: "<<file_name,"", exit(1));
+    //for backward compatiblity (due to bug)
+    while (idx<size) data[idx++]=T();
 
-    size_t idx=0;
-    while (idx<size )
-        data_file>>data[idx++];
-
-    data_file.close();
     return(true);
 }
 
@@ -72,8 +70,8 @@ bool DataIO::ReadData(const std::string &file_name, Container &data,
 }
 
 template<typename T>
-bool DataIO::ReadData(const std::string &file_name, std::vector<T> &data,
-    DataIO::IOFormat frmt)
+bool DataIO::ReadDataStl(const std::string &file_name, std::vector<T> &data,
+    DataIO::IOFormat frmt, size_t num) const
 {
     ASSERT(frmt == DataIO::ASCII, "binary loading is not implemented");
 
@@ -85,14 +83,16 @@ bool DataIO::ReadData(const std::string &file_name, std::vector<T> &data,
 
     T d;
     std::string line;
-    while( getline(data_file, line)){
+    bool slurp(num==0);
+    while ((slurp || num>0) && getline(data_file, line) ){
         if (line.empty()) continue;
         std::istringstream is(line);
-        while (is.good()){
+        while (is.good() && (slurp || num>0)){
             while (is.peek()==' ') is.get();
             if (is.peek()=='#') break;
             is>>d;
             data.push_back(d);
+            num--;
         }
     }
 

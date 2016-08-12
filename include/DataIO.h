@@ -44,8 +44,8 @@ class DataIO
         IOFormat frmt = ASCII, int offset = 0 , int length = -1) const;
 
     template<typename T>
-    bool ReadData(const std::string &file_name, std::vector<T> &data,
-        IOFormat frmt = ASCII);
+    bool ReadDataStl(const std::string &file_name, std::vector<T> &data,
+        IOFormat frmt = ASCII, size_t num = 0) const;
 
     template<typename Container>
     bool WriteData(const std::string &file_name, const Container &data,

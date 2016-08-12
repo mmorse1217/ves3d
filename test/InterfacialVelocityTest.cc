@@ -40,6 +40,7 @@
 #include "BgFlow.h"
 #include "ParallelLinSolver_Petsc.h"
 #include "VesicleProps.h"
+#include "ves3d_simulation.h"
 
 #define DT CPU
 typedef Device<DT> Dev;
@@ -47,82 +48,82 @@ typedef Device<DT> Dev;
 extern const Dev the_device(0);
 
 int main(int argc, char** argv){
-    PetscInitialize(&argc, &argv, NULL, NULL);
+    VES3D_INITIALIZE(&argc, &argv, NULL, NULL);
 
-    typedef Scalars<real_t, Dev, the_device> Sca_t;
-    typedef Vectors<real_t, Dev, the_device> Vec_t;
-    typedef typename Sca_t::array_type Arr_t;
-    typedef Surface<Sca_t,Vec_t> Sur_t;
-    typedef VesInteraction<real_t> Interaction_t;
-    typedef InterfacialVelocity<Sur_t, Interaction_t> IntVel_t;
-    typedef OperatorsMats<Arr_t> Mats_t;
-    typedef ParallelLinSolverPetsc<real_t> PSol_t;
-    typedef VesicleProperties<Arr_t> VProp_t;
+    typedef Simulation<Dev, the_device> Sim_t;
+    typedef Sim_t::Param_t Param_t;
+    typedef Sim_t::Evolve_t Evolve_t;
+    typedef Evolve_t::IntVel_t IntVel_t;
+    typedef Evolve_t::value_type value_type;
+    typedef Evolve_t::Sca_t Sca_t;
+    typedef Evolve_t::Vec_t Vec_t;
 
     SET_ERR_CALLBACK(&cb_abort);
 
     // Parameter
-    int p(12), nvec(2);
-    real_t tol(4e-5), ts(1e-2);
-    Parameters<real_t> sim_par;
-    sim_par.n_surfs	    = nvec;
-    sim_par.sh_order	    = p;
-    sim_par.filter_freq     = p;
-    sim_par.upsample_freq   = p;
-    sim_par.rep_filter_freq = p;
-    sim_par.ts              = ts;
-    sim_par.time_precond    = DiagonalSpectral;
-    sim_par.init_file_name  = "precomputed/biconcave_ra85_{{sh_order}}";
-    sim_par.cntrs_file_name = "precomputed/lattice_centers_rand_50.txt";
+    int p(16), nves(2);
+    real_t tol(1e-3), ts(1e-4);
+    Param_t sim_par;
+    sim_par.n_surfs               = nves;
+    sim_par.sh_order              = p;
+    sim_par.filter_freq           = p;
+    sim_par.upsample_freq         = p;
+    sim_par.rep_filter_freq       = p;
+    sim_par.ts                    = ts;
+    sim_par.time_precond          = DiagonalSpectral;
+    sim_par.excess_density        = 1e3;
+    sim_par.shape_gallery_file    = "precomputed/shape_gallery_{{sh_order}}.txt";
+    sim_par.vesicle_geometry_file = "precomputed/lattice_geometry_rand_spec.txt";
     sim_par.expand_templates();
     COUT(sim_par);
 
     {
-        DataIO myIO;
-        Vec_t x(nvec, p), dxx(nvec, p), dxv(nvec, p);
-        Sca_t tension(nvec, p);
-        myIO.ReadData(FullPath(sim_par.init_file_name), x, DataIO::ASCII, 0, x.getSubLength());
+        Vec_t v1(nves,p), v2(nves,p), v3(nves,p);
+        Sca_t t1(nves,p), t2(nves,p), t3(nves,p);
+        Sim_t sim(sim_par);
 
-        Arr_t cntrs(DIM * nvec);
-        myIO.ReadData( FullPath(sim_par.cntrs_file_name), cntrs );
-        Populate(x, cntrs);
-
-        //Reading Operators From
-        Mats_t Mats(true /* readFromFile */, sim_par);
-
-        //Making The Surface, And Time Stepper
-        Sur_t S(p, Mats, &x);
-
-        //Setting the background flow
-        BgFlowBase<Vec_t> *vInf(NULL);
-        CHK(BgFlowFactory(sim_par, &vInf));
-
-        Interaction_t interaction(&StokesAlltoAll);
-        PSol_t ksp(VES3D_COMM_WORLD);
-        VProp_t vp;
-        vp.setFromParams(sim_par);
-        IntVel_t F(S, interaction, Mats, sim_par, vp, *vInf, &ksp);
-
-        // testing
-        // INFO("Explicit update");
-        // F.updateJacobiExplicit(ts);
-
-        // INFO("Gauss-Seidel update");
-        // F.updateJacobiGaussSeidel(ts);
+        sim.setup();
+        Evolve_t *E(sim.time_stepper());
+        E->ReinitInterfacialVelocity();
+        IntVel_t *F(E->F_);
 
         INFO("Globally implicit update (solve for velocity)");
-        sim_par.solve_for_velocity=true;
-        F.updateImplicit(S,ts,dxv);
+        F->Prepare(GloballyImplicit);
+
+        INFO("Check linearity");
+        value_type zero(0), one(1.0), two(2.0);
+        Vec_t::getDevice().Memset(v1.begin(), zero, v1.mem_size());
+        Sca_t::getDevice().Memset(t1.begin(), zero, t1.mem_size());
+        F->ImplicitMatvecPhysical(v1,t1);
+        value_type err(MaxAbs(v1)+MaxAbs(t1));
+        ASSERT(err<1e-15,"matvec is not linear");
+
+        fillRand(v1);fillRand(v1);axpy(two,v1,v2,v3);
+        fillRand(t1);fillRand(t1);axpy(two,t1,t2,t3);
+        F->ImplicitMatvecPhysical(v1,t1);
+        F->ImplicitMatvecPhysical(v2,t2);
+        F->ImplicitMatvecPhysical(v3,t3);
+        axpy(two,v1,v2,v1);
+        axpy(two,t1,t2,t1);
+
+        axpy(-one,v1,v3,v1);
+        axpy(-one,t1,t3,t1);
+        err = MaxAbs(v1)+MaxAbs(t1);
+        ASSERT(err<1e-15,"matvec is not linear");
+
+        Vec_t dxx(nves,p), dxv(nves,p);
+
+        sim.run_params()->solve_for_velocity=true;
+        F->updateImplicit(*E->S_,ts,dxv);
 
         INFO("Globally implicit update (solve for position)");
-        sim_par.solve_for_velocity=false;
-        F.updateImplicit(S,ts,dxx);
+        sim.run_params()->solve_for_velocity=false;
+        F->updateImplicit(*E->S_,ts,dxx);
 
         axpy(-1.0,dxv,dxx,dxv);
-        real_t err(MaxAbs(dxv));
-        ASSERT(err<5e-5,"large error between velocity and position solve");
-
-        delete vInf;
+        err = MaxAbs(dxv);
+        COUT("Difference in solving for position or velocity: "<<err);
+        ASSERT(err<tol,"large error between velocity and position solve");
     }
-    PetscFinalize();
+    VES3D_FINALIZE();
 }

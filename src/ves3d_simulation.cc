@@ -65,14 +65,22 @@ Simulation<DT,DEVICE>::~Simulation()
 }
 
 template<typename DT, const DT &DEVICE>
+Error_t Simulation<DT,DEVICE>::setup()
+{
+    Error_t ierr;
+    ierr = setup_basics();
+    if (ierr) return ierr;
+
+    if (load_checkpoint_)
+        return setup_from_checkpoint();
+    else
+        return setup_from_options();
+}
+
+template<typename DT, const DT &DEVICE>
 Error_t Simulation<DT,DEVICE>::Run()
 {
-    setup_basics();
-    if (load_checkpoint_)
-        setup_from_checkpoint();
-    else
-        setup_from_options();
-
+    CHK(setup());
     INFO("Run options:\n"<<run_params_);
     CHK(timestepper_->Evolve());
     return ErrorEvent::Success;
@@ -127,7 +135,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options()
     std::string fname(FullPath(run_params_.shape_gallery_file));
     INFO("Reading shape gallery file "<<fname);
     std::vector<value_type> shapes;
-    io.ReadData(fname, shapes, DataIO::ASCII);
+    io.ReadDataStl(fname, shapes, DataIO::ASCII);
 
     int nshapes(shapes.size()/x0.getStride()/DIM);
     INFO("Loaded "<<nshapes<<" shape(s)");
@@ -137,7 +145,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options()
     fname = FullPath(run_params_.vesicle_geometry_file);
     INFO("Reading geometry file "<<fname);
     std::vector<value_type> all_geo_spec;
-    io.ReadData(fname, all_geo_spec, DataIO::ASCII);
+    io.ReadDataStl(fname, all_geo_spec, DataIO::ASCII);
 
     int nproc(1), rank(0);
 #ifdef HAVE_PVFMM

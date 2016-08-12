@@ -1,7 +1,7 @@
 #include <StokesVelocity.h>
 
 int main(int argc, char** argv){
-  MPI_Init(&argc, &argv);
+  VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
   pvfmm::SetSigHandler();
 
   MPI_Comm comm=MPI_COMM_WORLD;
@@ -11,6 +11,7 @@ int main(int argc, char** argv){
   StokesVelocity<Real>::Test();
 
   pvfmm::Profile::print(&comm);
-  MPI_Finalize();
-}
+  VES3D_FINALIZE();
 
+  return 0;
+}

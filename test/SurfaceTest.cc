@@ -249,6 +249,7 @@ void testSurfaceClass(const Device &dev)
 
 int main(int argc, char ** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("Surface test:\n=============");
     COUT("CPU device:\n------------");
 
@@ -271,5 +272,6 @@ int main(int argc, char ** argv)
     COUT(emph<<" *** Surface class with GPU device passed ***"<<emph);
 #endif //GPU_ACTIVE
 
+    VES3D_FINALIZE();
     return 0;
 }

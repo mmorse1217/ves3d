@@ -81,6 +81,7 @@ class EvolveSurface : public Streamable
     Error_t pack(std::ostream &os, Streamable::Format format) const;
     Error_t unpack(std::istream &is, Streamable::Format format);
 
+    Error_t ReinitInterfacialVelocity();
     Error_t Evolve();
 
     Error_t getSurfaceUp(const Sur_t *&) const;

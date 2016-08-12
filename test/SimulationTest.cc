@@ -41,106 +41,105 @@ typedef Sim_t::Param_t Param_t;
 
 int main(int argc, char **argv)
 {
-#ifdef HAS_PETSC
-  PetscInitialize(&argc, &argv, NULL, NULL);
-#endif
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
 
-  DictString_t dict;
-  int nproc(1), rank(0);
+    DictString_t dict;
+    int nproc(1), rank(0);
+
 #ifdef HAS_MPI
-  // Adding nproc and rank to template expansion dictionary
-  MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
-  MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
+    // Adding nproc and rank to template expansion dictionary
+    MPI_Comm_size(VES3D_COMM_WORLD, &nproc);
+    MPI_Comm_rank(VES3D_COMM_WORLD, &rank);
 #endif
-  std::stringstream snp, sr;
-  snp<<nproc; sr<<rank;
-  dict["nprocs"] = snp.str();
-  dict["rank"]   = sr.str();
+    std::stringstream snp, sr;
+    snp<<nproc; sr<<rank;
+    dict["nprocs"] = snp.str();
+    dict["rank"]   = sr.str();
 
-  {
-    Param_t params;
-    real_t ts(1e-4);
-    params.n_surfs              = 2;
-    params.sh_order             = 6;
-    params.ts                   = ts;
-    params.time_horizon	    	= 2*ts;
-    params.scheme               = GloballyImplicit;
-    params.time_precond         = DiagonalSpectral;
-    params.pseudospectral       = false;
-    params.bg_flow_param        = 5e-2;
-    params.checkpoint           = true;
-    params.checkpoint_stride    = ts;
-    params.rep_maxit            = 100;
-    params.checkpoint_file_name = "SimulationTest_a_{{rank}}_{{time_idx}}.chk";
-    params.init_file_name       = "precomputed/dumbbell_{{sh_order}}_{{precision}}.txt";
-    params.cntrs_file_name      = "precomputed/shear_centers.txt";
-    params.rep_ts               = ts;
-    params.expand_templates(&dict);
+    {
+        Param_t params;
+        real_t ts(1e-4);
+        params.n_surfs               = 2;
+        params.sh_order              = 16;
+        params.ts                    = ts;
+        params.time_horizon          = 2*ts;
+        params.time_tol              = .9;
+        params.scheme                = GloballyImplicit;
+        params.time_precond          = DiagonalSpectral;
+        params.pseudospectral        = false;
+        params.bg_flow_param         = 5e-2;
+        params.checkpoint            = true;
+        params.checkpoint_stride     = ts;
+        params.rep_maxit             = 100;
+        params.checkpoint_file_name  = "SimulationTest_a_{{rank}}_{{time_idx}}.chk";
+        params.shape_gallery_file    = "precomputed/shape_gallery_{{sh_order}}.txt";
+        params.vesicle_geometry_file = "precomputed/lattice_geometry_spec.txt";
+        params.rep_ts                = ts;
+        params.expand_templates(&dict);
 
-    Sim_t sim1(params);
-    CHK(sim1.Run());
-    const Sim_t::Vec_t &xref(sim1.time_stepper()->S_->getPosition());
+        Sim_t sim1(params);
+        CHK(sim1.Run());
+        const Sim_t::Vec_t &xref(sim1.time_stepper()->S_->getPosition());
 
-    INFO("Setting up the second simulation");
-    params.load_checkpoint      = "test/SimulationTest_a_{{rank}}_000001.chk";
-    params.expand_templates(&dict);
-    int itermax(params.time_iter_max);
-    params.time_iter_max  += 1; //checking overriding
+        INFO("Setting up the second simulation");
+        params.load_checkpoint      = "test/SimulationTest_a_{{rank}}_000001.chk";
+        params.expand_templates(&dict);
+        int itermax(params.time_iter_max);
+        params.time_iter_max  += 1; //checking overriding
 
-    Sim_t sim2(params);
+        Sim_t sim2(params);
 
-    sim2.run_params()->checkpoint_file_name = "SimulationTest_b_{{rank}}_{{time_idx}}.chk";
-    sim2.run_params()->time_horizon = ts;
-    sim2.run_params()->expand_templates(&dict);
-    ASSERT(sim2.run_params()->time_iter_max==itermax+1, "Bad overriding");
-    CHK(sim2.Run());
+        sim2.run_params()->checkpoint_file_name = "SimulationTest_b_{{rank}}_{{time_idx}}.chk";
+        sim2.run_params()->time_horizon = ts;
+        sim2.run_params()->expand_templates(&dict);
+        ASSERT(sim2.run_params()->time_iter_max==itermax+1, "Bad overriding of run parameters");
+        CHK(sim2.Run());
 
-    //final state of sim1 and sim2 should match
-    const Sim_t::Vec_t &x(sim2.time_stepper()->S_->getPosition());
-    Sim_t::Vec_t err;
-    err.replicate(x);
-    axpy((real_t) -1.0, xref, x, err);
-    real_t maxerr = MaxAbs(err);
-    ASSERT(maxerr<5e-7, "inconsistent state after start from checkpoint error="<<maxerr);
-  }
-
-  {
-    //checkpoints of a and b should match
-    std::string s, fa("SimulationTest_a_{{rank}}_000002.chk"), fb("SimulationTest_b_{{rank}}_000001.chk");
-    expand_template(&fa, dict);
-    expand_template(&fb, dict);
-
-    std::stringstream a,b;
-    Sim_t::Vec_t av,bv,e;
-    DataIO::SlurpFile(fa.c_str(), a);
-    while (a.good()){
-      a>>s;
-      if(s=="VECTORS"){
-	a.seekg(-7,std::ios_base::cur);
-	break;
-      }
+        //final state of sim1 and sim2 should match
+        const Sim_t::Vec_t &x(sim2.time_stepper()->S_->getPosition());
+        Sim_t::Vec_t err;
+        err.replicate(x);
+        axpy((real_t) -1.0, xref, x, err);
+        real_t maxerr = MaxAbs(err);
+        ASSERT(maxerr<5e-7, "inconsistent state after start from checkpoint error="<<maxerr);
     }
-    av.unpack(a, Streamable::ASCII);
 
-    DataIO::SlurpFile(fb.c_str(), b);
-    while (b.good()){
-      b>>s;
-      if(s=="VECTORS"){
-	b.seekg(-7,std::ios_base::cur);
-	break;
-      }
+    {
+        //checkpoints of a and b should match
+        std::string s, fa("SimulationTest_a_{{rank}}_000002.chk"), fb("SimulationTest_b_{{rank}}_000001.chk");
+        expand_template(&fa, dict);
+        expand_template(&fb, dict);
+
+        std::stringstream a,b;
+        Sim_t::Vec_t av,bv,e;
+        DataIO::SlurpFile(fa.c_str(), a);
+        while (a.good()){
+            a>>s;
+            if(s=="VECTORS"){
+                a.seekg(-7,std::ios_base::cur);
+                break;
+            }
+        }
+        av.unpack(a, Streamable::ASCII);
+
+        DataIO::SlurpFile(fb.c_str(), b);
+        while (b.good()){
+            b>>s;
+            if(s=="VECTORS"){
+                b.seekg(-7,std::ios_base::cur);
+                break;
+            }
+        }
+        bv.unpack(b, Streamable::ASCII);
+        e.replicate(av);
+        axpy((real_t) -1, av, bv, e);
+        real_t maxerr = MaxAbs(e);
+        ASSERT(maxerr<5e-7, "inconsistent checkpoints, error="<<maxerr);
     }
-    bv.unpack(b, Streamable::ASCII);
-    e.replicate(av);
-    axpy((real_t) -1, av, bv, e);
-    real_t maxerr = MaxAbs(e);
-    ASSERT(maxerr<5e-7, "inconsistent checkpoints, error="<<maxerr);
-  }
 
-  COUT(emph<<"** SimulationTest passed **"<<emph);
-#ifdef HAS_PETSC
-  PetscFinalize();
-#endif
+    COUT(emph<<"** SimulationTest passed **"<<emph);
 
-  return 0;
+    VES3D_FINALIZE();
+
+    return 0;
 }

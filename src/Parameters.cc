@@ -127,6 +127,7 @@ Error_t Parameters<T>::expand_templates(const DictString_t *dict){
     CHK(::expand_template(&vesicle_geometry_file , d));
     CHK(::expand_template(&checkpoint_file_name  , d));
     CHK(::expand_template(&load_checkpoint       , d));
+    CHK(::expand_template(&write_vtk             , d));
 
     return ErrorEvent::Success;
 }
@@ -480,11 +481,11 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     };
 
     if (version>590){
-        ASSERT(key=="name:", "Unexpected key (expeded name)");
+        ASSERT(key=="name:", "Unexpected key (expected name)");
         is>>Streamable::name_>>key;
     }
 
-    is>>n_surfs; ASSERT(key=="n_surfs:", "Unexpected key (expeded n_surfs)");
+    is>>n_surfs; ASSERT(key=="n_surfs:", "Unexpected key (expected n_surfs)");
     is>>key>>sh_order; ASSERT(key=="sh_order:", "Unexpected key (expected sh_order)");
     is>>key>>filter_freq; ASSERT(key=="filter_freq:", "Unexpected key (expected filter_freq)");
     is>>key>>upsample_freq; ASSERT(key=="upsample_freq:", "Unexpected key (expected upsample_freq)");

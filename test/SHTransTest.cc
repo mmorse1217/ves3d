@@ -98,7 +98,9 @@ bool test_inverse(){
 
 int main(int argc, char *argv[])
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     ASSERT(test_resample(),"resample test failed");
     ASSERT(test_inverse(),"inverse test failed");
     return 0;
+    VES3D_FINALIZE();
 }

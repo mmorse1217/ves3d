@@ -37,6 +37,7 @@ int Dummy(int ii)
 
 int main(int argc, char** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("\n ==============================\n"
         <<"  Logger Test:"
         <<"\n ==============================");
@@ -80,4 +81,5 @@ int main(int argc, char** argv)
     CERR_LOC("Some text to cerr","",NULL);
 
     sleep(1);
+    VES3D_FINALIZE();
 }

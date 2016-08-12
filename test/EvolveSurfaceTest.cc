@@ -20,6 +20,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     Vec_t x0(sim_par.n_surfs, sim_par.sh_order);
 
     //reading the prototype form file
+    COUT("Reading shape");
     DataIO myIO(sim_par.checkpoint_file_name,DataIO::ASCII);
     char fname[300];
     std::string prec = (typeid(real) == typeid(float)) ? "float" : "double";
@@ -41,6 +42,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     Populate(x0, cntrs);
 
     //Reading Operators From File
+    COUT("Loading matrices");
     bool readFromFile = true;
     typename Evolve_t::Mats_t Mats(readFromFile, sim_par);
 
@@ -51,6 +53,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
     typename Evolve_t::Interaction_t interaction(&StokesAlltoAll);
 
     //Finally, Evolve surface
+    COUT("Making EvolveSurface object");
     Evolve_t Es(&sim_par, Mats, vInf, NULL, &interaction, NULL, NULL, &x0);
     CHK ( Es.Evolve() );
 
@@ -65,9 +68,7 @@ void EvolveSurfaceTest(Parameters<real> &sim_par)
 
 int main(int argc, char **argv)
 {
-#ifdef HAS_PETSC
-    PetscInitialize(&argc, &argv,NULL,NULL);
-#endif
+    VES3D_INITIALIZE(&argc, &argv,NULL,NULL);
 
     COUT("========================\n  EvolveSurface test: "
         <<"\n========================");
@@ -113,11 +114,10 @@ int main(int argc, char **argv)
     EvolveSurfaceTest<DevGPU, the_gpu_device>(sim_par);
     PRINTERRORLOG();
     PROFILEREPORT(SortFlopRate);
-
 #endif //GPU_ACTIVE
 
-#ifdef HAS_PETSC
-    PetscFinalize();
-#endif
+    COUT(emph<<"EvolveSurfaceTest passed"<<emph);
+    VES3D_FINALIZE();
 
+    return 0;
 }

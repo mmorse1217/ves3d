@@ -76,6 +76,7 @@ class Simulation{
     Evolve_t* time_stepper(){ return timestepper_;}
     Param_t* run_params(){ return &run_params_;}
 
+    Error_t setup();
     Error_t setup_basics();
     Error_t setup_from_options();
     Error_t setup_from_checkpoint();

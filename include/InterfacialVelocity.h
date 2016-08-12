@@ -50,6 +50,7 @@ class InterfacialVelocity
     Error_t AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const;
     Error_t AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) const;
     Error_t AssembleInitial(PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
+    Error_t ImplicitMatvecPhysical(Vec_t &vox, Sca_t &ten) const;
 
     Error_t Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &scheme) const;
     Error_t ConfigureSolver(const SolverScheme &scheme) const;
@@ -97,7 +98,6 @@ class InterfacialVelocity
     mutable PVec_t *parallel_u_;
 
     static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
-    Error_t ImplicitMatvecPhysical(Vec_t &vox, Sca_t &ten) const;
     static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
     size_t stokesBlockSize() const;
     size_t tensionBlockSize() const;

@@ -137,22 +137,23 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
     /*
      * The traction jump due to gravity is (excess_density)*(g.(x-c)) n
      */
+    // // getting centers
+    // cen.resize(S.getPosition().getNumSubs(),1,std::make_pair(1,1));
+    // S.getCenters(cen);
 
-    // getting centers
-    cen.resize(S.getPosition().getNumSubs(),1,std::make_pair(1,1));
-    S.getCenters(cen);
+    // // x-c
+    // axpy((value_type) -1.0, cen, cen);
+    // Vec_t::getDevice().apx(cen.begin(), x.begin(), x.getStride(), x.getNumSubFuncs(), Fg.begin());
 
-    // x-c
-    axpy((value_type) -1.0, cen, cen);
-    Vec_t::getDevice().apx(cen.begin(), x.begin(), x.getStride(), x.getNumSubFuncs(), Fg.begin());
+    // Sca_t s;
+    // Vec_t w;
+    // s.replicate(x);
+    // w.replicate(x);
+    // // g.(x-c)
+    //ShufflePoints(Fg,w);
 
-    Sca_t s;
-    Vec_t w;
-    s.replicate(x);
-    w.replicate(x);
-
-    // g.(x-c)
-    ShufflePoints(Fg,w);
+    // g.x
+    ShufflePoints(x,w);
     int m(1), k(DIM), n(x.size()/DIM);
 
     Vec_t::getDevice().gemm("N","N", &m, &n, &k,
@@ -160,6 +161,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
         w.begin(), &k,
         &zero, s.begin(), &m);
 
+    // (g.x) n
     xv(s,S.getNormal(),Fg);
 
     // scale by excess density

@@ -10,12 +10,10 @@ int main(int argc, char **argv)
     SET_ERR_CALLBACK(&cb_abort);
     PROFILESTART();
 
-#ifdef HAS_PETSC
-    //don't use petsc for commandline argument parsing
     int pargc(0);
     char **pargv(NULL);
-    PetscInitialize(&pargc, &pargv, NULL, NULL);
-#endif
+    // don't use petsc for commandline argument parsing
+    VES3D_INITIALIZE(&pargc, &pargv, NULL, NULL);
 
     DictString_t dict;
     int nproc(1), rank(0);
@@ -40,10 +38,6 @@ int main(int argc, char **argv)
     PROFILEEND("",0);
     PRINTERRORLOG();
     PROFILEREPORT(SortTime);
-
-#ifdef HAS_PETSC
-    PetscFinalize();
-#endif
-
+    VES3D_FINALIZE();
     return 0;
 }

@@ -38,24 +38,24 @@ namespace testtools
 {
     void AssertTrue(bool cond, const std::string &pass_msg, const std::string &fail_msg)
     {
-	if (cond)
-	    INFO(emph<<pass_msg<<emph);
-	else{
-	    CERR(fail_msg);
-	    abort();
-	}
+        if (cond){
+            INFO(emph<<pass_msg<<emph);
+        } else {
+            CERR(fail_msg);
+            abort();
+        }
     }
 
     template<typename T>
     void AssertAlmostEqual(T &x, T &y, const T& eps, const std::string &fail_msg)
     {
-	ASSERT(x<=(y+y*eps) && x>=(y-y*eps), fail_msg);
+        ASSERT(x<=(y+y*eps) && x>=(y-y*eps), fail_msg);
     }
 
     template<typename T>
     void AssertEqual(T &x, T &y, const std::string &fail_msg)
     {
-	ASSERT(x==y, fail_msg);
+        ASSERT(x==y, fail_msg);
     }
 
 }

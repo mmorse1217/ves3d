@@ -4,6 +4,7 @@
 
 int main(int argc, char** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("\n ==============================\n"
         <<"  Device Test:"
         <<"\n ==============================");
@@ -77,5 +78,6 @@ int main(int argc, char** argv)
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);
 
+    VES3D_FINALIZE();
     return 0;
 }

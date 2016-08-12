@@ -13,6 +13,7 @@ extern const Dev the_device(0);
 
 int main(int argc, char** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     bool check_correct = (argc > 1) ? atoi(argv[1]) : true;
     bool profile = (argc > 2) ? atoi(argv[2]) : true;
 
@@ -122,4 +123,5 @@ int main(int argc, char** argv)
             PROFILEREPORT(SortTime);
         }
     }
+    VES3D_FINALIZE();
 }

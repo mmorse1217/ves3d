@@ -38,20 +38,39 @@
 #include <stdlib.h> //getenv
 #include <string>
 
+#define VES3D_INITIALIZE(argc,argv,file,help)
+#define VES3D_FINALIZE()
+
 #ifdef HAS_MPI
 #include "mpi.h"
-#define COUTMASTER(str) (std::cout<<str<<std::endl)
-#else
-#define COUTMASTER(str) (std::cout<<str<<std::endl)
+#define VES3D_COMM_WORLD  MPI_COMM_WORLD
+#define VES3D_COMM_SELF   MPI_COMM_SELF
+#define VES3D_COMM_STDOUT MPI_COMM_WORLD
+
+#undef VES3D_INITIALIZE
+#undef VES3D_FINALIZE
+#define VES3D_INITIALIZE(argc,argv,file,help) MPI_Init(argc,argv);
+#define VES3D_FINALIZE() MPI_Finalize();
 #endif //HAS_MPI
 
 #ifdef HAS_PETSC
 #include "petscksp.h"
-#define VES3D_COMM_WORLD PETSC_COMM_WORLD
+#undef VES3D_COMM_WORLD
+#undef VES3D_COMM_SELF
+#undef VES3D_COMM_STDOUT
+#define VES3D_COMM_WORLD  PETSC_COMM_WORLD
+#define VES3D_COMM_SELF   PETSC_COMM_SELF
+#define VES3D_COMM_STDOUT PETSC_COMM_WORLD
+
 #define CHK_PETSC(expr) expr;
 #define PRINTF(comm, ... ) PetscPrintf(comm, __VA_ARGS__);
 #define PRINTF_ERR(comm, ... ) PetscFPrintf(comm, PETSC_STDERR, __VA_ARGS__);
 #define ABORT(ierr, msg) SETERRABORT(PETSC_COMM_WORLD, ierr, msg)
+
+#undef VES3D_INITIALIZE
+#undef VES3D_FINALIZE
+#define VES3D_INITIALIZE(argc,argv,file,help) PetscInitialize(argc, argv, file, help);
+#define VES3D_FINALIZE() PetscFinalize();
 #endif //HAS_PETSC
 
 #define STR_EXPAND(tok) #tok

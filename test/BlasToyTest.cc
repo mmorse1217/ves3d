@@ -4,6 +4,7 @@ typedef float real;
 
 int main(int argc, char **argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     PROFILESTART();
     COUT("\n ==============================\n"
         <<"  Blas Test:"
@@ -71,4 +72,5 @@ int main(int argc, char **argv)
 
     PROFILEEND("",0);
     PROFILEREPORT(SortFlop);
+    VES3D_FINALIZE();
 }

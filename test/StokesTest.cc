@@ -9,6 +9,7 @@ extern const DevCPU the_cpu_dev(0);
 
 int main(int argc, char** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("\n ==============================\n"
         <<"  Stokes Kernels Test:"
         <<"\n ==============================");
@@ -48,4 +49,5 @@ int main(int argc, char** argv)
     COUT("\n  Error = "<<MaxAbs(pot1));
     ASSERT(t1/t2>1.5,"SSE is faster");
     COUT(emph<<" ** Stokes test with SSE passed **"<<emph);
+    VES3D_FINALIZE();
 }

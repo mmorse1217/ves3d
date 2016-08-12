@@ -65,6 +65,16 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::~EvolveSurface()
 
 template<typename T, typename DT, const DT &DEVICE,
          typename Interact, typename Repart>
+Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::ReinitInterfacialVelocity()
+{
+    delete F_;
+    F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *ves_props_,
+        *vInf_, parallel_solver_);
+    return ErrorEvent::Success;
+}
+
+template<typename T, typename DT, const DT &DEVICE,
+         typename Interact, typename Repart>
 Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 {
     PROFILESTART();
@@ -74,10 +84,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
     INFO("The vesicles' material properties:\n"<<ves_props_);
 
-    delete F_;
-    F_ = new IntVel_t(*S_, *interaction_, mats_, *params_, *ves_props_,
-        *vInf_, parallel_solver_);
-
+    ReinitInterfacialVelocity();
     //Deciding on the updater type
     Scheme_t updater(NULL);
     switch ( params_->scheme )

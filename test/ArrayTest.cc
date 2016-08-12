@@ -1,7 +1,9 @@
 #include "Array.h"
 #include "Logger.h"
 #include "Device.h"
+#include "ves3d_common.h"
 #include <sstream>
+
 
 using namespace std;
 
@@ -103,6 +105,7 @@ typedef Array<double, G, gpu_dev> GArr;
 
 int main(int argc, char** argv)
 {
+    VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
     COUT("\n ==============================\n"
         <<"  Array Test:"
         <<"\n ==============================");
@@ -116,6 +119,6 @@ int main(int argc, char** argv)
 #endif //GPU_ACTIVE
     PROFILEEND("",0);
     PROFILEREPORT(SortFunName);
-
+    VES3D_FINALIZE();
     return 0;
 }

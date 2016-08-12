@@ -46,7 +46,7 @@ clean:
 	${MAKE} -C ${VES3D_LIBDIR} clean
 	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d
 	-${RM} -r ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
-	-${RM} *.${VES3D_CHKEXT} ${VES3D_EXPRDIR}/*.${VES3D_CHKEXT}
+	-${RM} *.${VES3D_CHKEXT} ${VES3D_EXPRDIR}/*.${VES3D_CHKEXT} *.vtp *.pvtp
 
 distclean:
 	${MAKE} clean

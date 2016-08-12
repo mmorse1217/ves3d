@@ -168,6 +168,7 @@ void testStokesDoubleLayer(const Device &dev){
 
 int main(int argc, char ** argv){
 
+  VES3D_INITIALIZE(&argc,&argv,NULL,NULL);
   COUT("Stokes Double Layer test:\n=========================");
   COUT("CPU device:\n------------");
 
@@ -257,5 +258,6 @@ int main(int argc, char ** argv){
   COUT(emph<<" *** StokesDoubleLayer with GPU device passed ***"<<emph);
 #endif //GPU_ACTIVE
 
+  VES3D_FINALIZE();
   return 0;
 }

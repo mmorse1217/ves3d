@@ -18,7 +18,6 @@ TEST = 	ArrayTest.exe			\
 	MovePoleTest.exe		\
 	ParametersTest.exe		\
 	ParsingTest.exe			\
-	RepartitionTest.exe		\
 	SHTransTest.exe			\
 	ScalarsTest.exe			\
 	SimulationTest.exe		\
@@ -41,9 +40,11 @@ ifeq (${VES3D_USE_PETSC},yes)
 endif
 
 RUNEXE   = 0
-FAILFILE = test_results.txt
+RUNLOG = test_results.txt
+LASTRUN  = test_results_last.txt
 EXECLOG  = tests.log
 EXECNAME =
+EXECS   := $(shell ls *.exe)
 SHELL=/bin/bash -o pipefail
 
 all: ${TEST}
@@ -55,28 +56,38 @@ all: ${TEST}
 	${CXX} -MM ${CXXFLAGS} ${CPPFLAGS} -c -o $*.d $*.cc
 	@if [ "${RUNEXE}" -ne "0" ]; then ./$@; fi
 
-clean:
-	-${RM} *.o *.out *.d *.${VES3D_CHKEXT} ${FAILFILE}  ${EXECLOG}
-
-distclean:
-	${MAKE} clean
-	-${RM} *.exe
-
 check:  ${TEST}
 	${MAKE} run
 
-run:
-	@echo -- TEST TIME: `date` --------------- >> ${EXECLOG}
-	tail -1 ${EXECLOG} >> ${FAILFILE}
-	@for exec in *.exe; do					\
-	    echo Running $$exec;				\
-	    ${MAKE} EXECNAME=$$exec run-exec;			\
-	    sleep 1;						\
+run-failed: EXECS=$(shell cat ${LASTRUN}|tr '\n' ' ')
+run-failed:
+	@echo -n '' > ${LASTRUN}
+	@${MAKE} run EXECS="${EXECS}"
+
+
+run: ${EXECS}
+	@echo -- TEST TIME: `date` -- list of executed test --------------- >> ${EXECLOG}
+	tail -1 ${EXECLOG} >> ${RUNLOG}
+	@for exec in ${EXECS}; do				\
+	     echo Running $$exec;				\
+	     ${MAKE} EXECNAME=$$exec run-exec;			\
+	     sleep 1;						\
 	done;
-	@tail -20 ${FAILFILE}
+	@tail -$(words ${EXECS} "+1") ${RUNLOG}
+	@echo -- Failed test to be run with 'make run-failed' -----------------------------------
+	@cat ${LASTRUN}
 
 run-exec:
-	./${EXECNAME} | tee -a ${EXECLOG}; test $$? -eq 0 || echo "${EXECNAME} failed" >> ${FAILFILE}
+	./${EXECNAME} | tee -a ${EXECLOG}; (test $$? -eq 0 && (echo "passed: ${EXECNAME}" >> ${RUNLOG})) || \
+	(echo "failed: ${EXECNAME}" >> ${RUNLOG} && echo "${EXECNAME}" >> ${LASTRUN})
+
+
+clean:
+	-${RM} *.o *.out *.d *.${VES3D_CHKEXT} ${RUNLOG}  ${EXECLOG} *.vtp *.pvtp
+
+distclean:
+	${MAKE} clean
+	-${RM} *.exe ${LASTRUN}
 
 .PHONY: clean check run
 .SECONDARY:

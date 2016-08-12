@@ -614,11 +614,10 @@ Error_t  ParallelLinSolverPetsc<T>::ViewReport() const
     ierr = KSPGetConvergedReason(ps_, &reason); CHK_PETSC(ierr);
 
     if (reason>0){
-	WHENCHATTY(PRINTF(*comm_, "KSP converged with reason=%d\n", reason));
+        WHENCHATTY(PRINTF(*comm_, "KSP converged with reason=%d\n", reason));
     } else {
-	PRINTF_ERR(*comm_, "KSP diverged with reason=%d\n", reason);
+        PRINTF_ERR(*comm_, "KSP diverged with reason=%d\n", reason);
         return ErrorEvent::DivergenceError;
-	ABORT(ierr, "KSP diverged");
     }
     return ErrorEvent::Success;
 }
