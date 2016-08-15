@@ -689,7 +689,7 @@ PetscErrorCode PetscPrecondWrapper(PC P, Vec x, Vec y){
 template<typename T>
 PetscErrorCode PetscKSPMonitor(KSP K,PetscInt n, PetscReal rnorm, void *dummy){
     WHENCHATTY(PetscPrintf(PETSC_COMM_WORLD,
-            "KSP Residual norm at iteration %D: %14.12e",
+            "KSP Residual norm at iteration %D: %14.12e\n",
             n,
             rnorm));
   return 0;
