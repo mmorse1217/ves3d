@@ -7,8 +7,8 @@
 //#define __SH_FILTER__
 
 template<class Real>
-StokesVelocity<Real>::StokesVelocity(int sh_order_, int sh_order_up_, Real box_size_, MPI_Comm comm_):
-  sh_order(sh_order_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(sh_order_up_, box_size_, comm_), near_singular1(sh_order_up_, box_size_, comm_)
+StokesVelocity<Real>::StokesVelocity(int sh_order_, int sh_order_up_, Real box_size_, Real repul_dist_, MPI_Comm comm_):
+  sh_order(sh_order_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(sh_order_up_, box_size_, repul_dist_, comm_), near_singular1(sh_order_up_, box_size_, repul_dist_, comm_)
 {
   pvfmm_ctx=PVFMMCreateContext<Real>(box_size_);
   fmm_setup=true;
@@ -50,10 +50,6 @@ void StokesVelocity<Real>::SetSrcCoord(const PVFMMVec& S){
   S_vel_up.ReInit(0);
   fmm_vel.ReInit(0);
   trg_vel.ReInit(0);
-
-  //#ifndef NDEBUG
-  MonitorError();
-  //#endif
 }
 
 template <class Real>
@@ -268,11 +264,18 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     if(!rforce_single.Dim() && force_single.Dim()){ // Add repulsion
       pvfmm::Profile::Tic("Repulsion",&comm);
       const PVFMMVec& f_repl=near_singular0.ForceRepul();
-      assert(force_single.Dim()==f_repl.Dim());
+      long Mves=2*sh_order*(sh_order+1);
+      long Nves=f_repl.Dim()/Mves/COORD_DIM;
+      assert(force_single.Dim()==Nves*Mves*COORD_DIM);
+      assert(f_repl.Dim()==Nves*Mves*COORD_DIM);
       rforce_single.ReInit(force_single.Dim());
       #pragma omp parallel for
-      for(long i=0;i<rforce_single.Dim();i++){
-        rforce_single[i]=force_single[i]+f_repl[i];
+      for(long i=0;i<Nves;i++){
+        for(long j=0;j<COORD_DIM;j++){
+          for(long k=0;k<Mves;k++){
+            rforce_single[(i*COORD_DIM+j)*Mves+k]=force_single[(i*COORD_DIM+j)*Mves+k]+f_repl[(i*Mves+k)*COORD_DIM+j];
+          }
+        }
       }
       pvfmm::Profile::Toc();
     }
@@ -367,11 +370,11 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       SL_vel.ReInit(0);
       DL_vel.ReInit(0);
 
-      if(force_single.Dim()){ // Set SL_vel
+      if(rforce_single.Dim()){ // Set SL_vel
         static pvfmm::Vector<Real> F;
-        SphericalHarmonics<Real>::Grid2SHC(force_single,sh_order,sh_order,F);
+        SphericalHarmonics<Real>::Grid2SHC(rforce_single,sh_order,sh_order,F);
 
-        long nv = force_single.Dim()/Ngrid/COORD_DIM;
+        long nv = rforce_single.Dim()/Ngrid/COORD_DIM;
         SL_vel.ReInit(nv*COORD_DIM*Ncoef);
         #pragma omp parallel
         { // mat-vec
@@ -448,7 +451,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
   NearSingular<Real>& near_singular=(trg_is_surf?near_singular0:near_singular1);
   PVFMMVec& trg_coord=(trg_is_surf?tcoord_repl:tcoord);
   if(!fmm_vel.Dim()){ // Compute far interaction
-    pvfmm::Profile::Tic("FarInteraction",&comm);
+    pvfmm::Profile::Tic("FarInteraction",&comm,true);
     bool prof_state=pvfmm::Profile::Enable(false);
     fmm_vel.ReInit(trg_coord.Dim());
     PVFMMEval(&scoord_far[0],
@@ -463,7 +466,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
   }
 
   if(!trg_vel.Dim()){ // Compute near interaction
-    pvfmm::Profile::Tic("NearInteraction",&comm);
+    pvfmm::Profile::Tic("NearInteraction",&comm,true);
     bool prof_state=pvfmm::Profile::Enable(false);
     const PVFMMVec& near_vel=near_singular();
     { // Compute trg_vel = fmm_vel + near_vel
@@ -506,7 +509,6 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
 #ifdef __ENABLE_PVFMM_PROFILER__
   pvfmm::Profile::Toc();
   pvfmm::Profile::Enable(prof_state);
-  pvfmm::Profile::print(&comm);
 #endif
 
   return trg_vel;
@@ -526,6 +528,7 @@ void StokesVelocity<Real>::operator()(Vec& vel){
 template <class Real>
 Real StokesVelocity<Real>::MonitorError(){
   static PVFMMVec force_single_orig, force_double_orig, tcoord_orig;
+  pvfmm::Profile::Tic("StokesMonitor",&comm, true);
   bool trg_is_surf_orig;
   { // Save original state
     force_single_orig=force_single;
@@ -554,6 +557,7 @@ Real StokesVelocity<Real>::MonitorError(){
   const PVFMMVec& velocity_fmm=fmm_vel;
   const PVFMMVec& velocity_near=near_singular0();
   const PVFMMVec& velocity_self=S_vel;
+  bool collision=near_singular0.CheckCollision();
 
   if(1){ // Write VTK file
     static unsigned long iter=0;
@@ -574,6 +578,7 @@ Real StokesVelocity<Real>::MonitorError(){
       norm_local[1]=std::max(norm_local[1],fabs(velocity_near[i]    ));
       norm_local[2]=std::max(norm_local[2],fabs(velocity_fmm [i]    ));
     }
+    if(collision) norm_local[1]=1e10;
     MPI_Allreduce(&norm_local, &norm_glb, 3, pvfmm::par::Mpi_datatype<Real>::value(), pvfmm::par::Mpi_datatype<Real>::max(), comm);
   }
 
@@ -584,10 +589,9 @@ Real StokesVelocity<Real>::MonitorError(){
     else SetDensityDL(NULL);
     if(!trg_is_surf_orig) SetTrgCoord(&tcoord_orig);
   }
+  pvfmm::Profile::Toc();
 
-  int rank;
-  MPI_Comm_rank(comm,&rank);
-  if(!rank) INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
+  INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
   return norm_glb[0]+norm_glb[1]+norm_glb[2];
 }
 

@@ -13,7 +13,7 @@ class StokesVelocity{
 
   public:
 
-    StokesVelocity(int sh_order, int sh_order_up, Real box_size=-1, MPI_Comm c=MPI_COMM_WORLD);
+    StokesVelocity(int sh_order, int sh_order_up, Real box_size=-1, Real repul_dist=1e-3, MPI_Comm c=MPI_COMM_WORLD);
 
     ~StokesVelocity();
 

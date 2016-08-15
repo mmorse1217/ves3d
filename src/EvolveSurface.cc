@@ -151,8 +151,13 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     Vec_t dx, x0, x_dt, x_2dt;
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
-    while ( ERRORSTATUS() && t < time_horizon )
+
+    MPI_Comm comm=MPI_COMM_WORLD;
+    pvfmm::Profile::Enable(true);
+    while ( ERRORSTATUS() && t < time_horizon && dt>1e-10 )
     {
+        pvfmm::Profile::Tic("TimeStep",&comm,true);
+
         if(time_adap==TimeAdapErr){ // Adaptive using 2*dt time-step for error
             dt=std::min((time_horizon-t)/2, dt);
             Error_t err=ErrorEvent::Success;
@@ -162,20 +167,37 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             axpy(static_cast<value_type>(0.0), S_->getPosition(), S_->getPosition(), x0);
 
             // dt time-step
+            pvfmm::Profile::Tic("GMRES1",&comm,true);
             x_dt.replicate(S_->getPosition());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_dt);
+            pvfmm::Profile::Toc();
+
+            // Check integration error
+            value_type stokes_error=F_->StokesError(x_dt);
 
             // 2*dt time-step
+            pvfmm::Profile::Tic("GMRES2",&comm,true);
             x_2dt.replicate(S_->getPosition());
             axpy(static_cast<value_type>(0.0), x0, x0, S_->getPositionModifiable());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, 2*dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_2dt);
+            pvfmm::Profile::Toc();
 
             // dt time-step
+            pvfmm::Profile::Tic("GMRES3",&comm,true);
             axpy(static_cast<value_type>(0.0), x_dt, x_dt, S_->getPositionModifiable());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            pvfmm::Profile::Toc();
+
+            // Check integration error
+            stokes_error=std::max(stokes_error, F_->StokesError(S_->getPosition()));
+            { // stokes_error = MPI_MAX(stokes_error)
+              assert(typeid(T)==typeid(double)); // @bug this only works for T==double
+              value_type error_loc=stokes_error;
+              MPI_Allreduce(&error_loc, &stokes_error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            }
 
             // Compute error
             axpy(static_cast<value_type>(-1.0), S_->getPosition(), x_2dt, x_2dt);
@@ -196,6 +218,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                 beta = (1.0/error) * (dt/time_horizon) * params_->error_factor;
                 beta = std::pow(beta, timestep_order);
                 if(err!=ErrorEvent::Success) beta=0.5;
+                if(stokes_error*dt>params_->time_tol) beta=0.5; // This is required for GMRES to converge
 
                 beta=std::min(beta,1.5);
                 beta=std::max(beta,0.5);
@@ -231,8 +254,10 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             V0=Sca_t::getDevice().MaxAbs( vol0.begin(), N_ves);
 
             // dt time-step
+            pvfmm::Profile::Tic("GMRES",&comm,true);
             err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            pvfmm::Profile::Toc();
 
             // Compute area/volume error
             value_type A_err, V_err;
@@ -288,16 +313,29 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             INFO("Time-adaptive: A_err/dt = "<<(A_err/A0)/dt<<", V_err/dt = "<<(V_err/V0)/dt<<", dt_new = "<<dt_new);
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
+            pvfmm::Profile::Tic("GMRES",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            pvfmm::Profile::Toc();
 
             t += dt;
         }
 
+        pvfmm::Profile::Tic("Reparam",&comm,true);
         F_->reparam();
+        pvfmm::Profile::Toc();
+        pvfmm::Profile::Tic("AreaVolume",&comm,true);
         AreaVolumeCorrection(area, vol);
+        pvfmm::Profile::Toc();
+        pvfmm::Profile::Tic("Repartition",&comm,true);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
+        pvfmm::Profile::Toc();
+        pvfmm::Profile::Tic("Monitor",&comm,true);
         CHK( (*monitor_)( this, t, dt) );
+        pvfmm::Profile::Toc();
+
+        pvfmm::Profile::Toc();
+        pvfmm::Profile::print(&comm);
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;

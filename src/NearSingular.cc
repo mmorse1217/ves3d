@@ -11,9 +11,10 @@
 #define VES_STRIDE (2+(2*sh_order_)*(1+sh_order_))
 
 template<typename Real_t>
-NearSingular<Real_t>::NearSingular(int sh_order, Real_t box_size, MPI_Comm c){
+NearSingular<Real_t>::NearSingular(int sh_order, Real_t box_size, Real_t repul_dist, MPI_Comm c){
   sh_order_=sh_order;
   box_size_=box_size;
+  repul_dist_=repul_dist;
   comm=c;
   S=NULL;
   qforce_single=NULL;
@@ -1060,6 +1061,7 @@ void NearSingular<Real_t>::SetupCoordData(){
     proj_coord      .ReInit(N_trg*COORD_DIM);
     repl_force      .ReInit(N_trg*COORD_DIM);
     is_extr_pt      .ReInit(N_trg          );
+    Real_t r2repul_inv=(repul_dist_>0?std::pow(1.0/repul_dist_,2.0):0);
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Setup
       size_t a=((tid+0)*N_ves)/omp_p;
@@ -1083,13 +1085,13 @@ void NearSingular<Real_t>::SetupCoordData(){
             patch.eval(x,y,&proj_coord[trg_idx*COORD_DIM]);
 
             { // repulsion
-              Real_t dx=proj_coord[trg_idx*COORD_DIM+0]-trg_coord[trg_idx*COORD_DIM+0];
-              Real_t dy=proj_coord[trg_idx*COORD_DIM+1]-trg_coord[trg_idx*COORD_DIM+1];
-              Real_t dz=proj_coord[trg_idx*COORD_DIM+2]-trg_coord[trg_idx*COORD_DIM+2];
+              Real_t dx=trg_coord[trg_idx*COORD_DIM+0]-proj_coord[trg_idx*COORD_DIM+0];
+              Real_t dy=trg_coord[trg_idx*COORD_DIM+1]-proj_coord[trg_idx*COORD_DIM+1];
+              Real_t dz=trg_coord[trg_idx*COORD_DIM+2]-proj_coord[trg_idx*COORD_DIM+2];
               Real_t r2=dx*dx+dy*dy+dz*dz;
 
-              Real_t r2_near=coord_setup.r_near*coord_setup.r_near;
-              Real_t f=1.0/r2*exp(-1000*r2/r2_near);
+              Real_t f=0;
+              if(r2repul_inv>0) f=exp(-r2*r2repul_inv)/r2;
               repl_force[trg_idx*COORD_DIM+0]=dx*f;
               repl_force[trg_idx*COORD_DIM+1]=dy*f;
               repl_force[trg_idx*COORD_DIM+2]=dz*f;
@@ -1115,6 +1117,20 @@ const NearSingular<Real_t>::PVFMMVec_t&  NearSingular<Real_t>::ForceRepul(){
   SetupCoordData();
   PVFMMVec_t& repl_force=coord_setup.repl_force;
   return repl_force;
+}
+
+template<typename Real_t>
+bool  NearSingular<Real_t>::CheckCollision(){
+  SetupCoordData();
+  bool collision=false;
+  pvfmm::Vector<char>& is_extr_pt=coord_setup.is_extr_pt;
+  for(long i=0;i<is_extr_pt.Dim();i++){
+    if(!is_extr_pt[i]){
+      collision=true;
+      break;
+    }
+  }
+  return collision;
 }
 
 template<typename Real_t>
