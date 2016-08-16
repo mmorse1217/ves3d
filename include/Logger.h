@@ -174,14 +174,14 @@ static bool assert_expr(false);
 #define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
 
 #ifdef VERBOSE
-#define COUTDEBUG(str) {int rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &rank); if(!rank)std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}
+#define COUTDEBUG(str) {int _rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &_rank); if(!_rank)std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}
 #define WHENVERBOSE(expr) expr
 #else
 #define COUTDEBUG(str)
 #define WHENVERBOSE(expr)
 #endif //VERBOSE
 
-#define COUT(str) {int rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &rank); if(!rank)std::cout<<str<<std::endl; }
+#define COUT(str) {int _rank; MPI_Comm_rank(VES3D_COMM_WORLD, &_rank); std::cout<<"["<<_rank<<"] "<<str<<std::endl; }
 
 #ifdef QUIET
 #define INFO(str)
@@ -190,7 +190,7 @@ static bool assert_expr(false);
 #else
 #define WHENQUIET(expr)
 #define WHENCHATTY(expr) expr
-#define INFO(str) {int rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &rank); if(!rank) std::cout<<"[INFO - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}
+#define INFO(str) {int _rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &_rank); if(!_rank) std::cout<<"[INFO - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}
 #endif //QUIET
 
 #define LOG(msg) (Logger::Log(msg))
