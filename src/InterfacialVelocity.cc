@@ -127,7 +127,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     //axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
     dx.replicate(S_.getPosition());
-    axpy(dt, pos_vel_, dx);
+    axpy(dt_, pos_vel_, dx);
 
     recycle(u1);
     recycle(u2);
@@ -788,13 +788,12 @@ Solve(const PVec_t *rhs, PVec_t *u0, const value_type &dt, const SolverScheme &s
     PROFILESTART();
     INFO("Solving for position/velocity and tension using "<<scheme<<" scheme.");
 
-    CHK(parallel_solver_->Solve(parallel_rhs_, parallel_u_));
-    typename PVec_t::size_type        iter;
+    Error_t err = parallel_solver_->Solve(parallel_rhs_, parallel_u_);
+    typename PVec_t::size_type iter;
     CHK(parallel_solver_->IterationNumber(iter));
-    WHENCHATTY(COUT(""));
+
     INFO("Parallel solver returned after "<<iter<<" iteration(s).");
-    INFO("Parallal solver report:");
-    Error_t err=parallel_solver_->ViewReport();
+    parallel_solver_->ViewReport();
 
     PROFILEEND("",0);
     return err;

@@ -136,16 +136,22 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         value_type max_err=MaxAbs(y0);
 
         { // max_err = MPI_MAX(max_err)
-          assert(typeid(T)==typeid(double)); // @bug this only works for T==double
-          value_type loc;
+            ASSERT(typeid(T)==typeid(double),"Only works for double"); // @bug this only works for T==double
+            value_type loc;
 
-          loc=max_y0;
-          MPI_Allreduce(&loc, &max_y0, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
-
-          loc=max_err;
-          MPI_Allreduce(&loc, &max_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            loc=max_y0;
+            MPI_Allreduce(&loc, &max_y0, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            loc=max_err;
+            MPI_Allreduce(&loc, &max_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
         }
-        if(max_err>max_y0*dt*params_->time_tol) CERR_LOC("Sanity check for time-stepper failed!", std::endl, exit(1));
+        //@bug I (ABT) think tolerance is true when solving for
+        //velocity, not for position
+        INFO("Sanity check error="<<max_err<<
+            ", relative error="<<max_err/max_y0<<
+            ", rtol="<<dt*params_->time_tol);
+
+        if(max_err>max_y0*dt*params_->time_tol)
+            CERR_LOC("Sanity check for time-stepper failed!", std::endl,exit(1));
     }
 
     Vec_t dx, x0, x_dt, x_2dt;
