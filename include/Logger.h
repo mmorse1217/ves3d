@@ -153,14 +153,7 @@ std::ostream& emph(std::ostream& os);
  * Debugging macros
  */
 #ifndef NDEBUG
-// defineing assert_expr to avoid multiple evaluation of expr
-static bool assert_expr(false);
-#define ASSERT(expr,msg) (                                              \
-        assert_expr=expr,                                               \
-        (assert_expr) ?                                                 \
-        assert(assert_expr) :                                           \
-        CERR_LOC(msg,"",assert(assert_expr)))
-
+#define ASSERT(expr,msg) (expr) ? assert(true) : CERR_LOC(msg,"",assert(false))
 #define WHENDEBUG(expr) expr
 #else  //NDEBUG
 
@@ -171,7 +164,7 @@ static bool assert_expr(false);
 /*
  * Printing macro
  */
-#define SCI_PRINT_FRMT std::scientific<<std::setprecision(4)
+#define SCI_PRINT_FRMT std::scientific<<std::setprecision(8)
 
 #ifdef VERBOSE
 #define COUTDEBUG(str) {int _rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &_rank); if(!_rank)std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}

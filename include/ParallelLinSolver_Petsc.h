@@ -203,12 +203,12 @@ class ParallelLinSolverPetsc : public ParallelLinSolver<T>
     const KSP& PetscKSP() const;
 
   private:
-    mutable PetscErrorCode	 ierr;
-    MPI_Comm			*comm_;
-    KSP 			 ps_;
-    petsc_matvec_type           *mv_;
-    const void                  *precond_ctx_;
-    precond_type                precond_;
+    mutable PetscErrorCode	ierr;
+    MPI_Comm               *comm_;
+    KSP                     ps_;
+    petsc_matvec_type      *mv_;
+    const void             *precond_ctx_;
+    precond_type            precond_;
 
     friend PetscErrorCode PetscPrecondWrapper<T>(PC A, Vec x, Vec y);
 };

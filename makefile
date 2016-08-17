@@ -57,5 +57,13 @@ distclean:
 # include dependency file for templates (generated when making bin files)
 -include $(addprefix ${VES3D_SRCDIR}/, $(addsuffix .d, ${VES3D_BINS}))
 
+help:
+	@echo "    Useful compilation flags are:"
+	@echo "        VES3D_DEBUG      [yes|no] affects only compiler flags (not printing verbosity)"
+	@echo "        VES3D_PROFILE    [yes|no] turns profiling macros on"
+	@echo "        VES3D_VERBOSE    [1|2|3]  1=most verbose, 2=normal, 3=quiet"
+	@echo "        VES3D_TESTING    [yes|no] equal to DEBUG and PROFILE"
+	@echo "        VES3D_VERSION    default to 'hg id -n' (local to repo) can be set as argument if hg is not working on the node"
+
 .PHONY: lib install test check doc tags all-tags clean distclean
 .SECONDARY:

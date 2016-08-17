@@ -117,8 +117,8 @@ Error_t ParallelVecPetsc<T>::GetArray(iterator &i, size_type &lsz)
 template<typename T>
 Error_t ParallelVecPetsc<T>::GetArray(const_iterator &i, size_type &lsz) const
 {
-    PetscScalar *arr;
-    ierr = VecGetArray(pv_, &arr);
+    const PetscScalar *arr;
+    ierr = VecGetArrayRead(pv_, &arr);
     CHK_PETSC(ierr);
     i = arr;
 
@@ -141,7 +141,7 @@ Error_t ParallelVecPetsc<T>::RestoreArray(iterator &i)
 template<typename T>
 Error_t ParallelVecPetsc<T>::RestoreArray(const_iterator &i) const
 {
-    ierr = VecRestoreArray(pv_, const_cast<PetscScalar**>(&i));
+    ierr = VecRestoreArrayRead(pv_, &i);
     CHK_PETSC(ierr);
     ASSERT(i==NULL, "iterator isn't reset");
 
@@ -416,15 +416,17 @@ PetscErrorCode PetscMatvecWrapper(Mat A, Vec x, Vec y){
     PetscErrorCode ierr;
     ParallelLinOpPetsc<T> *ctx;
     typedef typename ParallelLinOpPetsc<T>::iterator iter;
+    typedef typename ParallelLinOpPetsc<T>::const_iterator const_iter;
 
     ierr = MatShellGetContext(A, (void**) &ctx); CHK_PETSC(ierr);
 
-    iter xi, yi;
-    ierr = VecGetArray(x,&xi); CHK_PETSC(ierr);
+    const_iter xi;
+    iter yi;
+    ierr = VecGetArrayRead(x,&xi); CHK_PETSC(ierr);
     ierr = VecGetArray(y,&yi); CHK_PETSC(ierr);
     ctx->Apply(xi, yi);
 
-    ierr = VecRestoreArray(x, &xi);
+    ierr = VecRestoreArrayRead(x, &xi);
     CHK_PETSC(ierr);
     ASSERT(xi==NULL, "pointer is nulled");
 
@@ -523,6 +525,8 @@ Error_t  ParallelLinSolverPetsc<T>::UpdatePrecond(precond_type precond)
 	ierr = PCSetType(pc, PCSHELL); CHK_PETSC(ierr);
 	ierr = PCShellSetContext(pc, static_cast<void*>(this)); CHK_PETSC(ierr);
 	ierr = PCShellSetApply(pc, PetscPrecondWrapper<T>); CHK_PETSC(ierr);
+    ierr = KSPSetNormType(ps_,KSP_NORM_UNPRECONDITIONED); CHK_PETSC(ierr);
+
     } else {
 	if (precond == NULL){
 	    PC pc;
@@ -594,6 +598,16 @@ Error_t  ParallelLinSolverPetsc<T>::Solve(const vec_type *rhs, vec_type *x) cons
     const petsc_vec_type* rp = static_cast<const petsc_vec_type*>(rhs);
     petsc_vec_type* xp = static_cast<petsc_vec_type*>(x);
     ierr = KSPSolve(ps_, rp->PetscVec(), xp->PetscVec()); CHK_PETSC(ierr);
+
+    PetscReal res(1.0),nrm(0);
+    PetscReal rtol(0), atol(0), dtol(0);
+    PetscInt  maxits;
+    WHENDEBUG(OperatorResidual(rp,xp,res));
+    WHENDEBUG(rp->Norm(nrm));
+    WHENDEBUG(INFO("Matvec residual norm and relative norm: "<<res<<" / "<<res/nrm));
+    WHENDEBUG(KSPGetTolerances(ps_,&rtol,&atol,&dtol,&maxits));
+    ASSERT(res<std::max(rtol*nrm,atol),"GMRES failed to converge");
+
     return ErrorEvent::Success;
 }
 
@@ -614,9 +628,9 @@ Error_t  ParallelLinSolverPetsc<T>::ViewReport() const
     ierr = KSPGetConvergedReason(ps_, &reason); CHK_PETSC(ierr);
 
     if (reason>0){
-        WHENCHATTY(PRINTF(*comm_, "KSP converged with reason=%d\n", reason));
+        INFO("KSP converged with reason="<<reason);
     } else {
-        PRINTF_ERR(*comm_, "KSP diverged with reason=%d\n", reason);
+        CERR_LOC("KSP diverged with reason="<<reason,"",NULL);
         return ErrorEvent::DivergenceError;
     }
     return ErrorEvent::Success;
@@ -663,18 +677,20 @@ PetscErrorCode PetscPrecondWrapper(PC P, Vec x, Vec y){
     PetscErrorCode ierr;
     ParallelLinSolverPetsc<T> *ctx;
     typedef typename ParallelLinSolverPetsc<T>::iterator iter;
+    typedef typename ParallelLinOpPetsc<T>::const_iterator const_iter;
 
     ierr = PCShellGetContext(P, (void**) &ctx); CHKERRQ(ierr);
     ASSERT(ctx!=NULL, "context can't be null");
     ASSERT(ctx->precond_!=NULL, "context precond can't be null");
 
-    iter xi, yi;
-    ierr = VecGetArray(x,&xi); CHK_PETSC(ierr);
+    const_iter xi;
+    iter yi;
+    ierr = VecGetArrayRead(x,&xi); CHK_PETSC(ierr);
     ierr = VecGetArray(y,&yi); CHK_PETSC(ierr);
 
     ctx->precond_(ctx, xi, yi);
 
-    ierr = VecRestoreArray(x, &xi);
+    ierr = VecRestoreArrayRead(x, &xi);
     CHK_PETSC(ierr);
     ASSERT(xi==NULL, "pointer is nulled");
 
@@ -688,9 +704,6 @@ PetscErrorCode PetscPrecondWrapper(PC P, Vec x, Vec y){
 
 template<typename T>
 PetscErrorCode PetscKSPMonitor(KSP K,PetscInt n, PetscReal rnorm, void *dummy){
-    WHENCHATTY(PetscPrintf(PETSC_COMM_WORLD,
-            "KSP Residual norm at iteration %D: %14.12e\n",
-            n,
-            rnorm));
-  return 0;
+    INFO("KSP residual norm at iteration "<<n<<": "<<SCI_PRINT_FRMT<<rnorm);
+    return 0;
 }
