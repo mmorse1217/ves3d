@@ -22,10 +22,10 @@ class StokesVelocity{
     template<class Vec>
     void SetSrcCoord(const Vec& S);
 
-    void SetDensitySL(const PVFMMVec* force_single=NULL);
+    void SetDensitySL(const PVFMMVec* force_single=NULL, bool add_repul=false);
 
     template<class Vec>
-    void SetDensitySL(const Vec* force_single=NULL);
+    void SetDensitySL(const Vec* force_single=NULL, bool add_repul=false);
 
     void SetDensityDL(const PVFMMVec* force_double=NULL);
 
@@ -62,6 +62,7 @@ class StokesVelocity{
     PVFMMVec force_single;
     PVFMMVec rforce_single; // force_single + repulsion
     PVFMMVec qforce_single; // upsample(rforce_single) * quadrature weights * area_element
+    bool add_repul;
 
     PVFMMVec force_double;
     PVFMMVec uforce_double; // upsample(force_double)

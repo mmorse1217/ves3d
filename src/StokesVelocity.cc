@@ -60,7 +60,7 @@ void StokesVelocity<Real>::SetSrcCoord(const Vec& S){
 }
 
 template <class Real>
-void StokesVelocity<Real>::SetDensitySL(const PVFMMVec* f){
+void StokesVelocity<Real>::SetDensitySL(const PVFMMVec* f, bool add_repul_){
   if(f){
     if(force_single.Dim()!=f->Dim()) fmm_setup=true;
     force_single.ReInit(f->Dim(), (Real*)&f[0][0], true);
@@ -82,6 +82,7 @@ void StokesVelocity<Real>::SetDensitySL(const PVFMMVec* f){
 
   rforce_single.ReInit(0);
   qforce_single.ReInit(0);
+  add_repul=add_repul_;
 
   S_vel.ReInit(0);
   S_vel_up.ReInit(0);
@@ -91,11 +92,11 @@ void StokesVelocity<Real>::SetDensitySL(const PVFMMVec* f){
 
 template <class Real>
 template <class Vec>
-void StokesVelocity<Real>::SetDensitySL(const Vec* f){
+void StokesVelocity<Real>::SetDensitySL(const Vec* f, bool add_repul_){
   if(f){
     PVFMMVec tmp(f->size(), (Real*)f->begin(), false);
-    SetDensitySL(&tmp);
-  }else SetDensitySL(NULL);
+    SetDensitySL(&tmp, add_repul_);
+  }else SetDensitySL((const PVFMMVec*)NULL, add_repul_);
 }
 
 template <class Real>
@@ -261,14 +262,13 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       pvfmm::Profile::Toc();
     }
 
-    if(!rforce_single.Dim() && force_single.Dim()){ // Add repulsion
+    if(!rforce_single.Dim() && add_repul){ // Add repulsion
       pvfmm::Profile::Tic("Repulsion",&comm);
       const PVFMMVec& f_repl=near_singular0.ForceRepul();
       long Mves=2*sh_order*(sh_order+1);
       long Nves=f_repl.Dim()/Mves/COORD_DIM;
-      assert(force_single.Dim()==Nves*Mves*COORD_DIM);
       assert(f_repl.Dim()==Nves*Mves*COORD_DIM);
-      rforce_single.ReInit(force_single.Dim());
+      rforce_single.ReInit(Nves*Mves*COORD_DIM);
       #pragma omp parallel for
       for(long i=0;i<Nves;i++){
         for(long j=0;j<COORD_DIM;j++){
@@ -278,6 +278,15 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         }
       }
       pvfmm::Profile::Toc();
+      if(force_single.Dim()){
+        assert(force_single.Dim()==Nves*Mves*COORD_DIM);
+        #pragma omp parallel for
+        for(long i=0;i<Nves*COORD_DIM*Mves;i++){
+          rforce_single[i]+=force_single[i];
+        }
+      }
+    }else if(!rforce_single.Dim() && force_single.Dim()){
+      rforce_single.ReInit(force_single.Dim(),&force_single[0],false);
     }
 
     { // Compute qforce_single, qforce_double
@@ -554,10 +563,29 @@ Real StokesVelocity<Real>::MonitorError(){
   SetTrgCoord(NULL);
 
   const PVFMMVec& velocity=this->operator()();
-  const PVFMMVec& velocity_fmm=fmm_vel;
+  PVFMMVec&       velocity_fmm=fmm_vel;
   const PVFMMVec& velocity_near=near_singular0();
   const PVFMMVec& velocity_self=S_vel;
   bool collision=near_singular0.CheckCollision();
+
+  if(box_size>0){ // Subtract average from velocity_fmm
+    long long N_loc=velocity_fmm.Dim()/COORD_DIM, N_glb;
+    Real sum_loc[COORD_DIM], sum_glb[COORD_DIM];
+    for(long i=0;i<COORD_DIM;i++) sum_loc[i]=0;
+    for(long i=0;i<N_loc;i++){
+      for(long j=0;j<COORD_DIM;j++){
+        sum_loc[j]+=velocity_fmm[i*COORD_DIM+j];
+      }
+    }
+    MPI_Allreduce(sum_loc, sum_glb, 3, pvfmm::par::Mpi_datatype<     Real>::value(), pvfmm::par::Mpi_datatype<     Real>::sum(), comm);
+    MPI_Allreduce(& N_loc, & N_glb, 1, pvfmm::par::Mpi_datatype<long long>::value(), pvfmm::par::Mpi_datatype<long long>::sum(), comm);
+    for(long i=0;i<COORD_DIM;i++) sum_glb[i]/=N_glb;
+    for(long i=0;i<N_loc;i++){
+      for(long j=0;j<COORD_DIM;j++){
+        velocity_fmm[i*COORD_DIM+j]-=sum_glb[j];
+      }
+    }
+  }
 
   if(1){ // Write VTK file
     static unsigned long iter=0;

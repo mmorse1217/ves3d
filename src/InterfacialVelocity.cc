@@ -403,7 +403,7 @@ AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
     Intfcl_force_.explicitTractionJump(S_, *f);
-    stokes_.SetDensitySL(f.get());
+    stokes_.SetDensitySL(f.get(),true);
     stokes_.SetDensityDL(NULL);
     stokes_(*Sf);
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
@@ -479,7 +479,7 @@ AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
         std::auto_ptr<Vec_t> x  = checkoutVec();
         std::auto_ptr<Vec_t> Dx = checkoutVec();
         av(ves_props_.dl_coeff, S_.getPosition(), *x);
-        stokes_.SetDensitySL(NULL);
+        stokes_.SetDensitySL(NULL, true);
         stokes_.SetDensityDL(x.get());
         stokes_(*Dx);
         axpy(-dt, *pRhs, *Dx, *pRhs);
