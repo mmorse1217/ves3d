@@ -14,8 +14,8 @@ interaction-upsample
 n-surfs : 8
 bending-modulus : .05
 shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
-vesicle-geometry-file : precomputed/sed_512_geometry_spec_rand.txt
-vesicle-props-file : precomputed/sed_512_props_rand.txt
+vesicle-geometry-file : precomputed/geometry_spec_lattice_rand.txt
+#vesicle-props-file : precomputed/vesprops_rand_sed_125k.txt
 
 ## time stepping -----------------------------
 time-horizon : 100
