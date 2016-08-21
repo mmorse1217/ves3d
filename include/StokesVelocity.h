@@ -39,7 +39,7 @@ class StokesVelocity{
     template<class Vec>
     void operator()(Vec& vel);
 
-    Real MonitorError();
+    Real MonitorError(Real tol=1e-5);
 
     static void Test();
 
@@ -49,6 +49,7 @@ class StokesVelocity{
     StokesVelocity& operator=(const StokesVelocity &);
 
     int sh_order;
+    int sh_order_up_self;
     int sh_order_up;
     Real box_size;
     MPI_Comm comm;

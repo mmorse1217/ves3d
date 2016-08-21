@@ -224,7 +224,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                 beta = (1.0/error) * (dt/time_horizon) * params_->error_factor;
                 beta = std::pow(beta, timestep_order);
                 if(err!=ErrorEvent::Success) beta=0.5;
-                if(stokes_error*dt>params_->time_tol) beta=0.5; // This is required for GMRES to converge
+                if(stokes_error*dt>params_->time_tol) beta=params_->time_tol/(stokes_error*dt); // This is required for GMRES to converge
 
                 beta=std::min(beta,1.5);
                 beta=std::max(beta,0.5);

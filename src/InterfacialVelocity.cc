@@ -1200,7 +1200,7 @@ StokesError(const Vec_t &x) const
     stokes_.SetDensitySL(NULL);
     stokes_.SetDensityDL(NULL);
     stokes_.SetSrcCoord(x);
-    value_type stokes_error=stokes_.MonitorError();
+    value_type stokes_error=stokes_.MonitorError(params_.time_tol*0.1);
     PROFILEEND("",0);
 
     return stokes_error;

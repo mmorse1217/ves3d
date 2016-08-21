@@ -12,9 +12,9 @@ class NearSingular{
 
   public:
 
-    NearSingular(int sh_order, Real_t box_size=-1, Real_t repul_dist=1e-3, MPI_Comm c=MPI_COMM_WORLD);
+    NearSingular(Real_t box_size=-1, Real_t repul_dist=1e-3, MPI_Comm c=MPI_COMM_WORLD);
 
-    void SetSrcCoord(const PVFMMVec_t& src_coord);
+    void SetSrcCoord(const PVFMMVec_t& src_coord, int sh_order);
     void SetSurfaceVel(const PVFMMVec_t* S_vel);
     void SetDensitySL(const PVFMMVec_t* qforce_single=NULL);
     void SetDensityDL(const PVFMMVec_t* qforce_double=NULL, const PVFMMVec_t* force_double=NULL);
@@ -47,7 +47,7 @@ class NearSingular{
 
       int project(Real_t* t_coord_j, Real_t& x, Real_t&y);
 
-      static void patch_mesh(Real_t* patch_value_, size_t sh_order, pvfmm::Matrix<Real_t>& M_interp, size_t k_, const Real_t* sx_value);
+      static void patch_mesh(Real_t* patch_value_, size_t sh_order, size_t k_, const Real_t* sx_value);
 
       private:
 

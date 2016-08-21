@@ -5,14 +5,13 @@
 #include <parUtils.h>
 #include <profile.hpp>
 #include <mortonid.hpp>
-#include <legendre_rule.hpp>
+#include <SphericalHarmonics.h>
 #include <mpi_tree.hpp> // Only for vis
 
 #define VES_STRIDE (2+(2*sh_order_)*(1+sh_order_))
 
 template<typename Real_t>
-NearSingular<Real_t>::NearSingular(int sh_order, Real_t box_size, Real_t repul_dist, MPI_Comm c){
-  sh_order_=sh_order;
+NearSingular<Real_t>::NearSingular(Real_t box_size, Real_t repul_dist, MPI_Comm c){
   box_size_=box_size;
   repul_dist_=repul_dist;
   comm=c;
@@ -21,22 +20,6 @@ NearSingular<Real_t>::NearSingular(int sh_order, Real_t box_size, Real_t repul_d
   qforce_double=NULL;
   force_double=NULL;
   S_vel=NULL;
-
-  { // Precompute M_patch_interp
-    size_t k1_max=2*sh_order_;
-    if(M_patch_interp.Dim(0)!=8 || M_patch_interp.Dim(1)!=k1_max){
-      pvfmm::Matrix<Real_t> M_tmp;
-      M_tmp.ReInit(8,k1_max);
-      M_tmp.SetZero();
-      for(size_t k0=0;k0<8;k0++)
-      for(size_t k1=0;k1<k1_max;k1++)
-      for(size_t k2=0;k2<=sh_order;k2++){
-        M_tmp[k0][k1]+=(!k2 || k2==sh_order?1.0:2.0)*sin(2.0*M_PI*k2*(k0*1.0/8.0))*sin(2.0*M_PI*k2*(k1*1.0/k1_max))*1.0/k1_max;
-        M_tmp[k0][k1]+=(!k2 || k2==sh_order?1.0:2.0)*cos(2.0*M_PI*k2*(k0*1.0/8.0))*cos(2.0*M_PI*k2*(k1*1.0/k1_max))*1.0/k1_max;
-      }
-      M_patch_interp.Swap(M_tmp);
-    }
-  }
 
   update_setup =update_setup  | NearSingular::UpdateSrcCoord;
   update_setup =update_setup  | NearSingular::UpdateTrgCoord;
@@ -55,10 +38,11 @@ NearSingular<Real_t>::NearSingular(int sh_order, Real_t box_size, Real_t repul_d
 
 
 template<typename Real_t>
-void NearSingular<Real_t>::SetSrcCoord(const PVFMMVec_t& src_coord){
+void NearSingular<Real_t>::SetSrcCoord(const PVFMMVec_t& src_coord, int sh_order){
   update_direct=update_direct | NearSingular::UpdateSrcCoord;
   update_interp=update_interp | NearSingular::UpdateSrcCoord;
   update_setup =update_setup  | NearSingular::UpdateSrcCoord;
+  sh_order_=sh_order;
   S=&src_coord;
 }
 
@@ -92,8 +76,6 @@ void NearSingular<Real_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_
   trg_is_surf=trg_is_surf_;
   T.ReInit(N*COORD_DIM,trg_coord);
 }
-
-
 
 template<typename Real_t>
 void NearSingular<Real_t>::SetupCoordData(){
@@ -1074,7 +1056,7 @@ void NearSingular<Real_t>::SetupCoordData(){
           { // create patch
             Real_t mesh[3*3*COORD_DIM];
             size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-            QuadraticPatch::patch_mesh(mesh, sh_order_, M_patch_interp, k_, &S[0][i*M_ves*COORD_DIM]);
+            QuadraticPatch::patch_mesh(mesh, sh_order_, k_, &S[0][i*M_ves*COORD_DIM]);
             patch=QuadraticPatch(&mesh[0],COORD_DIM);
           }
           { // Find nearest point on patch (first interpolation point)
@@ -1120,7 +1102,7 @@ const NearSingular<Real_t>::PVFMMVec_t&  NearSingular<Real_t>::ForceRepul(){
 }
 
 template<typename Real_t>
-bool  NearSingular<Real_t>::CheckCollision(){
+bool NearSingular<Real_t>::CheckCollision(){
   SetupCoordData();
   bool collision=false;
   pvfmm::Vector<char>& is_extr_pt=coord_setup.is_extr_pt;
@@ -1462,12 +1444,12 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
             Real_t mesh[3*3*COORD_DIM];
             { // compute mesh
               size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-              QuadraticPatch::patch_mesh(mesh   , sh_order_, M_patch_interp, k_, &S_vel       [0][i*M_ves*COORD_DIM]);
+              QuadraticPatch::patch_mesh(mesh   , sh_order_, k_, &S_vel       [0][i*M_ves*COORD_DIM]);
             }
             if(force_double){ // add contribution from force_double to mesh
               Real_t mesh_fd[3*3*COORD_DIM];
               size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-              QuadraticPatch::patch_mesh(mesh_fd, sh_order_, M_patch_interp, k_, &force_double[0][i*M_ves*COORD_DIM]);
+              QuadraticPatch::patch_mesh(mesh_fd, sh_order_, k_, &force_double[0][i*M_ves*COORD_DIM]);
               Real_t scal=0.5; if(!is_extr_pt[trg_idx] && !trg_is_surf) scal=-0.5;
               for(size_t k=0;k<3*3*COORD_DIM;k++) mesh[k]+=scal*mesh_fd[k];
             }
@@ -1710,7 +1692,29 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
 }
 
 template<typename Real_t>
-void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size_t sh_order, pvfmm::Matrix<Real_t>& M_interp, size_t k_, const Real_t* s_value){
+void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size_t sh_order, size_t k_, const Real_t* s_value){
+  static pvfmm::Matrix<Real_t> M_patch_interp[SHMAXDEG];
+  { // Compute interpolation matrix for the pole
+    static std::vector<bool> flag(SHMAXDEG,false);
+    assert(sh_order<SHMAXDEG);
+    if(!flag[sh_order]){
+      #pragma omp critical (NEARSINGULAR_PATCH_INTERP)
+      if(!flag[sh_order]){
+        size_t k1_max=2*sh_order;
+        pvfmm::Matrix<Real_t>& M=M_patch_interp[sh_order];
+        M.ReInit(8,k1_max);
+        M.SetZero();
+        for(size_t k0=0;k0<8;k0++)
+        for(size_t k1=0;k1<k1_max;k1++)
+        for(size_t k2=0;k2<=sh_order;k2++){
+          M[k0][k1]+=(!k2 || k2==sh_order?1.0:2.0)*sin(2.0*M_PI*k2*(k0*1.0/8.0))*sin(2.0*M_PI*k2*(k1*1.0/k1_max))*1.0/k1_max;
+          M[k0][k1]+=(!k2 || k2==sh_order?1.0:2.0)*cos(2.0*M_PI*k2*(k0*1.0/8.0))*cos(2.0*M_PI*k2*(k1*1.0/k1_max))*1.0/k1_max;
+        }
+        flag[sh_order]=true;
+      }
+    }
+  }
+
   size_t k0_max=1+sh_order;
   size_t k1_max=2*sh_order;
   if(k_==0){ // Create patch
@@ -1719,7 +1723,7 @@ void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
     { // Set value
       int k=2+0*k1_max;
       pvfmm::Matrix<Real_t> X(k1_max,COORD_DIM,(Real_t*)&s_value[k*COORD_DIM],false);
-      pvfmm::Matrix<Real_t>::GEMM(value,M_interp,X);
+      pvfmm::Matrix<Real_t>::GEMM(value,M_patch_interp[sh_order],X);
     }
 
     for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+0)*COORD_DIM+i]=value[0][i];
@@ -1740,7 +1744,7 @@ void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
     { // Set value
       int k=2+(k0_max-1)*k1_max;
       pvfmm::Matrix<Real_t> X(k1_max,COORD_DIM,(Real_t*)&s_value[k*COORD_DIM],false);
-      pvfmm::Matrix<Real_t>::GEMM(value,M_interp,X);
+      pvfmm::Matrix<Real_t>::GEMM(value,M_patch_interp[sh_order],X);
     }
 
     for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+0)*COORD_DIM+i]=value[0][i];

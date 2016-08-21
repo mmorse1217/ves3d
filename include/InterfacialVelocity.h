@@ -15,7 +15,6 @@
 #include "BgFlowBase.h"
 #include "OperatorsMats.h"
 #include "ParallelLinSolverInterface.h"
-#include "legendre_rule.h"
 #include "VesicleProps.h"
 #include "StokesVelocity.h"
 
