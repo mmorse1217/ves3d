@@ -14,7 +14,7 @@ include ${VES3D_MKDIR}/makefile.in
 # targets of install
 VES3D_BINS = ves3d
 
-all: lib install test doc
+all: install
 
 lib:
 	${MAKE} -C  ${VES3D_LIBDIR}
@@ -36,7 +36,7 @@ tag: ${MAKE_DEP}
 all-tag: ${MAKE_DEP}
 	${TAGS} ${VES3D_SRCDIR}/*  ${VES3D_INCDIR}/* ${VES3D_TSTDIR}/*
 
-${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP}
+${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP} lib
 	-@${MKDIR} $(dir $@)
 	${CXX} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS} $< ${LDLIBS} -o $@
 	${CXX} -MM -MT ${VES3D_SRCDIR}/$*.o ${CXXFLAGS} ${CPPFLAGS} -c -o ${VES3D_SRCDIR}/$*.d ${VES3D_SRCDIR}/$*.cc
@@ -65,5 +65,5 @@ help:
 	@echo "        VES3D_TESTING    [yes|no] equal to DEBUG and PROFILE"
 	@echo "        VES3D_VERSION    default to 'hg id -n' (local to repo) can be set as argument if hg is not working on the node"
 
-.PHONY: lib install test check doc tags all-tags clean distclean
+.PHONY: all lib install test check doc tags all-tags clean distclean
 .SECONDARY:
