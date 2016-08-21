@@ -2,13 +2,14 @@
 #include <iostream>
 #include <profile.hpp>
 #include <SphericalHarmonics.h>
+#include <legendre_rule.h>
 
 #define __ENABLE_PVFMM_PROFILER__
 //#define __SH_FILTER__
 
 template<class Real>
 StokesVelocity<Real>::StokesVelocity(int sh_order_, int sh_order_up_, Real box_size_, Real repul_dist_, MPI_Comm comm_):
-  sh_order(sh_order_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(sh_order_up_, box_size_, repul_dist_, comm_), near_singular1(sh_order_up_, box_size_, repul_dist_, comm_)
+  sh_order(sh_order_), sh_order_up_self(sh_order_up_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(box_size_, repul_dist_, comm_), near_singular1(box_size_, repul_dist_, comm_)
 {
   pvfmm_ctx=PVFMMCreateContext<Real>(box_size_);
   fmm_setup=true;
@@ -170,11 +171,11 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     if(!SLMatrix.Dim() || !DLMatrix.Dim()){
       pvfmm::Profile::Tic("SelfMatrix",&comm, true);
       if(!SLMatrix.Dim() && !DLMatrix.Dim() && force_single.Dim() && force_double.Dim()){
-        SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up, &SLMatrix, &DLMatrix);
+        SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, &DLMatrix);
       }else if(!SLMatrix.Dim() && force_single.Dim()){
-        SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up, &SLMatrix, NULL);
+        SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, NULL);
       }else if(!DLMatrix.Dim() && force_double.Dim()){
-        SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up, NULL, &DLMatrix);
+        SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, NULL, &DLMatrix);
       }
       pvfmm::Profile::Toc();
     }
@@ -223,8 +224,8 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         }
       }
       near_singular0.SetTrgCoord(&tcoord_repl[0],tcoord_repl.Dim()/COORD_DIM,true);
-      near_singular0.SetSrcCoord(scoord_far);
-      near_singular1.SetSrcCoord(scoord_far);
+      near_singular0.SetSrcCoord(scoord_far,sh_order_up);
+      near_singular1.SetSrcCoord(scoord_far,sh_order_up);
       pvfmm::Profile::Toc();
 
       pvfmm::Profile::Tic("AreaNormal",&comm, true);
@@ -535,7 +536,7 @@ void StokesVelocity<Real>::operator()(Vec& vel){
 
 
 template <class Real>
-Real StokesVelocity<Real>::MonitorError(){
+Real StokesVelocity<Real>::MonitorError(Real tol){
   static PVFMMVec force_single_orig, force_double_orig, tcoord_orig;
   pvfmm::Profile::Tic("StokesMonitor",&comm, true);
   bool trg_is_surf_orig;
@@ -593,7 +594,7 @@ Real StokesVelocity<Real>::MonitorError(){
     if(iter%skip==0){
       char fname[1000];
       sprintf(fname, "vis/test1_%05d", (int)(iter/skip));
-      WriteVTK(scoord, sh_order, sh_order_up, fname, box_size, &velocity, comm);
+      WriteVTK(scoord, sh_order, std::max(sh_order_up,sh_order_up_self), fname, box_size, &velocity, comm);
     }
     iter++;
   }
@@ -619,7 +620,17 @@ Real StokesVelocity<Real>::MonitorError(){
   }
   pvfmm::Profile::Toc();
 
-  INFO("StokesVelocity: Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
+  INFO("StokesVelocity: sh_order = "<<sh_order_up_self<<","<<sh_order_up<<"  Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
+
+  // Update sh_order_up_self, sh_order_up
+  if(norm_glb[0]>tol) sh_order_up_self++;
+  else if(norm_glb[0]<tol*1e-1) sh_order_up_self--;
+  if(norm_glb[0]<tol){
+    Real err=std::max(norm_glb[1],norm_glb[2]);
+    if(err>tol) sh_order_up++;
+    else if(err<tol*1e-1) sh_order_up--;
+  }
+
   return norm_glb[0]+norm_glb[1]+norm_glb[2];
 }
 
