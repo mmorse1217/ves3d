@@ -45,13 +45,13 @@ class NearSingular{
 
       void eval(Real_t x, Real_t y, Real_t* val);
 
+      void grad(Real_t x, Real_t y, Real_t* val);
+
       int project(Real_t* t_coord_j, Real_t& x, Real_t&y);
 
       static void patch_mesh(Real_t* patch_value_, size_t sh_order, size_t k_, const Real_t* sx_value);
 
       private:
-
-      void grad(Real_t x, Real_t y, Real_t* val);
 
       int dof;
       std::vector<Real_t> coeff;

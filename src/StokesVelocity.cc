@@ -9,7 +9,7 @@
 
 template<class Real>
 StokesVelocity<Real>::StokesVelocity(int sh_order_, int sh_order_up_, Real box_size_, Real repul_dist_, MPI_Comm comm_):
-  sh_order(sh_order_), sh_order_up_self(sh_order_up_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(box_size_, repul_dist_, comm_), near_singular1(box_size_, repul_dist_, comm_)
+  sh_order(sh_order_), sh_order_up_self(sh_order_up_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(box_size_, repul_dist_, comm_), near_singular1(box_size_, 0, comm_)
 {
   pvfmm_ctx=PVFMMCreateContext<Real>(box_size_);
   fmm_setup=true;
@@ -274,7 +274,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       for(long i=0;i<Nves;i++){
         for(long j=0;j<COORD_DIM;j++){
           for(long k=0;k<Mves;k++){
-            rforce_single[(i*COORD_DIM+j)*Mves+k]=force_single[(i*COORD_DIM+j)*Mves+k]+f_repl[(i*Mves+k)*COORD_DIM+j];
+            rforce_single[(i*COORD_DIM+j)*Mves+k]=f_repl[(i*Mves+k)*COORD_DIM+j];
           }
         }
       }
@@ -567,7 +567,6 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
   PVFMMVec&       velocity_fmm=fmm_vel;
   const PVFMMVec& velocity_near=near_singular0();
   const PVFMMVec& velocity_self=S_vel;
-  bool collision=near_singular0.CheckCollision();
 
   if(box_size>0){ // Subtract average from velocity_fmm
     long long N_loc=velocity_fmm.Dim()/COORD_DIM, N_glb;
@@ -599,6 +598,7 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
     iter++;
   }
 
+  int collision=0;
   double norm_glb[3]={0,0,0};
   { // Compute error norm
     double norm_local[3]={0,0,0};
@@ -607,8 +607,10 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
       norm_local[1]=std::max(norm_local[1],fabs(velocity_near[i]    ));
       norm_local[2]=std::max(norm_local[2],fabs(velocity_fmm [i]    ));
     }
-    if(collision) norm_local[1]=1e10;
     MPI_Allreduce(&norm_local, &norm_glb, 3, pvfmm::par::Mpi_datatype<Real>::value(), pvfmm::par::Mpi_datatype<Real>::max(), comm);
+
+    int collision_loc=near_singular0.CheckCollision();
+    MPI_Allreduce(&collision_loc, &collision, 1, MPI_INT, MPI_SUM, comm);
   }
 
   { // Restore original state
@@ -620,16 +622,17 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
   }
   pvfmm::Profile::Toc();
 
-  INFO("StokesVelocity: sh_order = "<<sh_order_up_self<<","<<sh_order_up<<"  Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
-
   // Update sh_order_up_self, sh_order_up
   if(norm_glb[0]>tol) sh_order_up_self++;
   else if(norm_glb[0]<tol*1e-1) sh_order_up_self--;
   if(norm_glb[0]<tol){
     Real err=std::max(norm_glb[1],norm_glb[2]);
-    if(err>tol) sh_order_up++;
+    if(err>tol && sh_order_up<sh_order_up_self) sh_order_up++;
     else if(err<tol*1e-1) sh_order_up--;
   }
+
+  if(collision) norm_local[1]=1e10;
+  INFO("StokesVelocity: sh_order = "<<sh_order_up_self<<","<<sh_order_up<<"  Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
 
   return norm_glb[0]+norm_glb[1]+norm_glb[2];
 }

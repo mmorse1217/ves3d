@@ -1044,6 +1044,7 @@ void NearSingular<Real_t>::SetupCoordData(){
     repl_force      .ReInit(N_trg*COORD_DIM);
     is_extr_pt      .ReInit(N_trg          );
     Real_t r2repul_inv=(repul_dist_>0?std::pow(1.0/repul_dist_,2.0):0);
+    Real_t& r_near=coord_setup.r_near;
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Setup
       size_t a=((tid+0)*N_ves)/omp_p;
@@ -1065,18 +1066,30 @@ void NearSingular<Real_t>::SetupCoordData(){
             is_extr_pt[trg_idx]=
             patch.project(&  trg_coord[trg_idx*COORD_DIM],x,y);
             patch.eval(x,y,&proj_coord[trg_idx*COORD_DIM]);
+            Real_t normal[COORD_DIM];
+            { // Compute normal
+              Real_t sgrad[2*COORD_DIM];
+              patch.grad(x,y,sgrad);
+              normal[0]=sgrad[1]*sgrad[5]-sgrad[2]*sgrad[4];
+              normal[1]=sgrad[2]*sgrad[3]-sgrad[0]*sgrad[5];
+              normal[2]=sgrad[0]*sgrad[4]-sgrad[1]*sgrad[3];
+              Real_t r=sqrt(normal[0]*normal[0]+normal[1]*normal[1]+normal[2]*normal[2]);
+              normal[0]/=r;
+              normal[1]/=r;
+              normal[2]/=r;
+            }
 
             { // repulsion
-              Real_t dx=trg_coord[trg_idx*COORD_DIM+0]-proj_coord[trg_idx*COORD_DIM+0];
-              Real_t dy=trg_coord[trg_idx*COORD_DIM+1]-proj_coord[trg_idx*COORD_DIM+1];
-              Real_t dz=trg_coord[trg_idx*COORD_DIM+2]-proj_coord[trg_idx*COORD_DIM+2];
-              Real_t r2=dx*dx+dy*dy+dz*dz;
+              Real_t r=0;
+              r+=(trg_coord[trg_idx*COORD_DIM+0]-proj_coord[trg_idx*COORD_DIM+0])*normal[0];
+              r+=(trg_coord[trg_idx*COORD_DIM+1]-proj_coord[trg_idx*COORD_DIM+1])*normal[1];
+              r+=(trg_coord[trg_idx*COORD_DIM+2]-proj_coord[trg_idx*COORD_DIM+2])*normal[2];
 
               Real_t f=0;
-              if(r2repul_inv>0) f=exp(-r2*r2repul_inv)/r2;
-              repl_force[trg_idx*COORD_DIM+0]=dx*f;
-              repl_force[trg_idx*COORD_DIM+1]=dy*f;
-              repl_force[trg_idx*COORD_DIM+2]=dz*f;
+              if(r2repul_inv>0 && r<r_near) f=exp(-r*r*r2repul_inv)/r*(1.0-r/r_near);
+              repl_force[trg_idx*COORD_DIM+0]=normal[0]*f;
+              repl_force[trg_idx*COORD_DIM+1]=normal[1]*f;
+              repl_force[trg_idx*COORD_DIM+2]=normal[2]*f;
             }
           }
         }
