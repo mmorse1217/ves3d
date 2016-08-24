@@ -631,7 +631,7 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
     else if(err<tol*1e-1) sh_order_up--;
   }
 
-  if(collision) norm_local[1]=1e10;
+  if(collision) norm_glb[1]=1e10;
   INFO("StokesVelocity: sh_order = "<<sh_order_up_self<<","<<sh_order_up<<"  Double-layer integration error: "<<norm_glb[0]<<' '<<norm_glb[1]<<' '<<norm_glb[2]);
 
   return norm_glb[0]+norm_glb[1]+norm_glb[2];
