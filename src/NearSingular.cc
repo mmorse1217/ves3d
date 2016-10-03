@@ -1045,8 +1045,11 @@ void NearSingular<Real_t>::SetupCoordData(){
     is_extr_pt      .ReInit(N_trg          );
     Real_t r2repul_inv=(repul_dist_>0?std::pow(1.0/repul_dist_,2.0):0);
     Real_t& r_near=coord_setup.r_near;
+    pvfmm::Vector<Real_t> min_dist_loc_(omp_p);
+    min_dist_loc_.SetZero();
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Setup
+      Real_t min_dist_loc=1e10;
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
       for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
@@ -1084,6 +1087,7 @@ void NearSingular<Real_t>::SetupCoordData(){
               r+=(trg_coord[trg_idx*COORD_DIM+0]-proj_coord[trg_idx*COORD_DIM+0])*normal[0];
               r+=(trg_coord[trg_idx*COORD_DIM+1]-proj_coord[trg_idx*COORD_DIM+1])*normal[1];
               r+=(trg_coord[trg_idx*COORD_DIM+2]-proj_coord[trg_idx*COORD_DIM+2])*normal[2];
+              min_dist_loc=std::min(min_dist_loc,r);
 
               Real_t f=0;
               if(r2repul_inv>0 && r<r_near) f=exp(-r*r*r2repul_inv)/r*(1.0-r/r_near);
@@ -1094,8 +1098,16 @@ void NearSingular<Real_t>::SetupCoordData(){
           }
         }
       }
+      min_dist_loc_[tid]=min_dist_loc;
     }
     pvfmm::Profile::Toc();
+
+    { // Print minimum distance between surfaces
+      Real_t min_dist_loc=-1e10, min_dist;
+      for(long i=0;i<omp_p;i++) min_dist_loc=std::max(min_dist_loc, -min_dist_loc_[i]);
+      MPI_Allreduce(&min_dist_loc, &min_dist, 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), comm);
+      INFO("Min-distance = "<<-min_dist<<'\n');
+    }
   }
 
   { // repulsion
