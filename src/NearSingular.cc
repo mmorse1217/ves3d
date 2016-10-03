@@ -1597,20 +1597,34 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
     Real_t sgrad[2*COORD_DIM];
     grad(x,y,sgrad);
 
+    { // Break when |dR-(dR.n)n| < 1e-8
+      Real_t n[COORD_DIM];
+      n[0]=sgrad[1]*sgrad[3+2]-sgrad[2]*sgrad[3+1];
+      n[1]=sgrad[2]*sgrad[3+0]-sgrad[0]*sgrad[3+2];
+      n[2]=sgrad[0]*sgrad[3+1]-sgrad[1]*sgrad[3+0];
+      Real_t n_norm=sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+      n[0]/=n_norm;
+      n[1]/=n_norm;
+      n[2]/=n_norm;
+
+      Real_t dRn=dR[0]*n[0]+dR[1]*n[1]+dR[2]*n[2];
+      dR[0]-=dRn*n[0];
+      dR[1]-=dRn*n[1];
+      dR[2]-=dRn*n[2];
+
+      Real_t norm=sqrt(dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
+      if(norm<1e-8) break;
+    }
     Real_t dxdx=sgrad[0]*sgrad[0]+sgrad[1]*sgrad[1]+sgrad[2]*sgrad[2];
     Real_t dydy=sgrad[3]*sgrad[3]+sgrad[4]*sgrad[4]+sgrad[5]*sgrad[5];
     Real_t dxdy=sgrad[0]*sgrad[3]+sgrad[1]*sgrad[4]+sgrad[2]*sgrad[5];
     Real_t dxdR=sgrad[0]*   dR[0]+sgrad[1]*   dR[1]+sgrad[2]*   dR[2];
     Real_t dydR=sgrad[3]*   dR[0]+sgrad[4]*   dR[1]+sgrad[5]*   dR[2];
-    if(dxdR*dxdR/dxdx+dydR*dydR/dydy < dR2*(dxdx+dydy)*1e-6) break;
 
     Real_t dx, dy;
-    if(dxdy){
-      dx=(dxdR/dxdy-dydR/dydy)/(dxdx/dxdy-dxdy/dydy);
-      dy=(dydR/dxdy-dxdR/dxdx)/(dydy/dxdy-dxdy/dxdx);
-    }else{
-      dx=dxdR/dxdx;
-      dy=dydR/dydy;
+    { // Set dx, dy
+      dx=(dydy*dxdR-dxdy*dydR)/(dxdx*dydy-dxdy*dxdy);
+      dy=(dxdx*dydR-dxdy*dxdR)/(dxdx*dydy-dxdy*dxdy);
     }
     { // Check for cases which should not happen and break;
       if((x<=-1.0 && dx<0.0) ||
