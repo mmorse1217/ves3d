@@ -171,10 +171,22 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     if(!SLMatrix.Dim() || !DLMatrix.Dim()){
       pvfmm::Profile::Tic("SelfMatrix",&comm, true);
       if(!SLMatrix.Dim() && !DLMatrix.Dim() && force_single.Dim() && force_double.Dim()){
+        if(1){
+          pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+          pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+        }
         SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, &DLMatrix);
       }else if(!SLMatrix.Dim() && force_single.Dim()){
+        if(1){
+          pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+          pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+        }
         SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, NULL);
       }else if(!DLMatrix.Dim() && force_double.Dim()){
+        if(1){
+          pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+          pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+        }
         SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, NULL, &DLMatrix);
       }
       pvfmm::Profile::Toc();
@@ -587,7 +599,7 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
     }
   }
 
-  if(1){ // Write VTK file
+  if(0){ // Write VTK file
     static unsigned long iter=0;
     unsigned long skip=1;
     if(iter%skip==0){

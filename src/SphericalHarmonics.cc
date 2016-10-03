@@ -867,7 +867,10 @@ void SphericalHarmonics<Real>::StokesSingularInteg(const pvfmm::Vector<Real>& S,
   if(SLMatrix) SLMatrix->ReInit(Nves*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM));
   if(DLMatrix) DLMatrix->ReInit(Nves*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM));
 
-  long BLOCK_SIZE=omp_get_max_threads();
+  long BLOCK_SIZE=6e9/((3*2*p1*(p1+1))*(3*2*p0*(p0+1))*2*8); // Limit memory usage to 6GB
+  BLOCK_SIZE=std::min<long>(BLOCK_SIZE,omp_get_max_threads());
+  BLOCK_SIZE=std::max<long>(BLOCK_SIZE,1);
+
   for(long a=0;a<Nves;a+=BLOCK_SIZE){
     long b=std::min(a+BLOCK_SIZE, Nves);
 
@@ -958,14 +961,14 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
 
 
   pvfmm::Profile::Tic("Upsample");
-  static pvfmm::Vector<Real> X, X_phi, X_theta, trg;
+  pvfmm::Vector<Real> X, X_phi, X_theta, trg;
   SphericalHarmonics<Real>::SHC2Grid(S, p0, p1, X, &X_theta, &X_phi);
   SphericalHarmonics<Real>::SHC2Pole(S, p0, trg);
   pvfmm::Profile::Toc();
 
 
   pvfmm::Profile::Tic("Stokes");
-  static pvfmm::Vector<Real> SL0, DL0;
+  pvfmm::Vector<Real> SL0, DL0;
   { // Stokes kernel
     long M0=2*p0*(p0+1);
     long M1=2*p1*(p1+1);
