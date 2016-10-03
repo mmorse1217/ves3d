@@ -950,6 +950,28 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         }
       }
     }
+
+    if(ctx->bndry==pvfmm::Periodic){ // Set average velocity to zero
+      T avg_v[COORD_DIM]={0,0,0};
+      for(long i=0;i<n_trg;i++){
+        for(long k=0;k<COORD_DIM;k++) avg_v[k]+=trg_vel[i*COORD_DIM+k];
+      }
+
+      size_t N_glb=0;
+      T glb_avg_v[COORD_DIM]={0,0,0};
+      MPI_Allreduce(avg_v, glb_avg_v, 3, pvfmm::par::Mpi_datatype<T>::value(), pvfmm::par::Mpi_datatype<T>::sum(), ctx->comm);
+      MPI_Allreduce(&N_glb, &n_trg, 1, pvfmm::par::Mpi_datatype<size_t>::value(), pvfmm::par::Mpi_datatype<size_t>::sum(), ctx->comm);
+      for(long j=0;j<COORD_DIM;j++) glb_avg_v[j]/=N_glb;
+
+      #pragma omp parallel for
+      for(size_t tid=0;tid<omp_p;tid++){
+        size_t a=((tid+0)*n_trg)/omp_p;
+        size_t b=((tid+1)*n_trg)/omp_p;
+        for(size_t i=a;i<b;i++){
+          for(size_t k=0;k<COORD_DIM;k++) trg_vel[i*COORD_DIM+k]-=glb_avg_v[k];
+        }
+      }
+    }
   }
   pvfmm::Profile::Toc();
 
