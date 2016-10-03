@@ -82,7 +82,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
                 INFO("Writing VTK file");
-                WriteVTK(*state->S_,vtkfbase.c_str());
+                WriteVTK(*state->S_,vtkfbase.c_str(), MPI_COMM_WORLD, NULL, -1, params_->periodic_length);
             }
 #endif // HAVE_PVFMM
         }
