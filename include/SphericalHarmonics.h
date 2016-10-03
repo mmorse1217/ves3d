@@ -29,9 +29,13 @@ class SphericalHarmonics{
 
     static pvfmm::Matrix<Real>& MatFourier(long p0, long p1);
 
+    static pvfmm::Matrix<Real>& MatFourierInv(long p0, long p1);
+
     static pvfmm::Matrix<Real>& MatFourierGrad(long p0, long p1);
 
     static std::vector<pvfmm::Matrix<Real> >& MatLegendre(long p0, long p1);
+
+    static std::vector<pvfmm::Matrix<Real> >& MatLegendreInv(long p0, long p1);
 
     static std::vector<pvfmm::Matrix<Real> >& MatLegendreGrad(long p0, long p1);
 
@@ -68,6 +72,8 @@ class SphericalHarmonics{
         Ml_ .resize(size*size);
         Mdl_.resize(size*size);
         Mr_ .resize(size);
+        Mfinv_ .resize(size*size);
+        Mlinv_ .resize(size*size);
       }
       std::vector<pvfmm::Vector<Real> > Qx_;
       std::vector<pvfmm::Vector<Real> > Qw_;
@@ -77,6 +83,8 @@ class SphericalHarmonics{
       std::vector<std::vector<pvfmm::Matrix<Real> > > Ml_ ;
       std::vector<std::vector<pvfmm::Matrix<Real> > > Mdl_;
       std::vector<std::vector<pvfmm::Matrix<Real> > > Mr_;
+      std::vector<pvfmm::Matrix<Real> > Mfinv_ ;
+      std::vector<std::vector<pvfmm::Matrix<Real> > > Mlinv_ ;
     } matrix;
 
 };

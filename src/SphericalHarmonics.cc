@@ -150,9 +150,8 @@ void SphericalHarmonics<Real>::SHC2Grid(const pvfmm::Vector<Real>& S, long p0, l
 
 template <class Real>
 void SphericalHarmonics<Real>::Grid2SHC(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S){
-  pvfmm::Matrix<Real> Mf =SphericalHarmonics<Real>::MatFourier(p1,p0).pinv();
-  std::vector<pvfmm::Matrix<Real> > Ml =SphericalHarmonics<Real>::MatLegendre(p1,p0);
-  for(long i=0;i<Ml.size();i++) Ml[i]=Ml[i].pinv();
+  pvfmm::Matrix<Real> Mf =SphericalHarmonics<Real>::MatFourierInv(p0,p1);
+  std::vector<pvfmm::Matrix<Real> > Ml =SphericalHarmonics<Real>::MatLegendreInv(p0,p1);
   assert(p1==Ml.size()-1);
   assert(p0==Mf.Dim(0)/2);
   assert(p1==Mf.Dim(1)/2);
@@ -363,6 +362,18 @@ void SphericalHarmonics<Real>::SHC2Pole(const pvfmm::Vector<Real>& S, long p0, p
 template <class Real>
 void SphericalHarmonics<Real>::RotateAll(const pvfmm::Vector<Real>& S, long p0, long dof, pvfmm::Vector<Real>& S_){
   std::vector<pvfmm::Matrix<Real> >& Mr=MatRotate(p0);
+  std::vector<std::vector<long> > coeff_perm(p0+1);
+  { // Set coeff_perm
+    for(long n=0;n<=p0;n++) coeff_perm[n].resize(std::min(2*n+1,2*p0));
+    long itr=0;
+    for(long i=0;i<2*p0;i++){
+      long m=(i+1)/2;
+      for(long n=m;n<=p0;n++){
+        coeff_perm[n][i]=itr;
+        itr++;
+      }
+    }
+  }
   long Ncoef=p0*(p0+2);
 
   long N=S.Dim()/Ncoef/dof;
@@ -376,6 +387,12 @@ void SphericalHarmonics<Real>::RotateAll(const pvfmm::Vector<Real>& S, long p0, 
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
     pvfmm::Matrix<Real> B0(dof*p0,Ncoef); // memory buffer
+
+    std::vector<pvfmm::Matrix<Real> > Bi(p0+1), Bo(p0+1); // memory buffers
+    for(long i=0;i<=p0;i++){ // initialize Bi, Bo
+      Bi[i].ReInit(dof*p0,coeff_perm[i].size());
+      Bo[i].ReInit(dof*p0,coeff_perm[i].size());
+    }
 
     long a=(tid+0)*N/omp_p;
     long b=(tid+1)*N/omp_p;
@@ -405,9 +422,27 @@ void SphericalHarmonics<Real>::RotateAll(const pvfmm::Vector<Real>& S, long p0, 
           assert(offset==Ncoef);
         }
       }
-      for(long t=0;t<p0+1;t++){
-        pvfmm::Matrix<Real> Mout(dof*p0,Ncoef,&S1[(i*(p0+1)+t)*dof*p0][0],false);
-        pvfmm::Matrix<Real>::GEMM(Mout,B0,Mr[t]);
+      { // Fast rotation
+        for(long k=0;k<dof*p0;k++){ // forward permutation
+          for(long l=0;l<=p0;l++){
+            for(long j=0;j<coeff_perm[l].size();j++){
+              Bi[l][k][j]=B0[k][coeff_perm[l][j]];
+            }
+          }
+        }
+        for(long t=0;t<=p0;t++){
+          for(long l=0;l<=p0;l++){ // mat-vec
+            pvfmm::Matrix<Real>::GEMM(Bo[l],Bi[l],Mr[t*(p0+1)+l]);
+          }
+          pvfmm::Matrix<Real> Mout(dof*p0,Ncoef,&S1[(i*(p0+1)+t)*dof*p0][0],false);
+          for(long k=0;k<dof*p0;k++){ // reverse permutation
+            for(long l=0;l<=p0;l++){
+              for(long j=0;j<coeff_perm[l].size();j++){
+                Mout[k][coeff_perm[l][j]]=Bo[l][k][j];
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -416,7 +451,19 @@ void SphericalHarmonics<Real>::RotateAll(const pvfmm::Vector<Real>& S, long p0, 
 template <class Real>
 void SphericalHarmonics<Real>::RotateTranspose(const pvfmm::Vector<Real>& S_, long p0, long dof, pvfmm::Vector<Real>& S){
   std::vector<pvfmm::Matrix<Real> > Mr=MatRotate(p0);
-  for(long i=0;i<p0+1;i++) Mr[i]=Mr[i].Transpose();
+  for(long i=0;i<Mr.size();i++) Mr[i]=Mr[i].Transpose();
+  std::vector<std::vector<long> > coeff_perm(p0+1);
+  { // Set coeff_perm
+    for(long n=0;n<=p0;n++) coeff_perm[n].resize(std::min(2*n+1,2*p0));
+    long itr=0;
+    for(long i=0;i<2*p0;i++){
+      long m=(i+1)/2;
+      for(long n=m;n<=p0;n++){
+        coeff_perm[n][i]=itr;
+        itr++;
+      }
+    }
+  }
   long Ncoef=p0*(p0+2);
 
   long N=S_.Dim()/Ncoef/dof/(p0*(p0+1));
@@ -431,14 +478,37 @@ void SphericalHarmonics<Real>::RotateTranspose(const pvfmm::Vector<Real>& S_, lo
     long omp_p=omp_get_num_threads();
     pvfmm::Matrix<Real> B0(dof*p0,Ncoef); // memory buffer
 
+    std::vector<pvfmm::Matrix<Real> > Bi(p0+1), Bo(p0+1); // memory buffers
+    for(long i=0;i<=p0;i++){ // initialize Bi, Bo
+      Bi[i].ReInit(dof*p0,coeff_perm[i].size());
+      Bo[i].ReInit(dof*p0,coeff_perm[i].size());
+    }
+
     long a=(tid+0)*N/omp_p;
     long b=(tid+1)*N/omp_p;
     for(long i=a;i<b;i++){
       for(long t=0;t<p0+1;t++){
         long idx0=(i*(p0+1)+t)*p0*dof;
-        pvfmm::Matrix<Real> Min(p0*dof,Ncoef, &S1[idx0][0],false);
-        pvfmm::Matrix<Real>::GEMM(B0,Min,Mr[t]);
-
+        { // Fast rotation
+          pvfmm::Matrix<Real> Min(p0*dof,Ncoef, &S1[idx0][0],false);
+          for(long k=0;k<dof*p0;k++){ // forward permutation
+            for(long l=0;l<=p0;l++){
+              for(long j=0;j<coeff_perm[l].size();j++){
+                Bi[l][k][j]=Min[k][coeff_perm[l][j]];
+              }
+            }
+          }
+          for(long l=0;l<=p0;l++){ // mat-vec
+            pvfmm::Matrix<Real>::GEMM(Bo[l],Bi[l],Mr[t*(p0+1)+l]);
+          }
+          for(long k=0;k<dof*p0;k++){ // reverse permutation
+            for(long l=0;l<=p0;l++){
+              for(long j=0;j<coeff_perm[l].size();j++){
+                B0[k][coeff_perm[l][j]]=Bo[l][k][j];
+              }
+            }
+          }
+        }
         for(long j=0;j<p0;j++){
           for(long d=0;d<dof;d++){
             long idx1=idx0+j*dof+d;
@@ -557,6 +627,32 @@ pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourier(long p0, long p1){
 }
 
 template <class Real>
+pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourierInv(long p0, long p1){
+  assert(p0<SHMAXDEG && p1<SHMAXDEG);
+  matrix.Mfinv_ .resize(SHMAXDEG*SHMAXDEG);
+  pvfmm::Matrix<Real>& Mf =matrix.Mfinv_ [p0*SHMAXDEG+p1];
+  if(!Mf.Dim(0)){
+    const Real INVSQRT2PI=1.0/sqrt(2*M_PI)/p0;
+    { // Set Mf
+      pvfmm::Matrix<Real> M(2*p0,2*p1);
+      M.SetZero();
+      if(p1>p0) p1=p0;
+      for(long j=0;j<2*p0;j++){
+        M[j][0]=INVSQRT2PI*0.5;
+        for(long k=1;k<p1;k++){
+          M[j][2*k-1]=INVSQRT2PI*cos(j*k*M_PI/p0);
+          M[j][2*k-0]=INVSQRT2PI*sin(j*k*M_PI/p0);
+        }
+        M[j][2*p1-1]=INVSQRT2PI*cos(j*p1*M_PI/p0);
+      }
+      if(p1==p0) for(long j=0;j<2*p0;j++) M[j][2*p1-1]*=0.5;
+      Mf=M;
+    }
+  }
+  return Mf;
+}
+
+template <class Real>
 pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourierGrad(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
   matrix.Mdf_.resize(SHMAXDEG*SHMAXDEG);
@@ -605,6 +701,37 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendre(long p0
 }
 
 template <class Real>
+std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreInv(long p0, long p1){
+  assert(p0<SHMAXDEG && p1<SHMAXDEG);
+  matrix.Mlinv_ .resize(SHMAXDEG*SHMAXDEG);
+  std::vector<pvfmm::Matrix<Real> >& Ml =matrix.Mlinv_ [p0*SHMAXDEG+p1];
+  if(!Ml.size()){
+    std::vector<Real> qx1(p0+1);
+    std::vector<Real> qw1(p0+1);
+    cgqf(p0+1, 1, 0.0, 0.0, -1.0, 1.0, &qx1[0], &qw1[0]);
+
+    { // Set Ml
+      std::vector<Real> alp(qx1.size()*(p1+1)*(p1+2)/2);
+      LegPoly(&alp[0], &qx1[0], qx1.size(), p1);
+
+      Ml.resize(p1+1);
+      Real* ptr=&alp[0];
+      for(long i=0;i<=p1;i++){
+        Ml[i].ReInit(qx1.size(), p1+1-i);
+        pvfmm::Matrix<Real> M(p1+1-i, qx1.size(), ptr, false);
+        for(long j=0;j<p1+1-i;j++){ // Transpose and weights
+          for(long k=0;k<qx1.size();k++){
+            Ml[i][k][j]=M[j][k]*qw1[k]*2*M_PI;
+          }
+        }
+        ptr+=Ml[i].Dim(0)*Ml[i].Dim(1);
+      }
+    }
+  }
+  return Ml;
+}
+
+template <class Real>
 std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreGrad(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
   matrix.Mdl_.resize(SHMAXDEG*SHMAXDEG);
@@ -631,6 +758,19 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreGrad(lon
 
 template <class Real>
 std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatRotate(long p0){
+  std::vector<std::vector<long> > coeff_perm(p0+1);
+  { // Set coeff_perm
+    for(long n=0;n<=p0;n++) coeff_perm[n].resize(std::min(2*n+1,2*p0));
+    long itr=0;
+    for(long i=0;i<2*p0;i++){
+      long m=(i+1)/2;
+      for(long n=m;n<=p0;n++){
+        coeff_perm[n][i]=itr;
+        itr++;
+      }
+    }
+  }
+
   assert(p0<SHMAXDEG);
   matrix.Mr_.resize(SHMAXDEG);
   std::vector<pvfmm::Matrix<Real> >& Mr=matrix.Mr_[p0];
@@ -705,7 +845,15 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatRotate(long p0){
       Grid2SHC(Vcoef2grid, p0, p0, Vcoef2coef);
 
       pvfmm::Matrix<Real> Mcoef2coef(Ncoef, Ncoef, &Vcoef2coef[0],false);
-      Mr.push_back(Mcoef2coef);
+      for(long n=0;n<=p0;n++){ // Create matrices for fast rotation
+        pvfmm::Matrix<Real> M(coeff_perm[n].size(),coeff_perm[n].size());
+        for(long i=0;i<coeff_perm[n].size();i++){
+          for(long j=0;j<coeff_perm[n].size();j++){
+            M[i][j]=Mcoef2coef[coeff_perm[n][i]][coeff_perm[n][j]];
+          }
+        }
+        Mr.push_back(M);
+      }
     }
   }
   return Mr;
@@ -915,6 +1063,9 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
         }
       }
     }
+    pvfmm::Profile::Add_FLOP(20*(2*p1)*(p1+1)*2*N);
+    if(SLayer) pvfmm::Profile::Add_FLOP((19+6)*(2*p1)*(p1+1)*2*N);
+    if(DLayer) pvfmm::Profile::Add_FLOP( 22   *(2*p1)*(p1+1)*2*N);
   }
   pvfmm::Profile::Toc();
 
