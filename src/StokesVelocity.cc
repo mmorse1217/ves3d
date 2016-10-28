@@ -12,6 +12,7 @@ StokesVelocity<Real>::StokesVelocity(int sh_order_, int sh_order_up_, Real box_s
   sh_order(sh_order_), sh_order_up_self(sh_order_up_), sh_order_up(sh_order_up_), box_size(box_size_), comm(comm_), trg_is_surf(true), near_singular0(box_size_, repul_dist_, comm_), near_singular1(box_size_, 0, comm_)
 {
   pvfmm_ctx=PVFMMCreateContext<Real>(box_size_);
+  add_repul=false;
   fmm_setup=true;
 }
 
@@ -179,12 +180,10 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       }else if(!SLMatrix.Dim() && force_single.Dim()){
         if(1){
           pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
-          pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
         }
         SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, NULL);
       }else if(!DLMatrix.Dim() && force_double.Dim()){
         if(1){
-          pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
           pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
         }
         SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, NULL, &DLMatrix);
@@ -634,13 +633,46 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
   }
   pvfmm::Profile::Toc();
 
-  // Update sh_order_up_self, sh_order_up
-  if(norm_glb[0]>tol) sh_order_up_self++;
-  else if(norm_glb[0]<tol*1e-1) sh_order_up_self--;
-  if(norm_glb[0]<tol){
+  { // Update sh_order_up_self, sh_order_up
+    bool change_order=false;
+    if(norm_glb[0]>tol){
+      sh_order_up_self+=2;
+      change_order=true;
+    }else if(norm_glb[0]<tol*0.5){
+      sh_order_up_self-=2;
+      change_order=true;
+    }
     Real err=std::max(norm_glb[1],norm_glb[2]);
-    if(err>tol && sh_order_up<sh_order_up_self) sh_order_up++;
-    else if(err<tol*1e-1) sh_order_up--;
+    if(err>norm_glb[0]){
+      sh_order_up+=2;
+      change_order=true;
+    }else if(err<norm_glb[0]*0.5){
+      sh_order_up-=2;
+      change_order=true;
+    }
+
+    if(change_order){ // Everything has to be computed again if sh_order_up_self or sh_order_up changes
+      add_repul=false;
+      fmm_setup=true;
+
+      SLMatrix.ReInit(0);
+      DLMatrix.ReInit(0);
+
+      scoord_far.ReInit(0);
+      tcoord_repl.ReInit(0);
+      scoord_norm.ReInit(0);
+      scoord_area.ReInit(0);
+
+      rforce_single.ReInit(0);
+      qforce_single.ReInit(0);
+      uforce_double.ReInit(0);
+      qforce_double.ReInit(0);
+
+      S_vel.ReInit(0);
+      S_vel_up.ReInit(0);
+      fmm_vel.ReInit(0);
+      trg_vel.ReInit(0);
+    }
   }
 
   if(collision) norm_glb[1]=1e10;
