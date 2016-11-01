@@ -221,6 +221,323 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     if(err==ErrorEvent::Success) err=Solve(parallel_rhs_, parallel_u_, dt_, scheme);
     if(err==ErrorEvent::Success) err=Update(parallel_u_);
 
+    if(0)
+    if (params_.solve_for_velocity && !params_.pseudospectral){ // Save velocity field to VTK
+      std::auto_ptr<Vec_t> vel_ = checkoutVec();
+      std::auto_ptr<Sca_t> ten_ = checkoutSca();
+      { // Set vel_, ten_
+          typename PVec_t::iterator i(NULL);
+          typename PVec_t::size_type rsz;
+          CHK(parallel_u_->GetArray(i, rsz));
+          size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
+          ASSERT(rsz==vsz+tsz,"Bad sizes");
+
+          vel_->replicate(pos_vel_);
+          ten_->replicate(tension_);
+          {
+              std::auto_ptr<Vec_t> voxSh = checkoutVec();
+              std::auto_ptr<Sca_t> tSh   = checkoutSca();
+              std::auto_ptr<Vec_t> wrk   = checkoutVec();
+
+              voxSh->replicate(*vel_);
+              tSh->replicate(*ten_);
+              wrk->replicate(*vel_);
+
+              voxSh->getDevice().Memcpy(voxSh->begin(), i    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+              tSh  ->getDevice().Memcpy(tSh  ->begin(), i+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+              sht_.backward(*voxSh, *wrk, *vel_);
+              sht_.backward(*tSh  , *wrk, *ten_);
+
+              recycle(voxSh);
+              recycle(tSh);
+              recycle(wrk);
+          }
+          CHK(parallel_u_->RestoreArray(i));
+      }
+
+      { // Set DensitySL
+          std::auto_ptr<Vec_t> f   = checkoutVec();
+          Intfcl_force_.explicitTractionJump(S_, *f);
+          { // Add implicit traction jump
+              std::auto_ptr<Vec_t> Du  = checkoutVec();
+              std::auto_ptr<Vec_t> fi  = checkoutVec();
+              axpy(dt_, *vel_, *Du);
+              Intfcl_force_.implicitTractionJump(S_, *Du, *ten_, *fi);
+              axpy(static_cast<value_type>(1.0), *fi, *f, *f);
+              recycle(Du);
+              recycle(fi);
+          }
+          stokes_.SetDensitySL(f.get());
+          recycle(f);
+      }
+
+      if( ves_props_.has_contrast ){ // Set DensityDL
+          std::auto_ptr<Vec_t> lcoeff_vel  = checkoutVec();
+          av(ves_props_.dl_coeff, *vel_, *lcoeff_vel);
+          stokes_.SetDensityDL(lcoeff_vel.get());
+          recycle(lcoeff_vel);
+      } else {
+          stokes_.SetDensityDL(NULL);
+      }
+
+      if(0){ // Print error
+        std::auto_ptr<Vec_t> Sf = checkoutVec();
+        stokes_(*Sf);
+
+        { // Add bg_vel
+          std::auto_ptr<Vec_t> bg_vel = checkoutVec();
+          bg_vel->replicate(S_.getPosition());
+          CHK(BgFlow(*bg_vel, dt));
+          axpy(static_cast<value_type>(1.0), *bg_vel, *Sf, *Sf);
+          recycle(bg_vel);
+        }
+        if( ves_props_.has_contrast ){
+          Arr_t* inv_vel_coeff = new Arr_t;
+          inv_vel_coeff->resize(ves_props_.vel_coeff.size());
+          //xInv(ves_props_.vel_coeff,*inv_vel_coeff);
+          { // inv_vel_coeff = 1.0/ves_props_.vel_coeff
+            const value_type* in=ves_props_.vel_coeff .begin();
+            value_type*      out=       inv_vel_coeff->begin();
+            for(long i=0;i<inv_vel_coeff->size();i++) out[i]=1.0/in[i];
+          }
+          av(*inv_vel_coeff, *Sf, *Sf);
+          delete inv_vel_coeff;
+        }
+
+        axpy(static_cast<value_type>(-1.0), *vel_, *Sf, *Sf);
+        pvfmm::Matrix<value_type> dv(1,Sf->size(),Sf->begin());
+        pvfmm::Matrix<value_type> dv2=dv*dv.Transpose();
+
+        pvfmm::Matrix<value_type> v(1, vel_->size(),vel_->begin());
+        pvfmm::Matrix<value_type> v2=v*v.Transpose();
+
+        std::cout<<"GMRES Error = "<<sqrt(dv2[0][0])<<"/"<<sqrt(v2[0][0])<<'\n';
+        recycle(Sf);
+      }else{ // Write VTK
+
+        typedef value_type VTKReal;
+        struct VTKData{
+          std::vector<VTKReal> coord;
+          std::vector<VTKReal> value;
+
+          std::vector<int32_t> connect;
+          std::vector<int32_t> offset ;
+          std::vector<uint8_t> types  ;
+        };
+        VTKData vtk_data;
+
+        { // Set vtk_data
+          value_type range[6];
+          range[0]=-4; range[1]=-4; range[2]=-4;
+          range[3]= 4; range[4]= 4; range[5]= 4;
+          long gridpt_cnt=40;
+          long data_dof=3;
+
+          std::vector<VTKReal>& coord=vtk_data.coord;
+          std::vector<VTKReal>& value=vtk_data.value;
+
+          std::vector<int32_t>& connect=vtk_data.connect;
+          std::vector<int32_t>& offset =vtk_data.offset ;
+          std::vector<uint8_t>& types  =vtk_data.types  ;
+
+          for(int i0=0;i0<(gridpt_cnt-1);i0++)
+          for(int i1=0;i1<(gridpt_cnt-1);i1++)
+          for(int i2=0;i2<(gridpt_cnt-1);i2++){
+            for(int j0=0;j0<2;j0++)
+            for(int j1=0;j1<2;j1++)
+            for(int j2=0;j2<2;j2++){
+              connect.push_back(coord.size()/3);
+              coord.push_back((i0+j0)/(gridpt_cnt-1.0)*(range[3]-range[0])+range[0]);
+              coord.push_back((i1+j1)/(gridpt_cnt-1.0)*(range[4]-range[1])+range[1]);
+              coord.push_back((i2+j2)/(gridpt_cnt-1.0)*(range[5]-range[2])+range[2]);
+              for(int j=0;j<data_dof;j++) value.push_back(0.0);
+            }
+            offset.push_back(connect.size());
+            types.push_back(11);
+          }
+
+          { // Set vtk_data.value
+            pvfmm::Vector<value_type> coord(vtk_data.coord.size(),&vtk_data.coord[0],false);
+            pvfmm::Vector<value_type> value(vtk_data.value.size(),&vtk_data.value[0],false);
+            stokes_.SetTrgCoord(&coord);
+            value=stokes_();
+            stokes_.SetTrgCoord(NULL);
+
+            { // Add BgVel
+              long ntrg=coord.Dim()/COORD_DIM;
+              long nv=(ntrg+4-1)/4;
+              long mv=4;
+
+              Vec_t c(nv,1), bgvel(nv,1);
+              value_type* c_=c.begin();
+              for(long i0=0;i0<nv;i0++){
+                for(long i1=0;i1<mv;i1++){
+                  long i=i0*mv+i1;
+                  if(i<ntrg){
+                    c_[(i0*COORD_DIM+0)*mv+i1]=coord[i*COORD_DIM+0];
+                    c_[(i0*COORD_DIM+1)*mv+i1]=coord[i*COORD_DIM+1];
+                    c_[(i0*COORD_DIM+2)*mv+i1]=coord[i*COORD_DIM+2];
+                  }
+                }
+              }
+
+              bg_flow_(c, 0, bgvel);
+              value_type* bgvel_=bgvel.begin();
+              for(long i0=0;i0<nv;i0++){
+                for(long i1=0;i1<mv;i1++){
+                  long i=i0*mv+i1;
+                  if(i<ntrg){
+                    value[i*COORD_DIM+0]+=bgvel_[(i0*COORD_DIM+0)*mv+i1];
+                    value[i*COORD_DIM+1]+=bgvel_[(i0*COORD_DIM+1)*mv+i1];
+                    value[i*COORD_DIM+2]+=bgvel_[(i0*COORD_DIM+2)*mv+i1];
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const char* fname="vis/vel";
+        MPI_Comm comm=MPI_COMM_WORLD;
+        { // WriteVTK
+          int myrank, np;
+          MPI_Comm_size(comm,&np);
+          MPI_Comm_rank(comm,&myrank);
+
+          std::vector<VTKReal>& coord=vtk_data.coord;
+          std::vector<VTKReal>& value=vtk_data.value;
+
+          std::vector<int32_t>& connect=vtk_data.connect;
+          std::vector<int32_t>& offset =vtk_data.offset;
+          std::vector<uint8_t>& types  =vtk_data.types;
+
+          int pt_cnt=coord.size()/3;
+          int cell_cnt=types.size();
+
+          std::vector<int32_t> mpi_rank;  //MPI_Rank at points.
+          int new_myrank=myrank;//rand();
+          mpi_rank.resize(pt_cnt,new_myrank);
+
+          bool isLittleEndian;
+          { // Set isLittleEndian
+            uint16_t number = 0x1;
+            uint8_t *numPtr = (uint8_t*)&number;
+            isLittleEndian=(numPtr[0] == 1);
+          }
+
+          //Open file for writing.
+          std::stringstream vtufname;
+          vtufname<<fname<<std::setfill('0')<<std::setw(6)<<myrank<<".vtu";
+          std::ofstream vtufile;
+          vtufile.open(vtufname.str().c_str());
+          if(!vtufile.fail()){ // write .vtu
+            size_t data_size=0;
+            vtufile<<"<?xml version=\"1.0\"?>\n";
+            if(isLittleEndian) vtufile<<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+            else               vtufile<<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+            //===========================================================================
+            vtufile<<"  <UnstructuredGrid>\n";
+            vtufile<<"    <Piece NumberOfPoints=\""<<pt_cnt<<"\" NumberOfCells=\""<<cell_cnt<<"\">\n";
+
+            //---------------------------------------------------------------------------
+            vtufile<<"      <Points>\n";
+            vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<3<<"\" Name=\"Position\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+            data_size+=sizeof(uint32_t)+coord.size()*sizeof(VTKReal);
+            vtufile<<"      </Points>\n";
+            //---------------------------------------------------------------------------
+            vtufile<<"      <PointData>\n";
+            if(value.size()){ // value
+              vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value.size()/pt_cnt<<"\" Name=\""<<"value"<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+              data_size+=sizeof(uint32_t)+value.size()*sizeof(VTKReal);
+            }
+            { // mpi_rank
+              vtufile<<"        <DataArray type=\"Int32\" NumberOfComponents=\"1\" Name=\"mpi_rank\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+              data_size+=sizeof(uint32_t)+mpi_rank.size()*sizeof(int32_t);
+            }
+            vtufile<<"      </PointData>\n";
+            //---------------------------------------------------------------------------
+            //---------------------------------------------------------------------------
+            vtufile<<"      <Cells>\n";
+            vtufile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+            data_size+=sizeof(uint32_t)+connect.size()*sizeof(int32_t);
+            vtufile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+            data_size+=sizeof(uint32_t)+offset.size() *sizeof(int32_t);
+            vtufile<<"        <DataArray type=\"UInt8\" Name=\"types\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+            data_size+=sizeof(uint32_t)+types.size()  *sizeof(uint8_t);
+            vtufile<<"      </Cells>\n";
+            //---------------------------------------------------------------------------
+            //vtufile<<"      <CellData>\n";
+            //vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" Name=\"Velocity\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+            //vtufile<<"      </CellData>\n";
+            //---------------------------------------------------------------------------
+
+            vtufile<<"    </Piece>\n";
+            vtufile<<"  </UnstructuredGrid>\n";
+            //===========================================================================
+            vtufile<<"  <AppendedData encoding=\"raw\">\n";
+            vtufile<<"    _";
+
+            int32_t block_size;
+            block_size=coord   .size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&coord   [0], coord   .size()*sizeof(VTKReal));
+            if(value.size()){ // value
+              block_size=value .size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&value   [0], value   .size()*sizeof(VTKReal));
+            }
+            block_size=mpi_rank.size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&mpi_rank[0], mpi_rank.size()*sizeof(int32_t));
+
+            block_size=connect .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&connect [0], connect .size()*sizeof(int32_t));
+            block_size=offset  .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&offset  [0], offset  .size()*sizeof(int32_t));
+            block_size=types   .size()*sizeof(uint8_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&types   [0], types   .size()*sizeof(uint8_t));
+
+            vtufile<<"\n";
+            vtufile<<"  </AppendedData>\n";
+            //===========================================================================
+            vtufile<<"</VTKFile>\n";
+            vtufile.close();
+          }
+          if(!myrank){ // write .pvtu
+            std::stringstream pvtufname;
+            pvtufname<<fname<<".pvtu";
+            std::ofstream pvtufile;
+            pvtufile.open(pvtufname.str().c_str());
+            if(!pvtufile.fail()){
+              pvtufile<<"<?xml version=\"1.0\"?>\n";
+              pvtufile<<"<VTKFile type=\"PUnstructuredGrid\">\n";
+              pvtufile<<"  <PUnstructuredGrid GhostLevel=\"0\">\n";
+              pvtufile<<"      <PPoints>\n";
+              pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<3<<"\" Name=\"Position\"/>\n";
+              pvtufile<<"      </PPoints>\n";
+              pvtufile<<"      <PPointData>\n";
+              if(value.size()){ // value
+                pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value.size()/pt_cnt<<"\" Name=\""<<"value"<<"\"/>\n";
+              }
+              { // mpi_rank
+                pvtufile<<"        <PDataArray type=\"Int32\" NumberOfComponents=\"1\" Name=\"mpi_rank\"/>\n";
+              }
+              pvtufile<<"      </PPointData>\n";
+              {
+                // Extract filename from path.
+                std::stringstream vtupath;
+                vtupath<<'/'<<fname;
+                std::string pathname = vtupath.str();
+                unsigned found = pathname.find_last_of("/\\");
+                std::string fname_ = pathname.substr(found+1);
+                //char *fname_ = (char*)strrchr(vtupath.str().c_str(), '/') + 1;
+                //std::string fname_ = boost::filesystem::path(fname).filename().string().
+                for(int i=0;i<np;i++) pvtufile<<"      <Piece Source=\""<<fname_<<std::setfill('0')<<std::setw(6)<<i<<".vtu\"/>\n";
+              }
+              pvtufile<<"  </PUnstructuredGrid>\n";
+              pvtufile<<"</VTKFile>\n";
+              pvtufile.close();
+            }
+          }
+        }
+      }
+
+      recycle(vel_);
+      recycle(ten_);
+    }
+
     dx.replicate(S_.getPosition());
     if (params_.solve_for_velocity){
         axpy(dt, pos_vel_, dx);
