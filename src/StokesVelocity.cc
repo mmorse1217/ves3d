@@ -23,7 +23,9 @@ StokesVelocity<Real>::~StokesVelocity(){
 
 
 template <class Real>
-void StokesVelocity<Real>::SetSrcCoord(const PVFMMVec& S){
+void StokesVelocity<Real>::SetSrcCoord(const PVFMMVec& S, int sh_order_up_self_, int sh_order_up_){
+  if(sh_order_up_self_>0) sh_order_up_self=sh_order_up_self_;
+  if(sh_order_up_     >0) sh_order_up     =sh_order_up_     ;
   scoord.ReInit(S.Dim(), (Real*)&S[0], true);
   { // filter
     #ifdef __SH_FILTER__
@@ -56,9 +58,9 @@ void StokesVelocity<Real>::SetSrcCoord(const PVFMMVec& S){
 
 template <class Real>
 template <class Vec>
-void StokesVelocity<Real>::SetSrcCoord(const Vec& S){
+void StokesVelocity<Real>::SetSrcCoord(const Vec& S, int sh_order_up_self_, int sh_order_up_){
   PVFMMVec tmp(S.size(), (Real*)S.begin(), false);
-  SetSrcCoord(tmp);
+  SetSrcCoord(tmp, sh_order_up_self_, sh_order_up_);
 }
 
 template <class Real>
@@ -604,7 +606,7 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
     if(iter%skip==0){
       char fname[1000];
       sprintf(fname, "vis/test1_%05d", (int)(iter/skip));
-      WriteVTK(scoord, sh_order, std::max(sh_order_up,sh_order_up_self), fname, box_size, &velocity, comm);
+      WriteVTK(scoord, sh_order, sh_order, fname, box_size, &velocity, comm);
     }
     iter++;
   }

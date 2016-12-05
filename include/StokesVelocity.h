@@ -17,10 +17,10 @@ class StokesVelocity{
 
     ~StokesVelocity();
 
-    void SetSrcCoord(const PVFMMVec& S);
+    void SetSrcCoord(const PVFMMVec& S, int sh_order_up_self_=-1, int sh_order_up_=-1);
 
     template<class Vec>
-    void SetSrcCoord(const Vec& S);
+    void SetSrcCoord(const Vec& S, int sh_order_up_self_=-1, int sh_order_up_=-1);
 
     void SetDensitySL(const PVFMMVec* force_single=NULL, bool add_repul=false);
 

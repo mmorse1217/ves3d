@@ -1638,7 +1638,7 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
       dx=(dydy*dxdR-dxdy*dydR)/(dxdx*dydy-dxdy*dxdy);
       dy=(dxdx*dydR-dxdy*dxdR)/(dxdx*dydy-dxdy*dxdy);
     }
-    { // Check for cases which should not happen and break;
+    if(0){ // Check for cases which should not happen and break; // Disabled: This can sometimes cause problems.
       if((x<=-1.0 && dx<0.0) ||
          (x>= 1.0 && dx>0.0) ||
          (y<=-1.0 && dy<0.0) ||
@@ -1646,7 +1646,7 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
         break;
       }
     }
-    { // if x+dx or y+dy are outsize [-1,1]
+    if(0){ // if x+dx or y+dy are outsize [-1,1] // Disabled: This can sometimes cause problems.
       if(x>-1.0 && x+dx<-1.0){
         Real_t s=(-1.0-x)/dx;
         dx*=s; dy*=s;
