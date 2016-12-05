@@ -315,8 +315,12 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         std::cout<<"GMRES Error = "<<sqrt(dv2[0][0])<<"/"<<sqrt(v2[0][0])<<'\n';
         recycle(Sf);
       }else{ // Write VTK
+        int myrank, np;
+        MPI_Comm comm=MPI_COMM_WORLD;
+        MPI_Comm_rank(comm,&myrank);
+        MPI_Comm_size(comm,&np);
 
-        typedef value_type VTKReal;
+        typedef float VTKReal;
         struct VTKData{
           std::vector<VTKReal> coord;
           std::vector<VTKReal> value;
@@ -341,29 +345,38 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
           std::vector<int32_t>& offset =vtk_data.offset ;
           std::vector<uint8_t>& types  =vtk_data.types  ;
 
-          for(int i0=0;i0<(gridpt_cnt-1);i0++)
-          for(int i1=0;i1<(gridpt_cnt-1);i1++)
-          for(int i2=0;i2<(gridpt_cnt-1);i2++){
-            for(int j0=0;j0<2;j0++)
-            for(int j1=0;j1<2;j1++)
-            for(int j2=0;j2<2;j2++){
-              connect.push_back(coord.size()/3);
-              coord.push_back((i0+j0)/(gridpt_cnt-1.0)*(range[3]-range[0])+range[0]);
-              coord.push_back((i1+j1)/(gridpt_cnt-1.0)*(range[4]-range[1])+range[1]);
-              coord.push_back((i2+j2)/(gridpt_cnt-1.0)*(range[5]-range[2])+range[2]);
-              for(int j=0;j<data_dof;j++) value.push_back(0.0);
+          { // Set coord, connect, offset, types
+            long Ngrid=(gridpt_cnt-1)*(gridpt_cnt-1)*(gridpt_cnt-1);
+            long idx_start=(Ngrid*(myrank+0))/np;
+            long idx_end  =(Ngrid*(myrank+1))/np;
+
+            long grid_idx=0;
+            for(int i0=0;i0<(gridpt_cnt-1);i0++)
+            for(int i1=0;i1<(gridpt_cnt-1);i1++)
+            for(int i2=0;i2<(gridpt_cnt-1);i2++){
+              if(idx_start<=grid_idx && grid_idx<idx_end){
+                for(int j0=0;j0<2;j0++)
+                for(int j1=0;j1<2;j1++)
+                for(int j2=0;j2<2;j2++){
+                  connect.push_back(coord.size()/3);
+                  coord.push_back((i0+j0)/(gridpt_cnt-1.0)*(range[3]-range[0])+range[0]);
+                  coord.push_back((i1+j1)/(gridpt_cnt-1.0)*(range[4]-range[1])+range[1]);
+                  coord.push_back((i2+j2)/(gridpt_cnt-1.0)*(range[5]-range[2])+range[2]);
+                  for(int j=0;j<data_dof;j++) value.push_back(0.0);
+                }
+                offset.push_back(connect.size());
+                types.push_back(11);
+              }
+              grid_idx++;
             }
-            offset.push_back(connect.size());
-            types.push_back(11);
           }
 
           { // Set vtk_data.value
-            pvfmm::Vector<value_type> coord(vtk_data.coord.size(),&vtk_data.coord[0],false);
-            pvfmm::Vector<value_type> value(vtk_data.value.size(),&vtk_data.value[0],false);
+            pvfmm::Vector<value_type> coord(vtk_data.coord.size()), value(vtk_data.value.size());
+            for(long i=0;i<coord.Dim();i++) coord[i]=vtk_data.coord[i];
+            stokes_.SetSrcCoord(S_.getPosition(),100,100);
             stokes_.SetTrgCoord(&coord);
             value=stokes_();
-            stokes_.SetTrgCoord(NULL);
-
             { // Add BgVel
               long ntrg=coord.Dim()/COORD_DIM;
               long nv=(ntrg+4-1)/4;
@@ -395,16 +408,13 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
                 }
               }
             }
+            stokes_.SetTrgCoord(NULL);
+            for(long i=0;i<value.Dim();i++) vtk_data.value[i]=value[i];
           }
         }
 
         const char* fname="vis/vel";
-        MPI_Comm comm=MPI_COMM_WORLD;
         { // WriteVTK
-          int myrank, np;
-          MPI_Comm_size(comm,&np);
-          MPI_Comm_rank(comm,&myrank);
-
           std::vector<VTKReal>& coord=vtk_data.coord;
           std::vector<VTKReal>& value=vtk_data.value;
 
