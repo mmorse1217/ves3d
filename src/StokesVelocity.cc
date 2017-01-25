@@ -224,6 +224,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
 
       pvfmm::Profile::Tic("SCoordNear",&comm, true);
       { // Set tcoord_repl
+        SphericalHarmonics<Real>::SHC2Grid(scoord_shc, sh_order, sh_order, scoord); // Use filtered surface for tcoord_repl
         long Nves=scoord_pole.Dim()/COORD_DIM/2;
         long Mves=2*sh_order*(1+sh_order);
         tcoord_repl.ReInit(Nves*Mves*COORD_DIM);

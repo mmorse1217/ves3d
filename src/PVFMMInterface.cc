@@ -161,7 +161,7 @@ void stokes_m2l_vol_poten(const T* coord, int n, T* out){
 template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
 void stokes_sl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
   #define SRC_BLK 500
-  static Real_t eps=machine_eps<Real_t>();
+  static Real_t eps=machine_eps<Real_t>()*128;
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
   //// Number of newton iterations
@@ -284,7 +284,7 @@ void stokes_sl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=pvfmm::rsqrt_intrin0<Vec_t> >
 void stokes_dl_uKernel(pvfmm::Matrix<Real_t>& src_coord, pvfmm::Matrix<Real_t>& src_value, pvfmm::Matrix<Real_t>& trg_coord, pvfmm::Matrix<Real_t>& trg_value){
   #define SRC_BLK 500
-  static Real_t eps=machine_eps<Real_t>();
+  static Real_t eps=machine_eps<Real_t>()*128;
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
 
   //// Number of newton iterations
