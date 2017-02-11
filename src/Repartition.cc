@@ -168,7 +168,7 @@ void Repartition<T>::checkContainersSize(size_t stride) const
          {
 
             delete[] all_pos_;
-            all_pos_ = new T[nv_ * DIM * stride];
+            all_pos_ = new T[nv_ * VES3D_DIM * stride];
 
             delete[] all_tension_;
             all_tension_ = new T[nv_ * stride];

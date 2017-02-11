@@ -38,7 +38,7 @@
 #include <string>
 #include <utility>  // for pair
 
-#define DIM 3
+#define VES3D_DIM 3
 
 //! typed pi
 template <typename T>

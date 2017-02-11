@@ -46,7 +46,7 @@ Error_t EvalVelocity<Scalar, Vector, StokesEvaluator>::operator()(
     //Collecting all points to pass to FMM
     int src_size = x_src.size();
     int eval_size= x_eval.size();
-    int all_size = ( src_size + eval_size ) / DIM;
+    int all_size = ( src_size + eval_size ) / VES3D_DIM;
 
     all_src.resize(1,1, std::make_pair(all_size,1));
     all_den.replicate(all_src);

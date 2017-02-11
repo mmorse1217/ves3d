@@ -85,7 +85,7 @@ T* Device<GPU>::CrossProduct(const T* u_in, const T* v_in,
     size_t stride, size_t num_surfs, T* w_out) const
 {
     PROFILESTART();
-    assert(DIM==3);
+    assert(VES3D_DIM==3);
     CrossProductGpu(u_in, v_in, stride, num_surfs, w_out);
     PROFILEEND("GPU", 9 * stride * num_surfs);
     return w_out;

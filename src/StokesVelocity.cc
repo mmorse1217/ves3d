@@ -539,6 +539,256 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
 }
 
 template <class Real>
+const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
+#ifdef __ENABLE_PVFMM_PROFILER__
+  bool prof_state=pvfmm::Profile::Enable(true);
+  pvfmm::Profile::Tic("StokesVelocitySelfInteraction",&comm, true);
+#endif
+
+  setup_self();
+
+  if(!S_vel.Dim()){ // Compute self interaction
+    pvfmm::Profile::Tic("SelfInteractionInSelf",&comm);
+    bool prof_state=pvfmm::Profile::Enable(false);
+    static PVFMMVec Vcoef;
+    { // Compute Vcoeff
+      long Ncoef =   sh_order*(sh_order+2);
+      long Ngrid = 2*sh_order*(sh_order+1);
+      static PVFMMVec SL_vel, DL_vel;
+      SL_vel.ReInit(0);
+      DL_vel.ReInit(0);
+
+      if(rforce_single.Dim()){ // Set SL_vel
+        static pvfmm::Vector<Real> F;
+        SphericalHarmonics<Real>::Grid2SHC(rforce_single,sh_order,sh_order,F);
+
+        long nv = rforce_single.Dim()/Ngrid/COORD_DIM;
+        SL_vel.ReInit(nv*COORD_DIM*Ncoef);
+        #pragma omp parallel
+        { // mat-vec
+          long tid=omp_get_thread_num();
+          long omp_p=omp_get_num_threads();
+
+          long a=(tid+0)*nv/omp_p;
+          long b=(tid+1)*nv/omp_p;
+          for(long i=a;i<b;i++){
+            pvfmm::Matrix<Real> Mv(1,COORD_DIM*Ncoef,&SL_vel[i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mf(1,COORD_DIM*Ncoef,&F     [i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> M(COORD_DIM*Ncoef,COORD_DIM*Ncoef,&SLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real>::GEMM(Mv,Mf,M);
+          }
+        }
+      }
+      if(force_double.Dim()){ // Set DL_vel
+        static pvfmm::Vector<Real> F;
+        SphericalHarmonics<Real>::Grid2SHC(force_double,sh_order,sh_order,F);
+
+        long nv = force_double.Dim()/Ngrid/COORD_DIM;
+        DL_vel.ReInit(nv*COORD_DIM*Ncoef);
+        #pragma omp parallel
+        { // mat-vec
+          long tid=omp_get_thread_num();
+          long omp_p=omp_get_num_threads();
+
+          long a=(tid+0)*nv/omp_p;
+          long b=(tid+1)*nv/omp_p;
+          for(long i=a;i<b;i++){
+            pvfmm::Matrix<Real> Mv(1,COORD_DIM*Ncoef,&DL_vel[i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mf(1,COORD_DIM*Ncoef,&F     [i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> M(COORD_DIM*Ncoef,COORD_DIM*Ncoef,&DLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real>::GEMM(Mv,Mf,M);
+          }
+        }
+      }
+      if(SL_vel.Dim() && DL_vel.Dim()){ // Vcoef=SL_vel+DL_vel
+        Vcoef.ReInit(SL_vel.Dim());
+        #pragma omp parallel for
+        for(long i=0;i<Vcoef.Dim();i++) Vcoef[i]=SL_vel[i]+DL_vel[i];
+      }else{
+        if(SL_vel.Dim()) Vcoef.ReInit(SL_vel.Dim(),&SL_vel[0]);
+        else if(DL_vel.Dim()) Vcoef.ReInit(DL_vel.Dim(),&DL_vel[0]);
+        else Vcoef.ReInit(0);
+      }
+    }
+    SphericalHarmonics<Real>::SHC2Grid(Vcoef, sh_order, sh_order   , S_vel);
+    pvfmm::Profile::Enable(prof_state);
+    pvfmm::Profile::Toc();
+  }
+
+#ifdef __ENABLE_PVFMM_PROFILER__
+  pvfmm::Profile::Toc();
+  pvfmm::Profile::Enable(prof_state);
+#endif
+
+  return S_vel;
+}
+
+template <class Real>
+const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::FarInteraction(){
+#ifdef __ENABLE_PVFMM_PROFILER__
+  bool prof_state=pvfmm::Profile::Enable(true);
+  pvfmm::Profile::Tic("StokesVelocityFarInteraction",&comm, true);
+#endif
+
+  setup_all();
+
+  if(!S_vel.Dim()){ // Compute self interaction
+    pvfmm::Profile::Tic("SelfInteractionInFar",&comm);
+    bool prof_state=pvfmm::Profile::Enable(false);
+    assert(!S_vel_up.Dim());
+    static PVFMMVec vel_up, vel_pole, Vcoef;
+    { // Compute Vcoeff
+      long Ncoef =   sh_order*(sh_order+2);
+      long Ngrid = 2*sh_order*(sh_order+1);
+      static PVFMMVec SL_vel, DL_vel;
+      SL_vel.ReInit(0);
+      DL_vel.ReInit(0);
+
+      if(rforce_single.Dim()){ // Set SL_vel
+        static pvfmm::Vector<Real> F;
+        SphericalHarmonics<Real>::Grid2SHC(rforce_single,sh_order,sh_order,F);
+
+        long nv = rforce_single.Dim()/Ngrid/COORD_DIM;
+        SL_vel.ReInit(nv*COORD_DIM*Ncoef);
+        #pragma omp parallel
+        { // mat-vec
+          long tid=omp_get_thread_num();
+          long omp_p=omp_get_num_threads();
+
+          long a=(tid+0)*nv/omp_p;
+          long b=(tid+1)*nv/omp_p;
+          for(long i=a;i<b;i++){
+            pvfmm::Matrix<Real> Mv(1,COORD_DIM*Ncoef,&SL_vel[i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mf(1,COORD_DIM*Ncoef,&F     [i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> M(COORD_DIM*Ncoef,COORD_DIM*Ncoef,&SLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real>::GEMM(Mv,Mf,M);
+          }
+        }
+      }
+      if(force_double.Dim()){ // Set DL_vel
+        static pvfmm::Vector<Real> F;
+        SphericalHarmonics<Real>::Grid2SHC(force_double,sh_order,sh_order,F);
+
+        long nv = force_double.Dim()/Ngrid/COORD_DIM;
+        DL_vel.ReInit(nv*COORD_DIM*Ncoef);
+        #pragma omp parallel
+        { // mat-vec
+          long tid=omp_get_thread_num();
+          long omp_p=omp_get_num_threads();
+
+          long a=(tid+0)*nv/omp_p;
+          long b=(tid+1)*nv/omp_p;
+          for(long i=a;i<b;i++){
+            pvfmm::Matrix<Real> Mv(1,COORD_DIM*Ncoef,&DL_vel[i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mf(1,COORD_DIM*Ncoef,&F     [i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> M(COORD_DIM*Ncoef,COORD_DIM*Ncoef,&DLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real>::GEMM(Mv,Mf,M);
+          }
+        }
+      }
+      if(SL_vel.Dim() && DL_vel.Dim()){ // Vcoef=SL_vel+DL_vel
+        Vcoef.ReInit(SL_vel.Dim());
+        #pragma omp parallel for
+        for(long i=0;i<Vcoef.Dim();i++) Vcoef[i]=SL_vel[i]+DL_vel[i];
+      }else{
+        if(SL_vel.Dim()) Vcoef.ReInit(SL_vel.Dim(),&SL_vel[0]);
+        else if(DL_vel.Dim()) Vcoef.ReInit(DL_vel.Dim(),&DL_vel[0]);
+        else Vcoef.ReInit(0);
+      }
+    }
+    SphericalHarmonics<Real>::SHC2Grid(Vcoef, sh_order, sh_order   , S_vel);
+    SphericalHarmonics<Real>::SHC2Grid(Vcoef, sh_order, sh_order_up, vel_up);
+    SphericalHarmonics<Real>::SHC2Pole(Vcoef, sh_order, vel_pole);
+    { // Set S_vel_up
+      long Nves=vel_pole.Dim()/COORD_DIM/2;
+      long Mves=2*sh_order_up*(1+sh_order_up);
+      S_vel_up.ReInit(Nves*(Mves+2)*COORD_DIM);
+      #pragma omp parallel for
+      for(long i=0;i<Nves;i++){
+        for(long k=0;k<COORD_DIM;k++){
+          S_vel_up[(i*(Mves+2)+0)*COORD_DIM+k]=vel_pole[(i*COORD_DIM+k)*2+0];
+          S_vel_up[(i*(Mves+2)+1)*COORD_DIM+k]=vel_pole[(i*COORD_DIM+k)*2+1];
+        }
+        for(long j=0;j<Mves;j++){
+          for(long k=0;k<COORD_DIM;k++){
+            S_vel_up[(i*(Mves+2)+(j+2))*COORD_DIM+k]=vel_up[(i*COORD_DIM+k)*Mves+j];
+          }
+        }
+      }
+    }
+    near_singular0.SetSurfaceVel(&S_vel_up);
+    near_singular1.SetSurfaceVel(&S_vel_up);
+    pvfmm::Profile::Enable(prof_state);
+    pvfmm::Profile::Toc();
+  }
+
+  NearSingular<Real>& near_singular=(trg_is_surf?near_singular0:near_singular1);
+  PVFMMVec& trg_coord=(trg_is_surf?tcoord_repl:tcoord);
+  if(!fmm_vel.Dim()){ // Compute far interaction
+    pvfmm::Profile::Tic("FarInteraction",&comm,true);
+    bool prof_state=pvfmm::Profile::Enable(false);
+    fmm_vel.ReInit(trg_coord.Dim());
+    PVFMMEval(&scoord_far[0],
+              (qforce_single.Dim()?&qforce_single[0]:NULL),
+              (qforce_double.Dim()?&qforce_double[0]:NULL),
+              scoord_far.Dim()/COORD_DIM,
+              &trg_coord[0], &fmm_vel[0], trg_coord.Dim()/COORD_DIM, &pvfmm_ctx, fmm_setup);
+    fmm_setup=false;
+    near_singular.SubtractDirect(fmm_vel);
+    pvfmm::Profile::Enable(prof_state);
+    pvfmm::Profile::Toc();
+  }
+
+  if(!trg_vel.Dim()){ // Compute near interaction
+    pvfmm::Profile::Tic("NearInteraction",&comm,true);
+    bool prof_state=pvfmm::Profile::Enable(false);
+    const PVFMMVec& near_vel=near_singular();
+    { // Compute trg_vel = fmm_vel + near_vel
+      trg_vel.ReInit(trg_coord.Dim());
+      assert(trg_vel.Dim()==fmm_vel.Dim());
+      assert(trg_vel.Dim()==near_vel.Dim());
+      #pragma omp parallel for
+      for(size_t i=0;i<trg_vel.Dim();i++){
+        trg_vel[i]=fmm_vel[i]+near_vel[i];
+      }
+    }
+    if(trg_is_surf){ // shuffle trg_vel to get axis order
+      long Ngrid = 2*sh_order*(sh_order+1);
+      long Nves = S_vel.Dim()/Ngrid/COORD_DIM;
+
+      static PVFMMVec tmp;
+      tmp.ReInit(Nves*COORD_DIM*Ngrid);
+      #pragma omp parallel for
+      for(long i=0;i<Nves;i++){
+        for(long j=0;j<COORD_DIM;j++){
+          for(long k=0;k<Ngrid;k++){
+            tmp[(i*COORD_DIM+j)*Ngrid+k]=trg_vel[(i*Ngrid+k)*COORD_DIM+j];
+          }
+        }
+      }
+      trg_vel.Swap(tmp);
+      { // filter
+        #ifdef __SH_FILTER__
+        pvfmm::Vector<Real>& V=trg_vel;
+        pvfmm::Vector<Real> tmp;
+        SphericalHarmonics<Real>::Grid2SHC(V,sh_order,sh_order,tmp);
+        SphericalHarmonics<Real>::SHC2Grid(tmp,sh_order,sh_order,V);
+        #endif
+      }
+    }
+    pvfmm::Profile::Enable(prof_state);
+    pvfmm::Profile::Toc();
+  }
+
+#ifdef __ENABLE_PVFMM_PROFILER__
+  pvfmm::Profile::Toc();
+  pvfmm::Profile::Enable(prof_state);
+#endif
+
+  return trg_vel;
+}
+
+template <class Real>
 template <class Vec>
 void StokesVelocity<Real>::operator()(Vec& vel){
   PVFMMVec trg_vel_(vel.size(),vel.begin(),false);
@@ -548,6 +798,299 @@ void StokesVelocity<Real>::operator()(Vec& vel){
   trg_vel_=trg_vel;
 }
 
+template <class Real>
+template <class Vec>
+void StokesVelocity<Real>::SelfInteraction(Vec& vel){
+  PVFMMVec trg_vel_(vel.size(),vel.begin(),false);
+
+  const PVFMMVec& trg_vel=this->SelfInteraction();
+  assert(trg_vel.Dim()==trg_vel_.Dim());
+  trg_vel_=trg_vel;
+}
+
+template <class Real>
+template <class Vec>
+void StokesVelocity<Real>::FarInteraction(Vec& vel){
+  PVFMMVec trg_vel_(vel.size(),vel.begin(),false);
+
+  const PVFMMVec& trg_vel=this->FarInteraction();
+  assert(trg_vel.Dim()==trg_vel_.Dim());
+  trg_vel_=trg_vel;
+}
+
+template <class Real>
+void StokesVelocity<Real>::setup_self(){
+  pvfmm::Profile::Tic("SetupSelf",&comm, true);
+  bool prof_state=pvfmm::Profile::Enable(false);
+
+  if(!SLMatrix.Dim() || !DLMatrix.Dim()){
+    pvfmm::Profile::Tic("SelfMatrix",&comm, true);
+    if(!SLMatrix.Dim() && !DLMatrix.Dim() && force_single.Dim() && force_double.Dim()){
+      if(1){
+        pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+        pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+      }
+      SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, &DLMatrix);
+    }else if(!SLMatrix.Dim() && force_single.Dim()){
+      if(1){
+        pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+      }
+      SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, NULL);
+    }else if(!DLMatrix.Dim() && force_double.Dim()){
+      if(1){
+        pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+      }
+      SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, NULL, &DLMatrix);
+    }
+    pvfmm::Profile::Toc();
+  }
+
+  if(!rforce_single.Dim() && add_repul){ // Add repulsion
+    pvfmm::Profile::Tic("Repulsion",&comm);
+    const PVFMMVec& f_repl=near_singular0.ForceRepul();
+    long Mves=2*sh_order*(sh_order+1);
+    long Nves=f_repl.Dim()/Mves/COORD_DIM;
+    assert(f_repl.Dim()==Nves*Mves*COORD_DIM);
+    rforce_single.ReInit(Nves*Mves*COORD_DIM);
+    #pragma omp parallel for
+    for(long i=0;i<Nves;i++){
+      for(long j=0;j<COORD_DIM;j++){
+        for(long k=0;k<Mves;k++){
+          rforce_single[(i*COORD_DIM+j)*Mves+k]=f_repl[(i*Mves+k)*COORD_DIM+j];
+        }
+      }
+    }
+    pvfmm::Profile::Toc();
+    if(force_single.Dim()){
+      assert(force_single.Dim()==Nves*Mves*COORD_DIM);
+      #pragma omp parallel for
+      for(long i=0;i<Nves*COORD_DIM*Mves;i++){
+        rforce_single[i]+=force_single[i];
+      }
+    }
+  }else if(!rforce_single.Dim() && force_single.Dim()){
+    rforce_single.ReInit(force_single.Dim(),&force_single[0],false);
+  }
+
+  pvfmm::Profile::Enable(prof_state);
+  pvfmm::Profile::Toc();
+}
+
+template <class Real>
+void StokesVelocity<Real>::setup_all(){
+  pvfmm::Profile::Tic("Setup",&comm, true);
+  bool prof_state=pvfmm::Profile::Enable(false);
+
+  if(!SLMatrix.Dim() || !DLMatrix.Dim()){
+    pvfmm::Profile::Tic("SelfMatrix",&comm, true);
+    if(!SLMatrix.Dim() && !DLMatrix.Dim() && force_single.Dim() && force_double.Dim()){
+      if(1){
+        pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+        pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+      }
+      SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, &DLMatrix);
+    }else if(!SLMatrix.Dim() && force_single.Dim()){
+      if(1){
+        pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
+      }
+      SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, &SLMatrix, NULL);
+    }else if(!DLMatrix.Dim() && force_double.Dim()){
+      if(1){
+        pvfmm::Vector<Real> tmp2; tmp2.Swap(DLMatrix);
+      }
+      SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, NULL, &DLMatrix);
+    }
+    pvfmm::Profile::Toc();
+  }
+
+  if(!scoord_far.Dim()){
+    assert(!scoord_norm.Dim());
+    assert(!scoord_area.Dim());
+    assert(!tcoord_repl.Dim());
+
+    pvfmm::Profile::Tic("SCoordFar",&comm, true);
+    static PVFMMVec scoord_shc, scoord_up, X_theta, X_phi, scoord_pole;
+    SphericalHarmonics<Real>::Grid2SHC(scoord    , sh_order, sh_order   , scoord_shc);
+    SphericalHarmonics<Real>::SHC2Grid(scoord_shc, sh_order, sh_order_up, scoord_up, &X_theta, &X_phi);
+    SphericalHarmonics<Real>::SHC2Pole(scoord_shc, sh_order, scoord_pole);
+    { // Set scoord_far
+      long Nves=scoord_pole.Dim()/COORD_DIM/2;
+      long Mves=2*sh_order_up*(1+sh_order_up);
+      scoord_far.ReInit(Nves*(Mves+2)*COORD_DIM);
+      #pragma omp parallel for
+      for(long i=0;i<Nves;i++){
+        for(long k=0;k<COORD_DIM;k++){
+          scoord_far[(i*(Mves+2)+0)*COORD_DIM+k]=scoord_pole[(i*COORD_DIM+k)*2+0];
+          scoord_far[(i*(Mves+2)+1)*COORD_DIM+k]=scoord_pole[(i*COORD_DIM+k)*2+1];
+        }
+        for(long j=0;j<Mves;j++){
+          for(long k=0;k<COORD_DIM;k++){
+            scoord_far[(i*(Mves+2)+(j+2))*COORD_DIM+k]=scoord_up[(i*COORD_DIM+k)*Mves+j];
+          }
+        }
+      }
+    }
+    pvfmm::Profile::Toc();
+
+    pvfmm::Profile::Tic("SCoordNear",&comm, true);
+    { // Set tcoord_repl
+      SphericalHarmonics<Real>::SHC2Grid(scoord_shc, sh_order, sh_order, scoord); // Use filtered surface for tcoord_repl
+      long Nves=scoord_pole.Dim()/COORD_DIM/2;
+      long Mves=2*sh_order*(1+sh_order);
+      tcoord_repl.ReInit(Nves*Mves*COORD_DIM);
+      #pragma omp parallel for
+      for(long i=0;i<Nves;i++){
+        for(long j=0;j<Mves;j++){
+          for(long k=0;k<COORD_DIM;k++){
+            tcoord_repl[(i*Mves+j)*COORD_DIM+k]=scoord[(i*COORD_DIM+k)*Mves+j];
+          }
+        }
+      }
+    }
+    near_singular0.SetTrgCoord(&tcoord_repl[0],tcoord_repl.Dim()/COORD_DIM,true);
+    near_singular0.SetSrcCoord(scoord_far,sh_order_up);
+    near_singular1.SetSrcCoord(scoord_far,sh_order_up);
+    pvfmm::Profile::Toc();
+
+    pvfmm::Profile::Tic("AreaNormal",&comm, true);
+    { // Set scoord_norm, scoord_area
+      long Mves=2*sh_order_up*(sh_order_up+1);
+      long N=X_theta.Dim()/Mves/COORD_DIM;
+      scoord_norm.ReInit(N*COORD_DIM*Mves);
+      scoord_area.ReInit(N*Mves);
+      #pragma omp parallel for
+      for(long i=0;i<N;i++){
+        for(long j=0;j<Mves;j++){
+          Real nx, ny, nz;
+          { // Compute source normal
+            Real x_theta=X_theta[(i*COORD_DIM+0)*Mves+j];
+            Real y_theta=X_theta[(i*COORD_DIM+1)*Mves+j];
+            Real z_theta=X_theta[(i*COORD_DIM+2)*Mves+j];
+
+            Real x_phi=X_phi[(i*COORD_DIM+0)*Mves+j];
+            Real y_phi=X_phi[(i*COORD_DIM+1)*Mves+j];
+            Real z_phi=X_phi[(i*COORD_DIM+2)*Mves+j];
+
+            nx=(y_theta*z_phi-z_theta*y_phi);
+            ny=(z_theta*x_phi-x_theta*z_phi);
+            nz=(x_theta*y_phi-y_theta*x_phi);
+          }
+          Real area=sqrt(nx*nx+ny*ny+nz*nz);
+          scoord_area[i*Mves+j]=area;
+          Real inv_area=1.0/area;
+          scoord_norm[(i*COORD_DIM+0)*Mves+j]=nx*inv_area;
+          scoord_norm[(i*COORD_DIM+1)*Mves+j]=ny*inv_area;
+          scoord_norm[(i*COORD_DIM+2)*Mves+j]=nz*inv_area;
+        }
+      }
+    }
+    pvfmm::Profile::Toc();
+  }
+
+  if(!rforce_single.Dim() && add_repul){ // Add repulsion
+    pvfmm::Profile::Tic("Repulsion",&comm);
+    const PVFMMVec& f_repl=near_singular0.ForceRepul();
+    long Mves=2*sh_order*(sh_order+1);
+    long Nves=f_repl.Dim()/Mves/COORD_DIM;
+    assert(f_repl.Dim()==Nves*Mves*COORD_DIM);
+    rforce_single.ReInit(Nves*Mves*COORD_DIM);
+    #pragma omp parallel for
+    for(long i=0;i<Nves;i++){
+      for(long j=0;j<COORD_DIM;j++){
+        for(long k=0;k<Mves;k++){
+          rforce_single[(i*COORD_DIM+j)*Mves+k]=f_repl[(i*Mves+k)*COORD_DIM+j];
+        }
+      }
+    }
+    pvfmm::Profile::Toc();
+    if(force_single.Dim()){
+      assert(force_single.Dim()==Nves*Mves*COORD_DIM);
+      #pragma omp parallel for
+      for(long i=0;i<Nves*COORD_DIM*Mves;i++){
+        rforce_single[i]+=force_single[i];
+      }
+    }
+  }else if(!rforce_single.Dim() && force_single.Dim()){
+    rforce_single.ReInit(force_single.Dim(),&force_single[0],false);
+  }
+
+  { // Compute qforce_single, qforce_double
+    pvfmm::Vector<Real>& qw=SphericalHarmonics<Real>::LegendreWeights(sh_order_up);
+    if(!qforce_single.Dim() && rforce_single.Dim()){ // Compute qforce_single
+      static PVFMMVec shc, grid;
+      SphericalHarmonics<Real>::Grid2SHC(rforce_single, sh_order, sh_order, shc);
+      SphericalHarmonics<Real>::SHC2Grid(shc, sh_order, sh_order_up, grid);
+
+      long Mves=2*sh_order_up*(sh_order_up+1);
+      long Nves=grid.Dim()/Mves/COORD_DIM;
+      assert(scoord_area.Dim()==Nves*Mves);
+
+      qforce_single.ReInit(Nves*(Mves+2)*COORD_DIM);
+      #pragma omp parallel for
+      for(long i=0;i<Nves;i++){
+        for(long k=0;k<COORD_DIM;k++){
+          qforce_single[(i*(Mves+2)+0)*COORD_DIM+k]=0;
+          qforce_single[(i*(Mves+2)+1)*COORD_DIM+k]=0;
+        }
+        for(long j0=0;j0<sh_order_up+1;j0++){
+          for(long j1=0;j1<sh_order_up*2;j1++){
+            long j=j0*sh_order_up*2+j1;
+            Real w=scoord_area[i*Mves+j]*qw[j0];
+            for(long k=0;k<COORD_DIM;k++){
+              qforce_single[(i*(Mves+2)+(j+2))*COORD_DIM+k]=grid[(i*COORD_DIM+k)*Mves+j]*w;
+            }
+          }
+        }
+      }
+      near_singular0.SetDensitySL(&qforce_single);
+      near_singular1.SetDensitySL(&qforce_single);
+    }
+    if(!qforce_double.Dim() &&  force_double.Dim()){ // Compute qforce_double
+      assert(!uforce_double.Dim());
+
+      static PVFMMVec shc, grid, pole;
+      SphericalHarmonics<Real>::Grid2SHC(force_double, sh_order, sh_order, shc);
+      SphericalHarmonics<Real>::SHC2Grid(shc, sh_order, sh_order_up, grid);
+      SphericalHarmonics<Real>::SHC2Pole(shc, sh_order, pole);
+
+      long Mves=2*sh_order_up*(sh_order_up+1);
+      long Nves=grid.Dim()/Mves/COORD_DIM;
+      assert(scoord_norm.Dim()==Nves*Mves*COORD_DIM);
+      assert(scoord_area.Dim()==Nves*Mves);
+
+      uforce_double.ReInit(Nves*(Mves+2)*(1*COORD_DIM));
+      qforce_double.ReInit(Nves*(Mves+2)*(2*COORD_DIM));
+      #pragma omp parallel for
+      for(long i=0;i<Nves;i++){
+        for(long k=0;k<COORD_DIM;k++){
+          uforce_double[(i*(Mves+2)+0)*COORD_DIM+k]=pole[(i*COORD_DIM+k)*2+0];
+          uforce_double[(i*(Mves+2)+1)*COORD_DIM+k]=pole[(i*COORD_DIM+k)*2+1];
+
+          qforce_double[(i*(Mves+2)+0)*2*COORD_DIM+0*COORD_DIM+k]=0;
+          qforce_double[(i*(Mves+2)+0)*2*COORD_DIM+1*COORD_DIM+k]=0;
+          qforce_double[(i*(Mves+2)+1)*2*COORD_DIM+0*COORD_DIM+k]=0;
+          qforce_double[(i*(Mves+2)+1)*2*COORD_DIM+1*COORD_DIM+k]=0;
+        }
+        for(long j0=0;j0<sh_order_up+1;j0++){
+          for(long j1=0;j1<sh_order_up*2;j1++){
+            long j=j0*sh_order_up*2+j1;
+            Real w=scoord_area[i*Mves+j]*qw[j0];
+            for(long k=0;k<COORD_DIM;k++){
+              uforce_double[(i*(Mves+2)+(j+2))*1*COORD_DIM+0*COORD_DIM+k]=       grid[(i*COORD_DIM+k)*Mves+j];
+              qforce_double[(i*(Mves+2)+(j+2))*2*COORD_DIM+0*COORD_DIM+k]=       grid[(i*COORD_DIM+k)*Mves+j]*w;
+              qforce_double[(i*(Mves+2)+(j+2))*2*COORD_DIM+1*COORD_DIM+k]=scoord_norm[(i*COORD_DIM+k)*Mves+j];
+            }
+          }
+        }
+      }
+      near_singular0.SetDensityDL(&qforce_double, &uforce_double);
+      near_singular1.SetDensityDL(&qforce_double, &uforce_double);
+    }
+  }
+
+  pvfmm::Profile::Enable(prof_state);
+  pvfmm::Profile::Toc();
+}
 
 template <class Real>
 Real StokesVelocity<Real>::MonitorError(Real tol){

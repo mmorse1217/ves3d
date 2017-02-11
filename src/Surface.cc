@@ -42,6 +42,10 @@ Surface<ScalarContainer, VectorContainer>::Surface(
 
     x_.set_name("position");
     if (x_in != NULL) setPosition(*x_in);
+    
+    //contact force
+    fc_.replicate(x_);
+    axpy(static_cast<value_type>(0.0),x_,fc_);
 }
 
 template <typename ScalarContainer, typename VectorContainer>

@@ -6,7 +6,7 @@ endif
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
-TEST = 	ArrayTest.exe			\
+TEST =		ArrayTest.exe			\
 	BiCGStabTest.exe		\
 	BlasToyTest.exe			\
 	DataIOTest.exe			\

@@ -41,20 +41,20 @@
 //#define _TRANSPOSE_KERNEL_H_
 
 #include "transpose_kernel.h"
-#define BLOCK_DIM 16
+#define BLOCK_VES3D_DIM 16
 
 // This kernel is optimized to ensure all global reads and writes are coalesced,
 // and to avoid bank conflicts in shared memory.  This kernel is up to 11x faster
 // than the naive kernel below.  Note that the shared memory array is sized to 
-// (BLOCK_DIM+1)*BLOCK_DIM.  This pads each row of the 2D block in shared memory 
+// (BLOCK_VES3D_DIM+1)*BLOCK_VES3D_DIM.  This pads each row of the 2D block in shared memory 
 // so that bank conflicts do not occur when threads address the array column-wise.
 __global__ void transpose(float *odata, const float *idata, int width, int height)
 {
-	__shared__ float block[BLOCK_DIM][BLOCK_DIM+1];
+	__shared__ float block[BLOCK_VES3D_DIM][BLOCK_VES3D_DIM+1];
 	
 	// read the matrix tile into shared memory
-	unsigned int xIndex = blockIdx.x * BLOCK_DIM + threadIdx.x;
-	unsigned int yIndex = blockIdx.y * BLOCK_DIM + threadIdx.y;
+	unsigned int xIndex = blockIdx.x * BLOCK_VES3D_DIM + threadIdx.x;
+	unsigned int yIndex = blockIdx.y * BLOCK_VES3D_DIM + threadIdx.y;
 	if((xIndex < width) && (yIndex < height))
 	{
 		unsigned int index_in = yIndex * width + xIndex;
@@ -64,8 +64,8 @@ __global__ void transpose(float *odata, const float *idata, int width, int heigh
 	__syncthreads();
 
 	// write the transposed matrix tile to global memory
-	xIndex = blockIdx.y * BLOCK_DIM + threadIdx.x;
-	yIndex = blockIdx.x * BLOCK_DIM + threadIdx.y;
+	xIndex = blockIdx.y * BLOCK_VES3D_DIM + threadIdx.x;
+	yIndex = blockIdx.x * BLOCK_VES3D_DIM + threadIdx.y;
 	if((xIndex < height) && (yIndex < width))
 	{
 		unsigned int index_out = yIndex * height + xIndex;
@@ -91,8 +91,8 @@ __global__ void transpose_naive(float *odata, const float* idata, int width, int
 
 void cu_trans(float *out, const float *in, int width, int height) {
   
-  dim3 grid(width / BLOCK_DIM + 1, height / BLOCK_DIM + 1, 1);
-  dim3 threads(BLOCK_DIM, BLOCK_DIM, 1);
+  dim3 grid(width / BLOCK_VES3D_DIM + 1, height / BLOCK_VES3D_DIM + 1, 1);
+  dim3 threads(BLOCK_VES3D_DIM, BLOCK_VES3D_DIM, 1);
   transpose<<<grid, threads>>>(out, in, width, height);
 }
 
@@ -104,11 +104,11 @@ void cu_trans(float *out, const float *in, int width, int height) {
 
 __global__ void transpose(double *odata, const double *idata, int width, int height)
 {
-        __shared__ double block[BLOCK_DIM][BLOCK_DIM+1];
+        __shared__ double block[BLOCK_VES3D_DIM][BLOCK_VES3D_DIM+1];
 
         // read the matrix tile into shared memory
-        unsigned int xIndex = blockIdx.x * BLOCK_DIM + threadIdx.x;
-        unsigned int yIndex = blockIdx.y * BLOCK_DIM + threadIdx.y;
+        unsigned int xIndex = blockIdx.x * BLOCK_VES3D_DIM + threadIdx.x;
+        unsigned int yIndex = blockIdx.y * BLOCK_VES3D_DIM + threadIdx.y;
         if((xIndex < width) && (yIndex < height))
         {
                 unsigned int index_in = yIndex * width + xIndex;
@@ -118,8 +118,8 @@ __global__ void transpose(double *odata, const double *idata, int width, int hei
         __syncthreads();
 
         // write the transposed matrix tile to global memory
-        xIndex = blockIdx.y * BLOCK_DIM + threadIdx.x;
-        yIndex = blockIdx.x * BLOCK_DIM + threadIdx.y;
+        xIndex = blockIdx.y * BLOCK_VES3D_DIM + threadIdx.x;
+        yIndex = blockIdx.x * BLOCK_VES3D_DIM + threadIdx.y;
         if((xIndex < height) && (yIndex < width))
         {
                 unsigned int index_out = yIndex * height + xIndex;
@@ -129,8 +129,8 @@ __global__ void transpose(double *odata, const double *idata, int width, int hei
 
 void cu_trans(double *out, const double *in, int width, int height) {
 
-  dim3 grid(width / BLOCK_DIM + 1, height / BLOCK_DIM + 1, 1);
-  dim3 threads(BLOCK_DIM, BLOCK_DIM, 1);
+  dim3 grid(width / BLOCK_VES3D_DIM + 1, height / BLOCK_VES3D_DIM + 1, 1);
+  dim3 threads(BLOCK_VES3D_DIM, BLOCK_VES3D_DIM, 1);
   transpose<<<grid, threads>>>(out, in, width, height);
 }
 

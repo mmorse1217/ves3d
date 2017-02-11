@@ -84,6 +84,7 @@ class Surface : public Streamable
     int diffFilterFreq() const {return diff_filter_freq_;}
     int reparamFilterFreq() const {return reparam_filter_freq_;}
 
+    mutable Vec_t fc_;
   private:
     Vec_t x_;
     mutable Vec_t normal_;

@@ -72,6 +72,19 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         position_precond.resize(1,p);
         tension_precond.resize(1,p);
     }
+    
+    // init Contact Interface
+    std::vector<value_type> pos_init;
+    pos_init.resize(S_.getPosition().size(),0.0);
+    
+    S_.getPosition().getDevice().Memcpy(&pos_init.front(), S_.getPosition().begin(),
+        S_.getPosition().size() * sizeof(value_type),
+        S_.getPosition().getDevice().MemcpyDeviceToDevice);
+    
+    CI_.generateMesh(pos_init,S_.getPosition().getShOrder(),S_.getPosition().getNumSubs());
+    CI_.writeOFF();
+    CI_.init(SURF_SUBDIVISION);
+    // end of init Contact Interface
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -105,6 +118,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     this->dt_ = dt;
+    SolverScheme scheme(JacobiBlockExplicit);
+    INFO("Taking a time step using "<<scheme<<" scheme");
+    CHK(Prepare(scheme));
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
@@ -140,6 +156,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     this->dt_ = dt;
+    SolverScheme scheme(JacobiBlockGaussSeidel);
+    INFO("Taking a time step using "<<scheme<<" scheme");
+    CHK(Prepare(scheme));
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
@@ -196,6 +215,173 @@ updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx
     recycle(u1);
     recycle(u2);
     recycle(u3);
+
+    return ret_val;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
+{
+    this->dt_ = dt;
+    SolverScheme scheme(JacobiBlockImplicit);
+    INFO("Taking a time step using "<<scheme<<" scheme");
+    CHK(Prepare(scheme));
+    
+    std::auto_ptr<Vec_t> x1 = checkoutVec();
+    std::auto_ptr<Vec_t> b1 = checkoutVec();
+    std::auto_ptr<Sca_t> b2 = checkoutSca();
+    x1->replicate(S_.getPosition());
+    b1->replicate(S_.getPosition());
+    b2->replicate(tension_);
+    
+    // farfield velocity
+    this->updateFarField();
+    
+    // position rhs
+    if(ves_props_.has_contrast){
+        //add DL self interaction of density (1-\lambda)X/(\Delta t)
+        av(ves_props_.dl_coeff, S_.getPosition(), *x1);
+        axpy(static_cast<value_type>(1.0/dt_),*x1,*x1);
+
+        stokes_.SetDensitySL(NULL);
+        stokes_.SetDensityDL(x1.get());
+        stokes_.SelfInteraction(*b1);
+
+        axpy(static_cast<value_type>(-1.0), *b1, pos_vel_, pos_vel_);
+        axpy(dt_, pos_vel_, *b1);
+        av(ves_props_.vel_coeff, S_.getPosition(), *x1);
+        axpy(static_cast<value_type>(1.0), *x1, *b1, *b1);
+    }
+    else{
+        axpy(dt_, pos_vel_, S_.getPosition(), *b1);
+    }
+    
+    // tension rhs
+    S_.div(pos_vel_, *b2);
+    axpy(static_cast<value_type>(-1),*b2,*b2);
+
+    // initial guess
+    x1->getDevice().Memcpy(x1->begin(), S_.getPosition().begin(),
+        S_.getPosition().size() * sizeof(value_type),
+        x1->getDevice().MemcpyDeviceToDevice);
+
+    int iter(params_.time_iter_max);
+    int rsrt(params_.time_iter_max);
+    value_type tol(params_.time_tol),relres(params_.time_tol);
+
+    enum BiCGSReturnTMP solver_ret;
+    Error_t ret_val(ErrorEvent::Success);
+
+    COUTDEBUG("Solving for position");
+    solver_ret = linear_solver_vec_sca_(*this, *x1, tension_, *b1, *b2, rsrt, iter, relres);
+    //if ( solver_ret  != BiCGSSuccessTMP )
+    if (0)
+        ret_val = ErrorEvent::DivergenceError;
+    INFO(solver_ret);
+
+    // developing code for col
+    INFO("Begin of contact resolving steps.");
+    axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
+    
+    std::vector<value_type> pos_s;
+    std::vector<value_type> pos_e;
+    std::vector<value_type> vGrad;
+    pos_s.resize(S_.getPosition().size(),0.0);
+    pos_e.resize(S_.getPosition().size(),0.0);
+    vGrad.resize(S_.getPosition().size(),0.0);
+    
+    S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
+        S_.getPosition().size() * sizeof(value_type),
+        S_.getPosition().getDevice().MemcpyDeviceToHost);
+ 
+    x1->getDevice().Memcpy(&pos_e.front(), x1->begin(),
+        x1->size() * sizeof(value_type),
+        x1->getDevice().MemcpyDeviceToHost);
+   
+    int resolveCount = 0;
+    double IV = 0;
+    CI_.getVolumeAndGradient(IV,vGrad,pos_s,pos_e,0.15);
+    while(IV<0)
+    {
+      INFO("IV: "<<IV);
+      std::auto_ptr<Vec_t> col_dx = checkoutVec();
+      std::auto_ptr<Sca_t> col_tension = checkoutSca();
+      std::auto_ptr<Vec_t> col_f = checkoutVec();
+
+      col_dx->replicate(*x1);
+      col_tension->replicate(tension_);
+      col_f->replicate(*x1);
+
+      col_f->getDevice().Memcpy(col_f->begin(), &vGrad.front(), 
+          S_.getPosition().size() * sizeof(value_type),
+          S_.getPosition().getDevice().MemcpyHostToDevice);
+    
+      // self interaction velocity from contact force
+      CHK(stokes(*col_f, *b1));
+
+      // rhs for pos and tension
+      S_.div(*b1, *b2);
+      axpy(static_cast<value_type>(-1),*b2,*b2);
+      axpy(dt_, *b1, *b1);
+
+      // init guess
+      axpy(static_cast<value_type>(-0), *col_dx, *col_dx);
+      axpy(static_cast<value_type>(-0), *col_tension, *col_tension);
+      
+      // solve for pos and tension update due to vGrad
+      solver_ret = linear_solver_vec_sca_(*this, *col_dx, *col_tension, *b1, *b2, rsrt, iter, relres);
+
+      // solve for contact force magnitude, need to be done LCP
+      value_type col_mag = -IV/AlgebraicDot(*col_dx, *col_f);
+
+      INFO("col_dx 2-norm is: "<<AlgebraicDot(*col_dx, *col_dx));
+      INFO("col_f 2-norm is: "<<AlgebraicDot(*col_f, *col_f));
+      INFO("col_f mag: "<<col_mag);
+
+      axpy(col_mag, *col_dx, *x1, *x1);
+      axpy(col_mag, *col_tension, tension_, tension_);
+      axpy(col_mag, *col_f, S_.fc_, S_.fc_);
+    
+      x1->getDevice().Memcpy(&pos_e.front(), x1->begin(),
+        x1->size() * sizeof(value_type),
+        x1->getDevice().MemcpyDeviceToHost);
+
+      IV = 0;
+      resolveCount++;
+      CI_.getVolumeAndGradient(IV,vGrad,pos_s,pos_e,0.15);
+
+      recycle(col_dx);
+      recycle(col_tension);
+      recycle(col_f);
+    }
+
+    INFO("End of contact resolving steps, iters: "<<resolveCount);
+    // end of developing code for col
+    
+    COUTDEBUG("Position solve: Total iter = "<<iter<<", relres = "<<tol);
+    COUTDEBUG("Checking true relres");
+    /*
+    ASSERT(((*this)(*u2, *u3),
+            axpy(static_cast<value_type>(-1), *u3, *u1, *u3),
+            relres = sqrt(AlgebraicDot(*u3, *u3))/sqrt(AlgebraicDot(*u1,*u1)),
+            relres<tol
+           ),
+           "relres ("<<relres<<")<tol("<<tol<<")"
+           );
+    */
+
+    dx.replicate(S_.getPosition());
+    axpy(static_cast<value_type>(-1.0), S_.getPosition(), *x1, dx);
+    axpy(static_cast<value_type>(1.0/dt_),dx,pos_vel_);
+
+    INFO("vel maxabs: "<<MaxAbs(pos_vel_));
+
+    recycle(x1);
+    recycle(b1);
+    recycle(b2);
+
+    INFO(ret_val);
 
     return ret_val;
 }
@@ -578,7 +764,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     PROFILESTART();
 
     if (pos_vel_.size() != S_.getPosition().size()){
-
+    
+      INFO("Zeroing pos_vel_ and tension_!!!!");
       COUTDEBUG("Resizing the containers");
       pos_vel_.replicate(S_.getPosition());
       tension_.replicate(S_.getPosition());
@@ -1186,9 +1373,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateFarField() const
 {
     PROFILESTART();
-    pos_vel_.replicate(S_.getPosition());
-    CHK(this->BgFlow(pos_vel_, this->dt_));
-
+    ASSERT(pos_vel_.size() == S_.getPosition().size(), "inccorrect size");
+    //pos_vel_.replicate(S_.getPosition());
+    //CHK(this->BgFlow(pos_vel_, this->dt_));
+    
     if (this->interaction_.HasInteraction()){
         std::auto_ptr<Vec_t>        fi  = checkoutVec();
         std::auto_ptr<Vec_t>        vel = checkoutVec();
@@ -1198,12 +1386,34 @@ updateFarField() const
         Intfcl_force_.bendingForce(S_, *fi);
         Intfcl_force_.tensileForce(S_, tension_, *vel);
         axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+        
+        //add contact force
+        axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
 
-        EvaluateFarInteraction(S_.getPosition(), *fi, *vel);
+        stokes_.SetTrgCoord(NULL);
+        stokes_.SetSrcCoord(S_.getPosition());
+        stokes_.SetDensitySL(fi.get());
+        if( ves_props_.has_contrast ){
+            av(ves_props_.dl_coeff, pos_vel_, pos_vel_);
+            stokes_.SetDensityDL(&pos_vel_);
+        }
+        else{
+            stokes_.SetDensityDL(NULL);
+        }
+        stokes_.FarInteraction(*vel);
+        
+        /* Deprecated far-field interaction with SLP only
+        //EvaluateFarInteraction(S_.getPosition(), *fi, *vel);
+        */
+               
+        CHK(this->BgFlow(pos_vel_, this->dt_));
         axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
 
         recycle(fi);
         recycle(vel);
+    }
+    else{
+        CHK(this->BgFlow(pos_vel_, this->dt_));
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -1398,6 +1608,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
 {
     PROFILESTART();
 
+    /*
     int imax(S_.getPosition().getGridDim().first);
     int jmax(S_.getPosition().getGridDim().second);
     int np = S_.getPosition().getStride();
@@ -1432,6 +1643,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     recycle(t2);
     recycle(v1);
     recycle(v2);
+    */
+
+    velocity.replicate(force);
+    stokes_.SetDensitySL(&force);
+    stokes_.SetDensityDL(NULL);
+    stokes_.SelfInteraction(velocity);
 
     PROFILEEND("SelfInteraction_",0);
     return ErrorEvent::Success;
@@ -1516,6 +1733,45 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     recycle(fs);
     recycle(u);
 
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
+    const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t &div_stokes_fs) const
+{
+    std::auto_ptr<Vec_t> f = checkoutVec();
+    std::auto_ptr<Vec_t> dlp_tmp = checkoutVec();
+    f->replicate(x_new);
+ 
+    Intfcl_force_.implicitTractionJump(S_, x_new, tension, *f);
+    CHK(stokes(*f, time_mat_vec));
+
+    if (ves_props_.has_contrast){
+        dlp_tmp->replicate(x_new);
+        av(ves_props_.dl_coeff, x_new, *f);
+        axpy(static_cast<value_type>(1.0/dt_),*f,*f);
+        
+        stokes_.SetDensitySL(NULL);
+        stokes_.SetDensityDL(f.get());
+        stokes_.SelfInteraction(*dlp_tmp);
+        
+        axpy(static_cast<value_type>(1.0), *dlp_tmp, time_mat_vec, time_mat_vec);
+    }
+    
+    S_.div(time_mat_vec, div_stokes_fs);
+    
+    if (ves_props_.has_contrast){
+        axpy(-dt_, time_mat_vec, time_mat_vec);
+        av(ves_props_.vel_coeff, x_new, *f);
+        axpy(static_cast<value_type>(1.0), *f, time_mat_vec, time_mat_vec);
+    }
+    else{
+        axpy(-dt_, time_mat_vec, x_new, time_mat_vec);
+    }
+    
+    recycle(f);
+    recycle(dlp_tmp);
     return ErrorEvent::Success;
 }
 
@@ -1735,7 +1991,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             }
             dt_max=std::max(dt_max,dt[i]);
 
-            long N=u1->getStride()*DIM;
+            long N=u1->getStride()*VES3D_DIM;
             value_type* u1_=u1->getSubN_begin(i);
             for(long j=0;j<N;j++) u1_[j]*=dt[i];
         }

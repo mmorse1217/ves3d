@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <cuda.h>
 
-#define DIM 3
+#define VES3D_DIM 3
 
 #define BLOCK_HEIGHT 128
 
@@ -22,7 +22,7 @@ void dotProdKernel(const float* a, const float* b, int stride, int num_surfs, fl
   unsigned int blockOff, resOff, off, res;
   float aXReg, aYReg, aZReg, bXReg, bYReg, bZReg, dotProd;
   resOff = blockIdx.x * stride;
-  blockOff = resOff * DIM;
+  blockOff = resOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -84,7 +84,7 @@ __global__
 void crossProdKernel(const float* a, const float* b, int stride, int num_surfs, float* aCb) {
   unsigned int blockOff, off;
   float aXReg, aYReg, aZReg, bXReg, bYReg, bZReg, aCbXReg, aCbYReg, aCbZReg;
-  blockOff = blockIdx.x * stride * DIM;
+  blockOff = blockIdx.x * stride * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -157,7 +157,7 @@ void xvpwKernel(const float *x, const float *a, const float *y, int stride, int 
   unsigned int blockOff, scalOff, off, scal;
   float xXReg, xYReg, xZReg, aReg, yXReg, yYReg, yZReg, AxPyXReg, AxPyYReg, AxPyZReg;
   scalOff = blockIdx.x * stride;
-  blockOff = scalOff * DIM;
+  blockOff = scalOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -238,7 +238,7 @@ void xvpbKernel(const float *x, const float *a, float y, int stride, int num_sur
   unsigned int blockOff, scalOff, off, scal;
   float xXReg, xYReg, xZReg, aReg, AxPyXReg, AxPyYReg, AxPyZReg;
   scalOff = blockIdx.x * stride;
-  blockOff = scalOff * DIM;
+  blockOff = scalOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -312,7 +312,7 @@ void uyInvKernel(const float *x, const float *y, int stride, int num_surfs, floa
   unsigned int blockOff, scalOff, off, scal;
   float xXReg, xYReg, xZReg, yReg, xDyXReg, xDyYReg, xDyZReg;
   scalOff = blockIdx.x * stride;
-  blockOff = scalOff * DIM;
+  blockOff = scalOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -1271,7 +1271,7 @@ void dotProdKernel(const double* a, const double* b, int stride, int num_surfs, 
   unsigned int blockOff, resOff, off, res;
   double aXReg, aYReg, aZReg, bXReg, bYReg, bZReg, dotProd;
   resOff = blockIdx.x * stride;
-  blockOff = resOff * DIM;
+  blockOff = resOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -1333,7 +1333,7 @@ __global__
 void crossProdKernel(const double* a, const double* b, int stride, int num_surfs, double* aCb) {
   unsigned int blockOff, off;
   double aXReg, aYReg, aZReg, bXReg, bYReg, bZReg, aCbXReg, aCbYReg, aCbZReg;
-  blockOff = blockIdx.x * stride * DIM;
+  blockOff = blockIdx.x * stride * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -1406,7 +1406,7 @@ void xvpwKernel(const double *x, const double *a, const double *y, int stride, i
   unsigned int blockOff, scalOff, off, scal;
   double xXReg, xYReg, xZReg, aReg, yXReg, yYReg, yZReg, AxPyXReg, AxPyYReg, AxPyZReg;
   scalOff = blockIdx.x * stride;
-  blockOff = scalOff * DIM;
+  blockOff = scalOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -1487,7 +1487,7 @@ void xvpbKernel(const double *x, const double *a, double y, int stride, int num_
   unsigned int blockOff, scalOff, off, scal;
   double xXReg, xYReg, xZReg, aReg, AxPyXReg, AxPyYReg, AxPyZReg;
   scalOff = blockIdx.x * stride;
-  blockOff = scalOff * DIM;
+  blockOff = scalOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 
@@ -1561,7 +1561,7 @@ void uyInvKernel(const double *x, const double *y, int stride, int num_surfs, do
   unsigned int blockOff, scalOff, off, scal;
   double xXReg, xYReg, xZReg, yReg, xDyXReg, xDyYReg, xDyZReg;
   scalOff = blockIdx.x * stride;
-  blockOff = scalOff * DIM;
+  blockOff = scalOff * VES3D_DIM;
 
   int numChunkLoop = stride / BLOCK_HEIGHT;
 

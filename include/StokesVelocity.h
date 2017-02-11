@@ -35,9 +35,18 @@ class StokesVelocity{
     void SetTrgCoord(const PVFMMVec* T);
 
     const PVFMMVec& operator()();
+    const PVFMMVec& SelfInteraction();
+    const PVFMMVec& FarInteraction();
 
     template<class Vec>
     void operator()(Vec& vel);
+    template<class Vec>
+    void SelfInteraction(Vec& vel);
+    template<class Vec>
+    void FarInteraction(Vec& vel);
+
+    void setup_self();
+    void setup_all();
 
     Real MonitorError(Real tol=1e-5);
 

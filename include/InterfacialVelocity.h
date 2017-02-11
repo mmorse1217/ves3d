@@ -7,6 +7,7 @@
 
 #include "InterfacialForce.h"
 #include "BiCGStab.h"
+#include "BiCGStabTMP.h"
 #include "SHTrans.h"
 #include "Device.h"
 #include <queue>
@@ -17,6 +18,7 @@
 #include "ParallelLinSolverInterface.h"
 #include "VesicleProps.h"
 #include "StokesVelocity.h"
+#include "ContactInterface.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -73,6 +75,8 @@ class InterfacialVelocity
 
     Error_t operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const;
     Error_t operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
+    Error_t operator()(const Vec_t &x_new, const Sca_t &tension, 
+        Vec_t &time_mat_vec, Sca_t &tension_mat_vec) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -88,6 +92,7 @@ class InterfacialVelocity
     InterfacialForce<SurfContainer> Intfcl_force_;
     BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
     BiCGStab<Vec_t, InterfacialVelocity> linear_solver_vec_;
+    BiCGStabTMP<Vec_t, Sca_t, InterfacialVelocity> linear_solver_vec_sca_;
 
     // parallel solver
     PSolver_t *parallel_solver_;
@@ -136,6 +141,7 @@ class InterfacialVelocity
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;
+    ContactInterface CI_;
 };
 
 #include "InterfacialVelocity.cc"

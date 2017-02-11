@@ -137,7 +137,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options()
     std::vector<value_type> shapes;
     io.ReadDataStl(fname, shapes, DataIO::ASCII);
 
-    int nshapes(shapes.size()/x0.getStride()/DIM);
+    int nshapes(shapes.size()/x0.getStride()/VES3D_DIM);
     INFO("Loaded "<<nshapes<<" shape(s)");
 
     // load centers and transformations for current mpi process

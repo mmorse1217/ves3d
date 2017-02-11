@@ -73,10 +73,10 @@ T* Device<CPU>::DotProduct(const T* u_in, const T* v_in, size_t stride,
 #pragma omp parallel for private(base, resbase, dot)
     for (int vv = 0; vv < n_vecs; vv++) {
         resbase = vv * stride;
-        base = resbase * DIM;
+        base = resbase * VES3D_DIM;
         for (int s = 0; s < stride; s++) {
             dot = 0.0;
-            for(int dd=0; dd<DIM;++dd)
+            for(int dd=0; dd<VES3D_DIM;++dd)
                 dot  += u_in[base + s + dd*stride] * v_in[base + s + dd*stride];
 
             x_out[resbase + s] = dot;
@@ -92,19 +92,19 @@ template<typename T>
 T* Device<CPU>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t num_surfs, T* w_out) const
 {
     PROFILESTART();
-    assert(DIM==3);
+    assert(VES3D_DIM==3);
 
 #pragma omp parallel
     {
-        T u[DIM], v[DIM], w[DIM];
+        T u[VES3D_DIM], v[VES3D_DIM], w[VES3D_DIM];
         size_t base, resbase, surf, s;
 
 #pragma omp for
         for (surf = 0; surf < num_surfs; surf++) {
             resbase = surf * stride;
-            base = resbase * DIM;
+            base = resbase * VES3D_DIM;
             for(s = 0; s < stride; s++) {
-                for(int dd=0;dd<DIM;++dd)
+                for(int dd=0;dd<VES3D_DIM;++dd)
                 {
                     u[dd] = u_in[base + s + dd * stride];
                     v[dd] = v_in[base + s + dd * stride];
@@ -114,7 +114,7 @@ T* Device<CPU>::CrossProduct(const T* u_in, const T* v_in, size_t stride, size_t
                 w[1] = u[2] * v[0] - u[0] * v[2];
                 w[2] = u[0] * v[1] - u[1] * v[0];
 
-                for(int dd=0;dd<DIM;++dd)
+                for(int dd=0;dd<VES3D_DIM;++dd)
                     w_out[base + s + dd * stride] = w[dd];
             }
         }
@@ -224,11 +224,11 @@ T*  Device<CPU>::uyInv(const T* u_in, const T* y_in, size_t stride, size_t num_s
     for (size_t vec = 0; vec < num_surfs; vec++)
     {
         y_base = vec*stride;
-        base = DIM*y_base;
+        base = VES3D_DIM*y_base;
         for (size_t s = 0; s < stride; s++)
         {
             y_idx = y_base + s;
-            for(int dd=0;dd<DIM;++dd)
+            for(int dd=0;dd<VES3D_DIM;++dd)
             {
                 uy  = u_in[base + s + dd*stride];
                 uy /= y_in[y_idx];
@@ -302,7 +302,7 @@ T*  Device<CPU>::avpw(const T* a_in, const T*  v_in, const T*  w_in, size_t stri
 {
     PROFILESTART();
     register T val;
-    size_t base, vec, s, length = DIM*stride, idx;
+    size_t base, vec, s, length = VES3D_DIM*stride, idx;
 
     if(w_in !=NULL)
     {
@@ -368,7 +368,7 @@ template<typename T>
 T*  Device<CPU>::xvpw(const T* x_in, const T*  v_in, const T*  w_in, size_t stride, size_t num_surfs, T*  xvpw_out) const
 {
     PROFILESTART();
-    size_t base, x_base, vec, s, length = DIM*stride, idx, x_idx;
+    size_t base, x_base, vec, s, length = VES3D_DIM*stride, idx, x_idx;
     register T val;
 
     if(w_in !=NULL)

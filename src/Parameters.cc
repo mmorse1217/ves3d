@@ -30,7 +30,7 @@ void Parameters<T>::init()
     filter_freq             = 8;
     gravity_field[0]        = 0;
     gravity_field[1]        = 0;
-    gravity_field[2]        = -1.0;
+    gravity_field[2]        = 0;
     interaction_upsample    = false;
     n_surfs                 = 1;
     num_threads             = -1;

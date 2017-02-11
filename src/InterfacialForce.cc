@@ -145,7 +145,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
     w.replicate(x);
 
     ShufflePoints(x,w);
-    int m(1), k(DIM), n(x.size()/DIM);
+    int m(1), k(VES3D_DIM), n(x.size()/VES3D_DIM);
 
     Vec_t::getDevice().gemm("N","N", &m, &n, &k,
         &one, params_.gravity_field, &m,

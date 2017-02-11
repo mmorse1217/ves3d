@@ -98,7 +98,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             break;
 
 	case JacobiBlockImplicit:
-	    return ErrorEvent::NotImplementedError;
+	    updater = &IntVel_t::updateJacobiImplicit;
 	    break;
 
 	case GloballyImplicit:

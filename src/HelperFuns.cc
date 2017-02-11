@@ -325,23 +325,23 @@ void _rotation_matrix_zyz(val_t rot_z1, val_t rot_y, val_t rot_z2, E &rot)
                    sin(rot_z2), cos(rot_z2), 0.0,
                    0.0        , 0.0        , 1.0};
 
-    val_t Ri[DIM*DIM], R[DIM*DIM];
+    val_t Ri[VES3D_DIM*VES3D_DIM], R[VES3D_DIM*VES3D_DIM];
 
     /* these can be coded in, but leaving as is for debugging */
-    for (int i(0);i<DIM;++i)
-        for (int j(0);j<DIM;++j){
-            Ri[i*DIM+j] = 0;
-            for (int k(0);k<DIM;++k)
-                Ri[i*DIM+j] += R2[i*DIM+k]*R1[k*DIM+j];
+    for (int i(0);i<VES3D_DIM;++i)
+        for (int j(0);j<VES3D_DIM;++j){
+            Ri[i*VES3D_DIM+j] = 0;
+            for (int k(0);k<VES3D_DIM;++k)
+                Ri[i*VES3D_DIM+j] += R2[i*VES3D_DIM+k]*R1[k*VES3D_DIM+j];
         }
-    for (int i(0);i<DIM;++i)
-        for (int j(0);j<DIM;++j){
-            R[i*DIM+j] = 0;
-            for (int k(0);k<DIM;++k)
-                R[i*DIM+j] += R3[i*DIM+k]*Ri[k*DIM+j];
+    for (int i(0);i<VES3D_DIM;++i)
+        for (int j(0);j<VES3D_DIM;++j){
+            R[i*VES3D_DIM+j] = 0;
+            for (int k(0);k<VES3D_DIM;++k)
+                R[i*VES3D_DIM+j] += R3[i*VES3D_DIM+k]*Ri[k*VES3D_DIM+j];
         }
 
-    for (int i(0);i<DIM*DIM;++i)
+    for (int i(0);i<VES3D_DIM*VES3D_DIM;++i)
         rot.push_back(R[i]);
 }
 
@@ -353,9 +353,9 @@ void _transform_point(val_t &x, val_t &y, val_t &z,
     val_t xyz[] = {x*scale, y*scale, z*scale};
     val_t XYZ[] = {0,0,0};
 
-    for (int i(0);i<DIM;++i)
-        for (int j(0);j<DIM;++j)
-            XYZ[i] += rot[i*DIM+j]*xyz[j];
+    for (int i(0);i<VES3D_DIM;++i)
+        for (int j(0);j<VES3D_DIM;++j)
+            XYZ[i] += rot[i*VES3D_DIM+j]*xyz[j];
 
     x = XYZ[0] + cen[0];
     y = XYZ[1] + cen[1];
@@ -381,7 +381,7 @@ inline void InitializeShapes(Vec_t &x, const E &shape_gallery,
         shape.push_back(geo_spec[offset++]);
         scale.push_back(geo_spec[offset++]);
 
-        for (int iC(0); iC<DIM; ++iC)
+        for (int iC(0); iC<VES3D_DIM; ++iC)
             cen.push_back(geo_spec[offset++]);
 
         _rotation_matrix_zyz(
@@ -392,13 +392,13 @@ inline void InitializeShapes(Vec_t &x, const E &shape_gallery,
     }
 
     // transform and fill
-    E xi(nves*stride*DIM);
+    E xi(nves*stride*VES3D_DIM);
     for (int iV(0); iV<nves; ++iV) {
-        sz_t shape_offset(shape[iV]*DIM*stride);
-        sz_t ves_offset  (iV       *DIM*stride);
+        sz_t shape_offset(shape[iV]*VES3D_DIM*stride);
+        sz_t ves_offset  (iV       *VES3D_DIM*stride);
 
-        val_t *R = &(rot[iV*DIM*DIM]);
-        val_t *C = &(cen[iV*DIM    ]);
+        val_t *R = &(rot[iV*VES3D_DIM*VES3D_DIM]);
+        val_t *C = &(cen[iV*VES3D_DIM    ]);
 
         for (int iP(0);iP<stride;++iP) {
             val_t x = shape_gallery[shape_offset+         iP];
