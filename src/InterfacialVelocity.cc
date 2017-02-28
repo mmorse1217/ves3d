@@ -226,45 +226,40 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     this->dt_ = dt;
     SolverScheme scheme(JacobiBlockImplicit);
     INFO("Taking a time step using "<<scheme<<" scheme");
+    
+    // prepare scheme
     CHK(Prepare(scheme));
     
+    // check out working vec, sca
     std::auto_ptr<Vec_t> x1 = checkoutVec();
+    std::auto_ptr<Vec_t> f1 = checkoutVec();
     std::auto_ptr<Vec_t> b1 = checkoutVec();
     std::auto_ptr<Sca_t> b2 = checkoutSca();
+    
+    // resize
     x1->replicate(S_.getPosition());
+    f1->replicate(S_.getPosition());
     b1->replicate(S_.getPosition());
     b2->replicate(tension_);
     
+    // initial guess
+    x1->getDevice().Memcpy(x1->begin(), pos_vel_.begin(),
+        pos_vel_.size() * sizeof(value_type),
+        x1->getDevice().MemcpyDeviceToDevice);
+
     // farfield velocity
     this->updateFarField();
-    
+       
     // position rhs
-    if(ves_props_.has_contrast){
-        //add DL self interaction of density (1-\lambda)X/(\Delta t)
-        av(ves_props_.dl_coeff, S_.getPosition(), *x1);
-        axpy(static_cast<value_type>(1.0/dt_),*x1,*x1);
+    Intfcl_force_.bendingForce(S_, *f1);
+    stokes_.SetDensitySL(f1.get());
+    stokes_.SetDensityDL(NULL);
+    stokes_.SelfInteraction(*b1);
+    axpy(static_cast<value_type>(1.0), pos_vel_, *b1, *b1);
 
-        stokes_.SetDensitySL(NULL);
-        stokes_.SetDensityDL(x1.get());
-        stokes_.SelfInteraction(*b1);
-
-        axpy(static_cast<value_type>(-1.0), *b1, pos_vel_, pos_vel_);
-        axpy(dt_, pos_vel_, *b1);
-        av(ves_props_.vel_coeff, S_.getPosition(), *x1);
-        axpy(static_cast<value_type>(1.0), *x1, *b1, *b1);
-    }
-    else{
-        axpy(dt_, pos_vel_, S_.getPosition(), *b1);
-    }
-    
     // tension rhs
-    S_.div(pos_vel_, *b2);
-    axpy(static_cast<value_type>(-1),*b2,*b2);
-
-    // initial guess
-    x1->getDevice().Memcpy(x1->begin(), S_.getPosition().begin(),
-        S_.getPosition().size() * sizeof(value_type),
-        x1->getDevice().MemcpyDeviceToDevice);
+    S_.div(*b1, *b2);
+    axpy(static_cast<value_type>(-1.0),*b2,*b2);
 
     int iter(params_.time_iter_max);
     int rsrt(params_.time_iter_max);
@@ -275,11 +270,11 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     COUTDEBUG("Solving for position");
     solver_ret = linear_solver_vec_sca_(*this, *x1, tension_, *b1, *b2, rsrt, iter, relres);
-    //if ( solver_ret  != BiCGSSuccessTMP )
-    if (0)
+    if ( solver_ret  != BiCGSSuccessTMP )
         ret_val = ErrorEvent::DivergenceError;
     INFO(solver_ret);
 
+    /*
     // developing code for col
     INFO("Begin of contact resolving steps.");
     axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
@@ -358,6 +353,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     INFO("End of contact resolving steps, iters: "<<resolveCount);
     // end of developing code for col
+    */
     
     COUTDEBUG("Position solve: Total iter = "<<iter<<", relres = "<<tol);
     COUTDEBUG("Checking true relres");
@@ -372,12 +368,13 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     */
 
     dx.replicate(S_.getPosition());
-    axpy(static_cast<value_type>(-1.0), S_.getPosition(), *x1, dx);
-    axpy(static_cast<value_type>(1.0/dt_),dx,pos_vel_);
+    axpy(dt_, *x1, dx);
+    axpy(static_cast<value_type>(1.0), *x1, pos_vel_);
 
     INFO("vel maxabs: "<<MaxAbs(pos_vel_));
 
     recycle(x1);
+    recycle(f1);
     recycle(b1);
     recycle(b2);
 
@@ -1387,8 +1384,10 @@ updateFarField() const
         Intfcl_force_.tensileForce(S_, tension_, *vel);
         axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
         
-        //add contact force
+        // add contact force
         axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
+
+        // TODO: add gravity force
 
         stokes_.SetTrgCoord(NULL);
         stokes_.SetSrcCoord(S_.getPosition());
@@ -1719,8 +1718,8 @@ operator()(const Vec_t &x_new, Vec_t &time_mat_vec) const
 }
 
 template<typename SurfContainer, typename Interaction>
-Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
-    const Sca_t &tension, Sca_t &div_stokes_fs) const
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+operator()(const Sca_t &tension, Sca_t &div_stokes_fs) const
 {
     std::auto_ptr<Vec_t> fs = checkoutVec();
     std::auto_ptr<Vec_t> u = checkoutVec();
@@ -1737,20 +1736,20 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
 }
 
 template<typename SurfContainer, typename Interaction>
-Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
-    const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t &div_stokes_fs) const
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t &div_stokes_fs) const
 {
     std::auto_ptr<Vec_t> f = checkoutVec();
     std::auto_ptr<Vec_t> dlp_tmp = checkoutVec();
     f->replicate(x_new);
+    dlp_tmp->replicate(x_new);
  
-    Intfcl_force_.implicitTractionJump(S_, x_new, tension, *f);
+    axpy(dt_, x_new, *dlp_tmp);
+    Intfcl_force_.implicitTractionJump(S_, *dlp_tmp, tension, *f);
     CHK(stokes(*f, time_mat_vec));
 
     if (ves_props_.has_contrast){
-        dlp_tmp->replicate(x_new);
         av(ves_props_.dl_coeff, x_new, *f);
-        axpy(static_cast<value_type>(1.0/dt_),*f,*f);
         
         stokes_.SetDensitySL(NULL);
         stokes_.SetDensityDL(f.get());
@@ -1762,12 +1761,11 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     S_.div(time_mat_vec, div_stokes_fs);
     
     if (ves_props_.has_contrast){
-        axpy(-dt_, time_mat_vec, time_mat_vec);
         av(ves_props_.vel_coeff, x_new, *f);
-        axpy(static_cast<value_type>(1.0), *f, time_mat_vec, time_mat_vec);
+        axpy(static_cast<value_type>(-1.0), time_mat_vec, *f, time_mat_vec);
     }
     else{
-        axpy(-dt_, time_mat_vec, x_new, time_mat_vec);
+        axpy(static_cast<value_type>(-1.0), time_mat_vec, x_new, time_mat_vec);
     }
     
     recycle(f);

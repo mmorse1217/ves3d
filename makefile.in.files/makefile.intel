@@ -20,7 +20,7 @@ else
 endif
 
 ifneq ($(strip ${VES3D_PLATFORM}),lonestar)
-  CXXFLAGS += -fno-exceptions
+#  CXXFLAGS += -fno-exceptions
 endif
 
 ## for ref, these are the implicit rule gnu make uses for compile/link

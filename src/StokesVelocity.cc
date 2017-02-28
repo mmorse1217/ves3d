@@ -4,7 +4,7 @@
 #include <SphericalHarmonics.h>
 #include <legendre_rule.h>
 
-#define __ENABLE_PVFMM_PROFILER__
+//#define __ENABLE_PVFMM_PROFILER__
 //#define __SH_FILTER__
 
 template<class Real>

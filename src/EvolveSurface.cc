@@ -150,7 +150,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             ", relative error="<<max_err/max_y0<<
             ", rtol="<<dt*params_->time_tol);
 
-        if(max_err>max_y0*dt*params_->time_tol)
+        //if(max_err>max_y0*dt*params_->time_tol)
+        if(max_err>max_y0*dt*params_->time_tol && params_->scheme==GloballyImplicit)
             CERR_LOC("Sanity check for time-stepper failed!", std::endl,exit(1));
     }
 
@@ -341,7 +342,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         pvfmm::Profile::Toc();
 
         pvfmm::Profile::Toc();
-        pvfmm::Profile::print(&comm);
+        //pvfmm::Profile::print(&comm);
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;
