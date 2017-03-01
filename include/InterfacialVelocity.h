@@ -19,6 +19,7 @@
 #include "VesicleProps.h"
 #include "StokesVelocity.h"
 #include "ContactInterface.h"
+#include "GMRESLinSolver.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -93,6 +94,7 @@ class InterfacialVelocity
     BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
     BiCGStab<Vec_t, InterfacialVelocity> linear_solver_vec_;
     BiCGStabTMP<Vec_t, Sca_t, InterfacialVelocity> linear_solver_vec_sca_;
+    GMRESLinSolver<value_type> linear_solver_gmres_;
 
     // parallel solver
     PSolver_t *parallel_solver_;
@@ -105,6 +107,12 @@ class InterfacialVelocity
 
     static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
     static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
+    
+    static Error_t JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t JacobiImplicitLCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    
     size_t stokesBlockSize() const;
     size_t tensionBlockSize() const;
 

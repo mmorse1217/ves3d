@@ -85,6 +85,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     CI_.writeOFF();
     CI_.init(SURF_SUBDIVISION);
     // end of init Contact Interface
+    CHK(linear_solver_gmres_.SetContext(static_cast<const void*>(this)));
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -249,7 +250,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // farfield velocity
     this->updateFarField();
-       
+    
     // position rhs
     Intfcl_force_.bendingForce(S_, *f1);
     stokes_.SetDensitySL(f1.get());
@@ -265,14 +266,40 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     int rsrt(params_.time_iter_max);
     value_type tol(params_.time_tol),relres(params_.time_tol);
 
-    enum BiCGSReturnTMP solver_ret;
     Error_t ret_val(ErrorEvent::Success);
-
-    COUTDEBUG("Solving for position");
+    COUTDEBUG("Solving for velocity");
+        
+    /* old code using BiCGStab Solver
+    enum BiCGSReturnTMP solver_ret;
     solver_ret = linear_solver_vec_sca_(*this, *x1, tension_, *b1, *b2, rsrt, iter, relres);
     if ( solver_ret  != BiCGSSuccessTMP )
         ret_val = ErrorEvent::DivergenceError;
     INFO(solver_ret);
+    */
+    
+    // new code using GMRES Solver
+    size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
+    ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
+    size_t N_size = vsz+tsz;
+    // copy device type to value_type array to call GMRES
+    value_type x_host[N_size], rhs_host[N_size];
+
+    // copy to unknown solution
+    x1->getDevice().Memcpy(x_host, x1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    tension_.getDevice().Memcpy(x_host+vsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    
+    // copy to rhs
+    b1->getDevice().Memcpy(rhs_host    , b1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    b2->getDevice().Memcpy(rhs_host+vsz, b2->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+    // solve the linear system using gmres
+    int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host, rhs_host, 
+            relres, N_size, iter, 100);
+
+    // copy host to device
+    x1->getDevice().Memcpy(x1->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    tension_.getDevice().Memcpy(tension_.begin(), x_host+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    // end of new code using GMRES Solver
 
     /*
     // developing code for col
@@ -1281,6 +1308,91 @@ ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
         vxs->getDevice().Memcpy(y    , vxs->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
         tns->getDevice().Memcpy(y+vsz, tns->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     }
+
+    F->recycle(vox);
+    F->recycle(vxs);
+    F->recycle(wrk);
+    F->recycle(ten);
+    F->recycle(tns);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y)
+{
+    PROFILESTART();
+    const InterfacialVelocity *F(NULL);
+    o->Context((const void**) &F);
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Sca_t> ten = F->checkoutSca();
+    vox->replicate(F->pos_vel_);
+    ten->replicate(F->tension_);
+    
+    std::auto_ptr<Vec_t> vox_y = F->checkoutVec();
+    std::auto_ptr<Sca_t> ten_y = F->checkoutSca();
+    vox_y->replicate(F->pos_vel_);
+    ten_y->replicate(F->tension_);
+
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+    F->operator()(*vox, *ten, *vox_y, *ten_y);
+
+    vox_y->getDevice().Memcpy(y    , vox_y->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    ten_y->getDevice().Memcpy(y+vsz, ten_y->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+    F->recycle(vox);
+    F->recycle(ten);
+    
+    F->recycle(vox_y);
+    F->recycle(ten_y);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y)
+{
+    PROFILESTART();
+    const InterfacialVelocity *F(NULL);
+    o->Context((const void**) &F);
+    
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+    //Vec_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
+
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxs = F->checkoutVec();
+    std::auto_ptr<Vec_t> wrk = F->checkoutVec();
+    vox->replicate(F->pos_vel_);
+    vxs->replicate(F->pos_vel_);
+    wrk->replicate(F->pos_vel_);
+
+    std::auto_ptr<Sca_t> ten = F->checkoutSca();
+    std::auto_ptr<Sca_t> tns = F->checkoutSca();
+    ten->replicate(F->tension_);
+    tns->replicate(F->tension_);
+
+    COUTDEBUG("Unpacking the input parallel vector");
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    //F->sht_.forward(*vox, *wrk, *vxs);
+    //F->sht_.forward(*ten, *wrk, *tns);
+
+    //COUTDEBUG("Applying diagonal preconditioner");
+    //F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    //F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
+
+    //F->sht_.backward(*vxs, *wrk, *vox);
+    //F->sht_.backward(*tns, *wrk, *ten);
+    vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
     F->recycle(vox);
     F->recycle(vxs);
