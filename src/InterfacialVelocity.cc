@@ -1382,15 +1382,19 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     COUTDEBUG("Unpacking the input parallel vector");
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    //F->sht_.forward(*vox, *wrk, *vxs);
-    //F->sht_.forward(*ten, *wrk, *tns);
+    axpy(static_cast<value_type>(1.0),*vox,*vox);
+    axpy(static_cast<value_type>(1.0),*ten,*ten);
+    /*
+    F->sht_.forward(*vox, *wrk, *vxs);
+    F->sht_.forward(*ten, *wrk, *tns);
 
-    //COUTDEBUG("Applying diagonal preconditioner");
-    //F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
-    //F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
+    COUTDEBUG("Applying diagonal preconditioner");
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
 
-    //F->sht_.backward(*vxs, *wrk, *vox);
-    //F->sht_.backward(*tns, *wrk, *ten);
+    F->sht_.backward(*vxs, *wrk, *vox);
+    F->sht_.backward(*tns, *wrk, *ten);
+    */
     vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
