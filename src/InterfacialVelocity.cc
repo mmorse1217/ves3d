@@ -85,6 +85,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     CI_.writeOFF();
     CI_.init(SURF_SUBDIVISION);
     // end of init Contact Interface
+
+    // init GMRES solver
     CHK(linear_solver_gmres_.SetContext(static_cast<const void*>(this)));
 }
 
@@ -235,12 +237,15 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     std::auto_ptr<Vec_t> x1 = checkoutVec();
     std::auto_ptr<Vec_t> f1 = checkoutVec();
     std::auto_ptr<Vec_t> b1 = checkoutVec();
+    std::auto_ptr<Vec_t> xtmp = checkoutVec();
+
     std::auto_ptr<Sca_t> b2 = checkoutSca();
     
     // resize
     x1->replicate(S_.getPosition());
     f1->replicate(S_.getPosition());
     b1->replicate(S_.getPosition());
+    xtmp->replicate(S_.getPosition());
     b2->replicate(tension_);
     
     // initial guess
@@ -301,6 +306,82 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     tension_.getDevice().Memcpy(tension_.begin(), x_host+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     // end of new code using GMRES Solver
 
+    /*
+    // developing code for col
+    INFO("Begin of contact resolving steps.");
+    axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
+    
+    std::vector<value_type> pos_s;
+    std::vector<value_type> pos_e;
+    std::vector<value_type> vGrad;
+    pos_s.resize(S_.getPosition().size(),0.0);
+    pos_e.resize(S_.getPosition().size(),0.0);
+    vGrad.resize(S_.getPosition().size(),0.0);
+    vgrad_ind_.resize(S_.getPosition().size(),0);
+    
+    S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
+        S_.getPosition().size() * sizeof(value_type),
+        S_.getPosition().getDevice().MemcpyDeviceToHost);
+ 
+    axpy(dt_, *x1, S_.getPosition(), *xtmp);
+    xtmp->getDevice().Memcpy(&pos_e.front(), xtmp->begin(),
+        xtmp->size() * sizeof(value_type),
+        xtmp->getDevice().MemcpyDeviceToHost);
+   
+    int resolveCount = 0;
+    int IV_size = 0;
+    std::vector<double> IV;
+    IV.clear();
+    CI_.getVolumeAndGradient(IV, IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
+    while(IV_size > 0)
+    {
+        num_cvs_ = IV_size;
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+          S_.getPosition().size() * sizeof(value_type),
+          S_.getPosition().getDevice().MemcpyHostToDevice);
+
+        std::auto_ptr<Vec_t> col_dx = checkoutVec();
+        std::auto_ptr<Vec_t> col_f = checkoutVec();
+        std::auto_ptr<Sca_t> col_tension = checkoutSca();
+        col_dx->replicate(*x1);
+        col_f->replicate(*x1);
+        col_tension->replicate(tension_);
+
+        Arr_t col_lambda(num_cvs_);
+        Arr_t cvs(num_cvs_);
+        cvs.getDevice().Memcpy(cvs.begin(), &IV.front(), 
+          num_cvs_ * sizeof(value_type),
+          S_.getPosition().getDevice().MemcpyHostToDevice);
+
+        SolveLCP(col_dx, col_tension, col_lambda, cvs);
+        
+        axpy(static_cast<double>(1.0), *col_dx, *x1, *x1);
+        axpy(static_cast<double>(1.0), *col_tension, tension_, tension_);
+        CVJacobian(col_lambda, *col_f);
+        axpy(static_cast<double>(1.0), *col_f, S_.fc_, S_.fc_);
+    
+        axpy(dt_, *x1, S_.getPosition(), *xtmp);
+        xtmp->getDevice().Memcpy(&pos_e.front(), xtmp->begin(),
+        xtmp->size() * sizeof(value_type),
+        xtmp->getDevice().MemcpyDeviceToHost);
+
+        xtmp->getDevice().Memcpy(&pos_e.front(), xtmp->begin(),
+                xtmp->size() * sizeof(value_type),
+                xtmp->getDevice().MemcpyDeviceToHost);
+      
+        IV.clear() = 0;
+        IV_size = 0;
+        resolveCount++;
+      
+        CI_.getVolumeAndGradient(IV,IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
+      
+        recycle(col_dx);
+        recycle(col_tension);
+        recycle(col_f);
+    }
+    // end of developing code for col 
+    */
+    
     /*
     // developing code for col
     INFO("Begin of contact resolving steps.");
@@ -377,7 +458,6 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       recycle(col_tension);
       recycle(col_f);
     }
-
     INFO("End of contact resolving steps, iters: "<<resolveCount);
     // end of developing code for col
     */
@@ -404,6 +484,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     recycle(f1);
     recycle(b1);
     recycle(b2);
+    recycle(xtmp);
 
     INFO(ret_val);
 
@@ -1384,6 +1465,97 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     axpy(static_cast<value_type>(1.0),*vox,*vox);
     axpy(static_cast<value_type>(1.0),*ten,*ten);
+    
+    F->sht_.forward(*vox, *wrk, *vxs);
+    F->sht_.forward(*ten, *wrk, *tns);
+
+    /*
+    COUTDEBUG("Applying diagonal preconditioner");
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
+    */
+
+    F->sht_.backward(*vxs, *wrk, *vox);
+    F->sht_.backward(*tns, *wrk, *ten);
+    
+    vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+    F->recycle(vox);
+    F->recycle(vxs);
+    F->recycle(wrk);
+    F->recycle(ten);
+    F->recycle(tns);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+JacobiImplicitLCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y)
+{
+    PROFILESTART();
+    const InterfacialVelocity *F(NULL);
+    o->Context((const void**) &F);
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Sca_t> ten = F->checkoutSca();
+    vox->replicate(F->pos_vel_);
+    ten->replicate(F->tension_);
+    
+    std::auto_ptr<Vec_t> vox_y = F->checkoutVec();
+    std::auto_ptr<Sca_t> ten_y = F->checkoutSca();
+    vox_y->replicate(F->pos_vel_);
+    ten_y->replicate(F->tension_);
+
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+    F->operator()(*vox, *ten, *vox_y, *ten_y);
+
+    vox_y->getDevice().Memcpy(y    , vox_y->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    ten_y->getDevice().Memcpy(y+vsz, ten_y->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+    F->recycle(vox);
+    F->recycle(ten);
+    
+    F->recycle(vox_y);
+    F->recycle(ten_y);
+
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y)
+{
+    PROFILESTART();
+    const InterfacialVelocity *F(NULL);
+    o->Context((const void**) &F);
+    
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+    //Vec_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
+
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxs = F->checkoutVec();
+    std::auto_ptr<Vec_t> wrk = F->checkoutVec();
+    vox->replicate(F->pos_vel_);
+    vxs->replicate(F->pos_vel_);
+    wrk->replicate(F->pos_vel_);
+
+    std::auto_ptr<Sca_t> ten = F->checkoutSca();
+    std::auto_ptr<Sca_t> tns = F->checkoutSca();
+    ten->replicate(F->tension_);
+    tns->replicate(F->tension_);
+
+    COUTDEBUG("Unpacking the input parallel vector");
+    vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    axpy(static_cast<value_type>(1.0),*vox,*vox);
+    axpy(static_cast<value_type>(1.0),*ten,*ten);
     /*
     F->sht_.forward(*vox, *wrk, *vxs);
     F->sht_.forward(*ten, *wrk, *tns);
@@ -1890,6 +2062,407 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
 }
 
 template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+operator()(const Vec_t &x_new, const Sca_t &tension, const Arr_t &lambda,
+        Vec_t &time_mat_vec, Sca_t &tension_mat_vec, Arr_t &lambda_mat_vec) const
+{
+    std::auto_ptr<Vec_t> f_col = checkoutVec();
+    std::auto_ptr<Vec_t> vel_f_col = checkoutVec();
+    std::auto_ptr<Sca_t> div_vel_f_col = checkoutSca();
+    f_col->replicate(x_new);
+    vel_f_col->replicate(x_new);
+    div_vel_f_col->replicate(tension);
+
+    (*this)(x_new, tension, time_mat_vec, tension_mat_vec);
+    CVJacobianTrans(lambda, *f_col);
+    
+    stokes(*f_col, *vel_f_col);
+    
+    axpy(static_cast<value_type>(-1.0), *vel_f_col, time_mat_vec, time_mat_vec);
+    
+    S_.div(vel_f_col, *div_vel_f_col);
+    axpy(static_cast<value_type>(1.0), *div_vel_f_col, tension_mat_vec, tension_mat_vec);
+
+    CVJacobian(x_new, lambda_mat_vec);
+    
+    LCPSelect(lambda, lambda_mat_vec);
+    
+    recycle(f_col);
+    recycle(vel_f_col);
+    recycle(div_vel_f_col);
+
+    return ErrorEvent::Success;
+}
+
+// This function evaluates J*dx, where J is the contact volumes' Jacobian,
+// dx is the displacement stored in x_new.
+// J is sparse matrix of size ncv*N, where ncv is the number of contact
+// volumes, N is the total points on vesicles.
+// The ith row of J is the contact volume gradient of ith contact volume.
+// Instead of forming J, we use vGrad_index which stores the components
+// index(belongs to which contact volume) to evaluate J*dx.
+// The result dx_matvec=J*dx is of size ncv*1, the ith components of 
+// dx_matvec is the sum of all the components of xy(x_new,vGrad) which have
+// index i(stored in vGrad_index).
+// Since we are accessing all the components of the Vec_t, we copy the vector
+// from device to host.
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
+{
+    std::auto_ptr<Vec_t> x_vgrad = checkoutVec();
+    x_vgrad->replicate(x_new);
+
+    xy(x_new,vgrad_,x_vgrad);
+
+    axpy(dt_, *x_vgrad, *x_vgrad);
+    
+    std::vector<value_type> x_vgrad_host;
+    x_vgrad_host.resize(x_new.size(), 0.0);
+    x_vgrad->getDevice().Memcpy(&x_vgrad_host.front(), x_vgrad->begin(),
+        x_vgrad->size() * sizeof(value_type),
+        x_vgrad->getDevice().MemcpyDeviceToHost);
+
+    std::vector<value_type> lambda_mat_vec_host;
+    lambda_mat_vec_host(lambda_mat_vec.size(), 0.0);
+
+    size_t ncount = vgrad_.size();
+//#pragma omp parallel for
+    for (size_t icount = 0; icount < ncount; icount++)
+    {
+        if(vgrad_ind_[icount] > 0)
+        {
+            lambda_mat_vec_host[ vgrad_ind_[icount] - 1 ] += x_vgrad_host[icount];
+//#pragma omp atomic
+//            {
+//            }
+        }
+    }
+
+    lambda_mat_vec.getDevice().Memcpy(lambda_mat_vec.begin(), &lambda_mat_vec_host.front(),
+            lambda_mat_vec.size() * sizeof(value_type),
+            lambda_mat_vec.getDevice().MemcpyHostToDevice);
+
+    recycle(x_vgrad);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+CVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
+{
+    std::vector<value_type> f_col_host;
+    f_col_host.resize(vgrad_.size(), 0.0);
+
+    std::vector<value_type> vgrad_host;
+    vgrad_host.resize(vgrad_.size(), 0.0);
+    vgrad_.getDevice().Memcpy(&vgrad_host.front(), vgrad_.begin(),
+        vgrad_.size() * sizeof(value_type),
+        vgrad_.getDevice().MemcpyDeviceToHost);
+
+    std::vector<value_type> lambda_host;
+    lambda_host.resize(lambda.size(), 0.0);
+    lambda.getDevice().Memcpy(&lambda_host.front(), lambda.begin(),
+            lambda.size() * sizeof(value_type),
+            lambda.getDevice().MemcpyDeviceToHost);
+
+    size_t ncount = vgrad_.size();
+#pragma omp parallel for
+    for (size_t icount = 0; icount < ncount; icount++)
+    {
+        if(vgrad_ind_[icount] > 0)
+            f_col_host[icount] = lambda_host[ vgrad_ind_[icount] - 1 ] * vgrad_host[icount];
+    }
+    
+    f_col.getDevice().Memcpy(f_col.begin(), &f_col_host.front(),
+        f_col.size() * sizeof(value_type),
+        f_col.getDevice().MemcpyHostToDevice);
+
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+LCPSelect(const Arr_t &lambda, Arr_t &lambda_mat_vec) const
+{
+    std::vector<value_type> lambda_host;
+    std::vector<value_type> lambda_mat_vec_host;
+
+    lambda_host.resize(lambda.size(), 0.0);
+    lambda_mat_vec_host.resize(lambda.size(), 0.0);
+
+    lambda.getDevice().Memcpy(&lambda_host.front(), lambda.begin(),
+            lambda.size() * sizeof(value_type),
+            lambda.getDevice().MemcpyDeviceToHost);
+    lambda_mat_vec.getDevice().Memcpy(&lambda_mat_vec_host.front(), lambda_mat_vec.begin(),
+            lambda_mat_vec.size() * sizeof(value_type),
+            lambda_mat_vec.getDevice().MemcpyDeviceToHost);
+
+    size_t ncount = lambda.size();
+    for (size_t icount = 0; icount < ncount; icount++)
+    {
+        if(PA_[icount] == 0)
+            lambda_mat_vec_host[icount] = lambda_host[icount];
+    
+    }
+
+    lambda_mat_vec.getDevice().Memcpy(lambda_mat_vec.begin(), &lambda_mat_vec_host.front(), 
+            lambda_mat_vec.size() * sizeof(value_type),
+            lambda_mat_vec.getDevice().MemcpyHostToDevice);
+
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
+{
+    /*
+     * LCP_flag = 1, preprocessing
+     * LCP_flag = 2, iterating
+     * LCP_flag = 3, relative error termination
+     * LCP_flag = 4, absolute error termination
+     * LCP_flag = 5, stagnation
+     * LCP_flag = 6, local minima
+     * LCP_flag = 7, nondescent
+     * LCP_flag = 8, maxlimit iters
+     */
+
+    int LCP_flag = 1;
+    
+    int LCP_n = num_cvs_;
+    int LCP_max_iter = 100;
+
+    // LCP parameters
+    value_type LCP_eps = 1e-16;
+    value_type LCP_h = 1e-7;
+    value_type LCP_alpha = 0.5;
+    value_type LCP_beta = 0.001;
+    value_type LCP_gamma = 1e-28;
+    value_type LCP_rho = LCP_eps;
+
+    // setup
+    std::vector<value_type> LCP_convergence(LCP_max_iter, 0.0);
+    value_type LCP_err = 1e+16;
+    int LCP_iter = 1;
+
+    LCP_flag = 2;
+    // checkout vecs, scas and arrs for calculation
+    std::auto_ptr<Vec_t> time_mat_vec = checkoutVec();
+    std::auto_ptr<Vec_t> du = checkoutVec();
+    time_mat_vec->replicate(u_lcp);
+    du->replicate(u_lcp);
+
+    std::auto_ptr<Sca_t> tension_mat_vec = checkoutSca();
+    std::auto_ptr<Sca_t> dtension = checkoutSca();
+    tension_mat_vec->replicate(ten_lcp);
+    dtension->replicate(ten_lcp);
+    
+    Arr_t lambda_mat_vec(LCP_n);
+    Arr_t dlambda(LCP_n);
+    Arr_t LCP_y(LCP_n);
+    Arr_t LCP_phi(LCP_n);
+    
+    // init vecs, scas and arrs
+    axpy(static_cast<value_type>(0.0), u_lcp, u_lcp);
+    axpy(static_cast<value_type>(0.0), time_mat_vec, time_mat_vec);
+    axpy(static_cast<value_type>(0.0), du, du);
+
+    axpy(static_cast<value_type>(0.0), ten_lcp, ten_lcp);
+    axpy(static_cast<value_type>(0.0), tension_mat_vec, tension_mat_vec);
+    axpy(static_cast<value_type>(0.0), dtension, dtension);
+
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), lambda_lcp.begin(), 0, 
+                lambda_lcp.size(), lambda_lcp.begin());
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), lambda_mat_vec.begin(), 0, 
+                lambda_mat_vec.size(), lambda_mat_vec.begin());
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), 0, 
+                dlambda.size(), dlambda.begin());
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), LCP_y.begin(), 0, 
+                LCP_y.size(), LCP_y.begin());
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), LCP_phi.begin(), 0, 
+                LCP_phi.size(), LCP_phi.begin());
+    
+    value_type LCP_old_err;
+    while(LCP_iter < LCP_max_iter)
+    {
+        PA_.clear();
+        PA_.resize(num_cvs_, 1);
+        (*this)(u_lcp, ten_lcp, lambda_lcp, *time_mat_vec, *tension_mat_vec, lambda_mat_vec);
+        
+        Arr_t::getDevice().axpy(static_cast<value_type>(1.0), lambda_mat_vec.begin(), cvs.begin(), 
+                num_cvs_, &LCP_y.front());
+        
+        minmap(LCP_y, lambda_lcp, LCP_phi);
+        
+        LCP_old_err = LCP_err;
+        LCP_err = 0.5 * Arr_t::getDevice().AlgebraicDot(LCP_phi.begin, LCP_phi.begin(), LCP_phi.size());
+
+        // relative stopping criteria
+        if(fabs(LCP_err - LCP_old_err) < 1e-8)
+        {
+            LCP_flag = 3;
+            break;
+        }
+        
+        // absolute stopping criteria
+        if(LCP_err < 1e-16)
+        {
+            LCP_flag =4;
+            break;
+        }
+
+        // solve the Newton system to get descent direction
+        size_t vsz(stokesBlockSize()), tsz(tensionBlockSize()), lsz(num_cvs_);
+        ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
+        size_t N_size = vsz+tsz+lsz;
+        // copy device type to value_type array to call GMRES
+        value_type x_host[N_size], rhs_host[N_size];
+    
+        axpy(static_cast<value_type>(0.0), du, du);
+        axpy(static_cast<value_type>(0.0), dtension, dtension);
+        Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), 0, 
+                dlambda.size(), dlambda.begin());
+        Arr_t::getDevice().axpy(static_cast<value_type>(-1.0), LCP_phi.begin(), 0, 
+                LCP_phi.size(), LCP_phi.begin());
+
+        // copy to unknown solution
+        du->getDevice().Memcpy(x_host, du->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        dtension->getDevice().Memcpy(x_host+vsz, dtension->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        dlambda.getDevice().Memcpy(x_host+vsz+tsz, dlambda.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    
+        // copy to rhs
+        du->getDevice().Memcpy(rhs_host, du->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        dtension->getDevice().Memcpy(rhs_host+vsz, dtension->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        LCP_phi.getDevice().Memcpy(rhs_host+vsz+tsz, LCP_phi.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+        // solve the linear system using gmres
+        int solver_ret = linear_solver_gmres_(JacobiImplicitLCPApply, JacobiImplicitLCPPrecond, x_host, rhs_host, 
+            1e-12, N_size, 600, 100);
+
+        // copy host to device
+        du->getDevice().Memcpy(du->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        dtension->getDevice().Memcpy(dtension->begin(), x_host+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        dlambda.getDevice().Memcpy(dlambda.begin(), x_host+vsz+tsz, lsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+        // TODO: the gradient of meric function \nabla\theta is LCP_phi^T*LCP_matrix, 
+        // which we can't get with matrix free version LCP solver, either form LCP matrix
+        // explicitly or do some approximate \nabla\theta calculation.
+        // So LCP_flag 6,7 is not tested, and we use Newton's method withou line search for now.
+        // (Line search requires \nabla\theta)
+
+        value_type dlambda_norm = Arr_t::getDevice().AlgebraicDot(dlambda.begin, dlambda.begin(), dlambda.size());
+        if(dlambda_norm < LCP_eps)
+        {
+            LCP_flag = 5;
+            break;
+            // could use dlambda = -nabla_theta
+        }
+        
+        // TODO: test for whether dropped into a local minima flag 6
+        // TODO: test for sufficient descent direction flag 7
+
+        // update solution with direction calculated
+        // TODO: do line search with \nabla\theta
+        value_type LCP_tau = 1.0;
+        axpy(LCP_tau, *du, u_lcp, u_lcp);
+        axpy(LCP_tau, *dtension, ten_lcp, ten_lcp);
+        Arr_t::getDevice().axpy(LCP_tau, dlambda.begin(), lambda_lcp.begin(), 
+                dlambda.size(), lambda_lcp.begin());
+        //bool lupdated = false;
+        //check_lambda();
+        // if lupdated == true, solve for du and dtension of new lambda
+        // end of update solution
+    }
+
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const
+{
+    const value_type* x1i = xin1.begin();
+    const value_type* x2i = xin2.begin();
+    value_type* xoi = xout.begin();
+    
+    size_t length = xin1.size();
+
+#pragma omp parallel for
+    for (size_t idx = 0; idx < length; idx++)
+    {
+        xoi[idx] = (x1i[idx] < x2i[idx]) ? x1i[idx] : x2i[idx];
+        PA_[idx] = (x1i[idx] < x2i[idx]) ? 1 : 0;
+    }
+
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+projectU1(Vec_t &u1) const
+{
+    std::auto_ptr<Vec_t> xwrk = checkoutVec();
+    xwrk->replicate(S_.getPosition());
+    
+    std::auto_ptr<Vec_t> twrk = checkoutSca();
+    twrk->replicate(tension_);
+
+    std::vector<value_type> pos_s;
+    std::vector<value_type> pos_e;
+    std::vector<value_type> vGrad;
+    pos_s.resize(S_.getPosition().size(),0.0);
+    pos_e.resize(S_.getPosition().size(),0.0);
+    vGrad.resize(S_.getPosition().size(),0.0);
+    vgrad_ind_.resize(S_.getPosition().size(),0);
+    
+    S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
+        S_.getPosition().size() * sizeof(value_type),
+        S_.getPosition().getDevice().MemcpyDeviceToHost);
+ 
+    axpy(static_cast<double> (1.0), *u1, S_.getPosition(), *xwrk);
+    xwrk->getDevice().Memcpy(&pos_e.front(), xwrk->begin(),
+        xwrk->size() * sizeof(value_type),
+        xwrk->getDevice().MemcpyDeviceToHost);
+   
+    int resolveCount = 0;
+    int IV_size = 0;
+    std::vector<double> IV;
+    IV.clear();
+
+    CI_.getVolumeAndGradient(IV, IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
+    
+    while(IV_size > 0)
+    {
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+                S_.getPosition().size() * sizeof(value_type),
+                S_.getPosition().getDevice().MemcpyHostToDevice);
+
+        // project to vgrad_
+        GeometricDot(*u1, vgrad_, *twrk);
+        // get projected direction to substract
+        xv(*twrk, vgrad_, *xwrk);
+        axpy(static_cast<value_type>(-1.0), *xwrk, *u1, *u1);
+
+        int IV_size = 0;
+        std::vector<value_type> IV;
+        IV.clear();
+        
+        axpy(static_cast<double> (1.0), *u1, S_.getPosition(), *xwrk);
+        
+        xwrk->getDevice().Memcpy(&pos_e.front(), xwrk->begin(),
+        xwrk->size() * sizeof(value_type),
+        xwrk->getDevice().MemcpyDeviceToHost);
+
+        CI_.getVolumeAndGradient(IV, IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
+    }
+
+    recycle(xwrk);
+    recycle(twrk);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
 InterfacialVelocity<SurfContainer, Interaction>::value_type InterfacialVelocity<SurfContainer, Interaction>::
 StokesError(const Vec_t &x) const
 {
@@ -2111,6 +2684,11 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         }
         if(dt_max==0) break;
         E=x_dot_x;
+
+        // begin for collision
+        // project u1 to collision free
+        // projectU1(*u1);
+        // end for collision
 
         //Advecting tension (useless for implicit)
         if (params_.scheme != GloballyImplicit){

@@ -458,11 +458,13 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
         { // position += dX*X.*Normal
             device.xvpw<value_type>( X.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             device.avpw<value_type>(dX.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            // F_->projectU1(dS);
             axpy(1, dS, position, position);
         }
         { // position += dY*Y.*Normal
             device.xvpw<value_type>( Y.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             device.avpw<value_type>(dY.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            // F_->projectU1(dS);
             axpy(1, dS, position, position);
         }
 

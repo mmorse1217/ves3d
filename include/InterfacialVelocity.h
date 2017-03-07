@@ -78,6 +78,15 @@ class InterfacialVelocity
     Error_t operator()(const Sca_t &tension, Sca_t &tension_mat_vec) const;
     Error_t operator()(const Vec_t &x_new, const Sca_t &tension, 
         Vec_t &time_mat_vec, Sca_t &tension_mat_vec) const;
+    Error_t operator()(const Vec_t &x_new, const Sca_t &tension, const Arr_t &lambda,
+        Vec_t &time_mat_vec, Sca_t &tension_mat_vec, Arr_t &lambda_mat_vec) const;
+    
+    Error_t CVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
+    Error_t CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const;
+    Error_t LCPSelect(const Arr_t &lambda, Arr_t &lambda_mat_vec) const;
+    Error_t SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const;
+    Error_t minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const;
+    Error_t projectU1(Vec_t &u1) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -149,7 +158,13 @@ class InterfacialVelocity
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;
-    ContactInterface CI_;
+    
+    //Contact
+    mutable ContactInterface CI_;
+    mutable Vec_t vgrad_;
+    mutable std::vector<int> vgrad_ind_;
+    mutable std::vector<int> PA_;
+    mutable int num_cvs_;
 };
 
 #include "InterfacialVelocity.cc"
