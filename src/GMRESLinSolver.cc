@@ -1,7 +1,7 @@
 template<typename T>
 int GMRESLinSolver<T>::
 operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs, 
-        T tol, size_t N, int maxIters, int restartIters) const
+        T reltol, T abstol, size_t N, int maxIters, int restartIters) const
 {
 
   /*---------------------------------------------------------------------------
@@ -48,6 +48,7 @@ operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs,
   * do the restart after restartIters iterations
   * DOUBLE PRECISION parameters
   * set the relative tolerance to tol instead of default value 1.0D-6
+  * set the absulote tolerance to 1.0E-07
   *---------------------------------------------------------------------------*/
   ipar[14] = restartIters;
   ipar[4] = maxIters;
@@ -56,7 +57,8 @@ operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs,
   //ipar[8] = 1;
   //ipar[9] = 0;
   //ipar[11] = 1;
-  dpar[0] = tol;
+  dpar[0] = reltol;
+  dpar[1] = abstol;
   /*---------------------------------------------------------------------------
   * Check the correctness and consistency of the newly set parameters
   *---------------------------------------------------------------------------*/
@@ -66,6 +68,7 @@ operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs,
   /*---------------------------------------------------------------------------
   * Print the info about the RCI FGMRES method
   *---------------------------------------------------------------------------*/
+  /*
   printf ("Some info about the current run of RCI FGMRES method:\n\n");
   if (ipar[7])
     {
@@ -124,6 +127,7 @@ operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs,
       printf ("will be requested via RCI_request=4\n");
     }
   printf ("+++\n\n");
+  */
   /*---------------------------------------------------------------------------
   * Compute the solution by RCI (P)FGMRES solver without preconditioning
   * Reverse Communication starts here
@@ -156,6 +160,8 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       i = 1;
       daxpy (&ivar, &dvar, rhs, &i, residual, &i);
       dvar = dnrm2 (&ivar, residual, &i);
+      printf ("\n Current iteration: %d\n", itercount);
+      printf ("Residual: %e\n", dvar);
       if (dvar <= dpar[3])
         goto COMPLETE;
       if (itercount > ipar[4])
@@ -195,12 +201,12 @@ COMPLETE:ipar[12] = 0;
   * Print solution vector: computed_solution[N] and the number of iterations: itercount
   *--------------------------------------------------------------------------- */
   printf (" The system has been solved \n");
-  printf ("\n The following solution has been obtained: \n");
-  for (i = 0; i < N; i++)
-    {
-      printf ("computed_solution[%d]=", i);
-      printf ("%e\n", computed_solution[i]);
-    }
+  //printf ("\n The following solution has been obtained: \n");
+  //for (i = 0; i < N; i++)
+    //{
+      //printf ("computed_solution[%d]=", i);
+      //printf ("%e\n", computed_solution[i]);
+    //}
   printf ("\n Number of iterations: %d\n", itercount);
   /*-------------------------------------------------------------------------*/
   /* Release internal Intel(R) MKL memory that might be used for computations         */

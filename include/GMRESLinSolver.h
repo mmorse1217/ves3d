@@ -34,7 +34,7 @@ class GMRESLinSolver
         Error_t Context(const void **ctx) const;
 
         int operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs, 
-                T tol, size_t N, int maxIters, int restartIters) const;
+                T reltol, T abstol, size_t N, int maxIters, int restartIters) const;
 
     private:
         const void *ctx_;

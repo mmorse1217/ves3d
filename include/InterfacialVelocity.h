@@ -86,11 +86,15 @@ class InterfacialVelocity
     Error_t LCPSelect(const Arr_t &lambda, Arr_t &lambda_mat_vec) const;
     Error_t SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const;
     Error_t minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const;
-    Error_t projectU1(Vec_t &u1) const;
+    Error_t projectU1(Vec_t &u1, const Vec_t &x_old) const;
+    Error_t sca_abs(Sca_t &xin) const;
 
     value_type StokesError(const Vec_t &x) const;
 
     Sca_t& tension(){ return tension_;}
+
+    // contact
+    mutable int num_cvs_;
 
   private:
     SurfContainer &S_;
@@ -164,7 +168,6 @@ class InterfacialVelocity
     mutable Vec_t vgrad_;
     mutable std::vector<int> vgrad_ind_;
     mutable std::vector<int> PA_;
-    mutable int num_cvs_;
 };
 
 #include "InterfacialVelocity.cc"

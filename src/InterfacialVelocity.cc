@@ -84,6 +84,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     CI_.generateMesh(pos_init,S_.getPosition().getShOrder(),S_.getPosition().getNumSubs());
     CI_.writeOFF();
     CI_.init(SURF_SUBDIVISION);
+    vgrad_.replicate(S_.getPosition());
+    vgrad_ind_.resize(S_.getPosition().size(),0);
+    PA_.clear();
+    num_cvs_ = 0;
     // end of init Contact Interface
 
     // init GMRES solver
@@ -299,169 +303,109 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // solve the linear system using gmres
     int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host, rhs_host, 
-            relres, N_size, iter, 100);
+            relres, relres*0, N_size, iter, 100);
 
     // copy host to device
     x1->getDevice().Memcpy(x1->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     tension_.getDevice().Memcpy(tension_.begin(), x_host+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     // end of new code using GMRES Solver
 
-    /*
     // developing code for col
     INFO("Begin of contact resolving steps.");
+    // reset contact force
     axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
     
+    // pos_s stores the start configuration
+    // pos_e stores the end configuration
+    // vGrad stores the gradient of contact volumes
     std::vector<value_type> pos_s;
     std::vector<value_type> pos_e;
     std::vector<value_type> vGrad;
     pos_s.resize(S_.getPosition().size(),0.0);
     pos_e.resize(S_.getPosition().size(),0.0);
     vGrad.resize(S_.getPosition().size(),0.0);
-    vgrad_ind_.resize(S_.getPosition().size(),0);
     
+    // copy current position to start configuration
     S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
         S_.getPosition().size() * sizeof(value_type),
         S_.getPosition().getDevice().MemcpyDeviceToHost);
  
+    // the candidate position and copy to end configuration
     axpy(dt_, *x1, S_.getPosition(), *xtmp);
     xtmp->getDevice().Memcpy(&pos_e.front(), xtmp->begin(),
         xtmp->size() * sizeof(value_type),
         xtmp->getDevice().MemcpyDeviceToHost);
    
     int resolveCount = 0;
-    int IV_size = 0;
-    std::vector<double> IV;
-    IV.clear();
-    CI_.getVolumeAndGradient(IV, IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
-    while(IV_size > 0)
-    {
-        num_cvs_ = IV_size;
-        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
-          S_.getPosition().size() * sizeof(value_type),
-          S_.getPosition().getDevice().MemcpyHostToDevice);
-
+    std::vector<value_type> IV;
+    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+    
+    // checkout workers if num_cvs_ > 0
+    //if(num_cvs_ > 0)
+    //{
         std::auto_ptr<Vec_t> col_dx = checkoutVec();
         std::auto_ptr<Vec_t> col_f = checkoutVec();
         std::auto_ptr<Sca_t> col_tension = checkoutSca();
+        
         col_dx->replicate(*x1);
         col_f->replicate(*x1);
         col_tension->replicate(tension_);
+    //}
 
+    while(num_cvs_ > 0)
+    {
+        // copy contact volume gradient to vgrad_
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+                vgrad_.size() * sizeof(value_type),
+                vgrad_.getDevice().MemcpyHostToDevice);
+
+        // col_lambda stores the force magnitude
         Arr_t col_lambda(num_cvs_);
+        // cvs stores the contact volumes
         Arr_t cvs(num_cvs_);
+        // copy contact volumes to cvs
         cvs.getDevice().Memcpy(cvs.begin(), &IV.front(), 
           num_cvs_ * sizeof(value_type),
-          S_.getPosition().getDevice().MemcpyHostToDevice);
+          cvs.getDevice().MemcpyHostToDevice);
 
-        SolveLCP(col_dx, col_tension, col_lambda, cvs);
+        // solve for u, tension, lambda using minmap LCP solver
+        SolveLCP(*col_dx, *col_tension, col_lambda, cvs);
         
-        axpy(static_cast<double>(1.0), *col_dx, *x1, *x1);
-        axpy(static_cast<double>(1.0), *col_tension, tension_, tension_);
-        CVJacobian(col_lambda, *col_f);
-        axpy(static_cast<double>(1.0), *col_f, S_.fc_, S_.fc_);
+        // update velocity
+        axpy(static_cast<value_type>(1.0), *col_dx, *x1, *x1);
+        // update tension
+        axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
+        // get contact force
+        CVJacobianTrans(col_lambda, *col_f);
+        // accumulate contact force to S_.fc_
+        axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
     
+        // get new candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
-        xtmp->getDevice().Memcpy(&pos_e.front(), xtmp->begin(),
-        xtmp->size() * sizeof(value_type),
-        xtmp->getDevice().MemcpyDeviceToHost);
 
+        // copy to pos_e as end configuration
         xtmp->getDevice().Memcpy(&pos_e.front(), xtmp->begin(),
                 xtmp->size() * sizeof(value_type),
                 xtmp->getDevice().MemcpyDeviceToHost);
       
-        IV.clear() = 0;
-        IV_size = 0;
         resolveCount++;
+        INFO("Col iter#: "<<resolveCount);
+        INFO("cvs: "<<cvs);
+        INFO("lambda: "<<col_lambda);
       
-        CI_.getVolumeAndGradient(IV,IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
-      
+        // test if still have contact
+        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+    }
+
+    // recycle if we had workers
+    //if(num_cvs_ > 0)
+    //{
         recycle(col_dx);
         recycle(col_tension);
         recycle(col_f);
-    }
+    //}
     // end of developing code for col 
-    */
-    
-    /*
-    // developing code for col
-    INFO("Begin of contact resolving steps.");
-    axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
-    
-    std::vector<value_type> pos_s;
-    std::vector<value_type> pos_e;
-    std::vector<value_type> vGrad;
-    pos_s.resize(S_.getPosition().size(),0.0);
-    pos_e.resize(S_.getPosition().size(),0.0);
-    vGrad.resize(S_.getPosition().size(),0.0);
-    
-    S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
-        S_.getPosition().size() * sizeof(value_type),
-        S_.getPosition().getDevice().MemcpyDeviceToHost);
- 
-    x1->getDevice().Memcpy(&pos_e.front(), x1->begin(),
-        x1->size() * sizeof(value_type),
-        x1->getDevice().MemcpyDeviceToHost);
-   
-    int resolveCount = 0;
-    double IV = 0;
-    CI_.getVolumeAndGradient(IV,vGrad,pos_s,pos_e,0.15);
-    while(IV<0)
-    {
-      INFO("IV: "<<IV);
-      std::auto_ptr<Vec_t> col_dx = checkoutVec();
-      std::auto_ptr<Sca_t> col_tension = checkoutSca();
-      std::auto_ptr<Vec_t> col_f = checkoutVec();
-
-      col_dx->replicate(*x1);
-      col_tension->replicate(tension_);
-      col_f->replicate(*x1);
-
-      col_f->getDevice().Memcpy(col_f->begin(), &vGrad.front(), 
-          S_.getPosition().size() * sizeof(value_type),
-          S_.getPosition().getDevice().MemcpyHostToDevice);
-    
-      // self interaction velocity from contact force
-      CHK(stokes(*col_f, *b1));
-
-      // rhs for pos and tension
-      S_.div(*b1, *b2);
-      axpy(static_cast<value_type>(-1),*b2,*b2);
-      axpy(dt_, *b1, *b1);
-
-      // init guess
-      axpy(static_cast<value_type>(-0), *col_dx, *col_dx);
-      axpy(static_cast<value_type>(-0), *col_tension, *col_tension);
-      
-      // solve for pos and tension update due to vGrad
-      solver_ret = linear_solver_vec_sca_(*this, *col_dx, *col_tension, *b1, *b2, rsrt, iter, relres);
-
-      // solve for contact force magnitude, need to be done LCP
-      value_type col_mag = -IV/AlgebraicDot(*col_dx, *col_f);
-
-      INFO("col_dx 2-norm is: "<<AlgebraicDot(*col_dx, *col_dx));
-      INFO("col_f 2-norm is: "<<AlgebraicDot(*col_f, *col_f));
-      INFO("col_f mag: "<<col_mag);
-
-      axpy(col_mag, *col_dx, *x1, *x1);
-      axpy(col_mag, *col_tension, tension_, tension_);
-      axpy(col_mag, *col_f, S_.fc_, S_.fc_);
-    
-      x1->getDevice().Memcpy(&pos_e.front(), x1->begin(),
-        x1->size() * sizeof(value_type),
-        x1->getDevice().MemcpyDeviceToHost);
-
-      IV = 0;
-      resolveCount++;
-      CI_.getVolumeAndGradient(IV,vGrad,pos_s,pos_e,0.15);
-
-      recycle(col_dx);
-      recycle(col_tension);
-      recycle(col_f);
-    }
-    INFO("End of contact resolving steps, iters: "<<resolveCount);
-    // end of developing code for col
-    */
-    
+        
     COUTDEBUG("Position solve: Total iter = "<<iter<<", relres = "<<tol);
     COUTDEBUG("Checking true relres");
     /*
@@ -485,8 +429,6 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     recycle(b1);
     recycle(b2);
     recycle(xtmp);
-
-    INFO(ret_val);
 
     return ret_val;
 }
@@ -1446,6 +1388,9 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     o->Context((const void**) &F);
     
     size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+    
+    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz) * sizeof(value_type), device_type::MemcpyHostToHost);
+    /*
     //Vec_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
 
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
@@ -1463,20 +1408,18 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     COUTDEBUG("Unpacking the input parallel vector");
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    axpy(static_cast<value_type>(1.0),*vox,*vox);
-    axpy(static_cast<value_type>(1.0),*ten,*ten);
+    //axpy(static_cast<value_type>(1.0),*vox,*vox);
+    //axpy(static_cast<value_type>(1.0),*ten,*ten);
     
-    F->sht_.forward(*vox, *wrk, *vxs);
-    F->sht_.forward(*ten, *wrk, *tns);
+    //F->sht_.forward(*vox, *wrk, *vxs);
+    //F->sht_.forward(*ten, *wrk, *tns);
 
-    /*
-    COUTDEBUG("Applying diagonal preconditioner");
-    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
-    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
-    */
+    //COUTDEBUG("Applying diagonal preconditioner");
+    //F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    //F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
 
-    F->sht_.backward(*vxs, *wrk, *vox);
-    F->sht_.backward(*tns, *wrk, *ten);
+    //F->sht_.backward(*vxs, *wrk, *vox);
+    //F->sht_.backward(*tns, *wrk, *ten);
     
     vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
@@ -1486,6 +1429,7 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     F->recycle(wrk);
     F->recycle(ten);
     F->recycle(tns);
+    */
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -1498,25 +1442,29 @@ JacobiImplicitLCPApply(const GMRESLinSolver<value_type> *o, const value_type *x,
     PROFILESTART();
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
-    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize()), lsz(F->num_cvs_);
 
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
     vox->replicate(F->pos_vel_);
     ten->replicate(F->tension_);
+    Arr_t lam(lsz);
     
     std::auto_ptr<Vec_t> vox_y = F->checkoutVec();
     std::auto_ptr<Sca_t> ten_y = F->checkoutSca();
     vox_y->replicate(F->pos_vel_);
     ten_y->replicate(F->tension_);
+    Arr_t lam_y(lsz);
 
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    lam.getDevice().Memcpy(lam.begin(), x+vsz+tsz, lsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
-    F->operator()(*vox, *ten, *vox_y, *ten_y);
+    F->operator()(*vox, *ten, lam, *vox_y, *ten_y, lam_y);
 
     vox_y->getDevice().Memcpy(y    , vox_y->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten_y->getDevice().Memcpy(y+vsz, ten_y->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    lam_y.getDevice().Memcpy(y+vsz+tsz, lam_y.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
     F->recycle(vox);
     F->recycle(ten);
@@ -1536,15 +1484,18 @@ JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
     
-    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
-    //Vec_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize()), lsz(F->num_cvs_);
 
+    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz+lsz) * sizeof(value_type), device_type::MemcpyHostToHost);
+    
+    /* 
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Vec_t> vxs = F->checkoutVec();
     std::auto_ptr<Vec_t> wrk = F->checkoutVec();
     vox->replicate(F->pos_vel_);
     vxs->replicate(F->pos_vel_);
     wrk->replicate(F->pos_vel_);
+    Arr_t lam(lsz);
 
     std::auto_ptr<Sca_t> ten = F->checkoutSca();
     std::auto_ptr<Sca_t> tns = F->checkoutSca();
@@ -1554,9 +1505,11 @@ JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *
     COUTDEBUG("Unpacking the input parallel vector");
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    lam.getDevice().Memcpy(lam.begin(), x+vsz+tsz, lsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    
     axpy(static_cast<value_type>(1.0),*vox,*vox);
     axpy(static_cast<value_type>(1.0),*ten,*ten);
-    /*
+    
     F->sht_.forward(*vox, *wrk, *vxs);
     F->sht_.forward(*ten, *wrk, *tns);
 
@@ -1566,15 +1519,18 @@ JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *
 
     F->sht_.backward(*vxs, *wrk, *vox);
     F->sht_.backward(*tns, *wrk, *ten);
-    */
+    
     vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    lam.getDevice().Memcpy(y+vsz+tsz, lam.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
     F->recycle(vox);
     F->recycle(vxs);
     F->recycle(wrk);
+
     F->recycle(ten);
     F->recycle(tns);
+    */
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -1677,8 +1633,8 @@ updateFarField() const
 
         // TODO: add gravity force
 
-        stokes_.SetTrgCoord(NULL);
-        stokes_.SetSrcCoord(S_.getPosition());
+        //stokes_.SetTrgCoord(NULL);
+        //stokes_.SetSrcCoord(S_.getPosition());
         stokes_.SetDensitySL(fi.get());
         if( ves_props_.has_contrast ){
             av(ves_props_.dl_coeff, pos_vel_, pos_vel_);
@@ -2069,22 +2025,23 @@ operator()(const Vec_t &x_new, const Sca_t &tension, const Arr_t &lambda,
     std::auto_ptr<Vec_t> f_col = checkoutVec();
     std::auto_ptr<Vec_t> vel_f_col = checkoutVec();
     std::auto_ptr<Sca_t> div_vel_f_col = checkoutSca();
+    
     f_col->replicate(x_new);
     vel_f_col->replicate(x_new);
     div_vel_f_col->replicate(tension);
 
     (*this)(x_new, tension, time_mat_vec, tension_mat_vec);
+
     CVJacobianTrans(lambda, *f_col);
-    
     stokes(*f_col, *vel_f_col);
     
     axpy(static_cast<value_type>(-1.0), *vel_f_col, time_mat_vec, time_mat_vec);
     
-    S_.div(vel_f_col, *div_vel_f_col);
+    S_.div(*vel_f_col, *div_vel_f_col);
     axpy(static_cast<value_type>(1.0), *div_vel_f_col, tension_mat_vec, tension_mat_vec);
 
-    CVJacobian(x_new, lambda_mat_vec);
-    
+    axpy(dt_, x_new, *f_col);
+    CVJacobian(*f_col, lambda_mat_vec);
     LCPSelect(lambda, lambda_mat_vec);
     
     recycle(f_col);
@@ -2113,18 +2070,18 @@ CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
     std::auto_ptr<Vec_t> x_vgrad = checkoutVec();
     x_vgrad->replicate(x_new);
 
-    xy(x_new,vgrad_,x_vgrad);
+    xy(x_new, vgrad_, *x_vgrad);
 
-    axpy(dt_, *x_vgrad, *x_vgrad);
+    //axpy(dt_, *x_vgrad, *x_vgrad);
     
     std::vector<value_type> x_vgrad_host;
     x_vgrad_host.resize(x_new.size(), 0.0);
+    // copy x_vgrad to host
     x_vgrad->getDevice().Memcpy(&x_vgrad_host.front(), x_vgrad->begin(),
         x_vgrad->size() * sizeof(value_type),
         x_vgrad->getDevice().MemcpyDeviceToHost);
 
-    std::vector<value_type> lambda_mat_vec_host;
-    lambda_mat_vec_host(lambda_mat_vec.size(), 0.0);
+    std::vector<value_type> lambda_mat_vec_host(lambda_mat_vec.size(), 0.0);
 
     size_t ncount = vgrad_.size();
 //#pragma omp parallel for
@@ -2139,6 +2096,7 @@ CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
         }
     }
 
+    // copy lambda_mat_vec to device
     lambda_mat_vec.getDevice().Memcpy(lambda_mat_vec.begin(), &lambda_mat_vec_host.front(),
             lambda_mat_vec.size() * sizeof(value_type),
             lambda_mat_vec.getDevice().MemcpyHostToDevice);
@@ -2156,12 +2114,14 @@ CVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
 
     std::vector<value_type> vgrad_host;
     vgrad_host.resize(vgrad_.size(), 0.0);
+    // copy vgrad_ to host
     vgrad_.getDevice().Memcpy(&vgrad_host.front(), vgrad_.begin(),
         vgrad_.size() * sizeof(value_type),
         vgrad_.getDevice().MemcpyDeviceToHost);
 
     std::vector<value_type> lambda_host;
     lambda_host.resize(lambda.size(), 0.0);
+    // copy lambda to host
     lambda.getDevice().Memcpy(&lambda_host.front(), lambda.begin(),
             lambda.size() * sizeof(value_type),
             lambda.getDevice().MemcpyDeviceToHost);
@@ -2199,6 +2159,7 @@ LCPSelect(const Arr_t &lambda, Arr_t &lambda_mat_vec) const
             lambda_mat_vec.getDevice().MemcpyDeviceToHost);
 
     size_t ncount = lambda.size();
+//#pragma omp parallel for
     for (size_t icount = 0; icount < ncount; icount++)
     {
         if(PA_[icount] == 0)
@@ -2246,7 +2207,6 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
     value_type LCP_err = 1e+16;
     int LCP_iter = 1;
 
-    LCP_flag = 2;
     // checkout vecs, scas and arrs for calculation
     std::auto_ptr<Vec_t> time_mat_vec = checkoutVec();
     std::auto_ptr<Vec_t> du = checkoutVec();
@@ -2265,65 +2225,71 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
     
     // init vecs, scas and arrs
     axpy(static_cast<value_type>(0.0), u_lcp, u_lcp);
-    axpy(static_cast<value_type>(0.0), time_mat_vec, time_mat_vec);
-    axpy(static_cast<value_type>(0.0), du, du);
+    axpy(static_cast<value_type>(0.0), *time_mat_vec, *time_mat_vec);
+    axpy(static_cast<value_type>(0.0), *du, *du);
 
     axpy(static_cast<value_type>(0.0), ten_lcp, ten_lcp);
-    axpy(static_cast<value_type>(0.0), tension_mat_vec, tension_mat_vec);
-    axpy(static_cast<value_type>(0.0), dtension, dtension);
+    axpy(static_cast<value_type>(0.0), *tension_mat_vec, *tension_mat_vec);
+    axpy(static_cast<value_type>(0.0), *dtension, *dtension);
 
-    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), lambda_lcp.begin(), 0, 
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), lambda_lcp.begin(), static_cast<value_type*>(NULL), 
                 lambda_lcp.size(), lambda_lcp.begin());
-    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), lambda_mat_vec.begin(), 0, 
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), lambda_mat_vec.begin(), static_cast<value_type*>(NULL), 
                 lambda_mat_vec.size(), lambda_mat_vec.begin());
-    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), 0, 
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), static_cast<value_type*>(NULL), 
                 dlambda.size(), dlambda.begin());
-    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), LCP_y.begin(), 0, 
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), LCP_y.begin(), static_cast<value_type*>(NULL), 
                 LCP_y.size(), LCP_y.begin());
-    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), LCP_phi.begin(), 0, 
+    Arr_t::getDevice().axpy(static_cast<value_type>(0.0), LCP_phi.begin(), static_cast<value_type*>(NULL), 
                 LCP_phi.size(), LCP_phi.begin());
     
+    // allocate memory for solving Newton's system
+    size_t vsz(stokesBlockSize()), tsz(tensionBlockSize()), lsz(num_cvs_);
+    ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
+    size_t N_size = vsz+tsz+lsz;
+    value_type x_host[N_size], rhs_host[N_size];
+    
+    int iter(params_.time_iter_max);
+    value_type relres(params_.time_tol);
+    
     value_type LCP_old_err;
+    LCP_flag = 2;
     while(LCP_iter < LCP_max_iter)
     {
+        // if size of PA is large, should we not resize every iteration
         PA_.clear();
         PA_.resize(num_cvs_, 1);
         (*this)(u_lcp, ten_lcp, lambda_lcp, *time_mat_vec, *tension_mat_vec, lambda_mat_vec);
         
         Arr_t::getDevice().axpy(static_cast<value_type>(1.0), lambda_mat_vec.begin(), cvs.begin(), 
-                num_cvs_, &LCP_y.front());
+                num_cvs_, LCP_y.begin());
         
         minmap(LCP_y, lambda_lcp, LCP_phi);
         
         LCP_old_err = LCP_err;
-        LCP_err = 0.5 * Arr_t::getDevice().AlgebraicDot(LCP_phi.begin, LCP_phi.begin(), LCP_phi.size());
+        LCP_err = 0.5 * Arr_t::getDevice().AlgebraicDot(LCP_phi.begin(), LCP_phi.begin(), LCP_phi.size());
 
         // relative stopping criteria
-        if(fabs(LCP_err - LCP_old_err) < 1e-8)
+        if(fabs(LCP_err - LCP_old_err)/fabs(LCP_old_err) < 1e-8)
         {
             LCP_flag = 3;
             break;
         }
         
         // absolute stopping criteria
-        if(LCP_err < 1e-16)
+        if(LCP_err < 1e-21)
         {
             LCP_flag =4;
             break;
         }
 
         // solve the Newton system to get descent direction
-        size_t vsz(stokesBlockSize()), tsz(tensionBlockSize()), lsz(num_cvs_);
-        ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
-        size_t N_size = vsz+tsz+lsz;
         // copy device type to value_type array to call GMRES
-        value_type x_host[N_size], rhs_host[N_size];
-    
-        axpy(static_cast<value_type>(0.0), du, du);
-        axpy(static_cast<value_type>(0.0), dtension, dtension);
-        Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), 0, 
+        axpy(static_cast<value_type>(0.0), *du, *du);
+        axpy(static_cast<value_type>(0.0), *dtension, *dtension);
+        Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), static_cast<value_type*>(NULL), 
                 dlambda.size(), dlambda.begin());
-        Arr_t::getDevice().axpy(static_cast<value_type>(-1.0), LCP_phi.begin(), 0, 
+        Arr_t::getDevice().axpy(static_cast<value_type>(-1.0), LCP_phi.begin(), static_cast<value_type*>(NULL), 
                 LCP_phi.size(), LCP_phi.begin());
 
         // copy to unknown solution
@@ -2337,8 +2303,13 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
         LCP_phi.getDevice().Memcpy(rhs_host+vsz+tsz, LCP_phi.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
 
         // solve the linear system using gmres
+        // set relative tolerance
+        value_type LCP_lin_tol = 4.0e-02;
+        if( MaxAbs(LCP_phi) < 4.0e-05 )
+            LCP_lin_tol = 2.0e-01;
+        
         int solver_ret = linear_solver_gmres_(JacobiImplicitLCPApply, JacobiImplicitLCPPrecond, x_host, rhs_host, 
-            1e-12, N_size, 600, 100);
+            LCP_lin_tol, 8.0e-11, N_size, iter, 100);
 
         // copy host to device
         du->getDevice().Memcpy(du->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
@@ -2351,7 +2322,7 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
         // So LCP_flag 6,7 is not tested, and we use Newton's method withou line search for now.
         // (Line search requires \nabla\theta)
 
-        value_type dlambda_norm = Arr_t::getDevice().AlgebraicDot(dlambda.begin, dlambda.begin(), dlambda.size());
+        value_type dlambda_norm = Arr_t::getDevice().AlgebraicDot(dlambda.begin(), dlambda.begin(), dlambda.size());
         if(dlambda_norm < LCP_eps)
         {
             LCP_flag = 5;
@@ -2363,17 +2334,24 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
         // TODO: test for sufficient descent direction flag 7
 
         // update solution with direction calculated
-        // TODO: do line search with \nabla\theta
+        // TODO: do line search with \nabla\theta for acceptable LCP_tau
         value_type LCP_tau = 1.0;
+
         axpy(LCP_tau, *du, u_lcp, u_lcp);
         axpy(LCP_tau, *dtension, ten_lcp, ten_lcp);
         Arr_t::getDevice().axpy(LCP_tau, dlambda.begin(), lambda_lcp.begin(), 
                 dlambda.size(), lambda_lcp.begin());
-        //bool lupdated = false;
+        
+        //bool lambdaupdated = false;
         //check_lambda();
-        // if lupdated == true, solve for du and dtension of new lambda
+        // if lambdaupdated == true, solve for du and dtension of new lambda
         // end of update solution
     }
+
+    recycle(time_mat_vec);
+    recycle(du);
+    recycle(tension_mat_vec);
+    recycle(dtension);
 
     return ErrorEvent::Success;
 }
@@ -2400,65 +2378,109 @@ minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-projectU1(Vec_t &u1) const
+projectU1(Vec_t &u1, const Vec_t &x_old) const
 {
     std::auto_ptr<Vec_t> xwrk = checkoutVec();
     xwrk->replicate(S_.getPosition());
     
-    std::auto_ptr<Vec_t> twrk = checkoutSca();
+    std::auto_ptr<Sca_t> twrk = checkoutSca();
     twrk->replicate(tension_);
 
+    // pos_s stores the start configuration
+    // pos_e stores the end configuration
+    // vGrad stores the gradient of contact volumes
     std::vector<value_type> pos_s;
     std::vector<value_type> pos_e;
     std::vector<value_type> vGrad;
     pos_s.resize(S_.getPosition().size(),0.0);
     pos_e.resize(S_.getPosition().size(),0.0);
     vGrad.resize(S_.getPosition().size(),0.0);
-    vgrad_ind_.resize(S_.getPosition().size(),0);
     
-    S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
-        S_.getPosition().size() * sizeof(value_type),
-        S_.getPosition().getDevice().MemcpyDeviceToHost);
+    // copy current position to start configuration
+    x_old.getDevice().Memcpy(&pos_s.front(), x_old.begin(),
+            x_old.size() * sizeof(value_type),
+            x_old.getDevice().MemcpyDeviceToHost);
  
-    axpy(static_cast<double> (1.0), *u1, S_.getPosition(), *xwrk);
+    // the candidate position and copy to end configuration
+    axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
     xwrk->getDevice().Memcpy(&pos_e.front(), xwrk->begin(),
-        xwrk->size() * sizeof(value_type),
-        xwrk->getDevice().MemcpyDeviceToHost);
-   
+            xwrk->size() * sizeof(value_type),
+            xwrk->getDevice().MemcpyDeviceToHost);
+
     int resolveCount = 0;
-    int IV_size = 0;
-    std::vector<double> IV;
-    IV.clear();
-
-    CI_.getVolumeAndGradient(IV, IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
-    
-    while(IV_size > 0)
+    std::vector<value_type> IV;
+    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+    while(num_cvs_ > 0)
     {
+        // worker for array size of num_cvs_
+        Arr_t awrk(num_cvs_);
+        
+        // cvs stores the contact volumes
+        Arr_t cvs(num_cvs_);
+        // copy contact volumes to cvs
+        cvs.getDevice().Memcpy(cvs.begin(), &IV.front(), 
+                num_cvs_ * sizeof(value_type),
+                cvs.getDevice().MemcpyHostToDevice);
+        
+        // copy contact volume gradient to vgrad_
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
-                S_.getPosition().size() * sizeof(value_type),
-                S_.getPosition().getDevice().MemcpyHostToDevice);
+                vgrad_.size() * sizeof(value_type),
+                vgrad_.getDevice().MemcpyHostToDevice);
 
+        // get magnitude of projection direction
+        CVJacobian(vgrad_, awrk);
+        awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
+        // projection direction
+        CVJacobianTrans(awrk, *xwrk);
+        
+        /*
         // project to vgrad_
-        GeometricDot(*u1, vgrad_, *twrk);
+        // TODO: make sure vrad_ is normalized on every point
+        // TODO: make twrk positive, then add to u1?
+        GeometricDot(u1, vgrad_, *twrk);
+        sca_abs(*twrk);
+        INFO("project maxabs: "<<MaxAbs(*twrk));
         // get projected direction to substract
         xv(*twrk, vgrad_, *xwrk);
-        axpy(static_cast<value_type>(-1.0), *xwrk, *u1, *u1);
+        axpy(static_cast<value_type>(-1.0), *xwrk, u1, u1);
+        */
+        axpy(static_cast<value_type>(-1.0), *xwrk, u1, u1);
+        
+        // get candidate position
+        axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
 
-        int IV_size = 0;
-        std::vector<value_type> IV;
-        IV.clear();
-        
-        axpy(static_cast<double> (1.0), *u1, S_.getPosition(), *xwrk);
-        
+        // copy to pos_e as end configuration
         xwrk->getDevice().Memcpy(&pos_e.front(), xwrk->begin(),
-        xwrk->size() * sizeof(value_type),
-        xwrk->getDevice().MemcpyDeviceToHost);
+                xwrk->size() * sizeof(value_type),
+                xwrk->getDevice().MemcpyDeviceToHost);
 
-        CI_.getVolumeAndGradient(IV, IV_size, vGrad, vgrad_ind_, pos_s, pos_e, 0.15);
+        resolveCount++;
+        INFO("Projecting to avoid collision iter#: "<<resolveCount);
+        INFO(cvs);
+        
+        // test if still have contact
+        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
     }
 
     recycle(xwrk);
     recycle(twrk);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+sca_abs(Sca_t &xin) const
+{
+    value_type* xoi = xin.begin();
+    
+    size_t length = xin.size();
+
+#pragma omp parallel for
+    for (size_t idx = 0; idx < length; idx++)
+    {
+        xoi[idx] = (xoi[idx] > 0) ? xoi[idx] : -xoi[idx];
+    }
+
     return ErrorEvent::Success;
 }
 
@@ -2687,7 +2709,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
         // begin for collision
         // project u1 to collision free
-        // projectU1(*u1);
+        INFO("Begin Project reparam direction to without contact.");
+        projectU1(*u1, Surf->getPosition());
+        INFO("End Project reparam direction to without contact.");
         // end for collision
 
         //Advecting tension (useless for implicit)

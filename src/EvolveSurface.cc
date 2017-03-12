@@ -332,7 +332,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         F_->reparam();
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("AreaVolume",&comm,true);
-        AreaVolumeCorrection(area, vol);
+        //AreaVolumeCorrection(area, vol);
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("Repartition",&comm,true);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
