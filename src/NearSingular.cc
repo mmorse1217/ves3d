@@ -1638,29 +1638,29 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
       dx=(dydy*dxdR-dxdy*dydR)/(dxdx*dydy-dxdy*dxdy);
       dy=(dxdx*dydR-dxdy*dxdR)/(dxdx*dydy-dxdy*dxdy);
     }
-    if(0){ // Check for cases which should not happen and break; // Disabled: This can sometimes cause problems.
-      if((x<=-1.0 && dx<0.0) ||
-         (x>= 1.0 && dx>0.0) ||
-         (y<=-1.0 && dy<0.0) ||
-         (y>= 1.0 && dy>0.0)){
+    if(1){ // Check for cases which should not happen and break;
+      if((x<=-1.2 && dx<0.0) ||
+         (x>= 1.2 && dx>0.0) ||
+         (y<=-1.2 && dy<0.0) ||
+         (y>= 1.2 && dy>0.0)){
         break;
       }
     }
-    if(0){ // if x+dx or y+dy are outsize [-1,1] // Disabled: This can sometimes cause problems.
-      if(x>-1.0 && x+dx<-1.0){
-        Real_t s=(-1.0-x)/dx;
+    if(1){ // if x+dx or y+dy are outsize [-1.2,1.2]
+      if(x>-1.2 && x+dx<-1.2){
+        Real_t s=(-1.2-x)/dx;
         dx*=s; dy*=s;
       }
-      if(x< 1.0 && x+dx> 1.0){
-        Real_t s=( 1.0-x)/dx;
+      if(x< 1.2 && x+dx> 1.2){
+        Real_t s=( 1.2-x)/dx;
         dx*=s; dy*=s;
       }
-      if(y>-1.0 && y+dy<-1.0){
-        Real_t s=(-1.0-y)/dy;
+      if(y>-1.2 && y+dy<-1.2){
+        Real_t s=(-1.2-y)/dy;
         dx*=s; dy*=s;
       }
-      if(y< 1.0 && y+dy> 1.0){
-        Real_t s=( 1.0-y)/dy;
+      if(y< 1.2 && y+dy> 1.2){
+        Real_t s=( 1.2-y)/dy;
         dx*=s; dy*=s;
       }
     }
@@ -1844,6 +1844,38 @@ void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
       for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+2)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
 
+  }
+
+  if (k_==0 || k_==1) { // Fix patch at poles
+    static pvfmm::Matrix<Real_t> M;
+    static bool compute_M = true;
+    if(compute_M){
+      #pragma omp critical
+      if(compute_M){
+        pvfmm::Matrix<Real_t> M0(3*3,3*3), M1(3*3,3*3);
+        for(int i=0;i<3;i++){ // Set M0, M1
+          for(int j=0;j<3;j++){
+            Real_t x0 = i - 1, y0 = j - 1;
+            Real_t x1 = x0, y1 = y0;
+            if(x1 && y1){
+              x1=x1/sqrt(2);
+              y1=y1/sqrt(2);
+            }
+            for(int m=0;m<3;m++){
+              for(int n=0;n<3;n++){
+                M0[i*3+j][m*3+n]=pvfmm::pow<Real_t>(x0,m)*pvfmm::pow<Real_t>(y0,n);
+                M1[i*3+j][m*3+n]=pvfmm::pow<Real_t>(x1,m)*pvfmm::pow<Real_t>(y1,n);
+              }
+            }
+          }
+        }
+        M = M0 * M1.pinv();
+        compute_M = false;
+      }
+      #pragma omp flush(compute_M)
+    }
+    pvfmm::Matrix<Real_t> v(3*3, COORD_DIM, patch_value_, false);
+    v = M * v;
   }
 }
 
