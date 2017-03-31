@@ -10,9 +10,14 @@ operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs,
   MKL_INT ipar[GMRESParSize];
   double dpar[GMRESParSize];
   int tmp_N = N * (2 * restartIters + 1) + (restartIters * (restartIters + 9)) / 2 + 1;
+  /*
   double tmp[tmp_N];
   double b[N];
   double residual[N];
+  */
+  double *tmp      = new double[tmp_N];
+  double *b        = new double[N];
+  double *residual = new double[N];
   /*---------------------------------------------------------------------------
   * Some additional variables to use with the RCI (P)FGMRES solver
   *---------------------------------------------------------------------------*/
@@ -160,8 +165,10 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       i = 1;
       daxpy (&ivar, &dvar, rhs, &i, residual, &i);
       dvar = dnrm2 (&ivar, residual, &i);
+      
       printf ("\n Current iteration: %d\n", itercount);
       printf ("Residual: %e\n", dvar);
+      
       if (dvar <= dpar[3])
         goto COMPLETE;
       if (itercount > ipar[4])
@@ -213,6 +220,9 @@ COMPLETE:ipar[12] = 0;
   /* NOTE: It is important to call the routine below to avoid memory leaks   */
   /* unless you disable Intel(R) MKL Memory Manager                                   */
   /*-------------------------------------------------------------------------*/
+  delete[] tmp;
+  delete[] b;
+  delete[] residual;
   MKL_Free_Buffers ();
   return 0;
   /*-------------------------------------------------------------------------*/
@@ -221,6 +231,9 @@ COMPLETE:ipar[12] = 0;
   /* unless you disable Intel(R) MKL Memory Manager                                   */
   /*-------------------------------------------------------------------------*/
 FAILED:printf ("\nSolving the system FAILED as the solver has returned the ERROR code %d\n", RCI_request);
+  delete[] tmp;
+  delete[] b;
+  delete[] residual;
   MKL_Free_Buffers ();
   return 1;
 }

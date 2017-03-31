@@ -332,7 +332,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         F_->reparam();
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("AreaVolume",&comm,true);
-        //AreaVolumeCorrection(area, vol);
+        AreaVolumeCorrection(area, vol);
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("Repartition",&comm,true);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
@@ -357,6 +357,13 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     int N_ves=S_->getNumberOfSurfaces();
     int iter(-1);
 
+    // store collision free state in x_old
+    Vec_t x_old, u1;
+    x_old.replicate(S_->getPosition());
+    u1.replicate(S_->getPosition());
+    axpy(static_cast<value_type>(1.0), S_->getPosition(), x_old);
+    // end of store 
+    
     while (++iter < params_->rep_maxit){
         S_->resample(params_->upsample_freq, &S_up_); // up-sample
 
@@ -458,19 +465,26 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
         { // position += dX*X.*Normal
             device.xvpw<value_type>( X.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             device.avpw<value_type>(dX.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
-            // F_->projectU1(dS);
             axpy(1, dS, position, position);
         }
         { // position += dY*Y.*Normal
             device.xvpw<value_type>( Y.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             device.avpw<value_type>(dY.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
-            // F_->projectU1(dS);
             axpy(1, dS, position, position);
         }
 
         S_up_->resample(params_->sh_order, &S_); // down-sample
     }
     INFO("Number of iterations : "<<iter);
+    
+    // begin for collision
+    // project u1 to collision free
+    INFO("Begin Project AreaVolume correction direction to without contact.");
+    axpy(static_cast<value_type>(-1.0), x_old, S_->getPosition(), u1);
+    F_->projectU1(u1, x_old);
+    axpy(static_cast<value_type>(1.0), u1, x_old, S_->getPositionModifiable());
+    INFO("End Project AreaVolume correction  direction to without contact.");
+    // end for collision
 
     return ErrorEvent::Success;
 }

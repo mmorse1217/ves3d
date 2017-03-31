@@ -303,7 +303,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // solve the linear system using gmres
     int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host, rhs_host, 
-            relres, relres*0, N_size, iter, 100);
+            relres, relres*0, N_size, iter, 300);
 
     // copy host to device
     x1->getDevice().Memcpy(x1->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
@@ -338,7 +338,12 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
    
     int resolveCount = 0;
     std::vector<value_type> IV;
-    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+
+    if(params_.periodic_length > 0)
+    {
+        TransferVesicle(pos_s, pos_e);
+    }
+    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, params_.min_sep_dist, params_.periodic_length);
     
     // checkout workers if num_cvs_ > 0
     //if(num_cvs_ > 0)
@@ -369,7 +374,9 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
           cvs.getDevice().MemcpyHostToDevice);
 
         // solve for u, tension, lambda using minmap LCP solver
+        INFO("Begin of SolveLCP.");
         SolveLCP(*col_dx, *col_tension, col_lambda, cvs);
+        INFO("End of SolveLCP.");
         
         // update velocity
         axpy(static_cast<value_type>(1.0), *col_dx, *x1, *x1);
@@ -394,7 +401,15 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         INFO("lambda: "<<col_lambda);
       
         // test if still have contact
-        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+    
+        if(params_.periodic_length > 0)
+        {
+            S_.getPosition().getDevice().Memcpy(&pos_s.front(), S_.getPosition().begin(),
+                    S_.getPosition().size() * sizeof(value_type),
+                    S_.getPosition().getDevice().MemcpyDeviceToHost);
+            TransferVesicle(pos_s, pos_e);
+        }
+        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, params_.min_sep_dist, params_.periodic_length);
     }
 
     // recycle if we had workers
@@ -2134,9 +2149,23 @@ CVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
             f_col_host[icount] = lambda_host[ vgrad_ind_[icount] - 1 ] * vgrad_host[icount];
     }
     
+    /*
     f_col.getDevice().Memcpy(f_col.begin(), &f_col_host.front(),
         f_col.size() * sizeof(value_type),
         f_col.getDevice().MemcpyHostToDevice);
+    */
+        
+    //filtered f_col
+    std::auto_ptr<Vec_t> xwrk = checkoutVec();
+    xwrk->replicate(S_.getPosition());
+    xwrk->getDevice().Memcpy(xwrk->begin(), &f_col_host.front(),
+        xwrk->size() * sizeof(value_type),
+        xwrk->getDevice().MemcpyHostToDevice);
+
+    sht_filter_high(*xwrk, f_col, &sht_, params_.rep_exponent);
+
+    recycle(xwrk);
+    //end of filtered
 
     return ErrorEvent::Success;
 }
@@ -2269,8 +2298,13 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
         LCP_old_err = LCP_err;
         LCP_err = 0.5 * Arr_t::getDevice().AlgebraicDot(LCP_phi.begin(), LCP_phi.begin(), LCP_phi.size());
 
+        INFO("LCP Newtown iter: "<<LCP_iter<<". -- err: "<<LCP_err<<" -- relative err: "
+                <<fabs(LCP_err - LCP_old_err)/fabs(LCP_old_err) );
+
+        INFO("lambda: "<<lambda_lcp);
+
         // relative stopping criteria
-        if(fabs(LCP_err - LCP_old_err)/fabs(LCP_old_err) < 1e-8)
+        if(fabs(LCP_err - LCP_old_err)/fabs(LCP_old_err) < 1e-6)
         {
             LCP_flag = 3;
             break;
@@ -2304,12 +2338,14 @@ SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const
 
         // solve the linear system using gmres
         // set relative tolerance
-        value_type LCP_lin_tol = 4.0e-02;
-        if( MaxAbs(LCP_phi) < 4.0e-05 )
-            LCP_lin_tol = 2.0e-01;
+        value_type LCP_lin_tol = 1.0e-03;
+        //if( MaxAbs(LCP_phi) < 1.0e-05 )
+        //    LCP_lin_tol = 5.0e-01;
         
+        INFO("Begin of SolveLCP Newton system.");
         int solver_ret = linear_solver_gmres_(JacobiImplicitLCPApply, JacobiImplicitLCPPrecond, x_host, rhs_host, 
-            LCP_lin_tol, 8.0e-11, N_size, iter, 100);
+            LCP_lin_tol, 8.0e-11, N_size, iter, 300);
+        INFO("End of SolveLCP Newton system.");
 
         // copy host to device
         du->getDevice().Memcpy(du->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
@@ -2409,7 +2445,11 @@ projectU1(Vec_t &u1, const Vec_t &x_old) const
 
     int resolveCount = 0;
     std::vector<value_type> IV;
-    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+    if(params_.periodic_length > 0)
+    {
+        TransferVesicle(pos_s, pos_e);
+    }
+    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, params_.min_sep_dist, params_.periodic_length);
     while(num_cvs_ > 0)
     {
         // worker for array size of num_cvs_
@@ -2428,7 +2468,10 @@ projectU1(Vec_t &u1, const Vec_t &x_old) const
                 vgrad_.getDevice().MemcpyHostToDevice);
 
         // get magnitude of projection direction
-        CVJacobian(vgrad_, awrk);
+        // filter projection direction
+        sht_filter_high(vgrad_, *xwrk, &sht_, params_.rep_exponent);
+        CVJacobian(*xwrk, awrk);
+        //CVJacobian(vgrad_, awrk);
         awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
         // projection direction
         CVJacobianTrans(awrk, *xwrk);
@@ -2459,7 +2502,14 @@ projectU1(Vec_t &u1, const Vec_t &x_old) const
         INFO(cvs);
         
         // test if still have contact
-        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, 0.33);
+        if(params_.periodic_length > 0)
+        {
+            x_old.getDevice().Memcpy(&pos_s.front(), x_old.begin(),
+                    x_old.size() * sizeof(value_type),
+                    x_old.getDevice().MemcpyDeviceToHost);
+            TransferVesicle(pos_s, pos_e);
+        }
+        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, params_.min_sep_dist, params_.periodic_length);
     }
 
     recycle(xwrk);
@@ -2481,6 +2531,42 @@ sca_abs(Sca_t &xin) const
         xoi[idx] = (xoi[idx] > 0) ? xoi[idx] : -xoi[idx];
     }
 
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e) const
+{
+    // Set point_coord, point_value, poly_connect
+    size_t p1 = params_.sh_order;
+    size_t N_ves = pos_e.size()/(2*p1*(p1+1)*COORD_DIM); // Number of vesicles
+    
+    for(size_t k=0;k<N_ves;k++){ // Set point_coord
+        value_type C[COORD_DIM]={0,0,0};
+        for(long l=0;l<COORD_DIM;l++) C[l]=0;
+        
+        for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+                for(size_t l=0;l<COORD_DIM;l++){
+                    C[l]+=pos_e[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))];
+                }
+            }
+        }
+      
+        for(long l=0;l<COORD_DIM;l++) C[l]/=2*p1*(p1+1);
+        for(long l=0;l<COORD_DIM;l++) C[l]=(floor(C[l]/params_.periodic_length))*params_.periodic_length;
+      
+        for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+                for(size_t l=0;l<COORD_DIM;l++){
+                    pos_s[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))] -= C[l];
+                    pos_e[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))] -= C[l];
+                }
+            }
+        }
+    }
+    
     return ErrorEvent::Success;
 }
 
@@ -2600,6 +2686,54 @@ static void sht_filter(const Vec_t& v1, Vec_t& v2, SHT* sh_trans, int rep_exp){
   }
 }
 
+template <class Vec_t, class SHT>
+static void sht_filter_high(const Vec_t& v1, Vec_t& v2, SHT* sh_trans, int rep_exp){
+  typedef typename Vec_t::value_type value_type;
+
+  static Vec_t wH, v1H_;
+  { // Set v1_
+    v1H_.replicate(v1);
+    wH  .replicate(v1);
+    sh_trans->forward(v1, wH, v1H_);
+  }
+  size_t p=v1.getShOrder();
+  int ns_x = v1.getNumSubFuncs();
+
+  assert(p<256);
+  assert(rep_exp<128);
+  static std::vector<value_type> AH_[256*128];
+  std::vector<value_type>& AH=AH_[rep_exp*256+p];
+  if(!AH.size()){
+    AH.resize(p+1);
+    long filter_freq_=(rep_exp?p/2:p/3);
+    for(int ii=0; ii<= p; ++ii){
+      value_type a = 1.0 - (rep_exp?std::pow(ii*1.0/filter_freq_,rep_exp):0);
+      a *= (ii > filter_freq_ ? 0.0 : 1.0 );
+      AH[ii] = a;
+    }
+  }
+
+  value_type E=0;
+  for(int ii=0; ii<= p; ++ii){
+    value_type* inPtr_v1 = v1H_.begin() + ii;
+    int len = 2*ii + 1 - (ii/p);
+    for(int jj=0; jj< len; ++jj){
+      int dist = (p + 1 - (jj + 1)/2);
+      for(int ss=0; ss<ns_x; ++ss){
+        inPtr_v1[0] *= AH[ii];
+        inPtr_v1 += dist;
+      }
+      inPtr_v1--;
+      inPtr_v1 += jj%2;
+    }
+  }
+
+  { // Set v2
+    v2 .replicate(v1);
+    sh_trans->backward(v1H_, wH, v2);
+  }
+}
+
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
@@ -2628,6 +2762,16 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         sh_trans = &sht_;
     }
 
+    // Storage for resolving collision
+    std::auto_ptr<Vec_t> x_old = checkoutVec();
+    std::auto_ptr<Vec_t> u1_down = checkoutVec();
+    x_old ->replicate(S_.getPosition());
+    u1_down ->replicate(S_.getPosition());
+    // store collision free state in x_old
+    // TODO: in upsample mode
+    axpy(static_cast<value_type>(1.0), S_.getPosition(), *x_old);
+    // End of storage for resolving collision
+
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
     std::auto_ptr<Sca_t> wrk = checkoutSca();
@@ -2641,7 +2785,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         std::vector<value_type>  x2=inner_prod(Surf->getPosition(), Surf->getPosition(), sh_trans, rep_exp);
         for(long i=0;i<x2.size();i++) E0+=x2[i];
     }
-
+        
     int ii(0);
     std::vector<value_type> E;
     while ( ii < rep_maxit )
@@ -2709,9 +2853,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
         // begin for collision
         // project u1 to collision free
-        INFO("Begin Project reparam direction to without contact.");
-        projectU1(*u1, Surf->getPosition());
-        INFO("End Project reparam direction to without contact.");
+        //INFO("Begin Project reparam direction to without contact.");
+        //projectU1(*u1, Surf->getPosition());
+        //INFO("End Project reparam direction to without contact.");
         // end for collision
 
         //Advecting tension (useless for implicit)
@@ -2782,8 +2926,19 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         Resample(Surf->getPosition(), sht_upsample_, sht_, *u1, *u2,
             S_.getPositionModifiable());
 
+    // begin for collision
+    // project u1 to collision free
+    INFO("Begin Project reparam direction to without contact.");
+    axpy(static_cast<value_type>(-1.0), *x_old, S_.getPosition(), *u1_down);
+    projectU1(*u1_down, *x_old);
+    axpy(static_cast<value_type>(1.0), *u1_down, *x_old, S_.getPositionModifiable());
+    INFO("End Project reparam direction to without contact.");
+    // end for collision
+
     recycle(u1);
     recycle(u2);
+    recycle(x_old);
+    recycle(u1_down);
     recycle(wrk);
     PROFILEEND("",0);
 

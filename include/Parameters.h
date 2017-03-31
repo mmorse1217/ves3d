@@ -63,6 +63,9 @@ class Parameters : public Streamable
     //Repulsion
     T    repul_dist;
 
+    // contact
+    T    min_sep_dist;
+
     //Background flow
     T bg_flow_param;
     bool interaction_upsample;

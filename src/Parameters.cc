@@ -44,6 +44,7 @@ void Parameters<T>::init()
     rep_type                = PolyKReparam;
     rep_upsample            = false;
     repul_dist              = 5e-2;
+    min_sep_dist            = 0.0;
     scheme                  = JacobiBlockImplicit;
     sh_order                = 12;
     singular_stokes         = ViaSpHarm;
@@ -254,6 +255,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "rep-exponent" );
 
     opt->setOption( "repul-dist" );
+    opt->setOption( "min-sep-dist" );
 
     opt->setOption( "checkpoint-stride" );
     opt->setOption( "sh-order" );
@@ -385,6 +387,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     if( opt->getValue( "repul-dist" ) != NULL  )
         repul_dist =  atof(opt->getValue( "repul-dist" ));
 
+    if( opt->getValue( "min-sep-dist" ) != NULL)
+        min_sep_dist = atof(opt->getValue( "min-sep-dist" ));
+
     if( opt->getValue( "checkpoint-stride" ) != NULL  )
         checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
 
@@ -453,6 +458,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"rep_tol: "<<rep_tol<<"\n";
     os<<"rep_exponent: "<<rep_exponent<<"\n";
     os<<"repul_dist: "<<repul_dist<<"\n";
+    os<<"min_sep_dist: "<<min_sep_dist<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
     os<<"periodic_length: "<<periodic_length<<"\n";
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
@@ -537,6 +543,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>rep_exponent; ASSERT(key=="rep_exponent:", "Unexpected key (expected rep_exponent)");
 
     is>>key>>repul_dist; ASSERT(key=="repul_dist:", "Unexpected key (expected repul_dist)");
+    is>>key>>min_sep_dist; ASSERT(key=="min_sep_dist:", "Unexpected key (expected min_sep_dist)");
 
     is>>key>>bg_flow_param; ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
     is>>key>>periodic_length; ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
@@ -627,6 +634,10 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"------------------------------------"<<std::endl;
     output<<" Repulsion:"<<std::endl;
     output<<"   Repulsion distance       : "<<par.repul_dist<<std::endl;
+    
+    output<<"------------------------------------"<<std::endl;
+    output<<" Contact:"<<std::endl;
+    output<<"   Minimal Sep distance     : "<<par.min_sep_dist<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Initialization:"<<std::endl;

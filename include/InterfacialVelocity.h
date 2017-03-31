@@ -88,6 +88,7 @@ class InterfacialVelocity
     Error_t minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const;
     Error_t projectU1(Vec_t &u1, const Vec_t &x_old) const;
     Error_t sca_abs(Sca_t &xin) const;
+    Error_t TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e) const;
 
     value_type StokesError(const Vec_t &x) const;
 
