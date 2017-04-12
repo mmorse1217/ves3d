@@ -12,15 +12,13 @@ VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
 # TODO:add to makefile.col
-LDFLAGS += -L/Users/libinlu/Documents/Projects/ves3d/PQP/lib
 LDFLAGS += -L/opt/intel/compilers_and_libraries_2017.1.126/mac/compiler/lib
 LDFLAGS += -L/Users/libinlu/Documents/Projects/ves3d/contact3d/lib
-LDLIBS += -lCGAL -lPQP -lgmp -llapack -liomp5 -liagm
+LDLIBS += -lCGAL -lgmp -llapack -liomp5 -liagm
 
 EIGEN_INC := /opt/local/include/eigen3
-PQP_INC := /Users/libinlu/Documents/Projects/ves3d/PQP/include
 CONTACT_INC := /Users/libinlu/Documents/Projects/ves3d/contact3d/inc
-CXXFLAGS += -I$(EIGEN_INC) -I$(PQP_INC) -I$(CONTACT_INC)
+CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC)
 #
 
 # targets of install

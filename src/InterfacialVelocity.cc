@@ -2860,8 +2860,28 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
         //Advecting tension (useless for implicit)
         if (params_.scheme != GloballyImplicit){
-            if (params_.rep_upsample)
-                WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
+            if (params_.rep_upsample){
+                // prepare for upsample tension
+                std::auto_ptr<Sca_t> twrk1 = checkoutSca();
+                std::auto_ptr<Sca_t> twrk2 = checkoutSca();
+                twrk1->replicate(Surf->getPosition());
+                twrk2->replicate(Surf->getPosition());
+
+                // upsample tension
+                Resample(tension_, sht_, sht_upsample_, *twrk1, *twrk2, *wrk);
+                
+                // advect tension
+                Surf->grad(*wrk, *u2);
+                GeometricDot(*u2, *u1, *twrk1);
+                axpy(1.0, *twrk1, *wrk, *wrk);
+                
+                // downsample tension
+                Resample(*wrk, sht_upsample_, sht_, *twrk1, *twrk2, tension_);
+
+                // recycle workers
+                recycle(twrk1);
+                recycle(twrk2);
+            }
             else {
                 Surf->grad(tension_, *u2);
                 GeometricDot(*u2, *u1, *wrk);

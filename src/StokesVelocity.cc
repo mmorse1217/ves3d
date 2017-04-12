@@ -1354,8 +1354,8 @@ void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname,
         for(size_t l=0;l<COORD_DIM;l++) C[l]+=Xp[0+2*(l+k*COORD_DIM)];
         for(size_t l=0;l<COORD_DIM;l++) C[l]+=Xp[1+2*(l+k*COORD_DIM)];
         for(long l=0;l<COORD_DIM;l++) C[l]/=2*p1*(p1+1)+2;
-        //for(long l=0;l<COORD_DIM;l++) C[l]=(round(C[l]/period))*period;
-        for(long l=0;l<COORD_DIM;l++) C[l]=(floor(C[l]/period))*period;
+        for(long l=0;l<COORD_DIM;l++) C[l]=(round(C[l]/period))*period;
+        //for(long l=0;l<COORD_DIM;l++) C[l]=(floor(C[l]/period))*period;
       }
 
       for(size_t i=0;i<p1+1;i++){
