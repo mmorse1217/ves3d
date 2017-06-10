@@ -38,8 +38,10 @@ class InterfacialForce
 
     void bendingForce(const SurfContainer &S, Vec_t &Fb) const;
     void linearBendingForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fb) const;
+    void linearBendingForcePerVesicle(const SurfContainer &S, const Vec_t &x, Vec_t &Fb, const int vesicle_i) const;
     void tensileForce(const SurfContainer &S, const Sca_t &tension, Vec_t &Fs) const;
     void gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const;
+    void gravityForcePerVesicle(const SurfContainer &S, const Vec_t &x, Vec_t &Fg, const int vesicle_i) const;
 
     void explicitTractionJump(
 	const SurfContainer &S,
@@ -50,6 +52,12 @@ class InterfacialForce
 	const Vec_t &x,
 	const Sca_t &tension,
         Vec_t &F) const;
+    
+    void implicitTractionJumpPerVesicle(
+	const SurfContainer &S,
+	const Vec_t &x,
+	const Sca_t &tension,
+        Vec_t &F, const int vesicle_i) const;
 };
 
 #include "InterfacialForce.cc"

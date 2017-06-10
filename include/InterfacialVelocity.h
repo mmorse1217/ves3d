@@ -20,6 +20,7 @@
 #include "StokesVelocity.h"
 #include "ContactInterface.h"
 #include "GMRESLinSolver.h"
+#include <unordered_map>
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -68,6 +69,8 @@ class InterfacialVelocity
 
     Error_t getTension(const Vec_t &vel_in, Sca_t &tension) const;
     Error_t stokes(const Vec_t &force, Vec_t &vel) const;
+    Error_t stokesSLPerVesicle(const Vec_t &force, Vec_t &vel, const int vesicle_i) const;
+    Error_t stokesDLPerVesicle(const Vec_t &force, Vec_t &vel, const int vesicle_i) const;
     Error_t stokes_double_layer(const Vec_t &force, Vec_t &vel) const;
     Error_t updateFarField() const;
 
@@ -80,15 +83,25 @@ class InterfacialVelocity
         Vec_t &time_mat_vec, Sca_t &tension_mat_vec) const;
     Error_t operator()(const Vec_t &x_new, const Sca_t &tension, const Arr_t &lambda,
         Vec_t &time_mat_vec, Sca_t &tension_mat_vec, Arr_t &lambda_mat_vec) const;
+    Error_t operator()(const Arr_t &lambda, Arr_t &lambda_mat_vec) const;
+    Error_t operator()(const Vec_t &x_new, const Sca_t &tension, 
+        Vec_t &time_mat_vec, Sca_t &tension_mat_vec, const int vesicle_i) const;
+
     
     Error_t CVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
     Error_t CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const;
     Error_t LCPSelect(const Arr_t &lambda, Arr_t &lambda_mat_vec) const;
     Error_t SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const;
+    Error_t SolveLCPSmall(Arr_t &lambda_lcp, Arr_t &cvs) const;
     Error_t minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const;
     Error_t projectU1(Vec_t &u1, const Vec_t &x_old) const;
     Error_t sca_abs(Sca_t &xin) const;
-    Error_t TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e) const;
+    Error_t TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e, 
+            pvfmm::Vector<value_type> &pole_s_pole, pvfmm::Vector<value_type> &pole_e_pole) const;
+    Error_t FormLCPMatrix(Arr_t &lcp_matrix) const;
+    Error_t FormLCPMatrixSparse(Arr_t &lcp_matrix) const;
+    Error_t GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const;
+    Error_t GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<value_type> &pos_pole) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -96,6 +109,8 @@ class InterfacialVelocity
 
     // contact
     mutable int num_cvs_;
+    mutable Arr_t lcp_matrix_;
+    mutable int current_vesicle_;
 
   private:
     SurfContainer &S_;
@@ -123,9 +138,13 @@ class InterfacialVelocity
     static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
     
     static Error_t JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t JacobiImplicitApplyPerVesicle(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t JacobiImplicitLCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t LCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t LCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     
     size_t stokesBlockSize() const;
     size_t tensionBlockSize() const;
@@ -169,6 +188,8 @@ class InterfacialVelocity
     mutable Vec_t vgrad_;
     mutable std::vector<int> vgrad_ind_;
     mutable std::vector<int> PA_;
+    mutable SurfContainer* S_i_;
+    mutable std::vector<int> contact_vesicle_list_;
 };
 
 #include "InterfacialVelocity.cc"

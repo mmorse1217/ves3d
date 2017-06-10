@@ -47,6 +47,8 @@ class StokesVelocity{
 
     void setup_self();
     void setup_all();
+    const Real* GetSLMatrixi(int i);
+    const Real* GetDLMatrixi(int i);
 
     Real MonitorError(Real tol=1e-5);
 

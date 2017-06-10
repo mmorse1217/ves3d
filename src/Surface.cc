@@ -45,7 +45,7 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     
     //contact force
     fc_.replicate(x_);
-    axpy(static_cast<value_type>(0.0),x_,fc_);
+    fc_.getDevice().Memset(fc_.begin(), 0, sizeof(value_type)*fc_.size());
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -685,6 +685,8 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     x_.unpack(is, format);
     is>>s;
     ASSERT(s=="/SURFACE", "Bad input string (missing footer).");
+    fc_.replicate(x_);
+    fc_.getDevice().Memset(fc_.begin(), 0, sizeof(value_type)*fc_.size());
 
     INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 

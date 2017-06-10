@@ -1093,6 +1093,18 @@ void StokesVelocity<Real>::setup_all(){
 }
 
 template <class Real>
+const Real* StokesVelocity<Real>::GetSLMatrixi(int i){
+    long Ncoef =   sh_order*(sh_order+2);
+    return &SLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef];
+}
+
+template <class Real>
+const Real* StokesVelocity<Real>::GetDLMatrixi(int i){
+    long Ncoef =   sh_order*(sh_order+2);
+    return &DLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef];
+}
+
+template <class Real>
 Real StokesVelocity<Real>::MonitorError(Real tol){
   static PVFMMVec force_single_orig, force_double_orig, tcoord_orig;
   pvfmm::Profile::Tic("StokesMonitor",&comm, true);
