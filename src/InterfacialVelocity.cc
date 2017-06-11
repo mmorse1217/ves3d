@@ -85,7 +85,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     CI_.init(SURF_SUBDIVISION);
     
     // init contact variables
-    vgrad_.resize(S_.getPostion().getNumSubs(), params_.upsample_freq);
+    vgrad_.resize(S_.getPosition().getNumSubs(), params_.upsample_freq);
     vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
     vgrad_ind_.resize(vgrad_.size(), 0);
     PA_.clear();
@@ -2340,12 +2340,12 @@ CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
 
     Resample(x_new, sht_, sht_upsample_, *wrk1, *wrk2, *x_new_up);
 
-    xy(x_new_up, vgrad_, *x_vgrad);
+    xy(*x_new_up, vgrad_, *x_vgrad);
 
     //axpy(dt_, *x_vgrad, *x_vgrad);
     
     std::vector<value_type> x_vgrad_host;
-    x_vgrad_host.resize(x_vgrad.size(), 0.0);
+    x_vgrad_host.resize(x_vgrad->size(), 0.0);
     // copy x_vgrad to host
     x_vgrad->getDevice().Memcpy(&x_vgrad_host.front(), x_vgrad->begin(),
         x_vgrad->size() * sizeof(value_type),
@@ -2856,6 +2856,8 @@ projectU1(Vec_t &u1, const Vec_t &x_old) const
     static std::vector<value_type> pos_e(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM, 0.0);
     static std::vector<value_type> vGrad(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM, 0.0);
     
+    static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
+    
     // the candidate position and copy to end configuration
     axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
     
@@ -3331,7 +3333,7 @@ GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<valu
     }
     else
     {
-        xin.getPosition().getDevice().Memcpy(&pos_vec[0], xin.begin(),
+        xin.getDevice().Memcpy(&pos_vec[0], xin.begin(),
                 xin.size() * sizeof(value_type),
                 xin.getDevice().MemcpyDeviceToHost);
     }
