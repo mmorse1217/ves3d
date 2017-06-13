@@ -30,11 +30,13 @@ class VesBoundingBox{
         // set bounding boxes for vesicles, the bounding boxes are space-time bounding box with minimum separation distance
         void SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, const PVFMMVec_t& ves_coord_e, 
                 const int ves_stride, const Real_t min_sep);
+        template<typename Vec>
+        void SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, const Real_t min_sep);
         // set bounding boxes provided with two points for each bounding box: BB_min, BB_max
         void SetVesBoundingBox(const PVFMMVec_t& BB_min, const PVFMMVec_t& BB_max);
         
         // get all pairs of intersecting bounding boxes
-        void GetContactBoundingBoxPair();
+        void GetContactBoundingBoxPair(std::vector< std::pair<size_t, size_t> > &BBIPairs);
         
         // set the grid parameters, bbox_(shift,scale), r_near_(intrinsic size of grid box),
         // leaf_size_  <=> tree_depth_ (grid size) TODO: eliminate either leaf_size_ or tree_depth_

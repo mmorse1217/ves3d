@@ -22,6 +22,13 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
 }
 
 template<typename Real_t>
+template<typename Vec>
+void VesBoundingBox<Real_t>::SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, Real_t min_sep)
+{
+    // calculate the bounding boxes for vesicles with start, end position and min_sep
+}
+
+template<typename Real_t>
 void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& BB_min, const PVFMMVec_t& BB_max)
 {
     BB_min_ = BB_min;
@@ -29,7 +36,7 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& BB_min, const P
 }
 
 template<typename Real_t>
-void VesBoundingBox<Real_t>::GetContactBoundingBoxPair()
+void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<size_t, size_t> > &BBIPairs)
 {
     assert(BB_pts_); assert(BB_min_); assert(BB_max_);
     

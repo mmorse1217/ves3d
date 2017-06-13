@@ -21,6 +21,8 @@
 #include "ContactInterface.h"
 #include "GMRESLinSolver.h"
 #include <unordered_map>
+#include <map>
+#include "VesBoundingBox.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -102,6 +104,10 @@ class InterfacialVelocity
     Error_t FormLCPMatrixSparse(Arr_t &lcp_matrix) const;
     Error_t GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const;
     Error_t GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<value_type> &pos_pole) const;
+    Error_t ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const;
+    Error_t ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const;
+    Error_t ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const;
+    Error_t ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -185,11 +191,13 @@ class InterfacialVelocity
     
     //Contact
     mutable ContactInterface CI_;
+    mutable ContactInterface CI_pair_;
     mutable Vec_t vgrad_;
     mutable std::vector<int> vgrad_ind_;
     mutable std::vector<int> PA_;
     mutable SurfContainer* S_i_;
     mutable std::vector<int> contact_vesicle_list_;
+    mutable VesBoundingBox<value_type> VBBI_;
 };
 
 #include "InterfacialVelocity.cc"
