@@ -108,6 +108,8 @@ class InterfacialVelocity
     Error_t ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const;
     Error_t ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const;
     Error_t ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
+    Error_t ConfigureLCPSolver() const;
+    Error_t ImplicitLCPMatvec(Arr_t &lambda) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -116,6 +118,7 @@ class InterfacialVelocity
     // contact
     mutable int num_cvs_;
     mutable Arr_t lcp_matrix_;
+    mutable std::map<std::pair<size_t, size_t>, value_type> parallel_lcp_matrix_;
     mutable int current_vesicle_;
 
   private:
@@ -151,6 +154,8 @@ class InterfacialVelocity
     static Error_t JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t LCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t LCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y);
+    static Error_t ImplicitLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
     
     size_t stokesBlockSize() const;
     size_t tensionBlockSize() const;

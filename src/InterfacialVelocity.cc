@@ -1686,6 +1686,139 @@ LCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type 
     return ErrorEvent::Success;
 }
 
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y)
+{
+    /*
+    PROFILESTART();
+    const InterfacialVelocity *F(NULL);
+    o->Context((const void**) &F);
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Sca_t> ten = F->checkoutSca();
+    vox->replicate(F->pos_vel_);
+    ten->replicate(F->tension_);
+
+    COUTDEBUG("Unpacking the input from parallel vector");
+    if (F->params_.pseudospectral){
+        vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    } else {
+        std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
+        std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
+        std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
+
+        voxSh->replicate(*vox);
+        tSh->replicate(*ten);
+        wrk->replicate(*vox);
+        voxSh->getDevice().Memcpy(voxSh->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        tSh  ->getDevice().Memcpy(tSh->begin()  , x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+        COUTDEBUG("Mapping the input to physical space");
+        F->sht_.backward(*voxSh, *wrk, *vox);
+        F->sht_.backward(*tSh  , *wrk, *ten);
+
+        F->recycle(voxSh);
+        F->recycle(tSh);
+        F->recycle(wrk);
+    }
+
+    F->ImplicitMatvecPhysical(*vox, *ten);
+
+    if (F->params_.pseudospectral){
+        COUTDEBUG("Packing the matvec into parallel vector");
+        vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    } else {  
+        COUTDEBUG("Mapping the matvec to physical space");
+        std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
+        std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
+        std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
+
+        voxSh->replicate(*vox);
+        tSh->replicate(*ten);
+        wrk->replicate(*vox);
+
+        F->sht_.forward(*vox, *wrk, *voxSh);
+        F->sht_.forward(*ten, *wrk, *tSh);
+
+        COUTDEBUG("Packing the matvec into parallel vector");
+        voxSh->getDevice().Memcpy(y    , voxSh->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tSh  ->getDevice().Memcpy(y+vsz, tSh->begin()  , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+        F->recycle(voxSh);
+        F->recycle(tSh);
+        F->recycle(wrk);
+    }
+
+    F->recycle(vox);
+    F->recycle(ten);
+
+    PROFILEEND("",0);
+    */
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ImplicitLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
+{
+    /*
+    PROFILESTART();
+    const InterfacialVelocity *F(NULL);
+    ksp->PrecondContext((const void**) &F);
+
+    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
+
+    std::auto_ptr<Vec_t> vox = F->checkoutVec();
+    std::auto_ptr<Vec_t> vxs = F->checkoutVec();
+    std::auto_ptr<Vec_t> wrk = F->checkoutVec();
+    vox->replicate(F->pos_vel_);
+    vxs->replicate(F->pos_vel_);
+    wrk->replicate(F->pos_vel_);
+
+    std::auto_ptr<Sca_t> ten = F->checkoutSca();
+    std::auto_ptr<Sca_t> tns = F->checkoutSca();
+    ten->replicate(F->tension_);
+    tns->replicate(F->tension_);
+
+    COUTDEBUG("Unpacking the input parallel vector");
+    if (F->params_.pseudospectral){
+        vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        F->sht_.forward(*vox, *wrk, *vxs);
+        F->sht_.forward(*ten, *wrk, *tns);
+    } else {
+        vxs->getDevice().Memcpy(vxs->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+        tns->getDevice().Memcpy(tns->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    }
+
+    COUTDEBUG("Applying diagonal preconditioner");
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
+
+    if (F->params_.pseudospectral){
+        F->sht_.backward(*vxs, *wrk, *vox);
+        F->sht_.backward(*tns, *wrk, *ten);
+        vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    } else {
+        vxs->getDevice().Memcpy(y    , vxs->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+        tns->getDevice().Memcpy(y+vsz, tns->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    }
+
+    F->recycle(vox);
+    F->recycle(vxs);
+    F->recycle(wrk);
+    F->recycle(ten);
+    F->recycle(tns);
+
+    PROFILEEND("",0);
+    */
+    return ErrorEvent::Success;
+}
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
@@ -3665,6 +3798,122 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
 {
     // similar to CVJacobianTrans but need send receive lambda
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ConfigureLCPSolver() const
+{
+    /*
+    PROFILESTART();
+    ASSERT(scheme==GloballyImplicit, "Unsupported scheme");
+    COUTDEBUG("Configuring the parallel solver");
+
+    typedef typename PSolver_t::matvec_type POp;
+    typedef typename PSolver_t::vec_type PVec;
+    typedef typename PVec::size_type size_type;
+
+    // Setting up the operator
+    size_type sz(stokesBlockSize() + tensionBlockSize());
+    CHK(parallel_solver_->LinOpFactory(&parallel_matvec_));
+    CHK(parallel_matvec_->SetSizes(sz,sz));
+    CHK(parallel_matvec_->SetName("Vesicle interaction"));
+    CHK(parallel_matvec_->SetContext(static_cast<const void*>(this)));
+    CHK(parallel_matvec_->SetApply(ImplicitApply));
+    CHK(parallel_matvec_->Configure());
+
+    // setting up the rhs
+    CHK(parallel_solver_->VecFactory(&parallel_rhs_));
+    CHK(parallel_rhs_->SetSizes(sz));
+    CHK(parallel_rhs_->SetName("rhs"));
+    CHK(parallel_rhs_->Configure());
+
+    CHK(parallel_rhs_->ReplicateTo(&parallel_u_));
+    CHK(parallel_u_->SetName("solution"));
+
+    // setting up the solver
+    CHK(parallel_solver_->SetOperator(parallel_matvec_));
+    CHK(parallel_solver_->SetTolerances(params_.time_tol,
+            PSolver_t::PLS_DEFAULT,
+            PSolver_t::PLS_DEFAULT,
+            params_.time_iter_max));
+
+    CHK(parallel_solver_->Configure());
+
+    // setting up the preconditioner
+    if (params_.time_precond != NoPrecond){
+        ASSERT(precond_configured_, "The preconditioner isn't configured yet");
+        CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
+        CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
+    }
+    psolver_configured_ = true;
+
+    PROFILEEND("",0);
+    */
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ImplicitLCPMatvec(Arr_t &lambda) const
+{
+    /*
+    PROFILESTART();
+
+    std::auto_ptr<Vec_t> f   = checkoutVec();
+    std::auto_ptr<Vec_t> Sf  = checkoutVec();
+    std::auto_ptr<Vec_t> Du  = checkoutVec();
+    f->replicate(vox);
+    Sf->replicate(vox);
+    Du->replicate(vox);
+
+    COUTDEBUG("Computing the interfacial forces and setting single-layer density");
+    if (params_.solve_for_velocity){
+        // Bending of dt*u + tension of sigma
+        axpy(dt_, vox, *Du);
+        Intfcl_force_.implicitTractionJump(S_, *Du, ten, *f);
+    } else {
+        // dt*(Bending of x + tension of sigma)
+        Intfcl_force_.implicitTractionJump(S_, vox, ten, *f);
+        axpy(dt_, *f, *f);
+    }
+    stokes_.SetDensitySL(f.get());
+
+    if( ves_props_.has_contrast ){
+        COUTDEBUG("Setting the double-layer density");
+        av(ves_props_.dl_coeff, vox, *Du);
+        stokes_.SetDensityDL(Du.get());
+    } else {
+        stokes_.SetDensityDL(NULL);
+    }
+
+    COUTDEBUG("Calling stokes");
+    stokes_(*Sf);
+
+    COUTDEBUG("Computing the div term");
+    //! @note For some reason, doing the linear algebraic manipulation
+    //! and writing the constraint as -\div{S[f_b+f_s]} = \div{u_inf
+    //! almost halves the number of gmres iterations. Also having the
+    //! minus sign in the matvec is tangibly better (1-2
+    //! iterations). Need to investigate why.
+    S_.div(*Sf, ten);
+    axpy((value_type) -1.0, ten, ten);
+
+    if( ves_props_.has_contrast )
+        av(ves_props_.vel_coeff, vox, vox);
+
+    axpy((value_type) -1.0, *Sf, vox, vox);
+
+    ASSERT(vox.getDevice().isNumeric(vox.begin(), vox.size()), "Non-numeric velocity");
+    ASSERT(ten.getDevice().isNumeric(ten.begin(), ten.size()), "Non-numeric divergence");
+
+    recycle(f);
+    recycle(Sf);
+    recycle(Du);
+
+    PROFILEEND("",0);
+    */
     return ErrorEvent::Success;
 }
 
