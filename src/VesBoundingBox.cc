@@ -38,7 +38,7 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& BB_min, const P
 template<typename Real_t>
 void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<size_t, size_t> > &BBIPairs)
 {
-    assert(BB_pts_); assert(BB_min_); assert(BB_max_);
+    assert(BB_min_); assert(BB_max_);
     
     MPI_Comm_size(comm, &np_);
     MPI_Comm_rank(comm, &rank_);

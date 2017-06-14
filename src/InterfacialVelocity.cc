@@ -75,14 +75,26 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     
     // *init Contact Interface*
     ASSERT(params_.upsample_freq >= params_.sh_order, "Bad collision upsample freq size");
+    
+    static std::vector<value_type> x_s(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    static pvfmm::Vector<value_type> x_s_pole;
+    static Vec_t x_pair(2, params_.sh_order);
+    x_pair.getDevice().Memcpy(x_pair.begin(), S_.getPosition().begin(), 
+            x_pair.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+    
+    GetColPos(x_pair, x_s, x_s_pole);
+    CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
+    CI_pair_.writeOFF();
+    CI_pair_.init(SURF_SUBDIVISION);
 
+    /*
     static std::vector<value_type> pos_s(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM, 0.0);
     static pvfmm::Vector<value_type> pos_s_pole;
     GetColPos(S_.getPosition(), pos_s, pos_s_pole);
-
     CI_.generateMesh(pos_s, &pos_s_pole[0], params_.upsample_freq, S_.getPosition().getNumSubs());
     CI_.writeOFF();
     CI_.init(SURF_SUBDIVISION);
+    */
     
     // init contact variables
     vgrad_.resize(S_.getPosition().getNumSubs(), params_.upsample_freq);
@@ -3483,20 +3495,22 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     std::vector< std::pair<size_t, size_t> > BBIPairs;
     VBBI_.SetVesBoundingBox(X_s, X_e, params_.min_sep_dist);
     VBBI_.GetContactBoundingBoxPair(BBIPairs);
+    //BBIPairs should be sorted based on the BBIPairs.second
     
     // send ghost vesicles, receive ghost vesicles
     int myrank, np;
-    MPI_Comm comm=MPI_COMM_WORLD;
-    MPI_Comm_rank(comm,&myrank);
-    MPI_Comm_size(comm,&np);
-    size_t nv = X_s.getNumSubs();
-    size_t stride = X_s.getStride();
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &np);
+    size_t nv = X_s.getNumSubs();     // number of vesicles per process
+    size_t stride = X_s.getStride();    // number of points per vesicle
 
     pvfmm::Vector<int> sves_cnt(np);
     pvfmm::Vector<int> sves_dsp(np);
     pvfmm::Vector<int> rves_cnt(np);
     pvfmm::Vector<int> rves_dsp(np);
-    std::vector<size_t> sves_id_tmp;
+    std::vector<size_t> sves_id;
+    std::vector<size_t> rves_id;
 
     pvfmm::Vector<int> sves_coord_cnt(np);
     pvfmm::Vector<int> sves_coord_dsp(np);
@@ -3504,6 +3518,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     pvfmm::Vector<int> rves_coord_dsp(np);
 
     sves_cnt.SetZero();
+    sves_coord_cnt.SetZero();
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         if( BBIPairs[i].second < nv*myrank || BBIPairs[i].second >= nv*(myrank+1) )
@@ -3511,7 +3526,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             sves_cnt[ceil(BBIPairs[i].second/nv)]++;
             sves_coord_cnt[ceil(BBIPairs[i].second/nv)] += COORD_DIM*stride;
             // TODO: remove duplicate vesicle sending to same process
-            sves_id_tmp.push_back(BBIPairs[i].first);
+            sves_id.push_back(BBIPairs[i].first);
         }
     }
 
@@ -3532,12 +3547,10 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     size_t send_size_ves = sves_cnt[np-1] + sves_dsp[np-1];
     size_t recv_size_ves = rves_cnt[np-1] + rves_dsp[np-1];
     
-    ASSERT(sves_id_tmp.size() == send_size_ves, "Bad send ves size");
-    pvfmm::Vector<size_t> sves_id;
-    pvfmm::Vector<size_t> rves_id;
-    sves_id.ReInit(sves_id_tmp.size(), (size_t*)&sves_id_tmp[0], false);
-    rves_id.ReInit(recv_size_ves);
+    ASSERT(sves_id.size() == send_size_ves, "Bad send ves size");
+    rves_id.resize(recv_size_ves, 0);
     
+    // send and receive ghost vesicles' global id, local_id = global_id - myrank*nv
     MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
 
@@ -3546,7 +3559,8 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     recv_ves_coord_s.ReInit(recv_size_ves*COORD_DIM*stride);
     recv_ves_coord_e.ReInit(recv_size_ves*COORD_DIM*stride);
 
-    for(size_t i=0; i<sves_id.Dim(); i++)
+    // prepare send coord
+    for(size_t i=0; i<sves_id.size(); i++)
     {
         for(size_t j=0; j<stride; j++)
         {
@@ -3563,6 +3577,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         }
     }
     
+    // send and receive ghost vesicles' coord
     MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
                   comm);    
@@ -3572,54 +3587,189 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     // recv_ves_coord contains the ghost vesicles' coord, rves_id contains the global vesicle id
 
     typedef std::map< int, Vec_t* > GVMAP;
-    GVMAP ghost_ves_s, ghost_ves_e;
-    GVMAP ghost_ves_vgrad;
     typename GVMAP::iterator got;
     typename GVMAP::const_iterator iter_i, iter_j;
+    typedef std::map< int, std::vector<int>* > GVMAP_IND;
 
-    for(size_t i = 0; i<rves_id.Dim(); i++)
+    GVMAP ghost_ves_s, ghost_ves_e;
+    GVMAP ghost_ves_vgrad;
+    
+    for(size_t i = 0; i<rves_id.size(); i++)
     {
         got = ghost_ves_s.find(rves_id[i]);
         if(got == ghost_ves_s.end())
         {
             ghost_ves_s.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.sh_order) ) );
             ghost_ves_e.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.sh_order) ) );
-            //memcpy recv_ves_coord to ghost_ves[rves_id[i]]
+            //copy recv_ves_coord to ghost_ves[rves_id[i]]
             Arr_t::getDevice().Memcpy( ghost_ves_s[rves_id[i]], &recv_ves_coord_s[i*COORD_DIM*stride], 
                     ghost_ves_s[rves_id[i]]->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
             Arr_t::getDevice().Memcpy( ghost_ves_e[rves_id[i]], &recv_ves_coord_e[i*COORD_DIM*stride], 
                     ghost_ves_e[rves_id[i]]->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
+            ghost_ves_vgrad.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.upsample_freq) ) );
         }
     }
 
     // loop all index pair to call CI_pair_, merge local vgrad_ and vgrad_ind_,
-    std::vector<value_type> x_s(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
-    std::vector<value_type> x_e(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
-    std::vector<value_type> vgrad(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
-    pvfmm::Vector<value_type> x_s_pole, x_e_pole;
-    Vec_t x_tmp(2, params_.sh_order);
-
+    static std::vector<value_type> x_s(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    static std::vector<value_type> x_e(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    static pvfmm::Vector<value_type> x_s_pole, x_e_pole;
+    static Vec_t x_pair(2, params_.sh_order);
+    static std::vector<value_type> vgrad_pair(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    static std::vector<int> vgrad_pair_ind(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    
+    num_cvs_ = 0;
+    IV_.clear();
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         if( BBIPairs[i].second < nv*myrank || BBIPairs[i].second >= nv*(myrank+1) )
         {
-            GetColPos(x_tmp, x_s, x_s_pole);
-            GetColPos(x_tmp, x_e, x_e_pole);
+            size_t local_i = BBIPairs[i].first - myrank*nv;
+            
+            x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_s.begin()[local_i*x_pair.size()/2],
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], ghost_ves_s[BBIPairs[i].second], 
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            GetColPos(x_pair, x_s, x_s_pole);
+
+            x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_e.begin()[local_i*x_pair.size()/2],
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], ghost_ves_e[BBIPairs[i].second], 
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            GetColPos(x_pair, x_e, x_e_pole);
+
+            if(params_.periodic_length > 0)
+            {
+                TransferVesicle(x_s, x_e, x_s_pole, x_e_pole);
+            }
+
+            int num_cvs = 0;
+            std::vector<value_type> IV;
+            CI_pair_.getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
+            params_.min_sep_dist, params_.periodic_length);
+
+            // updates
+            num_cvs_ += num_cvs;
+            IV_.insert(IV_.end(), IV.begin(), IV.end());
+            //vgrad
+            //vgrad_ind
+            //ghost vgrad
+            //ghost vgrad_ind
         }
         else
         {
-            GetColPos(x_tmp, x_s, x_s_pole);
-            GetColPos(x_tmp, x_e, x_e_pole);
+            size_t local_i = BBIPairs[i].first - myrank*nv;
+            x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_s.begin()[local_i*x_pair.size()/2],
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            
+            local_i = BBIPairs[i].second - myrank*nv;
+            x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], &X_s.begin()[local_i*x_pair.size()/2], 
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            GetColPos(x_pair, x_s, x_s_pole);
+
+            local_i = BBIPairs[i].first - myrank*nv;
+            x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_e.begin()[local_i*x_pair.size()/2],
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
+            local_i = BBIPairs[i].second - myrank*nv;
+            x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], &X_e.begin()[local_i*x_pair.size()/2], 
+                    x_pair.size()/2*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+            GetColPos(x_pair, x_e, x_e_pole);
+
+            if(params_.periodic_length > 0)
+            {
+                TransferVesicle(x_s, x_e, x_s_pole, x_e_pole);
+            }
+
+            int num_cvs = 0;
+            std::vector<value_type> IV;
+            CI_pair_.getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
+            params_.min_sep_dist, params_.periodic_length);
+
+            // updates
+            num_cvs_ += num_cvs;
+            IV_.insert(IV_.end(), IV.begin(), IV.end());
+            //vgrad
+            //vgrad_ind
         }
     }
+    // update vgrad_ind to global vgrad_ind
+    pvfmm::Vector<size_t> world_num_cvs;
+    world_num_cvs.ReInit(np);
+    size_t num_cvs_myrank = num_cvs_;
+    MPI_Allgather(&num_cvs_myrank,   1, pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &world_num_cvs[0], 1, pvfmm::par::Mpi_datatype<size_t>::value(), comm);
 
-    // MPI merge global vgrad_ and vgrad_ind_, determine lambda to send to other processes
+    // MPI merge global vgrad_ and vgrad_ind_,
     sves_cnt.SetZero();
-    for(size_t i=0; i<ghost_ves_vgrad.size();i++)
+    sves_coord_cnt.SetZero();
+    sves_id.clear();
+    rves_id.clear();
+    stride = 2*params_.upsample_freq*(params_.upsample_freq+1);
+    for(size_t i=0; i<ghost_ves_vgrad.size(); i++)
     {
-         
+        sves_cnt[ceil(ghost_ves_vgrad.first/nv)]++; 
+        sves_coord_cnt[ceil(ghost_ves_vgrad.first/nv)] += COORD_DIM*stride;
+        sves_id.push_back(ghost_ves_vgrad.first);
     }
+    MPI_Alltoall(&sves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &rves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    MPI_Alltoall(&sves_coord_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &rves_coord_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    sves_dsp[0] = 0; pvfmm::omp_par::scan(&sves_cnt[0], &sves_dsp[0], sves_cnt.Dim());
+    rves_dsp[0] = 0; pvfmm::omp_par::scan(&rves_cnt[0], &rves_dsp[0], rves_cnt.Dim());
+
+    sves_coord_dsp[0] = 0; pvfmm::omp_par::scan(&sves_coord_cnt[0], &sves_coord_dsp[0], sves_coord_cnt.Dim());
+    rves_coord_dsp[0] = 0; pvfmm::omp_par::scan(&rves_coord_cnt[0], &rves_coord_dsp[0], rves_coord_cnt.Dim());
+
+    send_size_ves = sves_cnt[np-1] + sves_dsp[np-1];
+    recv_size_ves = rves_cnt[np-1] + rves_dsp[np-1];
+    
+    ASSERT(sves_id.size() == send_size_ves, "Bad send ves size");
+    rves_id.resize(recv_size_ves, 0);
+    
+    // send and receive ghost vesicles' global id, local_id = global_id - myrank*nv
+    MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+
+    send_ves_coord_s.ReInit(send_size_ves*COORD_DIM*stride);
+    recv_ves_coord_s.ReInit(recv_size_ves*COORD_DIM*stride);
+
+    // prepare send coord
+    for(size_t i=0; i<ghost_ves_vgrad.size(); i++)
+    {
+        for(size_t j=0; j<stride; j++)
+        {
+            for(size_t k=0; k<COORD_DIM; k++)
+            {
+                send_ves_coord_s[i*stride*COORD_DIM + k*stride + j] = 
+                    ghost_ves_vgrad[i].second->begin()[k*stride + j];
+            }
+        }
+    }
+    // send and receive ghost vesicles' coord
+    MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  comm);    
+    MPI_Alltoallv(&send_ves_coord_e[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  &recv_ves_coord_e[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  comm);
+    // recv_ves_coord contains the vgrad coord, rves_id contains the global vesicle id
+    // add vgrad to local vgrad, do the same for vgra_ind
+
+    // clean memory
+    for(size_t i=0; i<ghost_ves_s.size();i++)
+        delete ghost_ves_s.second;
+    for(size_t i=0; i<ghost_ves_e.size();i++)
+        delete ghost_ves_e.second;
+    for(size_t i=0; i<ghost_ves_vgrad.size();i++)
+        delete ghost_ves_vgrad.second;
+    ghost_ves_s.clear();
+    ghost_ves_e.clear();
+    ghost_ves_vgrad.clear();
 
     return ErrorEvent::Success;
 }
@@ -3628,6 +3778,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const
 {
+    typename std::map<std::pair<size_t, size_t>, value_type>::iterator got_lcp_matrix_ij;
     // form lcp_matrix as in FormLCPMatrixSparse
     typedef std::unordered_map< int, Vec_t* > CVMAP;
     CVMAP cvmap;
@@ -3763,6 +3914,12 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             {
                 // Accumulate LCPMatrix entry j,i, matrix is stored in row order
                 value_type val_tmp = AlgebraicDot(*vel_i_up, *iter_j->second);
+                got_lcp_matrix_ij = lcp_matrix.find(std::pair<size_t, size_t>(iter_j->first, iter_i->first));
+                if(got_lcp_matrix_ij != lcp_matrix.end())
+                    got_lcp_matrix_ij->second += val_tmp;
+                else
+                    lcp_matrix.insert(std::make_pair(std::pair<size_t, size_t>(iter_j->first, iter_i->first), val_tmp));
+
                 //lcp_matrix.begin()[(iter_j->first-1)*num_cvs_ + (iter_i->first-1)] += val_tmp;
             }
         }
@@ -3771,6 +3928,25 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
         delete iter_i->second;
     cvmap.clear();
+    
+    // MPI communication lcp_matrix
+    int myrank, np;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &np);
+
+    pvfmm::Vector<size_t> world_num_cvs;
+    world_num_cvs.ReInit(np);
+    size_t num_cvs_myrank = num_cvs_;
+    MPI_Allgather(&num_cvs_myrank,   1, pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &world_num_cvs[0], 1, pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    // cv_id of current process is (cv_id_offset, cv_id_offset+num_cvs_]
+    for(got_lcp_matrix_ij = lcp_matrix.begin(); got_lcp_matrix_ij != lcp_matrix.end(); got_lcp_matrix_ij++)
+    {
+        if(got_lcp_matrix_ij->first.first)
+        {
+        }
+    }
     
     // release workers
     recycle(f_i);
