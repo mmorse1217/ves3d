@@ -1702,74 +1702,19 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y)
 {
-    /*
     PROFILESTART();
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
-    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
-
-    std::auto_ptr<Vec_t> vox = F->checkoutVec();
-    std::auto_ptr<Sca_t> ten = F->checkoutSca();
-    vox->replicate(F->pos_vel_);
-    ten->replicate(F->tension_);
-
-    COUTDEBUG("Unpacking the input from parallel vector");
-    if (F->params_.pseudospectral){
-        vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-        ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    } else {
-        std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
-        std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
-        std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
-
-        voxSh->replicate(*vox);
-        tSh->replicate(*ten);
-        wrk->replicate(*vox);
-        voxSh->getDevice().Memcpy(voxSh->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-        tSh  ->getDevice().Memcpy(tSh->begin()  , x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-
-        COUTDEBUG("Mapping the input to physical space");
-        F->sht_.backward(*voxSh, *wrk, *vox);
-        F->sht_.backward(*tSh  , *wrk, *ten);
-
-        F->recycle(voxSh);
-        F->recycle(tSh);
-        F->recycle(wrk);
+    size_t sz(F->num_cvs_);
+    Arr_t lambda(sz);
+    if(sz > 0)
+    {
+        lambda.getDevice().Memcpy(lambda.begin(), x, sz*sizeof(value_type), device_type::MemcpyHostToDevice);
+        F->ImplicitLCPMatvec(lambda);
+        lambda.getDevice().Memcpy(y, lambda.begin(), sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
     }
-
-    F->ImplicitMatvecPhysical(*vox, *ten);
-
-    if (F->params_.pseudospectral){
-        COUTDEBUG("Packing the matvec into parallel vector");
-        vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-        ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    } else {  
-        COUTDEBUG("Mapping the matvec to physical space");
-        std::auto_ptr<Vec_t> voxSh = F->checkoutVec();
-        std::auto_ptr<Sca_t> tSh   = F->checkoutSca();
-        std::auto_ptr<Vec_t> wrk   = F->checkoutVec();
-
-        voxSh->replicate(*vox);
-        tSh->replicate(*ten);
-        wrk->replicate(*vox);
-
-        F->sht_.forward(*vox, *wrk, *voxSh);
-        F->sht_.forward(*ten, *wrk, *tSh);
-
-        COUTDEBUG("Packing the matvec into parallel vector");
-        voxSh->getDevice().Memcpy(y    , voxSh->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-        tSh  ->getDevice().Memcpy(y+vsz, tSh->begin()  , tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-
-        F->recycle(voxSh);
-        F->recycle(tSh);
-        F->recycle(wrk);
-    }
-
-    F->recycle(vox);
-    F->recycle(ten);
 
     PROFILEEND("",0);
-    */
     return ErrorEvent::Success;
 }
 
@@ -1777,58 +1722,18 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ImplicitLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
 {
-    /*
     PROFILESTART();
     const InterfacialVelocity *F(NULL);
     ksp->PrecondContext((const void**) &F);
 
-    size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
-
-    std::auto_ptr<Vec_t> vox = F->checkoutVec();
-    std::auto_ptr<Vec_t> vxs = F->checkoutVec();
-    std::auto_ptr<Vec_t> wrk = F->checkoutVec();
-    vox->replicate(F->pos_vel_);
-    vxs->replicate(F->pos_vel_);
-    wrk->replicate(F->pos_vel_);
-
-    std::auto_ptr<Sca_t> ten = F->checkoutSca();
-    std::auto_ptr<Sca_t> tns = F->checkoutSca();
-    ten->replicate(F->tension_);
-    tns->replicate(F->tension_);
-
-    COUTDEBUG("Unpacking the input parallel vector");
-    if (F->params_.pseudospectral){
-        vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-        ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-        F->sht_.forward(*vox, *wrk, *vxs);
-        F->sht_.forward(*ten, *wrk, *tns);
-    } else {
-        vxs->getDevice().Memcpy(vxs->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-        tns->getDevice().Memcpy(tns->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    size_t sz(F->num_cvs_);
+    if(sz > 0)
+    {
+        COUTDEBUG("Applying diagonal preconditioner");
+        Arr_t::getDevice().Memcpy(y, x, sz*sizeof(value_type), device_type::MemcpyHostToHost);
     }
-
-    COUTDEBUG("Applying diagonal preconditioner");
-    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
-    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
-
-    if (F->params_.pseudospectral){
-        F->sht_.backward(*vxs, *wrk, *vox);
-        F->sht_.backward(*tns, *wrk, *ten);
-        vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-        ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    } else {
-        vxs->getDevice().Memcpy(y    , vxs->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-        tns->getDevice().Memcpy(y+vsz, tns->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    }
-
-    F->recycle(vox);
-    F->recycle(vxs);
-    F->recycle(wrk);
-    F->recycle(ten);
-    F->recycle(tns);
 
     PROFILEEND("",0);
-    */
     return ErrorEvent::Success;
 }
 
@@ -3523,8 +3428,8 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     {
         if( BBIPairs[i].second < nv*myrank || BBIPairs[i].second >= nv*(myrank+1) )
         {
-            sves_cnt[ceil(BBIPairs[i].second/nv)]++;
-            sves_coord_cnt[ceil(BBIPairs[i].second/nv)] += COORD_DIM*stride;
+            sves_cnt[floor(BBIPairs[i].second/nv)]++;
+            sves_coord_cnt[floor(BBIPairs[i].second/nv)] += COORD_DIM*stride;
             // TODO: remove duplicate vesicle sending to same process
             sves_id.push_back(BBIPairs[i].first);
         }
@@ -3709,8 +3614,8 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     stride = 2*params_.upsample_freq*(params_.upsample_freq+1);
     for(size_t i=0; i<ghost_ves_vgrad.size(); i++)
     {
-        sves_cnt[ceil(ghost_ves_vgrad.first/nv)]++; 
-        sves_coord_cnt[ceil(ghost_ves_vgrad.first/nv)] += COORD_DIM*stride;
+        sves_cnt[floor(ghost_ves_vgrad.first/nv)]++; 
+        sves_coord_cnt[floor(ghost_ves_vgrad.first/nv)] += COORD_DIM*stride;
         sves_id.push_back(ghost_ves_vgrad.first);
     }
     MPI_Alltoall(&sves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
@@ -3934,19 +3839,47 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &np);
-
-    pvfmm::Vector<size_t> world_num_cvs;
-    world_num_cvs.ReInit(np);
+    
+    // number of cvs of all processes
+    pvfmm::Vector<size_t> world_num_cvs(np);
     size_t num_cvs_myrank = num_cvs_;
     MPI_Allgather(&num_cvs_myrank,   1, pvfmm::par::Mpi_datatype<size_t>::value(),
                   &world_num_cvs[0], 1, pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+
+    pvfmm::Vector<size_t> cvid_dsp(np);
+    cvid_dsp[0]=0; pvfmm::omp_par::scan(&world_num_cvs[0], &cvid_dsp[0], world_num_cvs.Dim());
     // cv_id of current process is (cv_id_offset, cv_id_offset+num_cvs_]
+
+    pvfmm::Vector<int> s_value_cnt(np);
+    pvfmm::Vector<int> s_value_dsp(np);
+    pvfmm::Vector<int> r_value_cnt(np);
+    pvfmm::Vector<int> r_value_dsp(np);
+    std::vector<value_type> s_value;
+    
+    pvfmm::Vector<int> s_ind_cnt(np);
+    pvfmm::Vector<int> s_ind_dsp(np);
+    pvfmm::Vector<int> r_ind_cnt(np);
+    pvfmm::Vector<int> r_ind_dsp(np);
+    std::vector<size_t> s_ind;
+
+    // lcp_matrix should be sorted by got_lcp_matrix_ij->first.first
     for(got_lcp_matrix_ij = lcp_matrix.begin(); got_lcp_matrix_ij != lcp_matrix.end(); got_lcp_matrix_ij++)
     {
-        if(got_lcp_matrix_ij->first.first)
+        size_t ind_i = got_lcp_matrix_ij->first.first;
+        size_t ind_j = got_lcp_matrix_ij->first.second;
+        value_type value = got_lcp_matrix_ij->second;
+        int pid = std::lower_bound(&cvid_dsp[0], &cvid_dsp[0]+np, ind_i) - &cvid_dsp[0] - 1;
+        if(pid!=myrank && ind_i>cvid_dsp[pid] && ind_i<=(cvid_dsp[pid]+world_num_cvs[pid]))
         {
+            s_value.push_back(value);
+            s_ind.push_back(ind_i); s_ind.push_back(ind_j);
+            
+            s_value_cnt[pid]++;
+            s_ind_cnt[pid] += 2;
         }
     }
+    // send and receive
+    // end of MPI communication lcp_matrix
     
     // release workers
     recycle(f_i);
@@ -3965,7 +3898,164 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
 {
-    // parallel matvec on lcp_matrix(i ,j), need send receive lambda
+    /*
+     * lcp_flag = 1, preprocessing
+     * lcp_flag = 2, iterating
+     * lcp_flag = 3, relative error termination
+     * lcp_flag = 4, absolute error termination
+     * lcp_flag = 5, stagnation
+     * lcp_flag = 6, local minima
+     * lcp_flag = 7, nondescent
+     * lcp_flag = 8, maxlimit iters
+     */
+
+    int lcp_flag = 1;
+    
+    int lcp_n = num_cvs_;
+    int lcp_max_iter = 100;
+
+    // lcp parameters
+    value_type lcp_eps = 1e-16;
+    value_type lcp_h = 1e-7;
+    value_type lcp_alpha = 0.5;
+    value_type lcp_beta = 0.001;
+    value_type lcp_gamma = 1e-28;
+    value_type lcp_rho = lcp_eps;
+
+    // setup
+    std::vector<value_type> lcp_convergence(lcp_max_iter, 0.0);
+    value_type lcp_err = 1e+16;
+    int lcp_iter = 0;
+
+    // arrs for calculation
+    Arr_t lambda_mat_vec(lcp_n);
+    Arr_t dlambda(lcp_n);
+    Arr_t lcp_y(lcp_n);
+    Arr_t lcp_phi(lcp_n);
+
+    // init variables
+    Arr_t::Memset(lambda.begin(), 0, sizeof(value_type)*lambda.size());
+    Arr_t::Memset(lambda_mat_vec.begin(), 0, sizeof(value_type)*lambda_mat_vec.size());
+    Arr_t::Memset(dlambda.begin(), 0, sizeof(value_type)*dlambda.size());
+    Arr_t::Memset(lcp_y.begin(), 0, sizeof(value_type)*lcp_y.size());
+    Arr_t::Memset(lcp_phi.begin(), 0, sizeof(value_type)*lcp_phi.size());
+    
+    // allocate memory for solving Newton's system
+    size_t lsz(num_cvs_);
+    value_type x_host[lsz], rhs_host[lsz];
+    
+    int iter(params_.time_iter_max);
+    value_type relres(params_.time_tol);
+    
+    value_type lcp_old_err;
+    lcp_flag = 2;
+    PA_.clear();
+    PA_.resize(num_cvs_, 1);
+    while(lcp_iter < lcp_max_iter)
+    {
+        Arr_t::getDevice().Memcpy(lambda_mat_vec.begin(), lambda.begin(), 
+                lsz*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
+        ImplicitLCPMatvec(lambda_mat_vec);
+        
+        Arr_t::getDevice().axpy(static_cast<value_type>(1.0), lambda_mat_vec.begin(), cvs.begin(), 
+                num_cvs_, lcp_y.begin());
+        
+        minmap(lcp_y, lambda, lcp_phi);
+        
+        lcp_old_err = lcp_err;
+        lcp_err = 0.5 * Arr_t::getDevice().AlgebraicDot(lcp_phi.begin(), lcp_phi.begin(), lcp_phi.size());
+
+        INFO("lcp small Newtown iter: "<<lcp_iter<<". -- err: "<<lcp_err<<" -- relative err: "
+                <<fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) );
+
+        INFO("lambda small: "<<lambda);
+
+        // relative stopping criteria
+        if(fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) < 1e-6)
+        {
+            lcp_flag = 3;
+            break;
+        }
+        
+        // absolute stopping criteria
+        if(lcp_err < 1e-21)
+        {
+            lcp_flag =4;
+            break;
+        }
+
+        // solve the Newton system to get descent direction
+        // copy device type to value_type array to call GMRES
+        Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), static_cast<value_type*>(NULL), 
+                dlambda.size(), dlambda.begin());
+        Arr_t::getDevice().axpy(static_cast<value_type>(-1.0), lcp_phi.begin(), static_cast<value_type*>(NULL), 
+                lcp_phi.size(), lcp_phi.begin());
+
+        // copy to unknown solution
+        dlambda.getDevice().Memcpy(x_host, dlambda.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    
+        // copy to rhs
+        lcp_phi.getDevice().Memcpy(rhs_host, lcp_phi.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+
+        // solve the linear system using gmres
+        INFO("Begin of SolvelcpSmall Newton system.");
+        INFO("rhs: "<<lcp_phi);
+        int solver_ret = linear_solver_gmres_(LCPApply, LCPPrecond, x_host, rhs_host, 
+            relres, 0, lsz, iter, 300);
+
+        CHK(ConfigureLCPSolver());
+        // assemble initial and rhs
+        typename PVec_t::iterator pvec_i(NULL);
+        typename PVec_t::size_type p_sz;
+        
+        CHK(parallel_u_->GetArray(pvec_i, p_sz));
+        Arr_t::getDevice().Memcpy(pvec_i, dlambda.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
+        CHK(parallel_rhs_->GetArray(pvec_i, p_sz));
+        Arr_t::getDevice().Memcpy(pvec_i, lcp_phi.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
+        
+        Error_t err_lcp = parallel_solver_->Solve(parallel_rhs_, parallel_u_);
+        
+        // copy back lambda
+        CHK(parallel_u_->GetArray(pvec_i, p_sz));
+        Arr_t::getDevice().Memcpy(dlambda.begin(), pvec_i, p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
+        
+        parallel_solver_->ViewReport();
+        INFO("End of SolvelcpSmall Newton system.");
+
+        // copy host to device
+        dlambda.getDevice().Memcpy(dlambda.begin(), x_host, lsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+
+        // TODO: the gradient of meric function \nabla\theta is lcp_phi^T*lcp_matrix, 
+        // which we can't get with matrix free version lcp solver, either form lcp matrix
+        // explicitly or do some approximate \nabla\theta calculation.
+        // So lcp_flag 6,7 is not tested, and we use Newton's method withou line search for now.
+        // (Line search requires \nabla\theta)
+
+        value_type dlambda_norm = Arr_t::getDevice().AlgebraicDot(dlambda.begin(), dlambda.begin(), dlambda.size());
+        if(dlambda_norm < lcp_eps)
+        {
+            lcp_flag = 5;
+            break;
+            // could use dlambda = -nabla_theta
+        }
+        
+        // TODO: test for whether dropped into a local minima flag 6
+        // TODO: test for sufficient descent direction flag 7
+
+        // update solution with direction calculated
+        // TODO: do line search with \nabla\theta for acceptable lcp_tau
+        value_type lcp_tau = 1.0;
+
+        Arr_t::getDevice().axpy(lcp_tau, dlambda.begin(), lambda.begin(), 
+                dlambda.size(), lambda.begin());
+        
+        //bool lambdaupdated = false;
+        //check_lambda();
+        // if lambdaupdated == true, solve for du and dtension of new lambda
+        // end of update solution
+    }
+
     return ErrorEvent::Success;
 }
 
@@ -3981,22 +4071,20 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ConfigureLCPSolver() const
 {
-    /*
     PROFILESTART();
-    ASSERT(scheme==GloballyImplicit, "Unsupported scheme");
-    COUTDEBUG("Configuring the parallel solver");
+    COUTDEBUG("Configuring the parallel LCP linear system solver");
 
     typedef typename PSolver_t::matvec_type POp;
     typedef typename PSolver_t::vec_type PVec;
     typedef typename PVec::size_type size_type;
 
     // Setting up the operator
-    size_type sz(stokesBlockSize() + tensionBlockSize());
+    size_type sz(num_cvs_);
     CHK(parallel_solver_->LinOpFactory(&parallel_matvec_));
     CHK(parallel_matvec_->SetSizes(sz,sz));
-    CHK(parallel_matvec_->SetName("Vesicle interaction"));
+    CHK(parallel_matvec_->SetName("LCP matrix"));
     CHK(parallel_matvec_->SetContext(static_cast<const void*>(this)));
-    CHK(parallel_matvec_->SetApply(ImplicitApply));
+    CHK(parallel_matvec_->SetApply(ImplicitLCPApply));
     CHK(parallel_matvec_->Configure());
 
     // setting up the rhs
@@ -4010,23 +4098,24 @@ ConfigureLCPSolver() const
 
     // setting up the solver
     CHK(parallel_solver_->SetOperator(parallel_matvec_));
-    CHK(parallel_solver_->SetTolerances(params_.time_tol,
+    CHK(parallel_solver_->SetTolerances(params_.time_tol*1e-2,
             PSolver_t::PLS_DEFAULT,
             PSolver_t::PLS_DEFAULT,
             params_.time_iter_max));
 
     CHK(parallel_solver_->Configure());
 
+    /*
     // setting up the preconditioner
     if (params_.time_precond != NoPrecond){
         ASSERT(precond_configured_, "The preconditioner isn't configured yet");
         CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
         CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
     }
+    */
     psolver_configured_ = true;
 
     PROFILEEND("",0);
-    */
     return ErrorEvent::Success;
 }
 
@@ -4034,62 +4123,10 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ImplicitLCPMatvec(Arr_t &lambda) const
 {
-    /*
+    // parallel matvec on lcp_matrix(i ,j), need send receive lambda
     PROFILESTART();
 
-    std::auto_ptr<Vec_t> f   = checkoutVec();
-    std::auto_ptr<Vec_t> Sf  = checkoutVec();
-    std::auto_ptr<Vec_t> Du  = checkoutVec();
-    f->replicate(vox);
-    Sf->replicate(vox);
-    Du->replicate(vox);
-
-    COUTDEBUG("Computing the interfacial forces and setting single-layer density");
-    if (params_.solve_for_velocity){
-        // Bending of dt*u + tension of sigma
-        axpy(dt_, vox, *Du);
-        Intfcl_force_.implicitTractionJump(S_, *Du, ten, *f);
-    } else {
-        // dt*(Bending of x + tension of sigma)
-        Intfcl_force_.implicitTractionJump(S_, vox, ten, *f);
-        axpy(dt_, *f, *f);
-    }
-    stokes_.SetDensitySL(f.get());
-
-    if( ves_props_.has_contrast ){
-        COUTDEBUG("Setting the double-layer density");
-        av(ves_props_.dl_coeff, vox, *Du);
-        stokes_.SetDensityDL(Du.get());
-    } else {
-        stokes_.SetDensityDL(NULL);
-    }
-
-    COUTDEBUG("Calling stokes");
-    stokes_(*Sf);
-
-    COUTDEBUG("Computing the div term");
-    //! @note For some reason, doing the linear algebraic manipulation
-    //! and writing the constraint as -\div{S[f_b+f_s]} = \div{u_inf
-    //! almost halves the number of gmres iterations. Also having the
-    //! minus sign in the matvec is tangibly better (1-2
-    //! iterations). Need to investigate why.
-    S_.div(*Sf, ten);
-    axpy((value_type) -1.0, ten, ten);
-
-    if( ves_props_.has_contrast )
-        av(ves_props_.vel_coeff, vox, vox);
-
-    axpy((value_type) -1.0, *Sf, vox, vox);
-
-    ASSERT(vox.getDevice().isNumeric(vox.begin(), vox.size()), "Non-numeric velocity");
-    ASSERT(ten.getDevice().isNumeric(ten.begin(), ten.size()), "Non-numeric divergence");
-
-    recycle(f);
-    recycle(Sf);
-    recycle(Du);
-
     PROFILEEND("",0);
-    */
     return ErrorEvent::Success;
 }
 
