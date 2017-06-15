@@ -223,7 +223,6 @@ template<typename Real_t>
 void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
 {
     pvfmm::Profile::Tic("LocalTree",&comm,true);
-    //PVFMMVec_t           & pt_coord=BB_let.pt_coord;
     PVFMMVec_t           & box_min =BB_let.box_min;
     PVFMMVec_t           & box_max =BB_let.box_max;
     pvfmm::Vector<size_t>& pt_id   =BB_let.pt_id   ;
@@ -763,8 +762,7 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let,
 */
 
 template<typename Real_t>
-void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, 
-        pvfmm::Vector<size_t> &near_trg_box_id, pvfmm::Vector<size_t> &near_src_box_id)
+void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::pair<size_t, size_t> > &BBIPairs)
 {
     pvfmm::Profile::Tic("NearPair",&comm,true);
     PVFMMVec_t &box_min = BB_let.box_min;
@@ -838,6 +836,8 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let,
         near_size   +=near_pair_omp[tid  ].size();
     }
 
+    pvfmm::Vector<size_t> near_trg_box_id;
+    pvfmm::Vector<size_t> near_src_box_id;
     near_trg_box_id.ReInit(near_size);
     near_src_box_id.ReInit(near_size);
 
@@ -864,6 +864,16 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let,
     pvfmm::par::SortScatterIndex(near_src_box_id, scatter_idx, comm, &box_id_offset);
     pvfmm::par::ScatterForward(near_src_box_id, scatter_idx, comm);
     pvfmm::par::ScatterForward(near_trg_box_id, scatter_idx, comm);
+
+    // construct unique pairs
+    BBIPairs.resize(near_size);
+    #pragma omp parallel for
+    for(size_t i=0; i<near_size;i++){
+        BBIPairs[i].first = near_src_box_id[i];
+        BBIPairs[i].second = near_trg_box_id[i];
+    }
+    std::sort(BBIPairs.begin(), BBIPairs.end());
+    BBIPairs.erase(std::unique(BBIPairs.begin(), BBIPairs.end()), BBIPairs.end());
 
     pvfmm::Profile::Toc();
 }

@@ -17,7 +17,6 @@ class VesBoundingBox{
             pvfmm::Vector<size_t> pt_dsp;         // point displ
             pvfmm::Vector<pvfmm::MortonId> mins;  // first non-ghost node
 
-            //PVFMMVec_t pt_coord;                  // all point coordinates, centers of bbox
             pvfmm::Vector<size_t> pt_id;          // scatter id of points(centers of bbox), same as box_id
             pvfmm::Vector<size_t> box_id;         // box id for each point
             PVFMMVec_t box_min;                   // mins
@@ -49,7 +48,7 @@ class VesBoundingBox{
         void AddGhostNodes(TREEGRID &BB_let);
 
         // use the constructed grid to find pairs(box_id_i, box_id_j) of intersecting bounding boxes
-        void FindNearPair(TREEGRID &BB_let, pvfmm::Vector<size_t> &near_trg_box_id, pvfmm::Vector<size_t> &near_src_box_id);
+        void FindNearPair(TREEGRID &BB_let, std::vector< std::pair<size_t, size_t> > &BBIPairs);
 
         // find the global bounding box of all the bounding boxes; find the shift and scale so that each point can be
         // transferred to a unit box
