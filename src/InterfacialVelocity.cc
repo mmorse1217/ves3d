@@ -3834,6 +3834,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         delete iter_i->second;
     cvmap.clear();
     
+    // send and receive lcp_matrix(i, j) so that local lcp_matrix contains row block
     // MPI communication lcp_matrix
     int myrank, np;
     MPI_Comm comm = MPI_COMM_WORLD;
@@ -3855,12 +3856,14 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     pvfmm::Vector<int> r_value_cnt(np);
     pvfmm::Vector<int> r_value_dsp(np);
     std::vector<value_type> s_value;
+    std::vector<value_type> r_value;
     
     pvfmm::Vector<int> s_ind_cnt(np);
     pvfmm::Vector<int> s_ind_dsp(np);
     pvfmm::Vector<int> r_ind_cnt(np);
     pvfmm::Vector<int> r_ind_dsp(np);
     std::vector<size_t> s_ind;
+    std::vector<size_t> r_ind;
 
     // lcp_matrix should be sorted by got_lcp_matrix_ij->first.first
     for(got_lcp_matrix_ij = lcp_matrix.begin(); got_lcp_matrix_ij != lcp_matrix.end(); got_lcp_matrix_ij++)
@@ -3879,6 +3882,38 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         }
     }
     // send and receive
+    MPI_Alltoall(&s_value_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &r_value_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+    MPI_Alltoall(&s_ind_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &r_ind_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    s_value_dsp[0]=0; pvfmm::omp_par::scan(&s_value_cnt[0], &s_value_dsp[0], s_value_cnt.Dim());
+    r_value_dsp[0]=0; pvfmm::omp_par::scan(&r_value_cnt[0], &r_value_dsp[0], r_value_cnt.Dim());
+    s_ind_dsp[0]=0; pvfmm::omp_par::scan(&s_ind_cnt[0], &s_ind_dsp[0], s_ind_cnt.Dim());
+    r_ind_dsp[0]=0; pvfmm::omp_par::scan(&r_ind_cnt[0], &r_ind_dsp[0], r_ind_cnt.Dim());
+
+    size_t recv_size = r_value_cnt[np-1] + r_value_dsp[np-1];
+    r_value.resize(recv_size, 0);
+    r_ind.resize(2*recv_size, 0);
+
+    MPI_Alltoallv(&s_value[0], &s_value_cnt[0], &s_value_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &r_value[0], &r_value_cnt[0], &r_value_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    MPI_Alltoallv(&s_ind[0], &s_ind_cnt[0], &s_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
+                  &r_ind[0], &r_ind_cnt[0], &r_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    
+    // add received data to local lcp_matrix
+    for(size_t i=0; i<r_value.size();i++)
+    {
+        got_lcp_matrix_ij = lcp_matrix.find(std::pair<size_t, size_t>(r_ind[2*i], r_ind[2*i+1]));
+        if(got_lcp_matrix_ij != lcp_matrix.end())
+            got_lcp_matrix_ij->second += r_value[i];
+        else
+            lcp_matrix.insert(std::make_pair(std::pair<size_t, size_t>(r_ind[2*i], r_ind[2*i+1]), r_value[i]));
+    }
+    
+    // sort lcp_matrix and delete all enties sent out
+    for(size_t i=0; i<s_value.size();i++)
+        lcp_matrix.erase(std::make_pair(s_ind[2*i],s_ind[2*i+1]));
     // end of MPI communication lcp_matrix
     
     // release workers
@@ -3890,7 +3925,6 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     recycle(wrk2);
     recycle(ten_i);
  
-    // send and receive lcp_matrix(i, j) so that local lcp_matrix contains row block
     return ErrorEvent::Success;
 }
 
@@ -4125,6 +4159,25 @@ ImplicitLCPMatvec(Arr_t &lambda) const
 {
     // parallel matvec on lcp_matrix(i ,j), need send receive lambda
     PROFILESTART();
+    if(num_cvs_>0)
+    {
+        Arr_t matvec(num_cvs_);
+        value_type *lambda_i = lambda.begin();
+        value_type *matvec_i = matvec.begin();
+
+        typename std::map<std::pair<size_t, size_t>, value_type>::iterator iter_i;
+        for(iter_i = parallel_lcp_matrix_.begin(); iter_i != parallel_lcp_matrix_.end(); iter_i++)
+        {
+            size_t ind_i = iter_i->first.first;
+            size_t ind_j = iter_i->first.second;
+            value_type val_tmp = iter_i->second;
+
+            matvec_i[ind_i] += val_tmp*lambda_i[ind_j];
+        }
+
+        lambda.getDevice().Memcpy(lambda.begin(), matvec.begin(), 
+                lambda.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+    }
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
