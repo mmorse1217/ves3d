@@ -104,6 +104,7 @@ class InterfacialVelocity
     Error_t FormLCPMatrixSparse(Arr_t &lcp_matrix) const;
     Error_t GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const;
     Error_t GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<value_type> &pos_pole) const;
+    Error_t UpdateVgradInd(int *ind1, int *ind2, int base, size_t length) const;
     Error_t ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const;
     Error_t ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const;
     Error_t ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const;

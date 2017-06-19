@@ -2407,15 +2407,15 @@ CVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
     std::vector<value_type> lambda_mat_vec_host(lambda_mat_vec.size(), 0.0);
 
     size_t ncount = vgrad_.size();
-//#pragma omp parallel for
+    //#pragma omp parallel for
     for (size_t icount = 0; icount < ncount; icount++)
     {
         if(vgrad_ind_[icount] > 0)
         {
             lambda_mat_vec_host[ vgrad_ind_[icount] - 1 ] += x_vgrad_host[icount];
-//#pragma omp atomic
-//            {
-//            }
+            //#pragma omp atomic
+            //{
+            //}
         }
     }
 
@@ -2453,7 +2453,7 @@ CVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
             lambda.getDevice().MemcpyDeviceToHost);
 
     size_t ncount = vgrad_.size();
-#pragma omp parallel for
+    #pragma omp parallel for
     for (size_t icount = 0; icount < ncount; icount++)
     {
         if(vgrad_ind_[icount] > 0)
@@ -2510,7 +2510,7 @@ LCPSelect(const Arr_t &lambda, Arr_t &lambda_mat_vec) const
             lambda_mat_vec.getDevice().MemcpyDeviceToHost);
 
     size_t ncount = lambda.size();
-//#pragma omp parallel for
+    //#pragma omp parallel for
     for (size_t icount = 0; icount < ncount; icount++)
     {
         if(PA_[icount] == 0)
@@ -2875,7 +2875,7 @@ minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const
     
     size_t length = xin1.size();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (size_t idx = 0; idx < length; idx++)
     {
         xoi[idx] = (x1i[idx] < x2i[idx]) ? x1i[idx] : x2i[idx];
@@ -2993,7 +2993,7 @@ sca_abs(Sca_t &xin) const
     
     size_t length = xin.size();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (size_t idx = 0; idx < length; idx++)
     {
         xoi[idx] = (xoi[idx] > 0) ? xoi[idx] : -xoi[idx];
@@ -3371,7 +3371,6 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<value_type> &pos_pole) const
 {
- 
     // get poles
     const pvfmm::Vector<value_type> pos_pvfmm(xin.size(), (value_type*)xin.begin(), false); 
     static pvfmm::Vector<value_type> pos_coef;
@@ -3396,6 +3395,20 @@ GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<valu
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
+UpdateVgradInd(int *ind1, int *ind2, int base, size_t length) const
+{
+    #pragma omp parallel for
+    for(size_t i=0; i<length; i++)
+    {
+        if(ind2[i]>0)
+            ind1[i] = ind2[i] + base;
+    }
+   
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 {
     // call VesBoundingBox get index pair
@@ -3411,6 +3424,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     MPI_Comm_size(comm, &np);
     size_t nv = X_s.getNumSubs();     // number of vesicles per process
     size_t stride = X_s.getStride();    // number of points per vesicle
+    size_t stride_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
 
     pvfmm::Vector<int> sves_cnt(np);
     pvfmm::Vector<int> sves_dsp(np);
@@ -3426,15 +3440,21 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 
     sves_cnt.SetZero();
     sves_coord_cnt.SetZero();
+    std::vector< std::pair<size_t, size_t> > pid_vid;
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         if( BBIPairs[i].second < nv*myrank || BBIPairs[i].second >= nv*(myrank+1) )
         {
-            sves_cnt[floor(BBIPairs[i].second/nv)]++;
-            sves_coord_cnt[floor(BBIPairs[i].second/nv)] += COORD_DIM*stride;
-            // TODO: remove duplicate vesicle sending to same process
-            sves_id.push_back(BBIPairs[i].first);
+            pid_vid.push_back(std::make_pair(floor(BBIPairs[i].second/nv), BBIPairs[i].first));
         }
+    }
+    std::sort(pid_vid.begin(), pid_vid.end());
+    pid_vid.erase(std::unique(pid_vid.begin(),pid_vid.end()), pid_vid.end());
+    for(size_t i=0; i<pid_vid.size(); i++)
+    {
+        sves_cnt[pid_vid[i].first]++;
+        sves_coord_cnt[pid_vid[i].first] += COORD_DIM*stride;
+        sves_id.push_back(pid_vid[i].second);
     }
 
     MPI_Alltoall(&sves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
@@ -3498,7 +3518,6 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     typename GVMAP::const_iterator iter_i, iter_j;
 
     GVMAP ghost_ves_s, ghost_ves_e;
-    GVMAP ghost_ves_vgrad;
     
     for(size_t i = 0; i<rves_id.size(); i++)
     {
@@ -3514,19 +3533,21 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                     ghost_ves_e[rves_id[i]]->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
             ghost_vgrad_.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.upsample_freq) ) );
+            ghost_vgrad_ind_.insert( std::make_pair< int, std::vector<int>* >( rves_id[i], new std::vector<int>(stride_up*COORD_DIM, 0) ) );
         }
     }
 
     // loop all index pair to call CI_pair_, merge local vgrad_ and vgrad_ind_,
-    static std::vector<value_type> x_s(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
-    static std::vector<value_type> x_e(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    static std::vector<value_type> x_s(stride_up*COORD_DIM*2, 0.0);
+    static std::vector<value_type> x_e(stride_up*COORD_DIM*2, 0.0);
     static pvfmm::Vector<value_type> x_s_pole, x_e_pole;
     static Vec_t x_pair(2, params_.sh_order);
-    static std::vector<value_type> vgrad_pair(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
-    static std::vector<int> vgrad_pair_ind(2*params_.upsample_freq*(params_.upsample_freq+1)*COORD_DIM*2, 0.0);
+    static std::vector<value_type> vgrad_pair(stride_up*COORD_DIM*2, 0.0);
+    static std::vector<int> vgrad_pair_ind(stride_up*COORD_DIM*2, 0.0);
     
     num_cvs_ = 0;
     IV_.clear();
+    Vec_t vgrad1(1, params_.upsample_freq), vgrad2(1, params_.upsample_freq);
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         if( BBIPairs[i].second < nv*myrank || BBIPairs[i].second >= nv*(myrank+1) )
@@ -3556,12 +3577,33 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             params_.min_sep_dist, params_.periodic_length);
 
             // updates
-            num_cvs_ += num_cvs;
-            IV_.insert(IV_.end(), IV.begin(), IV.end());
-            //vgrad
-            //vgrad_ind
-            //ghost vgrad
-            //ghost vgrad_ind
+            if(num_cvs > 0)
+            {
+                num_cvs_ += num_cvs;
+                IV_.insert(IV_.end(), IV.begin(), IV.end());
+
+                // first vesicle
+                vgrad1.getDevice().Memcpy(vgrad1.begin(), &vgrad_pair[0], 
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyHostToDevice);
+                vgrad2.getDevice().Memcpy(vgrad2.begin(), &vgrad_.begin()[local_i*vgrad2.size()],
+                        vgrad2.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                axpy(static_cast<value_type>(1.0), vgrad1, vgrad2, vgrad1);
+
+                vgrad1.getDevice().Memcpy(&vgrad_.begin()[local_i*vgrad1.size()], vgrad1.begin(),
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                UpdateVgradInd(&vgrad_ind_[local_i*vgrad1.size()], &vgrad_pair_ind[0], num_cvs_, vgrad1.size());
+
+                // second vesicle
+                vgrad1.getDevice().Memcpy(vgrad1.begin(), &vgrad_pair[vgrad1.size()], 
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyHostToDevice);
+                vgrad2.getDevice().Memcpy(vgrad2.begin(), ghost_vgrad_[BBIPairs[i].second]->begin(),
+                        vgrad2.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                axpy(static_cast<value_type>(1.0), vgrad1, vgrad2, vgrad1);
+
+                vgrad1.getDevice().Memcpy(ghost_vgrad_[BBIPairs[i].second]->begin(), vgrad1.begin(),
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                UpdateVgradInd(&(*ghost_vgrad_ind_[BBIPairs[i].second])[0], &vgrad_pair_ind[vgrad1.size()], num_cvs_, vgrad1.size());
+            }
         }
         else
         {
@@ -3594,29 +3636,63 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             params_.min_sep_dist, params_.periodic_length);
 
             // updates
-            num_cvs_ += num_cvs;
-            IV_.insert(IV_.end(), IV.begin(), IV.end());
-            //vgrad
-            //vgrad_ind
+            if(num_cvs > 0)
+            {
+                num_cvs_ += num_cvs;
+                IV_.insert(IV_.end(), IV.begin(), IV.end());
+                
+                // first vesicle
+                local_i = BBIPairs[i].first - myrank*nv;
+                vgrad1.getDevice().Memcpy(vgrad1.begin(), &vgrad_pair[0], 
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyHostToDevice);
+                vgrad2.getDevice().Memcpy(vgrad2.begin(), &vgrad_.begin()[local_i*vgrad2.size()],
+                        vgrad2.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                axpy(static_cast<value_type>(1.0), vgrad1, vgrad2, vgrad1);
+
+                vgrad1.getDevice().Memcpy(&vgrad_.begin()[local_i*vgrad1.size()], vgrad1.begin(),
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                UpdateVgradInd(&vgrad_ind_[local_i*vgrad1.size()], &vgrad_pair_ind[0], num_cvs_, vgrad1.size());
+
+                // second vesicle
+                local_i = BBIPairs[i].second - myrank*nv;
+                vgrad1.getDevice().Memcpy(vgrad1.begin(), &vgrad_pair[vgrad1.size()], 
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyHostToDevice);
+                vgrad2.getDevice().Memcpy(vgrad2.begin(), &vgrad_.begin()[local_i*vgrad2.size()],
+                        vgrad2.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                axpy(static_cast<value_type>(1.0), vgrad1, vgrad2, vgrad1);
+
+                vgrad1.getDevice().Memcpy(&vgrad_.begin()[local_i*vgrad1.size()], vgrad1.begin(),
+                        vgrad1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                UpdateVgradInd(&vgrad_ind_[local_i*vgrad1.size()], &vgrad_pair_ind[vgrad1.size()], num_cvs_, vgrad1.size());
+            }
         }
     }
     // update vgrad_ind to global vgrad_ind
-    pvfmm::Vector<size_t> world_num_cvs;
-    world_num_cvs.ReInit(np);
-    size_t num_cvs_myrank = num_cvs_;
-    MPI_Allgather(&num_cvs_myrank,   1, pvfmm::par::Mpi_datatype<size_t>::value(),
-                  &world_num_cvs[0], 1, pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    int cv_id_disp;
+    int num_cvs_myrank = num_cvs_;
+    MPI_Scan(&num_cvs_myrank, &cv_id_disp, 1, MPI_INT, MPI_SUM, comm);
+    cv_id_disp = cv_id_disp - num_cvs_myrank;
+    if(num_cvs_myrank > 0)
+    {
+        // update vgrad_ind_
+        UpdateVgradInd(&vgrad_ind_[0], &vgrad_ind_[0], cv_id_disp, vgrad_ind_.size());
+        // update ghost_vgrad_ind_
+        for(std::map<int, std::vector<int>*>::iterator i=ghost_vgrad_ind_.begin(); i!=ghost_vgrad_ind_.end(); i++)
+        {
+            UpdateVgradInd(&(*i->second)[0], &(*i->second)[0], cv_id_disp, i->second->size());
+        }
+    }
 
     // MPI merge global vgrad_ and vgrad_ind_,
     sves_cnt.SetZero();
     sves_coord_cnt.SetZero();
     sves_id.clear();
     rves_id.clear();
-    stride = 2*params_.upsample_freq*(params_.upsample_freq+1);
+    // TODO don't send zero ghost vgrad
     for(iter_i=ghost_vgrad_.begin(); iter_i!=ghost_vgrad_.end(); iter_i++)
     {
         sves_cnt[floor(iter_i->first/nv)]++; 
-        sves_coord_cnt[floor(iter_i->first/nv)] += COORD_DIM*stride;
+        sves_coord_cnt[floor(iter_i->first/nv)] += COORD_DIM*stride_up;
         sves_id.push_back(iter_i->first);
     }
     MPI_Alltoall(&sves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
@@ -3641,23 +3717,23 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
 
-    send_ves_coord_s.ReInit(send_size_ves*COORD_DIM*stride);
-    recv_ves_coord_s.ReInit(recv_size_ves*COORD_DIM*stride);
+    send_ves_coord_s.ReInit(send_size_ves*COORD_DIM*stride_up);
+    recv_ves_coord_s.ReInit(recv_size_ves*COORD_DIM*stride_up);
 
     pvfmm::Vector<int> send_ves_ind, recv_ves_ind;
-    send_ves_ind.ReInit(send_size_ves*COORD_DIM*stride);
-    recv_ves_ind.ReInit(recv_size_ves*COORD_DIM*stride);
+    send_ves_ind.ReInit(send_size_ves*COORD_DIM*stride_up);
+    recv_ves_ind.ReInit(recv_size_ves*COORD_DIM*stride_up);
     // prepare send coord
     for(size_t i=0; i<ghost_vgrad_.size(); i++)
     {
-        for(size_t j=0; j<stride; j++)
+        for(size_t j=0; j<stride_up; j++)
         {
             for(size_t k=0; k<COORD_DIM; k++)
             {
-                send_ves_coord_s[i*stride*COORD_DIM + k*stride + j] = 
-                    ghost_vgrad_[i]->begin()[k*stride + j];
-                send_ves_ind[i*stride*COORD_DIM + k*stride + j] = 
-                    (*ghost_vgrad_ind_[i])[k*stride + j];
+                send_ves_coord_s[i*stride_up*COORD_DIM + k*stride_up + j] = 
+                    ghost_vgrad_[i]->begin()[k*stride_up + j];
+                send_ves_ind[i*stride_up*COORD_DIM + k*stride_up + j] = 
+                    (*ghost_vgrad_ind_[i])[k*stride_up + j];
             }
         }
     }
@@ -3665,25 +3741,33 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
                   comm);    
-    MPI_Alltoallv(&send_ves_coord_e[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
-                  &recv_ves_coord_e[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
-                  comm);
     MPI_Alltoallv(&send_ves_ind[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(),
                   &recv_ves_ind[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(), 
                   comm);
     // recv_ves_coord contains the vgrad coord, rves_id contains the global vesicle id
-    // add vgrad to local vgrad, do the same for vgra_ind
+    // add vgrad to local vgrad, and the same for vgra_ind
+    for(size_t i=0; i<rves_id.size(); i++)
+    {
+        vgrad1.getDevice().Memcpy(vgrad1.begin(), &recv_ves_coord_s[i*vgrad1.size()], 
+                vgrad1.size()*sizeof(value_type), device_type::MemcpyHostToDevice);
+        vgrad2.getDevice().Memcpy(vgrad2.begin(), &vgrad_.begin()[rves_id[i]*vgrad2.size()],
+                vgrad2.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+        axpy(static_cast<value_type>(1.0), vgrad1, vgrad2, vgrad1);
+
+        vgrad1.getDevice().Memcpy(&vgrad_.begin()[rves_id[i]*vgrad1.size()], vgrad1.begin(),
+                vgrad1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+        UpdateVgradInd(&vgrad_ind_[rves_id[i]*vgrad1.size()], &recv_ves_ind[i*vgrad1.size()], 0, vgrad1.size());
+    }
 
     // clean memory
     for(size_t i=0; i<ghost_ves_s.size();i++)
         delete ghost_ves_s.second;
     for(size_t i=0; i<ghost_ves_e.size();i++)
         delete ghost_ves_e.second;
-    for(size_t i=0; i<ghost_ves_vgrad.size();i++)
-        delete ghost_ves_vgrad.second;
     ghost_ves_s.clear();
     ghost_ves_e.clear();
-    ghost_ves_vgrad.clear();
+
+    // TODO clear ghost_vgrad_ and ghost_vgrad_ind_
 
     return ErrorEvent::Success;
 }
@@ -4130,7 +4214,7 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
             lambda.getDevice().MemcpyDeviceToHost);
 
     size_t ncount = vgrad_.size();
-#pragma omp parallel for
+    #pragma omp parallel for
     for (size_t icount = 0; icount < ncount; icount++)
     {
         if(vgrad_ind_[icount] > 0)
