@@ -100,6 +100,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     vgrad_.resize(S_.getPosition().getNumSubs(), params_.upsample_freq);
     vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
     vgrad_ind_.resize(vgrad_.size(), 0);
+    ghost_vgrad_.clear();
+    ghost_vgrad_ind_.clear();
     PA_.clear();
     num_cvs_ = 0;
     current_vesicle_ = 0;
@@ -3494,7 +3496,6 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     typedef std::map< int, Vec_t* > GVMAP;
     typename GVMAP::iterator got;
     typename GVMAP::const_iterator iter_i, iter_j;
-    typedef std::map< int, std::vector<int>* > GVMAP_IND;
 
     GVMAP ghost_ves_s, ghost_ves_e;
     GVMAP ghost_ves_vgrad;
@@ -3512,7 +3513,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             Arr_t::getDevice().Memcpy( ghost_ves_e[rves_id[i]], &recv_ves_coord_e[i*COORD_DIM*stride], 
                     ghost_ves_e[rves_id[i]]->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
-            ghost_ves_vgrad.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.upsample_freq) ) );
+            ghost_vgrad_.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.upsample_freq) ) );
         }
     }
 
@@ -3612,11 +3613,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     sves_id.clear();
     rves_id.clear();
     stride = 2*params_.upsample_freq*(params_.upsample_freq+1);
-    for(size_t i=0; i<ghost_ves_vgrad.size(); i++)
+    for(iter_i=ghost_vgrad_.begin(); iter_i!=ghost_vgrad_.end(); iter_i++)
     {
-        sves_cnt[floor(ghost_ves_vgrad.first/nv)]++; 
-        sves_coord_cnt[floor(ghost_ves_vgrad.first/nv)] += COORD_DIM*stride;
-        sves_id.push_back(ghost_ves_vgrad.first);
+        sves_cnt[floor(iter_i->first/nv)]++; 
+        sves_coord_cnt[floor(iter_i->first/nv)] += COORD_DIM*stride;
+        sves_id.push_back(iter_i->first);
     }
     MPI_Alltoall(&sves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
                  &rves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
@@ -3643,15 +3644,20 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     send_ves_coord_s.ReInit(send_size_ves*COORD_DIM*stride);
     recv_ves_coord_s.ReInit(recv_size_ves*COORD_DIM*stride);
 
+    pvfmm::Vector<int> send_ves_ind, recv_ves_ind;
+    send_ves_ind.ReInit(send_size_ves*COORD_DIM*stride);
+    recv_ves_ind.ReInit(recv_size_ves*COORD_DIM*stride);
     // prepare send coord
-    for(size_t i=0; i<ghost_ves_vgrad.size(); i++)
+    for(size_t i=0; i<ghost_vgrad_.size(); i++)
     {
         for(size_t j=0; j<stride; j++)
         {
             for(size_t k=0; k<COORD_DIM; k++)
             {
                 send_ves_coord_s[i*stride*COORD_DIM + k*stride + j] = 
-                    ghost_ves_vgrad[i].second->begin()[k*stride + j];
+                    ghost_vgrad_[i]->begin()[k*stride + j];
+                send_ves_ind[i*stride*COORD_DIM + k*stride + j] = 
+                    (*ghost_vgrad_ind_[i])[k*stride + j];
             }
         }
     }
@@ -3661,6 +3667,9 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                   comm);    
     MPI_Alltoallv(&send_ves_coord_e[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_e[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  comm);
+    MPI_Alltoallv(&send_ves_ind[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(),
+                  &recv_ves_ind[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(), 
                   comm);
     // recv_ves_coord contains the vgrad coord, rves_id contains the global vesicle id
     // add vgrad to local vgrad, do the same for vgra_ind
@@ -3987,6 +3996,10 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
     PA_.resize(num_cvs_, 1);
     while(lcp_iter < lcp_max_iter)
     {
+        CHK(ConfigureLCPSolver());
+        typename PVec_t::iterator pvec_i(NULL);
+        typename PVec_t::size_type p_sz;
+
         Arr_t::getDevice().Memcpy(lambda_mat_vec.begin(), lambda.begin(), 
                 lsz*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
@@ -3996,13 +4009,22 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
                 num_cvs_, lcp_y.begin());
         
         minmap(lcp_y, lambda, lcp_phi);
-        
+                
+        Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), static_cast<value_type*>(NULL), 
+                dlambda.size(), dlambda.begin());
+        Arr_t::getDevice().axpy(static_cast<value_type>(-1.0), lcp_phi.begin(), static_cast<value_type*>(NULL), 
+                lcp_phi.size(), lcp_phi.begin());
+       
+        // error
+        CHK(parallel_u_->GetArray(pvec_i, p_sz));
+        Arr_t::getDevice().Memcpy(pvec_i, lcp_phi.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
         lcp_old_err = lcp_err;
-        lcp_err = 0.5 * Arr_t::getDevice().AlgebraicDot(lcp_phi.begin(), lcp_phi.begin(), lcp_phi.size());
+        parallel_u_->Norm(lcp_err, NORM_2);
+        lcp_err = 0.5*lcp_err*lcp_err;
+        //lcp_err = 0.5 * Arr_t::getDevice().AlgebraicDot(lcp_phi.begin(), lcp_phi.begin(), lcp_phi.size());
 
         INFO("lcp small Newtown iter: "<<lcp_iter<<". -- err: "<<lcp_err<<" -- relative err: "
                 <<fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) );
-
         INFO("lambda small: "<<lambda);
 
         // relative stopping criteria
@@ -4021,11 +4043,6 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
 
         // solve the Newton system to get descent direction
         // copy device type to value_type array to call GMRES
-        Arr_t::getDevice().axpy(static_cast<value_type>(0.0), dlambda.begin(), static_cast<value_type*>(NULL), 
-                dlambda.size(), dlambda.begin());
-        Arr_t::getDevice().axpy(static_cast<value_type>(-1.0), lcp_phi.begin(), static_cast<value_type*>(NULL), 
-                lcp_phi.size(), lcp_phi.begin());
-
         // copy to unknown solution
         dlambda.getDevice().Memcpy(x_host, dlambda.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     
@@ -4038,11 +4055,8 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
         int solver_ret = linear_solver_gmres_(LCPApply, LCPPrecond, x_host, rhs_host, 
             relres, 0, lsz, iter, 300);
 
-        CHK(ConfigureLCPSolver());
         // assemble initial and rhs
-        typename PVec_t::iterator pvec_i(NULL);
-        typename PVec_t::size_type p_sz;
-        
+                
         CHK(parallel_u_->GetArray(pvec_i, p_sz));
         Arr_t::getDevice().Memcpy(pvec_i, dlambda.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
         CHK(parallel_rhs_->GetArray(pvec_i, p_sz));
@@ -4098,6 +4112,60 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
 {
     // similar to CVJacobianTrans but need send receive lambda
+    std::vector<value_type> f_col_host;
+    f_col_host.resize(vgrad_.size(), 0.0);
+
+    std::vector<value_type> vgrad_host;
+    vgrad_host.resize(vgrad_.size(), 0.0);
+    // copy vgrad_ to host
+    vgrad_.getDevice().Memcpy(&vgrad_host.front(), vgrad_.begin(),
+        vgrad_.size() * sizeof(value_type),
+        vgrad_.getDevice().MemcpyDeviceToHost);
+
+    std::vector<value_type> lambda_host;
+    lambda_host.resize(lambda.size(), 0.0);
+    // copy lambda to host
+    lambda.getDevice().Memcpy(&lambda_host.front(), lambda.begin(),
+            lambda.size() * sizeof(value_type),
+            lambda.getDevice().MemcpyDeviceToHost);
+
+    size_t ncount = vgrad_.size();
+#pragma omp parallel for
+    for (size_t icount = 0; icount < ncount; icount++)
+    {
+        if(vgrad_ind_[icount] > 0)
+            f_col_host[icount] = lambda_host[ vgrad_ind_[icount] - 1 ] * vgrad_host[icount];
+    }
+    
+    /*
+    f_col.getDevice().Memcpy(f_col.begin(), &f_col_host.front(),
+        f_col.size() * sizeof(value_type),
+        f_col.getDevice().MemcpyHostToDevice);
+    */
+        
+    //filtered f_col_up and downsample
+    std::auto_ptr<Vec_t> xwrk = checkoutVec();
+    std::auto_ptr<Vec_t> f_col_up = checkoutVec();
+    std::auto_ptr<Vec_t> wrk1 = checkoutVec();
+    std::auto_ptr<Vec_t> wrk2 = checkoutVec();
+    xwrk->replicate(vgrad_);
+    f_col_up->replicate(vgrad_);
+    wrk1->replicate(vgrad_);
+    wrk2->replicate(vgrad_);
+    
+    xwrk->getDevice().Memcpy(xwrk->begin(), &f_col_host.front(),
+        xwrk->size() * sizeof(value_type),
+        xwrk->getDevice().MemcpyHostToDevice);
+
+    sht_filter_high(*xwrk, *f_col_up, &sht_upsample_, params_.rep_exponent);
+    Resample(*f_col_up, sht_upsample_, sht_, *wrk1, *wrk2, f_col);
+    
+    recycle(xwrk);
+    recycle(f_col_up);
+    recycle(wrk1);
+    recycle(wrk2);
+    //end of filtered
+
     return ErrorEvent::Success;
 }
 

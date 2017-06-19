@@ -200,6 +200,8 @@ class InterfacialVelocity
     mutable ContactInterface CI_pair_;
     mutable Vec_t vgrad_;
     mutable std::vector<int> vgrad_ind_;
+    mutable std::map<int, Vec_t*> ghost_vgrad_;
+    mutable std::map<int, std::vector<int>*> ghost_vgrad_ind_;
     mutable std::vector<int> PA_;
     mutable SurfContainer* S_i_;
     mutable std::vector<int> contact_vesicle_list_;

@@ -12,13 +12,42 @@ template<typename Real_t>
 VesBoundingBox<Real_t>::VesBoundingBox(Real_t box_size, MPI_Comm c){
     box_size_=box_size;
     comm=c;
+
+    MPI_Comm_size(comm, &np_);
+    MPI_Comm_rank(comm, &rank_);
+    omp_p_ = omp_get_max_threads();
 }
 
 template<typename Real_t>
 void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, const PVFMMVec_t& ves_coord_e,
         const int ves_stride, Real_t min_sep)
 {
+    N_bbox_ = ves_coord_s.Dim()/ves_stride/COORD_DIM;
     // calculate the bounding boxes for vesicles with start, end position and min_sep
+    BB_min_.ReInit(N_bbox_*COORD_DIM);
+    BB_max_.ReInit(N_bbox_*COORD_DIM);
+    #pragma omp parallel for
+    for(size_t tid=0; tid<omp_p_; tid++){
+        size_t a = ((tid+0)*N_bbox_)/omp_p_;
+        size_t b = ((tid+1)*N_bbox_)/omp_p_;
+        for(size_t i=a; i<b; i++){
+            Real_t *mini = &BB_min_[i*COORD_DIM];
+            Real_t *maxi = &BB_max_[i*COORD_DIM];
+            for(size_t k=0; k<COORD_DIM; k++){
+                Real_t *val_ik_s = ves_coord_s[i*ves_stride*COORD_DIM+ves_stride*k];
+                Real_t *val_ik_e = ves_coord_e[i*ves_stride*COORD_DIM+ves_stride*k];
+                Real_t mink = val_ik_s[0]; Real_t maxk = val_ik_s[0];
+                for(size_t j=0; j<ves_stride; j++){
+                    mink = std::min(val_ik_s[j], mink); mink = std::min(val_ik_e[j], mink);
+                    maxk = std::max(val_ik_s[j], maxk); maxk = std::max(val_ik_e[j], maxk);
+                }
+                // extend bounding box by some absolute value, 1e-08 for now.
+                // TODO: should extend by absolute + relative*size
+                mini[k] = mink - min_sep/2 - 1e-08;
+                maxi[k] = maxk + min_sep/2 + 1e-08;
+            }
+        }
+    }
 }
 
 template<typename Real_t>
@@ -26,6 +55,10 @@ template<typename Vec>
 void VesBoundingBox<Real_t>::SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, Real_t min_sep)
 {
     // calculate the bounding boxes for vesicles with start, end position and min_sep
+    PVFMMVec_t ves_coord_s_pvfmm(ves_coord_s.size(), (Real_t*)ves_coord_s.begin(), false);
+    PVFMMVec_t ves_coord_e_pvfmm(ves_coord_e.size(), (Real_t*)ves_coord_e.begin(), false);
+    int ves_stride = ves_coord_s.getStride();
+    SetVesBoundingBox(ves_coord_s_pvfmm, ves_coord_e_pvfmm, ves_stride, min_sep);
 }
 
 template<typename Real_t>
@@ -40,17 +73,11 @@ void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<si
 {
     assert(BB_min_); assert(BB_max_);
     
-    MPI_Comm_size(comm, &np_);
-    MPI_Comm_rank(comm, &rank_);
-    omp_p_ = omp_get_max_threads();
-
 #ifdef VES_BOUNDING_BOX_DEBUG
     INFO("rank: "<<rank_<<" of "<<np_<<" processes has "<<omp_p_<<" threads");
 #endif
 
-    N_bbox_ = BB_pts_.Dim()/COORD_DIM;
     assert(N_bbox_ > 0);
-    assert(N_bbox_*COORD_DIM == BB_pts_.Dim()); 
     assert(BB_pts_.Dim() == BB_min_.Dim()); assert(BB_pts_.Dim() == BB_max_.Dim());
 
     pvfmm::Profile::Tic("GetContactBBPair", &comm, true);
