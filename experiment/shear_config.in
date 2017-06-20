@@ -29,7 +29,7 @@ rep-tol : 5e-7
 checkpoint
 checkpoint-file : shear_{{time_idx}}.chk
 checkpoint-stride : 0.1
-write-vtk
+write-vtk : shear_ns{{n_surfs}}_np{{nprocs}}_
 
 ## far filed ---------------------------------
 bg-flow-type : ShearFlow

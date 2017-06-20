@@ -5,6 +5,6 @@
 #PBS -M rahimian@gatech.edu
 #PBS -r n
 
-matlab -nodesktop -nodisplay -nosplash -r "cd /nethome/arahimian3/Ves3D/matlab/; Generate;" > /dev/null &
+matlab -nodesktop -nodisplay -nosplash -r "cd ${VES3D_DIR}/matlab/; Generate;" > /dev/null &
 
 wait
