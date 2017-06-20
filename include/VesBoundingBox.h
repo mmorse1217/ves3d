@@ -17,7 +17,7 @@ class VesBoundingBox{
             pvfmm::Vector<size_t> pt_dsp;         // point displ
             pvfmm::Vector<pvfmm::MortonId> mins;  // first non-ghost node
 
-            pvfmm::Vector<size_t> pt_id;          // scatter id of points(centers of bbox), same as box_id
+            pvfmm::Vector<size_t> pt_id;          // scatter id of points
             pvfmm::Vector<size_t> box_id;         // box id for each point
             PVFMMVec_t box_min;                   // mins
             PVFMMVec_t box_max;                   // maxs

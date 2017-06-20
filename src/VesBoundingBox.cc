@@ -22,6 +22,7 @@ template<typename Real_t>
 void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, const PVFMMVec_t& ves_coord_e,
         const int ves_stride, Real_t min_sep)
 {
+    // TODO: include upsample and poles
     N_bbox_ = ves_coord_s.Dim()/ves_stride/COORD_DIM;
     // calculate the bounding boxes for vesicles with start, end position and min_sep
     BB_min_.ReInit(N_bbox_*COORD_DIM);

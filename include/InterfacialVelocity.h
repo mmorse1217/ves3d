@@ -206,7 +206,7 @@ class InterfacialVelocity
     mutable std::vector<int> PA_;
     mutable SurfContainer* S_i_;
     mutable std::vector<int> contact_vesicle_list_;
-    mutable VesBoundingBox<value_type> VBBI_;
+    mutable VesBoundingBox<value_type> *VBBI_;
 };
 
 #include "InterfacialVelocity.cc"
