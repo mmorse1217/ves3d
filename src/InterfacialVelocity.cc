@@ -124,6 +124,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
             params_.rep_filter_freq, params_.rep_type, params_.rep_exponent);
     S_i_->set_name("subsurface_i");
     VBBI_ = new VesBoundingBox<value_type>(params_.periodic_length);
+    int npros;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_size(comm, &npros);
+    s_ind_cnt_.ReInit(npros); s_ind_dsp_.ReInit(npros); r_ind_cnt_.ReInit(npros); r_ind_dsp_.ReInit(npros);
     // *end of init Contact Interface*
 
     // MKL GMRES solver
@@ -1714,7 +1718,7 @@ LCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type 
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y)
+ParallelLCPApply(const POp_t *o, const value_type *x, value_type *y)
 {
     PROFILESTART();
     const InterfacialVelocity *F(NULL);
@@ -1724,7 +1728,7 @@ ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y)
     if(sz > 0)
     {
         lambda.getDevice().Memcpy(lambda.begin(), x, sz*sizeof(value_type), device_type::MemcpyHostToDevice);
-        F->ImplicitLCPMatvec(lambda);
+        F->ParallelLCPMatvec(lambda);
         lambda.getDevice().Memcpy(y, lambda.begin(), sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
     }
 
@@ -1734,7 +1738,7 @@ ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y)
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-ImplicitLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
+ParallelLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y)
 {
     PROFILESTART();
     const InterfacialVelocity *F(NULL);
@@ -3514,6 +3518,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     rves_id.resize(recv_size_ves, 0);
     
     // send and receive ghost vesicles' global id, local_id = global_id - myrank*nv, local_id = [0, nv-1]
+    // TODO replace with Mpi_Alltoallv_sparse
     MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
 
@@ -3777,6 +3782,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     rves_id.resize(recv_size_ves, 0);
     
     // send and receive ghost vesicles' global id, local_id = global_id - myrank*nv
+    // TODO replace with Mpi_Alltoallv_sparse
     MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
 
@@ -3803,6 +3809,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         i++;
     }
     // send and receive ghost vesicles' coord
+    // TODO replace with Mpi_Alltoallv_sparse
     MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
                   comm);    
@@ -4037,7 +4044,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         int pid = std::lower_bound(&cvid_dsp[0], &cvid_dsp[0]+np, ind_i) - &cvid_dsp[0] - 1;
         ASSERT(pid >= 0, "wrong pid"); ASSERT(pid < np, "wrong pid");
         ASSERT(ind_i>cvid_dsp[pid], "wrong ind_i"); ASSERT(ind_i<=(cvid_dsp[pid]+world_num_cvs[pid]), "wrong ind_i");
-        if(pid!=myrank && ind_i>cvid_dsp[pid] && ind_i<=(cvid_dsp[pid]+world_num_cvs[pid]))
+        if(pid!=myrank)
         {
             s_value.push_back(value);
             s_ind.push_back(ind_i); s_ind.push_back(ind_j);
@@ -4061,6 +4068,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     r_value.resize(recv_size, 0);
     r_ind.resize(2*recv_size, 0);
 
+    // TODO replace with Mpi_Alltoallv_sparse
     MPI_Alltoallv(&s_value[0], &s_value_cnt[0], &s_value_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &r_value[0], &r_value_cnt[0], &r_value_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
     MPI_Alltoallv(&s_ind[0], &s_ind_cnt[0], &s_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
@@ -4110,12 +4118,10 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
      * lcp_flag = 7, nondescent
      * lcp_flag = 8, maxlimit iters
      */
-
     int lcp_flag = 1;
-    
     int lcp_n = num_cvs_;
     int lcp_max_iter = 100;
-
+    
     // lcp parameters
     value_type lcp_eps = 1e-16;
     value_type lcp_h = 1e-7;
@@ -4142,10 +4148,6 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
     Arr_t::Memset(lcp_y.begin(), 0, sizeof(value_type)*lcp_y.size());
     Arr_t::Memset(lcp_phi.begin(), 0, sizeof(value_type)*lcp_phi.size());
     
-    // allocate memory for solving Newton's system
-    size_t lsz(num_cvs_);
-    value_type x_host[lsz], rhs_host[lsz];
-    
     int iter(params_.time_iter_max);
     value_type relres(params_.time_tol);
     
@@ -4153,16 +4155,85 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
     lcp_flag = 2;
     PA_.clear();
     PA_.resize(num_cvs_, 1);
+
+    // MPI communication
+    // send receive lambda
+    ghost_lambda_.clear();
+    int myrank, np;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &np);
+    
+    // number of cvs of all processes
+    pvfmm::Vector<size_t> world_num_cvs(np);
+    size_t num_cvs_myrank = num_cvs_;
+    MPI_Allgather(&num_cvs_myrank,   1, pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &world_num_cvs[0], 1, pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+
+    // calculate cvid displacement for each process
+    pvfmm::Vector<size_t> cvid_dsp(np);
+    cvid_dsp[0]=0; pvfmm::omp_par::scan(&world_num_cvs[0], &cvid_dsp[0], world_num_cvs.Dim());
+    cvid_dsp_ = cvid_dsp[myrank];
+    // cv_id of current process is (cvid_dsp, cvid_dsp+num_cvs_]
+    
+    // prepare all to all communication for lambdas
+    s_ind_cnt_.SetZero(); s_ind_dsp_.SetZero(); r_ind_cnt_.SetZero(); r_ind_dsp_.SetZero();
+    s_ind_.clear(); r_ind_.clear();
+    
+    typename std::map<std::pair<size_t, size_t>, value_type>::iterator got_lcp_matrix_ij;
+    // get send pairs, send cvid to pid
+    std::vector< std::pair<size_t, size_t> > pid_cvid;
+    for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij != parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
+    {
+        size_t ind_i = got_lcp_matrix_ij->first.first;
+        size_t ind_j = got_lcp_matrix_ij->first.second;
+        int pid = std::lower_bound(&cvid_dsp[0], &cvid_dsp[0]+np, ind_j) - &cvid_dsp[0] - 1;
+        ASSERT(pid >= 0, "wrong pid"); ASSERT(pid < np, "wrong pid");
+        ASSERT(ind_j>cvid_dsp[pid], "bad pid for ind_j"); ASSERT(ind_j<=(cvid_dsp[pid]+world_num_cvs[pid]), "bad pid for ind_j");
+        if(pid!=myrank)
+        {
+            pid_cvid.push_back(std::make_pair<size_t, size_t>(pid, ind_i));
+        }
+    }
+    // sort by pid, and remove duplicate
+    std::sort(pid_cvid.begin(), pid_cvid.end());
+    pid_cvid.erase(std::unique(pid_cvid.begin(),pid_cvid.end()), pid_cvid.end());
+            
+    // set send count for vid and vesicle coordinate, set ves_id data to send
+    for(size_t i=0; i<pid_cvid.size(); i++)
+    {
+        s_ind_cnt_[pid_cvid[i].first]++;
+        s_ind_.push_back(pid_cvid[i].second);
+    }
+
+    // send and receive
+    MPI_Alltoall(&s_ind_cnt_[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &r_ind_cnt_[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    s_ind_dsp_[0]=0; pvfmm::omp_par::scan(&s_ind_cnt_[0], &s_ind_dsp_[0], s_ind_cnt_.Dim());
+    r_ind_dsp_[0]=0; pvfmm::omp_par::scan(&r_ind_cnt_[0], &r_ind_dsp_[0], r_ind_cnt_.Dim());
+
+    size_t recv_size = r_ind_cnt_[np-1] + r_ind_dsp_[np-1];
+    r_ind_.resize(recv_size, 0); 
+    s_value_.resize(s_ind_.size(), 0);
+    r_value_.resize(recv_size, 0);
+
+    // TODO replace with Mpi_Alltoallv_sparse
+    MPI_Alltoallv(&s_ind_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
+                  &r_ind_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    // end of MPI communication
+
     while(lcp_iter < lcp_max_iter)
     {
+        // configure linear system solver
         CHK(ConfigureLCPSolver());
         typename PVec_t::iterator pvec_i(NULL);
         typename PVec_t::size_type p_sz;
 
         Arr_t::getDevice().Memcpy(lambda_mat_vec.begin(), lambda.begin(), 
-                lsz*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                num_cvs_*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
-        ImplicitLCPMatvec(lambda_mat_vec);
+        ParallelLCPMatvec(lambda_mat_vec);
         
         Arr_t::getDevice().axpy(static_cast<value_type>(1.0), lambda_mat_vec.begin(), cvs.begin(), 
                 num_cvs_, lcp_y.begin());
@@ -4176,11 +4247,11 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
        
         // error
         CHK(parallel_u_->GetArray(pvec_i, p_sz));
+        ASSERT(num_cvs_ == p_sz, "num_cvs_ not equal petsc size");
         Arr_t::getDevice().Memcpy(pvec_i, lcp_phi.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
         lcp_old_err = lcp_err;
         parallel_u_->Norm(lcp_err, NORM_2);
         lcp_err = 0.5*lcp_err*lcp_err;
-        //lcp_err = 0.5 * Arr_t::getDevice().AlgebraicDot(lcp_phi.begin(), lcp_phi.begin(), lcp_phi.size());
 
         INFO("lcp small Newtown iter: "<<lcp_iter<<". -- err: "<<lcp_err<<" -- relative err: "
                 <<fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) );
@@ -4200,27 +4271,13 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
             break;
         }
 
-        // solve the Newton system to get descent direction
-        // copy device type to value_type array to call GMRES
-        // copy to unknown solution
-        dlambda.getDevice().Memcpy(x_host, dlambda.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    
-        // copy to rhs
-        lcp_phi.getDevice().Memcpy(rhs_host, lcp_phi.begin(), lsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-
-        // solve the linear system using gmres
-        INFO("Begin of SolvelcpSmall Newton system.");
-        INFO("rhs: "<<lcp_phi);
-        int solver_ret = linear_solver_gmres_(LCPApply, LCPPrecond, x_host, rhs_host, 
-            relres, 0, lsz, iter, 300);
-
         // assemble initial and rhs
-                
         CHK(parallel_u_->GetArray(pvec_i, p_sz));
         Arr_t::getDevice().Memcpy(pvec_i, dlambda.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
         CHK(parallel_rhs_->GetArray(pvec_i, p_sz));
         Arr_t::getDevice().Memcpy(pvec_i, lcp_phi.begin(), p_sz*sizeof(value_type), device_type::MemcpyDeviceToHost);
         
+        // solve linear system
         Error_t err_lcp = parallel_solver_->Solve(parallel_rhs_, parallel_u_);
         
         // copy back lambda
@@ -4229,9 +4286,6 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
         
         parallel_solver_->ViewReport();
         INFO("End of SolvelcpSmall Newton system.");
-
-        // copy host to device
-        dlambda.getDevice().Memcpy(dlambda.begin(), x_host, lsz * sizeof(value_type), device_type::MemcpyHostToDevice);
 
         // TODO: the gradient of meric function \nabla\theta is lcp_phi^T*lcp_matrix, 
         // which we can't get with matrix free version lcp solver, either form lcp matrix
@@ -4270,6 +4324,64 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
 {
+    // get ghost lambdas
+    int myrank,np;
+    MPI_Comm comm=MPI_COMM_WORLD;
+    MPI_Comm_rank(comm,&myrank);
+    MPI_Comm_size(comm,&np);
+    std::map<int, std::vector<int>*>::const_iterator iter_i;
+    std::vector< std::pair<size_t, size_t> > pid_cvid;
+    int nv = params_.n_surfs;
+    for(iter_i=ghost_vgrad_ind_.begin(); iter_i!=ghost_vgrad_ind_.end(); iter_i++)
+    {
+        value_type *value_i = iter_i->second->begin();
+        for(size_t i=0; i<iter_i->second->size(); i++)
+        {
+            size_t pid = floor(iter_i->first/nv);
+            if(pid != myrank)
+                pid_cvid.push_back(std::make_pair(floor(iter_i->first/nv), value_i[i]));
+        }
+    }
+    // sort by pid, and remove duplicate
+    std::sort(pid_cvid.begin(), pid_cvid.end());
+    pid_cvid.erase(std::unique(pid_cvid.begin(),pid_cvid.end()), pid_cvid.end());
+    
+    // prepare all to all communication for lambdas
+    s_ind_cnt_.SetZero(); s_ind_dsp_.SetZero(); r_ind_cnt_.SetZero(); r_ind_dsp_.SetZero();
+    s_ind_.clear(); r_ind_.clear();
+    
+    // set send count for vid and vesicle coordinate, set ves_id data to send
+    for(size_t i=0; i<pid_cvid.size(); i++)
+    {
+        s_ind_cnt_[pid_cvid[i].first]++;
+        s_ind_.push_back(pid_cvid[i].second);
+        size_t local_i = pid_cvid[i].second - cvid_dsp_ - 1;
+        s_value_.push_back(lambda.begin()[local_i]);
+    }
+
+    // send and receive
+    MPI_Alltoall(&s_ind_cnt_[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &r_ind_cnt_[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    s_ind_dsp_[0]=0; pvfmm::omp_par::scan(&s_ind_cnt_[0], &s_ind_dsp_[0], s_ind_cnt_.Dim());
+    r_ind_dsp_[0]=0; pvfmm::omp_par::scan(&r_ind_cnt_[0], &r_ind_dsp_[0], r_ind_cnt_.Dim());
+
+    size_t recv_size = r_ind_cnt_[np-1] + r_ind_dsp_[np-1];
+    r_ind_.resize(recv_size, 0); 
+    r_value_.resize(recv_size, 0);
+
+    // TODO replace with Mpi_Alltoallv_sparse
+    MPI_Alltoallv(&s_ind_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
+                  &r_ind_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    MPI_Alltoallv(&s_value_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  &r_value_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), comm);
+    
+    for(size_t i=0; i<r_ind_.size(); i++)
+    {
+        ghost_lambda_[r_ind_[i]] = r_value_[i];
+    }
+    // end of MPI communication
+
     // similar to CVJacobianTrans but need send receive lambda
     std::vector<value_type> f_col_host;
     f_col_host.resize(vgrad_.size(), 0.0);
@@ -4293,14 +4405,16 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
     for (size_t icount = 0; icount < ncount; icount++)
     {
         if(vgrad_ind_[icount] > 0)
-            f_col_host[icount] = lambda_host[ vgrad_ind_[icount] - 1 ] * vgrad_host[icount];
+        {
+            if(vgrad_ind_[icount] > cvid_dsp_ && vgrad_ind_[icount] <= (cvid_dsp_+num_cvs_))
+            {
+                size_t local_i = vgrad_ind_[icount] - cvid_dsp_ - 1;
+                f_col_host[icount] = lambda_host[local_i] * vgrad_host[icount];
+            }
+            else
+                f_col_host[icount] = ghost_lambda_[vgrad_ind_[icount]] * vgrad_host[icount];
+        }
     }
-    
-    /*
-    f_col.getDevice().Memcpy(f_col.begin(), &f_col_host.front(),
-        f_col.size() * sizeof(value_type),
-        f_col.getDevice().MemcpyHostToDevice);
-    */
         
     //filtered f_col_up and downsample
     std::auto_ptr<Vec_t> xwrk = checkoutVec();
@@ -4323,8 +4437,138 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
     recycle(f_col_up);
     recycle(wrk1);
     recycle(wrk2);
-    //end of filtered
+    //end of filtered and downsample
 
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
+{
+    // begin MPI
+    int myrank, np;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &np);
+    
+    // number of cvs of all processes
+    pvfmm::Vector<size_t> world_num_cvs(np);
+    size_t num_cvs_myrank = num_cvs_;
+    MPI_Allgather(&num_cvs_myrank,   1, pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &world_num_cvs[0], 1, pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+
+    // calculate cvid displacement for each process
+    pvfmm::Vector<size_t> cvid_dsp(np);
+    cvid_dsp[0]=0; pvfmm::omp_par::scan(&world_num_cvs[0], &cvid_dsp[0], world_num_cvs.Dim());
+    // cv_id of current process is (cvid_dsp, cvid_dsp+num_cvs_]
+    // end of MPI
+
+    std::auto_ptr<Vec_t> x_vgrad = checkoutVec();
+    std::auto_ptr<Vec_t> x_new_up = checkoutVec();
+    std::auto_ptr<Vec_t> wrk1 = checkoutVec();
+    std::auto_ptr<Vec_t> wrk2 = checkoutVec();
+    x_vgrad->replicate(vgrad_);
+    x_new_up->replicate(vgrad_);
+    wrk1->replicate(vgrad_);
+    wrk2->replicate(vgrad_);
+
+    Resample(x_new, sht_, sht_upsample_, *wrk1, *wrk2, *x_new_up);
+
+    xy(*x_new_up, vgrad_, *x_vgrad);
+
+    //axpy(dt_, *x_vgrad, *x_vgrad);
+    
+    std::vector<value_type> x_vgrad_host;
+    x_vgrad_host.resize(x_vgrad->size(), 0.0);
+    // copy x_vgrad to host
+    x_vgrad->getDevice().Memcpy(&x_vgrad_host.front(), x_vgrad->begin(),
+        x_vgrad->size() * sizeof(value_type),
+        x_vgrad->getDevice().MemcpyDeviceToHost);
+
+    std::vector<value_type> lambda_mat_vec_host(lambda_mat_vec.size(), 0.0);
+
+    std::map<size_t, value_type> ghost_lambda_mat_vec;
+    size_t ncount = vgrad_.size();
+    //#pragma omp parallel for
+    for (size_t icount = 0; icount < ncount; icount++)
+    {
+        if(vgrad_ind_[icount] > 0)
+        {
+            if(vgrad_ind_[icount]>cvid_dsp_ && vgrad_ind_[icount]<=(cvid_dsp_+num_cvs_))
+            {
+                size_t local_i = vgrad_ind_[icount] - cvid_dsp_ - 1;
+                lambda_mat_vec_host[local_i] += x_vgrad_host[icount];
+            }
+            else
+            {
+                ghost_lambda_mat_vec[vgrad_ind_[icount]] += x_vgrad_host[icount];
+            }
+            //#pragma omp atomic
+            //{
+            //}
+        }
+    }
+
+    //MPI
+    typename std::map<size_t, value_type>::const_iterator iter_i;
+    std::vector< std::pair<size_t, size_t> > pid_cvid;
+    for(iter_i=ghost_lambda_mat_vec.begin(); iter_i!=ghost_lambda_mat_vec.end(); iter_i++)
+    {
+    
+        int pid = std::lower_bound(&cvid_dsp[0], &cvid_dsp[0]+np, iter_i->first) - &cvid_dsp[0] - 1;
+        if(pid != myrank)
+            pid_cvid.push_back(std::make_pair(pid, iter_i->first));
+    }
+    // sort by pid, and remove duplicate
+    std::sort(pid_cvid.begin(), pid_cvid.end());
+    pid_cvid.erase(std::unique(pid_cvid.begin(),pid_cvid.end()), pid_cvid.end());
+    
+    // prepare all to all communication for lambdas
+    s_ind_cnt_.SetZero(); s_ind_dsp_.SetZero(); r_ind_cnt_.SetZero(); r_ind_dsp_.SetZero();
+    s_ind_.clear(); r_ind_.clear();
+    
+    // set send count for vid and vesicle coordinate, set ves_id data to send
+    for(size_t i=0; i<pid_cvid.size(); i++)
+    {
+        s_ind_cnt_[pid_cvid[i].first]++;
+        s_ind_.push_back(pid_cvid[i].second);
+        s_value_.push_back(ghost_lambda_mat_vec[pid_cvid[i]]);
+    }
+
+    // send and receive
+    MPI_Alltoall(&s_ind_cnt_[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &r_ind_cnt_[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    s_ind_dsp_[0]=0; pvfmm::omp_par::scan(&s_ind_cnt_[0], &s_ind_dsp_[0], s_ind_cnt_.Dim());
+    r_ind_dsp_[0]=0; pvfmm::omp_par::scan(&r_ind_cnt_[0], &r_ind_dsp_[0], r_ind_cnt_.Dim());
+
+    size_t recv_size = r_ind_cnt_[np-1] + r_ind_dsp_[np-1];
+    r_ind_.resize(recv_size, 0); 
+    r_value_.resize(recv_size, 0);
+
+    // TODO replace with Mpi_Alltoallv_sparse
+    MPI_Alltoallv(&s_ind_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
+                  &r_ind_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    MPI_Alltoallv(&s_value_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  &r_value_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), comm);
+    
+    for(size_t i=0; i<r_ind_.size(); i++)
+    {
+        size_t local_i = r_ind_[i] - cvid_dsp_ - 1;
+        lambda_mat_vec_host[local_i] = r_value_[i];
+    }
+    //end of MPI
+
+    // copy lambda_mat_vec to device
+    lambda_mat_vec.getDevice().Memcpy(lambda_mat_vec.begin(), &lambda_mat_vec_host.front(),
+            lambda_mat_vec.size() * sizeof(value_type),
+            lambda_mat_vec.getDevice().MemcpyHostToDevice);
+
+    recycle(x_vgrad);
+    recycle(x_new_up);
+    recycle(wrk1);
+    recycle(wrk2);
     return ErrorEvent::Success;
 }
 
@@ -4345,7 +4589,7 @@ ConfigureLCPSolver() const
     CHK(parallel_matvec_->SetSizes(sz,sz));
     CHK(parallel_matvec_->SetName("LCP matrix"));
     CHK(parallel_matvec_->SetContext(static_cast<const void*>(this)));
-    CHK(parallel_matvec_->SetApply(ImplicitLCPApply));
+    CHK(parallel_matvec_->SetApply(ParallelLCPApply));
     CHK(parallel_matvec_->Configure());
 
     // setting up the rhs
@@ -4366,14 +4610,9 @@ ConfigureLCPSolver() const
 
     CHK(parallel_solver_->Configure());
 
-    /*
-    // setting up the preconditioner
-    if (params_.time_precond != NoPrecond){
-        ASSERT(precond_configured_, "The preconditioner isn't configured yet");
-        CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
-        CHK(parallel_solver_->UpdatePrecond(ImplicitPrecond));
-    }
-    */
+    CHK(parallel_solver_->SetPrecondContext(static_cast<const void*>(this)));
+    CHK(parallel_solver_->UpdatePrecond(ParallelLCPPrecond));
+    
     psolver_configured_ = true;
 
     PROFILEEND("",0);
@@ -4382,10 +4621,28 @@ ConfigureLCPSolver() const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-ImplicitLCPMatvec(Arr_t &lambda) const
+ParallelLCPMatvec(Arr_t &lambda) const
 {
+    PROFILESTART()
+    MPI_Comm comm = MPI_COMM_WORLD;
     // parallel matvec on lcp_matrix(i ,j), need send receive lambda
-    PROFILESTART();
+    for(size_t i=0; i<s_ind_.size(); i++)
+    {
+        size_t ind_i = s_ind_[i];
+        size_t local_i = ind_i - cvid_dsp_ - 1;
+        ASSERT(ind_i > cvid_dsp_, "wrong send cvid"); 
+        ASSERT(ind_i <= cvid_dsp_+num_cvs_, "wrong send cvid"); 
+        s_value_[i] = lambda.begin()[local_i];
+    }
+
+    MPI_Alltoallv(&s_value_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+            &r_value_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), comm);
+
+    for(size_t i=0; i<r_ind_.size(); i++)
+    {
+        ghost_lambda_[r_ind_[i]] = r_value_[i];
+    }
+
     if(num_cvs_>0)
     {
         Arr_t matvec(num_cvs_);
@@ -4399,7 +4656,15 @@ ImplicitLCPMatvec(Arr_t &lambda) const
             size_t ind_j = iter_i->first.second;
             value_type val_tmp = iter_i->second;
 
-            matvec_i[ind_i] += val_tmp*lambda_i[ind_j];
+            size_t local_i = ind_i - cvid_dsp_ - 1;
+
+            if(ind_j>cvid_dsp_ && ind_j<=(cvid_dsp_+num_cvs_))
+            {
+                size_t local_j = ind_j - cvid_dsp_ - 1;
+                matvec_i[local_i] += val_tmp*lambda_i[local_j];
+            }
+            else
+                matvec_i[local_i] += val_tmp*ghost_lambda_[ind_j];
         }
 
         lambda.getDevice().Memcpy(lambda.begin(), matvec.begin(), 

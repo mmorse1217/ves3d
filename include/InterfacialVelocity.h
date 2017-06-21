@@ -109,8 +109,9 @@ class InterfacialVelocity
     Error_t ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const;
     Error_t ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const;
     Error_t ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
+    Error_t ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const;
     Error_t ConfigureLCPSolver() const;
-    Error_t ImplicitLCPMatvec(Arr_t &lambda) const;
+    Error_t ParallelLCPMatvec(Arr_t &lambda) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -122,7 +123,7 @@ class InterfacialVelocity
     mutable Arr_t lcp_matrix_;
     mutable std::map<std::pair<size_t, size_t>, value_type> parallel_lcp_matrix_;
     mutable int current_vesicle_;
-
+    
   private:
     SurfContainer &S_;
     const Interaction &interaction_;
@@ -156,8 +157,8 @@ class InterfacialVelocity
     static Error_t JacobiImplicitLCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t LCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t LCPPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
-    static Error_t ImplicitLCPApply(const POp_t *o, const value_type *x, value_type *y);
-    static Error_t ImplicitLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
+    static Error_t ParallelLCPApply(const POp_t *o, const value_type *x, value_type *y);
+    static Error_t ParallelLCPPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
     
     size_t stokesBlockSize() const;
     size_t tensionBlockSize() const;
@@ -203,10 +204,15 @@ class InterfacialVelocity
     mutable std::vector<int> vgrad_ind_;
     mutable std::map<int, Vec_t*> ghost_vgrad_;
     mutable std::map<int, std::vector<int>*> ghost_vgrad_ind_;
+    mutable std::map<size_t, value_type> ghost_lambda_;
+    mutable size_t cvid_dsp_;
     mutable std::vector<int> PA_;
     mutable SurfContainer* S_i_;
     mutable std::vector<int> contact_vesicle_list_;
     mutable VesBoundingBox<value_type> *VBBI_;
+    mutable pvfmm::Vector<int> s_ind_cnt_, s_ind_dsp_, r_ind_cnt_, r_ind_dsp_;
+    mutable std::vector<size_t> s_ind_, r_ind_;
+    mutable std::vector<value_type> s_value_, r_value_;
 };
 
 #include "InterfacialVelocity.cc"
