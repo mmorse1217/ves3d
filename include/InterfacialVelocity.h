@@ -96,8 +96,8 @@ class InterfacialVelocity
     Error_t SolveLCP(Vec_t &u_lcp, Sca_t &ten_lcp, Arr_t &lambda_lcp, Arr_t &cvs) const;
     Error_t SolveLCPSmall(Arr_t &lambda_lcp, Arr_t &cvs) const;
     Error_t minmap(const Arr_t &xin1, const Arr_t &xin2, Arr_t &xout) const;
-    Error_t projectU1(Vec_t &u1, const Vec_t &x_old) const;
-    Error_t sca_abs(Sca_t &xin) const;
+    Error_t RemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const;
+    Error_t ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const;
     Error_t TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e, 
             pvfmm::Vector<value_type> &pole_s_pole, pvfmm::Vector<value_type> &pole_e_pole) const;
     Error_t FormLCPMatrix(Arr_t &lcp_matrix) const;
@@ -123,6 +123,7 @@ class InterfacialVelocity
     mutable Arr_t lcp_matrix_;
     mutable std::map<std::pair<size_t, size_t>, value_type> parallel_lcp_matrix_;
     mutable int current_vesicle_;
+    mutable int nv_;
     
   private:
     SurfContainer &S_;

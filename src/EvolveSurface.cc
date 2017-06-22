@@ -481,7 +481,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     // project u1 to collision free
     INFO("Begin Project AreaVolume correction direction to without contact.");
     axpy(static_cast<value_type>(-1.0), x_old, S_->getPosition(), u1);
-    F_->projectU1(u1, x_old);
+    F_->RemoveContactSimple(u1, x_old);
     axpy(static_cast<value_type>(1.0), u1, x_old, S_->getPositionModifiable());
     INFO("End Project AreaVolume correction  direction to without contact.");
     // end for collision
