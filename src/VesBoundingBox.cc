@@ -20,10 +20,25 @@ VesBoundingBox<Real_t>::VesBoundingBox(Real_t box_size, MPI_Comm c){
 
 template<typename Real_t>
 void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, const PVFMMVec_t& ves_coord_e,
-        const int ves_stride, Real_t min_sep)
+        const Real_t min_sep, const int sh_order, const int sh_order_up)
 {
-    // TODO: include upsample and poles
-    N_bbox_ = ves_coord_s.Dim()/ves_stride/COORD_DIM;
+    // upsample position and get and poles
+    static PVFMMVec_t shc_coef, ves_coord_s_up, ves_coord_e_up, ves_coord_pole_s, ves_coord_pole_e;
+
+    // start configuration
+    SphericalHarmonics<Real_t>::Grid2SHC(ves_coord_s, sh_order, sh_order,    shc_coef);
+    SphericalHarmonics<Real_t>::SHC2Grid(shc_coef,    sh_order, sh_order_up, ves_coord_s_up);
+    SphericalHarmonics<Real_t>::SHC2Pole(shc_coef,    sh_order, ves_coord_pole_s);
+
+    // end configuration
+    SphericalHarmonics<Real_t>::Grid2SHC(ves_coord_e, sh_order, sh_order,    shc_coef);
+    SphericalHarmonics<Real_t>::SHC2Grid(shc_coef,    sh_order, sh_order_up, ves_coord_e_up);
+    SphericalHarmonics<Real_t>::SHC2Pole(shc_coef,    sh_order, ves_coord_pole_e);
+
+    // stride(number of points per vesicle)
+    int ves_stride = 2*sh_order_up*(sh_order_up+1);
+
+    N_bbox_ = ves_coord_s_up.Dim()/ves_stride/COORD_DIM;
     // calculate the bounding boxes for vesicles with start, end position and min_sep
     BB_min_.ReInit(N_bbox_*COORD_DIM);
     BB_max_.ReInit(N_bbox_*COORD_DIM);
@@ -35,12 +50,21 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
             Real_t *mini = &BB_min_[i*COORD_DIM];
             Real_t *maxi = &BB_max_[i*COORD_DIM];
             for(size_t k=0; k<COORD_DIM; k++){
-                Real_t *val_ik_s = ves_coord_s[i*ves_stride*COORD_DIM+ves_stride*k];
-                Real_t *val_ik_e = ves_coord_e[i*ves_stride*COORD_DIM+ves_stride*k];
+                // ves coord
+                Real_t *val_ik_s = ves_coord_s_up[i*ves_stride*COORD_DIM+ves_stride*k];
+                Real_t *val_ik_e = ves_coord_e_up[i*ves_stride*COORD_DIM+ves_stride*k];
+                // ves pole
+                Real_t *val_ik_pole_s = ves_coord_pole_s[i*2*COORD_DIM+2*k];
+                Real_t *val_ik_pole_e = ves_coord_pole_e[i*2*COORD_DIM+2*k];
+
                 Real_t mink = val_ik_s[0]; Real_t maxk = val_ik_s[0];
                 for(size_t j=0; j<ves_stride; j++){
                     mink = std::min(val_ik_s[j], mink); mink = std::min(val_ik_e[j], mink);
                     maxk = std::max(val_ik_s[j], maxk); maxk = std::max(val_ik_e[j], maxk);
+                }
+                for(size_t j=0; j<2; j++){
+                    mink = std::min(val_ik_pole_s[j], mink); mink = std::min(val_ik_pole_e[j], mink);
+                    maxk = std::max(val_ik_pole_s[j], maxk); maxk = std::max(val_ik_pole_e[j], maxk);
                 }
                 // extend bounding box by some absolute value, 1e-08 for now.
                 // TODO: should extend by absolute + relative*size
@@ -53,13 +77,14 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
 
 template<typename Real_t>
 template<typename Vec>
-void VesBoundingBox<Real_t>::SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, Real_t min_sep)
+void VesBoundingBox<Real_t>::SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, 
+        const Real_t min_sep, const int sh_order, const int sh_order_up)
 {
     // calculate the bounding boxes for vesicles with start, end position and min_sep
     PVFMMVec_t ves_coord_s_pvfmm(ves_coord_s.size(), (Real_t*)ves_coord_s.begin(), false);
     PVFMMVec_t ves_coord_e_pvfmm(ves_coord_e.size(), (Real_t*)ves_coord_e.begin(), false);
     int ves_stride = ves_coord_s.getStride();
-    SetVesBoundingBox(ves_coord_s_pvfmm, ves_coord_e_pvfmm, ves_stride, min_sep);
+    SetVesBoundingBox(ves_coord_s_pvfmm, ves_coord_e_pvfmm, min_sep, sh_order, sh_order_up);
 }
 
 template<typename Real_t>

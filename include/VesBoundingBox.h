@@ -28,9 +28,10 @@ class VesBoundingBox{
 
         // set bounding boxes for vesicles, the bounding boxes are space-time bounding box with minimum separation distance
         void SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, const PVFMMVec_t& ves_coord_e, 
-                const int ves_stride, const Real_t min_sep);
+                const Real_t min_sep, const int sh_order, const int sh_order_up);
         template<typename Vec>
-        void SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, const Real_t min_sep);
+        void SetVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, 
+                const Real_t min_sep, const int sh_order, const int sh_order_up);
         // set bounding boxes provided with two points for each bounding box: BB_min, BB_max
         void SetVesBoundingBox(const PVFMMVec_t& BB_min, const PVFMMVec_t& BB_max);
         

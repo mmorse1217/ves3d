@@ -3426,7 +3426,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     // vesicle id [0, N-1], N is total number of vesicles globally
     std::vector< std::pair<size_t, size_t> > BBIPairs;
     // TODO: SetVesBoundingBox should add poles, upsample
-    VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist);
+    VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.upsample_freq);
     VBBI_->GetContactBoundingBoxPair(BBIPairs);
     
     // send ghost vesicles, receive ghost vesicles
@@ -3743,7 +3743,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     sves_cnt.SetZero(); rves_cnt.SetZero();
     sves_coord_cnt.SetZero(); rves_coord_cnt.SetZero();
     sves_id.clear(); rves_id.clear();
-    // TODO don't send zero components ghost vgrad and ghost vgrad_ind
+    // TODO: don't send zero components ghost vgrad and ghost vgrad_ind!
     for(iter_i=ghost_vgrad_.begin(); iter_i!=ghost_vgrad_.end(); iter_i++)
     {
         sves_cnt[floor(iter_i->first/nv)]++; 
