@@ -128,6 +128,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     // init other variables
     PA_.clear();
     num_cvs_ = 0;
+    sum_num_cvs_ = 0;
     IV_.clear();
     parallel_lcp_matrix_.clear();
     current_vesicle_ = 0;
@@ -4162,6 +4163,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const
     pvfmm::Vector<size_t> cvid_dsp(np);
     cvid_dsp[0]=0; pvfmm::omp_par::scan(&world_num_cvs[0], &cvid_dsp[0], world_num_cvs.Dim());
     cvid_dsp_ = cvid_dsp[myrank];
+    sum_num_cvs_ = cvid_dsp[np-1]+world_num_cvs[np-1];
     // cv_id of current process is (cvid_dsp, cvid_dsp+num_cvs_]
     
     // prepare all to all communication for lambdas
@@ -4587,9 +4589,9 @@ ConfigureLCPSolver() const
     typedef typename PVec::size_type size_type;
 
     // Setting up the operator
-    size_type sz(num_cvs_);
+    size_type sz(num_cvs_); size_type SZ(sum_num_cvs_);
     CHK(parallel_solver_->LinOpFactory(&parallel_matvec_));
-    CHK(parallel_matvec_->SetSizes(sz,sz));
+    CHK(parallel_matvec_->SetSizes(sz,sz,SZ,SZ));
     CHK(parallel_matvec_->SetName("LCP matrix"));
     CHK(parallel_matvec_->SetContext(static_cast<const void*>(this)));
     CHK(parallel_matvec_->SetApply(ParallelLCPApply));
@@ -4597,7 +4599,7 @@ ConfigureLCPSolver() const
 
     // setting up the rhs
     CHK(parallel_solver_->VecFactory(&parallel_rhs_));
-    CHK(parallel_rhs_->SetSizes(sz));
+    CHK(parallel_rhs_->SetSizes(sz,SZ));
     CHK(parallel_rhs_->SetName("rhs"));
     CHK(parallel_rhs_->Configure());
 

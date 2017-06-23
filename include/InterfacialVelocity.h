@@ -119,6 +119,7 @@ class InterfacialVelocity
 
     // contact
     mutable int num_cvs_;
+    mutable int sum_num_cvs_;
     mutable std::vector<value_type> IV_;
     mutable Arr_t lcp_matrix_;
     mutable std::map<std::pair<size_t, size_t>, value_type> parallel_lcp_matrix_;
