@@ -40,7 +40,7 @@ class VesBoundingBox{
         
         // set the grid parameters, bbox_(shift,scale), r_near_(intrinsic size of grid box),
         // leaf_size_  <=> tree_depth_ (grid size) TODO: eliminate either leaf_size_ or tree_depth_
-        void SetTreeParams(); // set bbox_, r_near_, tree_depth_
+        void SetTreeParams(); // set bbox_, r_near_, tree_depth_, leaf_size_
         
         // sort the generated points to processes, construct a local grid, each grid box is represented by a morton id
         void ConstructLocalTree(TREEGRID &BB_let);
@@ -90,7 +90,7 @@ class VesBoundingBox{
         // TODO: choose a "good" size so that the assumption(each process should have at least one (morton id) grid box) 
         // won't fail, or remove the assumption
         Real_t r_near_; // the intrinsic size of grid box, r_near_ = bb_size_max or bb_size_min or bb_size_avg
-        Real_t leaf_size_; // grid box size, for free space, leaf_size_ = r_near_; for periodic case, r_near_ < leaf_size_ <= 2*r_near
+        Real_t leaf_size_; // grid box size, for free space, leaf_size_ = r_near_/2; for periodic case, r_near_/4 < leaf_size_ <= r_near/2
         size_t tree_depth_; // depth of the "tree"/grid, level 0 - a grid of one grid box, level n - a grid of 2^n grid boxes
 
         // number of MPI processes and current process id
@@ -99,6 +99,8 @@ class VesBoundingBox{
         size_t omp_p_;
         // number of bounding boxes
         size_t N_bbox_;
+        // number of points
+        size_t N_pts_;
 };
 
 #include "VesBoundingBox.cc"

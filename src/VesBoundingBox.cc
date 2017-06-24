@@ -10,11 +10,16 @@
 
 template<typename Real_t>
 VesBoundingBox<Real_t>::VesBoundingBox(Real_t box_size, MPI_Comm c){
+    // init periodic box size
     box_size_=box_size;
+    // init communication
     comm=c;
 
+    // number of processes
     MPI_Comm_size(comm, &np_);
+    // process rank
     MPI_Comm_rank(comm, &rank_);
+    // number of openmp threads
     omp_p_ = omp_get_max_threads();
 }
 
@@ -66,10 +71,10 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
                     mink = std::min(val_ik_pole_s[j], mink); mink = std::min(val_ik_pole_e[j], mink);
                     maxk = std::max(val_ik_pole_s[j], maxk); maxk = std::max(val_ik_pole_e[j], maxk);
                 }
-                // extend bounding box by some absolute value, 1e-08 for now.
+                // extend bounding box by some absolute value, 1e-10 for now.
                 // TODO: should extend by absolute + relative*size
-                mini[k] = mink - min_sep/2 - 1e-08;
-                maxi[k] = maxk + min_sep/2 + 1e-08;
+                mini[k] = mink - min_sep/2 - 1e-10;
+                maxi[k] = maxk + min_sep/2 + 1e-10;
             }
         }
     }
@@ -97,14 +102,12 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& BB_min, const P
 template<typename Real_t>
 void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<size_t, size_t> > &BBIPairs)
 {
-    assert(BB_min_); assert(BB_max_);
-    
+    ASSERT(BB_min_, "empty bounding boxes min"); ASSERT(BB_max_, "empty bounding boxes max");
+    ASSERT(N_bbox_>0, "empty bounding boxes N_bbox_");
+
 #ifdef VES_BOUNDING_BOX_DEBUG
     INFO("rank: "<<rank_<<" of "<<np_<<" processes has "<<omp_p_<<" threads");
 #endif
-
-    assert(N_bbox_ > 0);
-    assert(BB_pts_.Dim() == BB_min_.Dim()); assert(BB_pts_.Dim() == BB_max_.Dim());
 
     pvfmm::Profile::Tic("GetContactBBPair", &comm, true);
     bool prof_state=pvfmm::Profile::Enable(false);
@@ -143,14 +146,8 @@ void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<si
     }
 
     {   // find contact BB pair
-        pvfmm::Vector<size_t> near_trg_box_id;
-        pvfmm::Vector<size_t> near_src_box_id;
-        FindNearPair(BB_let, near_trg_box_id, near_src_box_id);
+        FindNearPair(BB_let, BBIPairs);
 #ifdef VES_BOUNDING_BOX_DEBUG
-        INFO("size of near_trg_box_id: "<<near_trg_box_id.Dim());
-        INFO(near_trg_box_id);
-        INFO("size of near_src_pt_id: "<<near_src_box_id.Dim());
-        INFO(near_src_box_id);
 #endif
     }
 
@@ -171,7 +168,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
     Real_t r_bbox_max = 0;
     Real_t r_bbox_min = std::numeric_limits<Real_t>::max();
     Real_t r_bbox_avg = 0;
-    assert(N_bbox_ > 0);
+    ASSERT(N_bbox_ > 0, "number of bounding boxes is zero");
     {   // determine r_bbox
         std::vector<Real_t> r2_bbox_max_omp(omp_p_);
         std::vector<Real_t> r2_bbox_min_omp(omp_p_);
@@ -227,15 +224,15 @@ void VesBoundingBox<Real_t>::SetTreeParams()
         Real_t scale_x, shift_x[COORD_DIM];
         Real_t scale_tmp;
         
-        // determine bounding box
+        // determine global bounding box
         GlobalBoundingBox(&scale_tmp, shift_x);
 
-        { // scale_x, pt_tree_depth
-            assert(scale_tmp!=0);
+        { // scale_x, pt_tree_depth, leaf_size
+            ASSERT(scale_tmp!=0, "invalid scale");
             
             Real_t domain_length = 1.0/scale_tmp + 4*r_near;
             INFO("domain_length_tmp: "<<domain_length);
-            Real_t leaf_size = r_near;
+            Real_t leaf_size = r_near/2;
             scale_x = 1.0/leaf_size;
             while(domain_length*scale_x>1.0 && tree_depth<MAX_DEPTH-1){
                 scale_x *= 0.5;
@@ -261,11 +258,12 @@ void VesBoundingBox<Real_t>::SetTreeParams()
 
         // determine the tree depth
         Real_t leaf_size = box_size_;
-        // 1*r_near < leaf_size <= 2*r_near
-        while(leaf_size*0.5>r_near && tree_depth<MAX_DEPTH-1){
+        // r_near/2 < leaf_size <= r_near
+        while(leaf_size>r_near && tree_depth<MAX_DEPTH-1){
             leaf_size *= 0.5;
             tree_depth++;
         }
+        // r_near/4 < leaf_size <= r_near/2
         leaf_size *= 0.5; tree_depth++;
         leaf_size_ = leaf_size;
     }
@@ -287,7 +285,7 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
     pvfmm::Vector<pvfmm::MortonId>& let_mins  =BB_let.mins;
 
     { // build scatter-indices (pt_id) and tree (let_mid, let_pt_cnt, let_pt_dsp)
-        pvfmm::Vector<pvfmm::MortonId> pt_mid(N_bbox_);
+        pvfmm::Vector<pvfmm::MortonId> pt_mid(N_pts_);
         { // build pt_mid
             Real_t scale_x, shift_x[COORD_DIM];
             { // set scale_x, shift_x
@@ -300,8 +298,8 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
             #pragma omp parallel for
             for(size_t tid=0;tid<omp_p_;tid++){
                 Real_t c[COORD_DIM];
-                size_t a=((tid+0)*N_bbox_)/omp_p_;
-                size_t b=((tid+1)*N_bbox_)/omp_p_;
+                size_t a=((tid+0)*N_pts_)/omp_p_;
+                size_t b=((tid+1)*N_pts_)/omp_p_;
                 for(size_t i=a;i<b;i++){
                     for(size_t k=0;k<COORD_DIM;k++){
                         c[k]=BB_pts_[i*COORD_DIM+k]*scale_x+shift_x[k];
@@ -313,7 +311,7 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
             }
         }
 
-        pt_id   .ReInit(N_bbox_);
+        pt_id   .ReInit(N_pts_);
         pvfmm::par::SortScatterIndex(pt_mid, pt_id, comm);
         pvfmm::par::ScatterForward  (pt_mid, pt_id, comm);
         { // build let_mins
@@ -831,13 +829,6 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::pa
     {
         size_t tid=omp_get_thread_num();
         std::vector<std::pair<size_t, size_t> >& near_pair=near_pair_omp[tid];
-        size_t tree_depth; Real_t r2_near;
-        { // Set tree_depth, r_near
-            tree_depth=BB_let.mid[0].GetDepth();
-            r2_near=r_near_;
-            r2_near*=r2_near;
-        }
-        Real_t s=pow(0.5,tree_depth);
 
         size_t FLOP=0;
         size_t a=((tid+0)*tree_mid.Dim())/omp_p_;
@@ -846,12 +837,10 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::pa
             size_t tcnt=tree_pt_cnt[i];
             size_t tdsp=tree_pt_dsp[i];
             PVFMMVec_t tmin, tmax;
-            pvfmm::Vector<size_t> tpt_id;
             pvfmm::Vector<size_t> tbox_id;
             if(tcnt){ // Set t_coord
                 tmin.ReInit(tcnt*COORD_DIM,  &box_min[tdsp*COORD_DIM],false);
                 tmax.ReInit(tcnt*COORD_DIM,  &box_max[tdsp*COORD_DIM],false);
-                tpt_id.ReInit(tcnt,          &pt_id[tdsp]            ,false);
                 tbox_id.ReInit(tcnt,         &box_id[tdsp]           ,false);
             }
 
@@ -859,7 +848,7 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::pa
                 for(size_t t1=0;t1<tcnt;t1++){
                     for(size_t t2=0;t2<tcnt;t2++){
                         if( (tbox_id[t1]!=tbox_id[t2]) &&
-                            CheckBBCollision(&tmin[t1*COORD_DIM], &tmax[t1*COORD_DIM], &tmin[t2*COORD_DIM],&tmax[t2*COORD_DIM])
+                            CheckBBCollision(&tmin[t1*COORD_DIM], &tmax[t1*COORD_DIM], &tmin[t2*COORD_DIM], &tmax[t2*COORD_DIM])
                           )
                         {
                             std::pair<size_t, size_t> new_pair;
@@ -919,6 +908,7 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::pa
     pvfmm::par::ScatterForward(near_trg_box_id, scatter_idx, comm);
 
     // construct unique pairs
+    near_size = scatter_idx.Dim();
     BBIPairs.resize(near_size);
     #pragma omp parallel for
     for(size_t i=0; i<near_size;i++){
@@ -940,7 +930,7 @@ void VesBoundingBox<Real_t>::GlobalBoundingBox(Real_t *scale_xr, Real_t *shift_x
     double loc_min_x[COORD_DIM];
     double loc_max_x[COORD_DIM];
     
-    assert(N_bbox_>0);
+    ASSERT(N_bbox_>0, "invalid number of bounding boxes");
     size_t n_src = N_bbox_;
 
     for(size_t k=0;k<COORD_DIM;k++){
@@ -977,11 +967,16 @@ void VesBoundingBox<Real_t>::GlobalBoundingBox(Real_t *scale_xr, Real_t *shift_x
 template<typename Real_t>
 void VesBoundingBox<Real_t>::GenerateBBPoints()
 {
-    std::vector<size_t> bbox_nxyz(COORD_DIM*N_bbox_);
-    std::vector<size_t> bbox_n(N_bbox_);
-    std::vector<size_t> bbox_ndsp(N_bbox_);
+    // number of points in each dimension
+    std::vector<size_t> bbox_nxyz(COORD_DIM*N_bbox_, 0);
+    // number of points per box
+    std::vector<size_t> bbox_n(N_bbox_, 0);
+    // points displacement
+    std::vector<size_t> bbox_ndsp(N_bbox_, 0);
     size_t n_sum = 0;
 
+    // set number of pts in each dimension
+    // set number of points per box
     #pragma omp parallel for
     for(size_t tid=0; tid<omp_p_; tid++){
         size_t a = ((tid+0)*N_bbox_)/omp_p_;
@@ -992,27 +987,32 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
             const Real_t* max_i = &BB_max_[i*COORD_DIM];
             size_t* bbox_nxyzi     = &bbox_nxyz[i*COORD_DIM];
 
-            int nx = std::ceil((max_i[0] - min_i[0])/leaf_size_);
-            int ny = std::ceil((max_i[1] - min_i[1])/leaf_size_);
-            int nz = std::ceil((max_i[2] - min_i[2])/leaf_size_);
+            int nx = std::ceil((max_i[0] - min_i[0])/leaf_size_) + 1;
+            int ny = std::ceil((max_i[1] - min_i[1])/leaf_size_) + 1;
+            int nz = std::ceil((max_i[2] - min_i[2])/leaf_size_) + 1;
             
-            assert(nx > 0);assert(ny > 0);assert(nz > 0);
+            ASSERT(nx > 1, "invalid nx");ASSERT(ny > 1, "invalid ny");ASSERT(nz > 1, "invalid nz");
             
             bbox_nxyzi[0] = nx;
             bbox_nxyzi[1] = ny;
             bbox_nxyzi[2] = nz;
-            bbox_n[i] = (nx+1)*(ny+1)*(nz+1);
+            bbox_n[i] = nx*ny*nz;
         }
     }
         
+    // set point displacement for each bounding box
     bbox_ndsp[0]=0; pvfmm::omp_par::scan(&bbox_n[0], &bbox_ndsp[0], bbox_n.size());
+    // total number of points
     n_sum = pvfmm::omp_par::reduce(&bbox_n[0], bbox_n.size());
+    N_pts_ = n_sum;
 
+    // init data for generating points
     BB_pts_.ReInit(COORD_DIM*n_sum);
     BB_pts_min_.ReInit(COORD_DIM*n_sum);
     BB_pts_max_.ReInit(COORD_DIM*n_sum);
     BB_id_.ReInit(n_sum);
 
+    // set global bounding box id offset
     size_t box_id_offset;
     {
         long long disp = 0;
@@ -1021,6 +1021,7 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
         box_id_offset = disp - size;
     }
 
+    // generating points
     #pragma omp parallel for
     for(size_t tid=0; tid<omp_p_; tid++){
         size_t a = ((tid+0)*N_bbox_)/omp_p_;
@@ -1037,14 +1038,14 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
 
             size_t ni = 0;
             size_t disp = bbox_ndsp[i];
-            for(size_t nxi=0; nxi<nx+1; nxi++)
-            for(size_t nyi=0; nyi<ny+1; nyi++)
-            for(size_t nzi=0; nzi<nz+1; nzi++)
+            for(size_t nxi=0; nxi<nx; nxi++)
+            for(size_t nyi=0; nyi<ny; nyi++)
+            for(size_t nzi=0; nzi<nz; nzi++)
             {
                 Real_t* BB_pts = &BB_pts_[COORD_DIM*(disp+ni)];
-                BB_pts[0] = nxi*((max_i[0]-min_i[0])/nx) + min_i[0];
-                BB_pts[1] = nyi*((max_i[1]-min_i[1])/ny) + min_i[1];
-                BB_pts[2] = nzi*((max_i[2]-min_i[2])/nz) + min_i[2];
+                BB_pts[0] = nxi*((max_i[0]-min_i[0])/(nx-1)) + min_i[0];
+                BB_pts[1] = nyi*((max_i[1]-min_i[1])/(ny-1)) + min_i[1];
+                BB_pts[2] = nzi*((max_i[2]-min_i[2])/(nz-1)) + min_i[2];
 
                 Real_t* BB_pts_min = &BB_pts_min_[COORD_DIM*(disp+ni)];
                 BB_pts_min[0] = min_i[0]; BB_pts_min[1] = min_i[1]; BB_pts_min[2] = min_i[2];
