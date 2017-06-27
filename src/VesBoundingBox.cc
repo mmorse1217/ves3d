@@ -56,11 +56,11 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
             Real_t *maxi = &BB_max_[i*COORD_DIM];
             for(size_t k=0; k<COORD_DIM; k++){
                 // ves coord
-                Real_t *val_ik_s = ves_coord_s_up[i*ves_stride*COORD_DIM+ves_stride*k];
-                Real_t *val_ik_e = ves_coord_e_up[i*ves_stride*COORD_DIM+ves_stride*k];
+                Real_t *val_ik_s = &ves_coord_s_up[i*ves_stride*COORD_DIM+ves_stride*k];
+                Real_t *val_ik_e = &ves_coord_e_up[i*ves_stride*COORD_DIM+ves_stride*k];
                 // ves pole
-                Real_t *val_ik_pole_s = ves_coord_pole_s[i*2*COORD_DIM+2*k];
-                Real_t *val_ik_pole_e = ves_coord_pole_e[i*2*COORD_DIM+2*k];
+                Real_t *val_ik_pole_s = &ves_coord_pole_s[i*2*COORD_DIM+2*k];
+                Real_t *val_ik_pole_e = &ves_coord_pole_e[i*2*COORD_DIM+2*k];
 
                 Real_t mink = val_ik_s[0]; Real_t maxk = val_ik_s[0];
                 for(size_t j=0; j<ves_stride; j++){
@@ -95,8 +95,10 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const Vec& ves_coord_s, const Vec
 template<typename Real_t>
 void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& BB_min, const PVFMMVec_t& BB_max)
 {
+    ASSERT(BB_min.Dim() == BB_max.Dim(), "bounding box min, max dim doesn't match");
     BB_min_ = BB_min;
     BB_max_ = BB_max;
+    N_bbox_ = BB_min_.Dim()/COORD_DIM;
 }
 
 template<typename Real_t>
@@ -199,7 +201,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
 
         {   // determine r_near (global max)
             double r_bbox_max_loc = 0, r_bbox_max_glb = 0;
-            double r_bbox_min_loc = 0, r_bbox_min_glb = 0;
+            double r_bbox_min_loc = std::numeric_limits<Real_t>::max(), r_bbox_min_glb = std::numeric_limits<Real_t>::max();
             for(size_t tid=0;tid<omp_p_;tid++){
                 r_bbox_max_loc = std::max(r2_bbox_max_omp[tid], r_bbox_max_loc);
                 r_bbox_min_loc = std::min(r2_bbox_min_omp[tid], r_bbox_min_loc);
@@ -214,6 +216,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
     }
 
     r_near = r_bbox_min;
+    INFO("r_near: "<<r_near);
     if(box_size_>0 && r_bbox_max > box_size_){
         COUTDEBUG("Domain too small for bounding box size");
         assert(false);
@@ -240,6 +243,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
             }
             INFO("domain_length_actual: "<<1.0/scale_x);
             leaf_size_ = leaf_size;
+            INFO("leaf_size: "<<leaf_size);
         }
 
         for(size_t j=0;j<COORD_DIM;j++){ // Update shift_x
@@ -266,6 +270,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
         // r_near/4 < leaf_size <= r_near/2
         leaf_size *= 0.5; tree_depth++;
         leaf_size_ = leaf_size;
+        INFO("leaf_size: "<<leaf_size);
     }
     pvfmm::Profile::Toc();
 }
@@ -1062,8 +1067,31 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
 template<typename Real_t>
 bool VesBoundingBox<Real_t>::CheckBBCollision(const Real_t *minA, const Real_t *maxA, const Real_t *minB, const Real_t *maxB)
 {
-    return ( (minA[0]<=maxB[0] && maxA[0]>= minB[0]) &&
-             (minA[1]<=maxB[1] && maxA[1]>= minB[1]) &&
-             (minA[2]<=maxB[2] && maxA[2]>= minB[2])
-           );
+    if(box_size_<=0)
+    {
+        return ( (minA[0]<=maxB[0] && maxA[0]>= minB[0]) &&
+                 (minA[1]<=maxB[1] && maxA[1]>= minB[1]) &&
+                 (minA[2]<=maxB[2] && maxA[2]>= minB[2])
+               );
+    }
+    else
+    {
+        bool flag[COORD_DIM];
+        for(size_t i=0; i<COORD_DIM; i++)
+        {
+            flag[i] = false;
+            if( ((maxA[i]-minA[i]) + (maxB[i]-minB[i])) >= box_size_ )
+            {
+                flag[i] = true;
+                continue;
+            }
+
+            double disp = box_size_ * round( ((maxA[i]+minA[i]) - (maxB[i]+minB[i]))/(2*box_size_) );
+                
+            ASSERT(fabs((maxA[i]+minA[i])/2 - disp - (maxB[i]+minB[i])/2)<=box_size_*0.5,"wrong checkBBcollision");
+            flag[i] = ( (minA[i]-disp)<=maxB[i] && (maxA[i]-disp)>= minB[i] );
+            //std::cout<<"box size: "<<box_size_<<", disp: "<<disp<<", maxA: "<<maxA[i]<<", minA: "<<minA[i]<<", maxB: "<<maxB[i]<<", minB: "<<minB[i]<<", flag: "<<flag[i]<<"\n";
+        }
+        return (flag[0] && flag[1] && flag[2]);
+    }
 }

@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <map>
 #include "VesBoundingBox.h"
+#include "ParallelLinSolver_Petsc.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -107,7 +108,7 @@ class InterfacialVelocity
     Error_t UpdateVgradInd(int *ind1, int *ind2, int base, size_t length) const;
     Error_t ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const;
     Error_t ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const;
-    Error_t ParallelSolveLCPSmall(Arr_t &lambda, Arr_t &cvs) const;
+    Error_t ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const;
     Error_t ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
     Error_t ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const;
     Error_t ConfigureLCPSolver() const;
@@ -215,6 +216,7 @@ class InterfacialVelocity
     mutable pvfmm::Vector<int> s_ind_cnt_, s_ind_dsp_, r_ind_cnt_, r_ind_dsp_;
     mutable std::vector<size_t> s_ind_, r_ind_;
     mutable std::vector<value_type> s_value_, r_value_;
+    mutable ParallelLinSolverPetsc<value_type> *lcp_parallel_linear_solver_;
 };
 
 #include "InterfacialVelocity.cc"

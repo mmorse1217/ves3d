@@ -166,8 +166,8 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       daxpy (&ivar, &dvar, rhs, &i, residual, &i);
       dvar = dnrm2 (&ivar, residual, &i);
       
-      printf ("\n Current iteration: %d\n", itercount);
-      printf ("Residual: %e\n", dvar);
+      //printf ("\n Current iteration: %d\n", itercount);
+      //printf ("Residual: %e\n", dvar);
       
       if (dvar <= dpar[3])
         goto COMPLETE;
