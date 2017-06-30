@@ -100,6 +100,7 @@ class StokesVelocity{
     bool fmm_setup;
     void* pvfmm_ctx;
     PVFMMVec fmm_vel;
+    PVFMMVec far_vel;
 
 };
 

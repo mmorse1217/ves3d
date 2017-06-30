@@ -320,6 +320,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             INFO("Time-adaptive: A_err/dt = "<<(A_err/A0)/dt<<", V_err/dt = "<<(V_err/V0)/dt<<", dt_new = "<<dt_new);
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
+            COUT("TimeAdapNone");
             pvfmm::Profile::Tic("GMRES",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
@@ -342,7 +343,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         pvfmm::Profile::Toc();
 
         pvfmm::Profile::Toc();
-        //pvfmm::Profile::print(&comm);
+        pvfmm::Profile::print(&comm);
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;

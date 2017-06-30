@@ -53,6 +53,7 @@ void StokesVelocity<Real>::SetSrcCoord(const PVFMMVec& S, int sh_order_up_self_,
   S_vel.ReInit(0);
   S_vel_up.ReInit(0);
   fmm_vel.ReInit(0);
+  far_vel.ReInit(0);
   trg_vel.ReInit(0);
 }
 
@@ -91,6 +92,7 @@ void StokesVelocity<Real>::SetDensitySL(const PVFMMVec* f, bool add_repul_){
   S_vel.ReInit(0);
   S_vel_up.ReInit(0);
   fmm_vel.ReInit(0);
+  far_vel.ReInit(0);
   trg_vel.ReInit(0);
 }
 
@@ -130,6 +132,7 @@ void StokesVelocity<Real>::SetDensityDL(const PVFMMVec* f){
   S_vel.ReInit(0);
   S_vel_up.ReInit(0);
   fmm_vel.ReInit(0);
+  far_vel.ReInit(0);
   trg_vel.ReInit(0);
 }
 
@@ -157,6 +160,7 @@ void StokesVelocity<Real>::SetTrgCoord(const PVFMMVec* T){
   S_vel.ReInit(0);
   S_vel_up.ReInit(0);
   fmm_vel.ReInit(0);
+  far_vel.ReInit(0);
   trg_vel.ReInit(0);
 }
 
@@ -474,6 +478,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
 
   NearSingular<Real>& near_singular=(trg_is_surf?near_singular0:near_singular1);
   PVFMMVec& trg_coord=(trg_is_surf?tcoord_repl:tcoord);
+
   if(!fmm_vel.Dim()){ // Compute far interaction
     pvfmm::Profile::Tic("FarInteraction",&comm,true);
     bool prof_state=pvfmm::Profile::Enable(false);
@@ -534,22 +539,22 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
   pvfmm::Profile::Toc();
   pvfmm::Profile::Enable(prof_state);
 #endif
-
+    
   return trg_vel;
 }
 
 template <class Real>
 const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
 #ifdef __ENABLE_PVFMM_PROFILER__
-  bool prof_state=pvfmm::Profile::Enable(true);
-  pvfmm::Profile::Tic("StokesVelocitySelfInteraction",&comm, true);
+  //bool prof_state=pvfmm::Profile::Enable(true);
+  //pvfmm::Profile::Tic("StokesVelocitySelfInteraction",&comm, true);
 #endif
 
   setup_self();
 
   if(!S_vel.Dim()){ // Compute self interaction
-    pvfmm::Profile::Tic("SelfInteractionInSelf",&comm);
-    bool prof_state=pvfmm::Profile::Enable(false);
+    //pvfmm::Profile::Tic("SelfInteractionInSelf",&comm);
+    //bool prof_state=pvfmm::Profile::Enable(false);
     static PVFMMVec Vcoef;
     { // Compute Vcoeff
       long Ncoef =   sh_order*(sh_order+2);
@@ -611,13 +616,13 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
       }
     }
     SphericalHarmonics<Real>::SHC2Grid(Vcoef, sh_order, sh_order   , S_vel);
-    pvfmm::Profile::Enable(prof_state);
-    pvfmm::Profile::Toc();
+    //pvfmm::Profile::Enable(prof_state);
+    //pvfmm::Profile::Toc();
   }
 
 #ifdef __ENABLE_PVFMM_PROFILER__
-  pvfmm::Profile::Toc();
-  pvfmm::Profile::Enable(prof_state);
+  //pvfmm::Profile::Toc();
+  //pvfmm::Profile::Enable(prof_state);
 #endif
 
   return S_vel;
@@ -739,20 +744,20 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::FarInteraction(){
     pvfmm::Profile::Toc();
   }
 
-  if(!trg_vel.Dim()){ // Compute near interaction
+  if(!far_vel.Dim()){ // Compute near interaction
     pvfmm::Profile::Tic("NearInteraction",&comm,true);
     bool prof_state=pvfmm::Profile::Enable(false);
     const PVFMMVec& near_vel=near_singular();
-    { // Compute trg_vel = fmm_vel + near_vel
-      trg_vel.ReInit(trg_coord.Dim());
-      assert(trg_vel.Dim()==fmm_vel.Dim());
-      assert(trg_vel.Dim()==near_vel.Dim());
+    { // Compute far_vel = fmm_vel + near_vel
+      far_vel.ReInit(trg_coord.Dim());
+      assert(far_vel.Dim()==fmm_vel.Dim());
+      assert(far_vel.Dim()==near_vel.Dim());
       #pragma omp parallel for
-      for(size_t i=0;i<trg_vel.Dim();i++){
-        trg_vel[i]=fmm_vel[i]+near_vel[i];
+      for(size_t i=0;i<far_vel.Dim();i++){
+        far_vel[i]=fmm_vel[i]+near_vel[i];
       }
     }
-    if(trg_is_surf){ // shuffle trg_vel to get axis order
+    if(trg_is_surf){ // shuffle far_vel to get axis order
       long Ngrid = 2*sh_order*(sh_order+1);
       long Nves = S_vel.Dim()/Ngrid/COORD_DIM;
 
@@ -762,14 +767,14 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::FarInteraction(){
       for(long i=0;i<Nves;i++){
         for(long j=0;j<COORD_DIM;j++){
           for(long k=0;k<Ngrid;k++){
-            tmp[(i*COORD_DIM+j)*Ngrid+k]=trg_vel[(i*Ngrid+k)*COORD_DIM+j];
+            tmp[(i*COORD_DIM+j)*Ngrid+k]=far_vel[(i*Ngrid+k)*COORD_DIM+j];
           }
         }
       }
-      trg_vel.Swap(tmp);
+      far_vel.Swap(tmp);
       { // filter
         #ifdef __SH_FILTER__
-        pvfmm::Vector<Real>& V=trg_vel;
+        pvfmm::Vector<Real>& V=far_vel;
         pvfmm::Vector<Real> tmp;
         SphericalHarmonics<Real>::Grid2SHC(V,sh_order,sh_order,tmp);
         SphericalHarmonics<Real>::SHC2Grid(tmp,sh_order,sh_order,V);
@@ -785,7 +790,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::FarInteraction(){
   pvfmm::Profile::Enable(prof_state);
 #endif
 
-  return trg_vel;
+  return far_vel;
 }
 
 template <class Real>
@@ -801,30 +806,30 @@ void StokesVelocity<Real>::operator()(Vec& vel){
 template <class Real>
 template <class Vec>
 void StokesVelocity<Real>::SelfInteraction(Vec& vel){
-  PVFMMVec trg_vel_(vel.size(),vel.begin(),false);
+  PVFMMVec self_vel_(vel.size(),vel.begin(),false);
 
-  const PVFMMVec& trg_vel=this->SelfInteraction();
-  assert(trg_vel.Dim()==trg_vel_.Dim());
-  trg_vel_=trg_vel;
+  const PVFMMVec& self_vel_tmp=this->SelfInteraction();
+  assert(self_vel_tmp.Dim()==self_vel_.Dim());
+  self_vel_=self_vel_tmp;
 }
 
 template <class Real>
 template <class Vec>
 void StokesVelocity<Real>::FarInteraction(Vec& vel){
-  PVFMMVec trg_vel_(vel.size(),vel.begin(),false);
+  PVFMMVec far_vel_(vel.size(),vel.begin(),false);
 
-  const PVFMMVec& trg_vel=this->FarInteraction();
-  assert(trg_vel.Dim()==trg_vel_.Dim());
-  trg_vel_=trg_vel;
+  const PVFMMVec& far_vel_tmp=this->FarInteraction();
+  assert(far_vel_tmp.Dim()==far_vel_.Dim());
+  far_vel_=far_vel_tmp;
 }
 
 template <class Real>
 void StokesVelocity<Real>::setup_self(){
-  pvfmm::Profile::Tic("SetupSelf",&comm, true);
-  bool prof_state=pvfmm::Profile::Enable(false);
+  //pvfmm::Profile::Tic("SetupSelf",&comm, true);
+  //bool prof_state=pvfmm::Profile::Enable(false);
 
   if(!SLMatrix.Dim() || !DLMatrix.Dim()){
-    pvfmm::Profile::Tic("SelfMatrix",&comm, true);
+    //pvfmm::Profile::Tic("SelfMatrix",&comm, true);
     if(!SLMatrix.Dim() && !DLMatrix.Dim() && force_single.Dim() && force_double.Dim()){
       if(1){
         pvfmm::Vector<Real> tmp1; tmp1.Swap(SLMatrix);
@@ -842,10 +847,11 @@ void StokesVelocity<Real>::setup_self(){
       }
       SphericalHarmonics<Real>::StokesSingularInteg(scoord, sh_order, sh_order_up_self, NULL, &DLMatrix);
     }
-    pvfmm::Profile::Toc();
+    //pvfmm::Profile::Toc();
   }
 
-  if(!rforce_single.Dim() && add_repul){ // Add repulsion
+  //if(!rforce_single.Dim() && add_repul){ // Add repulsion
+  if(0){ // Add repulsion
     pvfmm::Profile::Tic("Repulsion",&comm);
     const PVFMMVec& f_repl=near_singular0.ForceRepul();
     long Mves=2*sh_order*(sh_order+1);
@@ -872,8 +878,8 @@ void StokesVelocity<Real>::setup_self(){
     rforce_single.ReInit(force_single.Dim(),&force_single[0],false);
   }
 
-  pvfmm::Profile::Enable(prof_state);
-  pvfmm::Profile::Toc();
+  //pvfmm::Profile::Enable(prof_state);
+  //pvfmm::Profile::Toc();
 }
 
 template <class Real>
@@ -987,7 +993,8 @@ void StokesVelocity<Real>::setup_all(){
     pvfmm::Profile::Toc();
   }
 
-  if(!rforce_single.Dim() && add_repul){ // Add repulsion
+  //if(!rforce_single.Dim() && add_repul){ // Add repulsion
+  if(0){ // Add repulsion
     pvfmm::Profile::Tic("Repulsion",&comm);
     const PVFMMVec& f_repl=near_singular0.ForceRepul();
     long Mves=2*sh_order*(sh_order+1);

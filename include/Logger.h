@@ -164,7 +164,7 @@ std::ostream& emph(std::ostream& os);
 /*
  * Printing macro
  */
-#define SCI_PRINT_FRMT std::scientific<<std::setprecision(8)
+#define SCI_PRINT_FRMT std::scientific<<std::setprecision(16)
 
 #ifdef VERBOSE
 #define COUTDEBUG(str) {int _rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &_rank); if(!_rank)std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}

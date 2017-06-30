@@ -104,11 +104,11 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& BB_min, const P
 template<typename Real_t>
 void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<size_t, size_t> > &BBIPairs)
 {
-    ASSERT(BB_min_, "empty bounding boxes min"); ASSERT(BB_max_, "empty bounding boxes max");
+    ASSERT(BB_min_.Dim()>0, "empty bounding boxes min"); ASSERT(BB_max_.Dim()>0, "empty bounding boxes max");
     ASSERT(N_bbox_>0, "empty bounding boxes N_bbox_");
 
 #ifdef VES_BOUNDING_BOX_DEBUG
-    INFO("rank: "<<rank_<<" of "<<np_<<" processes has "<<omp_p_<<" threads");
+    COUT("rank: "<<rank_<<" of "<<np_<<" processes has "<<omp_p_<<" threads");
 #endif
 
     pvfmm::Profile::Tic("GetContactBBPair", &comm, true);
@@ -116,42 +116,37 @@ void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<si
     
     TREEGRID BB_let;
 
-    {   // construct BB_let
-        pvfmm::Profile::Tic("BBLET", &comm, true);
+    // construct BB_let
+    pvfmm::Profile::Tic("BBLET", &comm, true);
+    SetTreeParams();
 
-        SetTreeParams();
 #ifdef VES_BOUNDING_BOX_DEBUG
-        INFO("bbox_: "<<bbox_[0]<<","<<bbox_[1]<<","<<bbox_[2]<<","<<bbox_[3]<<".");
-        INFO("r_near_: "<<r_near_);
-        INFO("tree_depth_: "<<tree_depth_);
+    COUT("bbox_: "<<bbox_[0]<<","<<bbox_[1]<<","<<bbox_[2]<<","<<bbox_[3]<<".");
+    COUT("r_near_: "<<r_near_);
+    COUT("tree_depth_: "<<tree_depth_);
 #endif
         
-        GenerateBBPoints();
-        
-        ConstructLocalTree(BB_let);
-#ifdef VES_BOUNDING_BOX_DEBUG
-        INFO("size of mid: "<<BB_let.mid.Dim());
-        INFO(BB_let.mid);
-        INFO("size of pt_cnt: "<<BB_let.pt_cnt.Dim());
-        INFO(BB_let.pt_cnt);
-        INFO("size of pt_dsp: "<<BB_let.pt_dsp.Dim());
-        INFO(BB_let.pt_dsp);
-        INFO("size of mins: "<<BB_let.mins.Dim());
-        INFO(BB_let.mins);
-        //INFO("size of pt_coord: "<<BB_let.pt_coord.Dim());
-        //INFO(BB_let.pt_coord);
-        INFO("size of pt_id: "<<BB_let.pt_id.Dim());
-        INFO(BB_let.pt_id);
-#endif
-        
-        pvfmm::Profile::Toc();
-    }
+    GenerateBBPoints();
+    ConstructLocalTree(BB_let);
 
-    {   // find contact BB pair
-        FindNearPair(BB_let, BBIPairs);
 #ifdef VES_BOUNDING_BOX_DEBUG
+    COUT("size of mid: "<<BB_let.mid.Dim());
+    COUT(BB_let.mid);
+    COUT("size of pt_cnt: "<<BB_let.pt_cnt.Dim());
+    COUT(BB_let.pt_cnt);
+    COUT("size of pt_dsp: "<<BB_let.pt_dsp.Dim());
+    COUT(BB_let.pt_dsp);
+    COUT("size of mins: "<<BB_let.mins.Dim());
+    COUT(BB_let.mins);
+    COUT("size of pt_id: "<<BB_let.pt_id.Dim());
+    COUT(BB_let.pt_id);
 #endif
-    }
+    
+    pvfmm::Profile::Toc();
+    // end of construct BB_let
+
+    // find contact BB pair
+    FindNearPair(BB_let, BBIPairs);
 
     pvfmm::Profile::Enable(prof_state);
     pvfmm::Profile::Toc();
@@ -167,57 +162,52 @@ void VesBoundingBox<Real_t>::SetTreeParams()
     size_t& tree_depth = tree_depth_;
 
     tree_depth = 0;
-    Real_t r_bbox_max = 0;
-    Real_t r_bbox_min = std::numeric_limits<Real_t>::max();
-    Real_t r_bbox_avg = 0;
     ASSERT(N_bbox_ > 0, "number of bounding boxes is zero");
-    {   // determine r_bbox
-        std::vector<Real_t> r2_bbox_max_omp(omp_p_);
-        std::vector<Real_t> r2_bbox_min_omp(omp_p_);
-        std::vector<Real_t> r2_bbox_avg_omp(omp_p_);
-        #pragma omp parallel for
-        for(size_t tid=0; tid<omp_p_; tid++){
-            size_t a = ((tid+0)*N_bbox_)/omp_p_;
-            size_t b = ((tid+1)*N_bbox_)/omp_p_;
+        
+    // determine r_bbox
+    std::vector<Real_t> r2_max_mp(omp_p_);
+    std::vector<Real_t> r2_min_mp(omp_p_);
+    #pragma omp parallel for
+    for(size_t tid=0; tid<omp_p_; tid++){
+        size_t a = ((tid+0)*N_bbox_)/omp_p_;
+        size_t b = ((tid+1)*N_bbox_)/omp_p_;
 
-            Real_t r2_bbox_max = 0;
-            Real_t r2_bbox_min = std::numeric_limits<Real_t>::max();
-            Real_t r2_bbox_avg = 0;
-            for(size_t i=a; i<b; i++){ // compute r2_bbox
-                const Real_t* min_i = &BB_min_[i*COORD_DIM];
-                const Real_t* max_i = &BB_max_[i*COORD_DIM];
+        Real_t r2_max = 0;
+        Real_t r2_min = std::numeric_limits<Real_t>::max();
+        for(size_t i=a; i<b; i++){ // compute r2_bbox
+            const Real_t* max_i = &BB_max_[i*COORD_DIM];
+            const Real_t* min_i = &BB_min_[i*COORD_DIM];
 
-                Real_t dx = min_i[0] - max_i[0];
-                Real_t dy = min_i[1] - max_i[1];
-                Real_t dz = min_i[2] - max_i[2];
-                Real_t r2 = dx*dx + dy*dy + dz*dz;
+            Real_t dx = max_i[0] - min_i[0];
+            Real_t dy = max_i[1] - min_i[1];
+            Real_t dz = max_i[2] - min_i[2];
+            Real_t r2_box = dx*dx + dy*dy + dz*dz;
 
-                r2_bbox_max = std::max(r2_bbox_max, r2);
-                r2_bbox_min = std::min(r2_bbox_min, r2);
-            }
-            r2_bbox_max_omp[tid] = r2_bbox_max;
-            r2_bbox_min_omp[tid] = r2_bbox_min;
+            r2_max = std::max(r2_max, r2_box);
+            r2_min = std::min(r2_min, r2_box);
         }
-
-        {   // determine r_near (global max)
-            double r_bbox_max_loc = 0, r_bbox_max_glb = 0;
-            double r_bbox_min_loc = std::numeric_limits<Real_t>::max(), r_bbox_min_glb = std::numeric_limits<Real_t>::max();
-            for(size_t tid=0;tid<omp_p_;tid++){
-                r_bbox_max_loc = std::max(r2_bbox_max_omp[tid], r_bbox_max_loc);
-                r_bbox_min_loc = std::min(r2_bbox_min_omp[tid], r_bbox_min_loc);
-            }
-            r_bbox_max_loc = sqrt(r_bbox_max_loc);
-            r_bbox_min_loc = sqrt(r_bbox_min_loc);
-            MPI_Allreduce(&r_bbox_max_loc, &r_bbox_max_glb, 1, MPI_DOUBLE, MPI_MAX, comm);
-            MPI_Allreduce(&r_bbox_min_loc, &r_bbox_min_glb, 1, MPI_DOUBLE, MPI_MIN, comm);
-            r_bbox_max = r_bbox_max_glb;
-            r_bbox_min = r_bbox_min_glb;
-        }
+        r2_max_mp[tid] = r2_max;
+        r2_min_mp[tid] = r2_min;
     }
 
-    r_near = r_bbox_min;
-    INFO("r_near: "<<r_near);
-    if(box_size_>0 && r_bbox_max > box_size_){
+    // determine r_near (global max)
+    double r_max_loc = 0; double r_max_glb = 0;
+    double r_min_loc = std::numeric_limits<double>::max(); double r_min_glb = std::numeric_limits<double>::max();
+    for(size_t tid=0; tid<omp_p_; tid++){
+        r_max_loc = std::max(r2_max_mp[tid], r_max_loc);
+        r_min_loc = std::min(r2_min_mp[tid], r_min_loc);
+    }
+    r_max_loc = std::sqrt(r_max_loc);
+    r_min_loc = std::sqrt(r_min_loc);
+
+    MPI_Allreduce(&r_max_loc, &r_max_glb, 1, MPI_DOUBLE, MPI_MAX, comm);
+    MPI_Allreduce(&r_min_loc, &r_min_glb, 1, MPI_DOUBLE, MPI_MIN, comm);
+
+    r_near = r_min_glb;
+    
+    COUT("set r_near: "<<r_near<<"\n");
+
+    if(box_size_>0 && r_max_glb > box_size_){
         COUTDEBUG("Domain too small for bounding box size");
         assert(false);
         exit(0);
@@ -226,7 +216,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
     if(box_size_<=0){ // determine the global bbox, tree_depth
         Real_t scale_x, shift_x[COORD_DIM];
         Real_t scale_tmp;
-        
+   
         // determine global bounding box
         GlobalBoundingBox(&scale_tmp, shift_x);
 
@@ -234,16 +224,16 @@ void VesBoundingBox<Real_t>::SetTreeParams()
             ASSERT(scale_tmp!=0, "invalid scale");
             
             Real_t domain_length = 1.0/scale_tmp + 4*r_near;
-            INFO("domain_length_tmp: "<<domain_length);
+            COUT("domain_length_tmp: "<<domain_length);
             Real_t leaf_size = r_near/2;
             scale_x = 1.0/leaf_size;
             while(domain_length*scale_x>1.0 && tree_depth<MAX_DEPTH-1){
                 scale_x *= 0.5;
                 tree_depth++;
             }
-            INFO("domain_length_actual: "<<1.0/scale_x);
+            COUT("domain_length_actual: "<<1.0/scale_x);
             leaf_size_ = leaf_size;
-            INFO("leaf_size: "<<leaf_size);
+            COUT("leaf_size: "<<leaf_size);
         }
 
         for(size_t j=0;j<COORD_DIM;j++){ // Update shift_x
@@ -270,7 +260,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
         // r_near/4 < leaf_size <= r_near/2
         leaf_size *= 0.5; tree_depth++;
         leaf_size_ = leaf_size;
-        INFO("leaf_size: "<<leaf_size);
+        COUT("leaf_size: "<<leaf_size);
     }
     pvfmm::Profile::Toc();
 }
@@ -420,8 +410,6 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
         }
     }
     { // scatter pt_coord, box_id, box_min, box_max
-        //pt_coord=BB_pts_;
-        //pvfmm::par::ScatterForward(pt_coord, pt_id, comm);
         box_min=BB_pts_min_;
         pvfmm::par::ScatterForward(box_min, pt_id, comm);
         box_max=BB_pts_max_;
@@ -1090,7 +1078,6 @@ bool VesBoundingBox<Real_t>::CheckBBCollision(const Real_t *minA, const Real_t *
                 
             ASSERT(fabs((maxA[i]+minA[i])/2 - disp - (maxB[i]+minB[i])/2)<=box_size_*0.5,"wrong checkBBcollision");
             flag[i] = ( (minA[i]-disp)<=maxB[i] && (maxA[i]-disp)>= minB[i] );
-            //std::cout<<"box size: "<<box_size_<<", disp: "<<disp<<", maxA: "<<maxA[i]<<", minA: "<<minA[i]<<", maxB: "<<maxB[i]<<", minB: "<<minB[i]<<", flag: "<<flag[i]<<"\n";
         }
         return (flag[0] && flag[1] && flag[2]);
     }

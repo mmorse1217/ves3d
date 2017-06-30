@@ -3,7 +3,6 @@ int GMRESLinSolver<T>::
 operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs, 
         T reltol, T abstol, size_t N, int maxIters, int restartIters) const
 {
-
   /*---------------------------------------------------------------------------
   * Allocate storage for the ?par parameters and the solution/rhs vectors
   *---------------------------------------------------------------------------*/
@@ -25,9 +24,8 @@ operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs,
   MKL_INT RCI_request, i, ivar;
   double dvar;
   
-  printf ("--------------------------------------------------\n");
-  printf ("Solving the linear system using RCI FGMRES solver\n");
-  printf ("--------------------------------------------------\n\n");
+  COUT("Solving the linear system using RCI FGMRES solver\n");
+  
   /*---------------------------------------------------------------------------
   * Initialize variables and the right hand side through matrix-vector product
   *---------------------------------------------------------------------------*/
@@ -166,8 +164,7 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       daxpy (&ivar, &dvar, rhs, &i, residual, &i);
       dvar = dnrm2 (&ivar, residual, &i);
       
-      //printf ("\n Current iteration: %d\n", itercount);
-      //printf ("Residual: %e\n", dvar);
+      //COUT("rank: "<<myrank<<". Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
       
       if (dvar <= dpar[3])
         goto COMPLETE;
@@ -207,14 +204,7 @@ COMPLETE:ipar[12] = 0;
   /*---------------------------------------------------------------------------
   * Print solution vector: computed_solution[N] and the number of iterations: itercount
   *--------------------------------------------------------------------------- */
-  printf (" The system has been solved \n");
-  //printf ("\n The following solution has been obtained: \n");
-  //for (i = 0; i < N; i++)
-    //{
-      //printf ("computed_solution[%d]=", i);
-      //printf ("%e\n", computed_solution[i]);
-    //}
-  printf ("\n Number of iterations: %d\n", itercount);
+  COUT("The system has been solved. Number of iterations: "<<itercount<<".\n");
   /*-------------------------------------------------------------------------*/
   /* Release internal Intel(R) MKL memory that might be used for computations         */
   /* NOTE: It is important to call the routine below to avoid memory leaks   */
@@ -230,7 +220,8 @@ COMPLETE:ipar[12] = 0;
   /* NOTE: It is important to call the routine below to avoid memory leaks   */
   /* unless you disable Intel(R) MKL Memory Manager                                   */
   /*-------------------------------------------------------------------------*/
-FAILED:printf ("\nSolving the system FAILED as the solver has returned the ERROR code %d\n", RCI_request);
+
+FAILED:COUT("Solving the system FAILED as the solver has returned the ERROR code "<<RCI_request<<"\n");
   delete[] tmp;
   delete[] b;
   delete[] residual;
@@ -253,5 +244,3 @@ Context(const void **ctx) const
     *ctx = ctx_;
     return ErrorEvent::Success;
 }
-
-

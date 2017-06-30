@@ -89,18 +89,19 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
             x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
     
     // get upsampled position of x_pair
-    GetColPos(x_pair, x_s, x_s_pole);
     // init contact object
+    GetColPos(x_pair, x_s, x_s_pole);
     CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
-    CI_pair_.writeOFF();
     CI_pair_.init(SURF_SUBDIVISION);
 
+    /*
     static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
     static pvfmm::Vector<value_type> pos_s_pole;
     GetColPos(S_.getPosition(), pos_s, pos_s_pole);
     CI_.generateMesh(pos_s, &pos_s_pole[0], params_.upsample_freq, S_.getPosition().getNumSubs());
     CI_.writeOFF();
     CI_.init(SURF_SUBDIVISION);
+    */
     
     // init contact variables
     // init vgrad_ and vgrad_ind_
@@ -153,6 +154,14 @@ InterfacialVelocity<SurfContainer, Interaction>::
     delete parallel_rhs_;
     delete parallel_u_;
     delete VBBI_;
+    delete lcp_parallel_linear_solver_;
+
+    for(typename std::map<int, Vec_t*>::iterator i=ghost_vgrad_.begin(); i!=ghost_vgrad_.end(); i++)
+        delete i->second;
+    ghost_vgrad_.clear();
+    for(std::map<int, std::vector<int>*>::iterator i=ghost_vgrad_ind_.begin(); i!=ghost_vgrad_ind_.end(); i++)
+        delete i->second;
+    ghost_vgrad_ind_.clear();
 
     if(S_up_) delete S_up_;
     if(S_i_) delete S_i_;
@@ -276,11 +285,10 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
+    PROFILESTART();
     this->dt_ = dt;
     SolverScheme scheme(JacobiBlockImplicit);
-    INFO("Taking a time step using "<<scheme<<" scheme");
-    
-    // prepare scheme
+    COUT("Taking a time step using "<<scheme<<" scheme\n");
     CHK(Prepare(scheme));
     
     // check out working vec, sca
@@ -288,7 +296,6 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     std::auto_ptr<Vec_t> f1 = checkoutVec();
     std::auto_ptr<Vec_t> b1 = checkoutVec();
     std::auto_ptr<Vec_t> xtmp = checkoutVec();
-
     std::auto_ptr<Sca_t> b2 = checkoutSca();
     
     // resize
@@ -305,24 +312,25 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // farfield velocity
     this->updateFarField();
-    
+
     // position rhs
     Intfcl_force_.bendingForce(S_, *f1);
     stokes_.SetDensitySL(f1.get());
     stokes_.SetDensityDL(NULL);
     stokes_.SelfInteraction(*b1);
     axpy(static_cast<value_type>(1.0), pos_vel_, *b1, *b1);
-
+    
     // tension rhs
     S_.div(*b1, *b2);
     axpy(static_cast<value_type>(-1.0),*b2,*b2);
 
+    // parameters for gmres
     int iter(params_.time_iter_max);
-    int rsrt(params_.time_iter_max);
+    int rsrt(300);
     value_type tol(params_.time_tol),relres(params_.time_tol);
 
     Error_t ret_val(ErrorEvent::Success);
-    COUTDEBUG("Solving for velocity");
+    COUT("Solving for velocity");
         
     // new code using GMRES Solver
     size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
@@ -338,61 +346,65 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // copy to rhs
     b1->getDevice().Memcpy(rhs_host    , b1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     b2->getDevice().Memcpy(rhs_host+vsz, b2->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-
+        
     // solve the linear system using gmres
     int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host, rhs_host, 
-            relres, relres*0, N_size, iter, 300);
-
+            relres, relres*0, N_size, iter, rsrt);
+    
     // copy host to device
     x1->getDevice().Memcpy(x1->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     tension_.getDevice().Memcpy(tension_.begin(), x_host+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     // end of new code using GMRES Solver
 
     // developing code for col
-    INFO("Begin of contact resolving steps.");
+    COUT("Begin of contact resolving steps.\n");
     // reset contact force
     axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
-    
-    // pos_s stores the start configuration
-    // pos_e stores the end configuration
-    // vGrad stores the gradient of contact volumes
-    ///int np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
-    ///static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
-    ///static std::vector<value_type> pos_e(np_up*COORD_DIM*nv_, 0.0);
-    ///static std::vector<value_type> vGrad(np_up*COORD_DIM*nv_, 0.0);
- 
-    // the candidate position
-    axpy(dt_, *x1, S_.getPosition(), *xtmp);
-    // get collision
-    INFO("before getvolume");
-    ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
-    INFO("after getvolume");
-    
-    ///static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
-    ///GetColPos(S_.getPosition(), pos_s, pos_s_pole);
-    ///GetColPos(*xtmp, pos_e, pos_e_pole);
-
-    int resolveCount = 0;
-    ///std::vector<value_type> IV;
-
-    ///if(params_.periodic_length > 0)
-    ///{
-    ///    TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
-    ///}
-    
-    ///CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
-    ///        params_.min_sep_dist, params_.periodic_length);
+     
+    if(params_.min_sep_dist>0)
+    {
+        // the candidate position
+        axpy(dt_, *x1, S_.getPosition(), *xtmp);
+        // get collision
+        ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
         
+        /*
+        // old sequential code
+        // pos_s stores the start configuration
+        // pos_e stores the end configuration
+        // vGrad stores the gradient of contact volumes
+        int np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
+        static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
+        static std::vector<value_type> pos_e(np_up*COORD_DIM*nv_, 0.0);
+        static std::vector<value_type> vGrad(np_up*COORD_DIM*nv_, 0.0);
+        static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
+        GetColPos(S_.getPosition(), pos_s, pos_s_pole);
+        GetColPos(*xtmp, pos_e, pos_e_pole);
+        std::vector<value_type> IV;
+        if(params_.periodic_length > 0)
+        {
+            TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
+        }
+        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+                params_.min_sep_dist, params_.periodic_length);
+        */
+    }
+        
+    // prepare
     std::auto_ptr<Vec_t> col_dx = checkoutVec();
     std::auto_ptr<Vec_t> col_f = checkoutVec();
     std::auto_ptr<Sca_t> col_tension = checkoutSca();
-        
     col_dx->replicate(*x1);
     col_f->replicate(*x1);
     col_tension->replicate(tension_);
-
-    while(num_cvs_ > 0)
+    int resolveCount = 0;
+    // begin of developing code for col 
+    while(sum_num_cvs_ >0 && params_.min_sep_dist>0)
     {
+        COUT("IV_.size(): "<<IV_.size());
+        COUT("num_cvs_: "<<num_cvs_);
+        COUT("sum_num_cvs_: "<<sum_num_cvs_);
+
         // copy contact volume gradient to vgrad_
         ///vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
         ///        vgrad_.size() * sizeof(value_type),
@@ -403,9 +415,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         // cvs stores the contact volumes
         Arr_t cvs(num_cvs_);
         // copy contact volumes to cvs
-        cvs.getDevice().Memcpy(cvs.begin(), &IV_.front(), 
-          num_cvs_ * sizeof(value_type),
-          cvs.getDevice().MemcpyHostToDevice);
+        cvs.getDevice().Memcpy(cvs.begin(), &IV_.front(), num_cvs_ * sizeof(value_type), cvs.getDevice().MemcpyHostToDevice);
 
         // solve for u, tension, lambda using minmap LCP solver
         //INFO("Begin of SolveLCP.");
@@ -417,34 +427,39 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         //axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
  
         // form lcp matrix
-        INFO("before formlcp");
+        COUT("before formlcp");
         ParallelFormLCPMatrixSparse(parallel_lcp_matrix_);
-        INFO("after formlcp");
+        COUT("after formlcp");
         typename std::map<std::pair<size_t, size_t>, value_type>::iterator got_lcp_matrix_ij;
         INFO("size of lcp matrix: "<<parallel_lcp_matrix_.size());
         for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij!=parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
         {
-            INFO("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
+            COUT("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
                     got_lcp_matrix_ij->second);
         }
         ///lcp_matrix_.resize(num_cvs_*num_cvs_);
         ///FormLCPMatrixSparse(lcp_matrix_);
         ///INFO("lcp_matrix sparse: "<<lcp_matrix_);
+        
         // solve lcp
-        INFO("before solvelcp");
+        COUT("before solvelcp");
         ParallelSolveLCPSmall(col_lambda, cvs);
-        INFO("after solvelcp");
+        COUT("after solvelcp");
         ///SolveLCPSmall(col_lambda, cvs);
+        
         // get contact force
-        INFO("getting contact force.");
-        CVJacobianTrans(col_lambda, *col_f);
+        COUT("getting contact force.");
+        ParallelCVJacobianTrans(col_lambda, *col_f);
+        ///CVJacobianTrans(col_lambda, *col_f);
+        
         // accumulate contact force to S_.fc_
-        INFO("accumulating contact force.");
-        //INFO("col_f: "<<(*col_f));
-        //INFO("S_.fc_: "<<S_.fc_);
+        COUT("accumulating contact force.");
+        //COUT("col_f: "<<(*col_f));
+        //COUT("S_.fc_: "<<S_.fc_);
         axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
+        
         // get displacement in u and tension due to contact force
-        INFO("getting dx dtension update.");
+        COUT("getting dx dtension update.");
         GetDx(*col_dx,*col_tension,*col_f);
         
         // update velocity
@@ -453,28 +468,25 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
       
         resolveCount++;
-        INFO("Col iter#: "<<resolveCount);
-        INFO("cvs: "<<cvs);
-        INFO("lambda: "<<col_lambda);
+        COUT("Col iter#: "<<resolveCount);
+        COUT("cvs: "<<cvs);
+        COUT("lambda: "<<col_lambda);
       
         // test if still have contact
         // get new candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
-        INFO("before getvolume");
+        COUT("before getvolume");
         ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
-        INFO("after getvolume");
         ///GetColPos(*xtmp, pos_e, pos_e_pole);
-        
         ///if(params_.periodic_length > 0)
         ///{
             ///GetColPos(S_.getPosition(), pos_s, pos_s_pole);
             ///TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         ///}
-
         ///CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
         ///        params_.min_sep_dist, params_.periodic_length);
+        COUT("after getvolume");
     }
-
     recycle(col_dx);
     recycle(col_tension);
     recycle(col_f);
@@ -492,20 +504,26 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
            );
     */
 
+    // set dx
     dx.replicate(S_.getPosition());
     axpy(dt_, *x1, dx);
+    // set pos_vel_
     axpy(static_cast<value_type>(1.0), *x1, pos_vel_);
 
+    // filter tension_
     sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
     
-    INFO("vel maxabs: "<<MaxAbs(pos_vel_));
+    // print the max abs vel
+    COUT("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
 
+    // clear memory
     recycle(x1);
     recycle(f1);
     recycle(b1);
     recycle(b2);
     recycle(xtmp);
 
+    PROFILEEND("",0);
     return ret_val;
 }
 
@@ -887,8 +905,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     PROFILESTART();
 
     if (pos_vel_.size() != S_.getPosition().size()){
-    
-      INFO("Zeroing pos_vel_ and tension_!!!!");
+      COUT("Zeroing pos_vel_ and tension_!!!!");
       COUTDEBUG("Resizing the containers");
       pos_vel_.replicate(S_.getPosition());
       tension_.replicate(S_.getPosition());
@@ -904,12 +921,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     ASSERT(ves_props_.vel_coeff.size() == S_.getPosition().getNumSubs(), "inccorrect size");
     ASSERT(ves_props_.bending_modulus.size() == S_.getPosition().getNumSubs(), "inccorrect size");
 
-    INFO("Setting interaction source and target");
     stokes_.SetSrcCoord(S_.getPosition());
-
+    stokes_.SetTrgCoord(NULL);
+    
     if (!precond_configured_ && params_.time_precond!=NoPrecond)
         ConfigurePrecond(params_.time_precond);
-
+    
     //!@bug doesn't support repartitioning
     if (!psolver_configured_ && scheme==GloballyImplicit){
         ASSERT(parallel_solver_ != NULL, "need a working parallel solver");
@@ -1857,49 +1874,49 @@ updateFarField() const
 {
     PROFILESTART();
     ASSERT(pos_vel_.size() == S_.getPosition().size(), "inccorrect size");
-    //pos_vel_.replicate(S_.getPosition());
-    //CHK(this->BgFlow(pos_vel_, this->dt_));
     
-    if (this->interaction_.HasInteraction()){
-        std::auto_ptr<Vec_t>        fi  = checkoutVec();
-        std::auto_ptr<Vec_t>        vel = checkoutVec();
-        fi->replicate(pos_vel_);
-        vel->replicate(pos_vel_);
+    std::auto_ptr<Vec_t>        fi  = checkoutVec();
+    std::auto_ptr<Vec_t>        ui  = checkoutVec();
+    std::auto_ptr<Vec_t>        vel = checkoutVec();
+    fi->replicate(pos_vel_);
+    ui->replicate(pos_vel_);
+    vel->replicate(pos_vel_);
 
-        Intfcl_force_.bendingForce(S_, *fi);
-        Intfcl_force_.tensileForce(S_, tension_, *vel);
-        axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+    Intfcl_force_.bendingForce(S_, *fi);
+    Intfcl_force_.tensileForce(S_, tension_, *vel);
+    axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+    // add contact force
+    axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
+    // TODO: add gravity force
+    //Intfcl_force_.gravityForce(S_, S_.getPosition(), *vel);
+    //axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
         
-        // add contact force
-        axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
+    // set single layer density
+    stokes_.SetDensitySL(fi.get());
 
-        // TODO: add gravity force
-
-        //stokes_.SetTrgCoord(NULL);
-        //stokes_.SetSrcCoord(S_.getPosition());
-        stokes_.SetDensitySL(fi.get());
-        if( ves_props_.has_contrast ){
-            av(ves_props_.dl_coeff, pos_vel_, pos_vel_);
-            stokes_.SetDensityDL(&pos_vel_);
-        }
-        else{
-            stokes_.SetDensityDL(NULL);
-        }
-        stokes_.FarInteraction(*vel);
-        
-        /* Deprecated far-field interaction with SLP only
-        //EvaluateFarInteraction(S_.getPosition(), *fi, *vel);
-        */
-               
-        CHK(this->BgFlow(pos_vel_, this->dt_));
-        axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
-
-        recycle(fi);
-        recycle(vel);
+    // set doube layer density
+    if(ves_props_.has_contrast){
+        COUT("has contrast");
+        av(ves_props_.dl_coeff, pos_vel_, *ui);
+        stokes_.SetDensityDL(ui.get());
     }
     else{
-        CHK(this->BgFlow(pos_vel_, this->dt_));
+        stokes_.SetDensityDL(NULL);
     }
+        
+    // far field due to sl, dl
+    stokes_.FarInteraction(*vel); // all - self
+    //stokes_(*vel);
+    //stokes_.SelfInteraction(*fi);
+    //axpy(static_cast<value_type>(-1.0), *fi, *vel, *vel);
+               
+    CHK(this->BgFlow(pos_vel_, this->dt_));
+    axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
+
+    recycle(fi);
+    recycle(ui);
+    recycle(vel);
+    
     PROFILEEND("",0);
     return ErrorEvent::Success;
 }
@@ -2291,24 +2308,26 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
     std::auto_ptr<Vec_t> dlp_tmp = checkoutVec();
     f->replicate(x_new);
     dlp_tmp->replicate(x_new);
- 
+    time_mat_vec.replicate(x_new);
+    
     axpy(dt_, x_new, *dlp_tmp);
     Intfcl_force_.implicitTractionJump(S_, *dlp_tmp, tension, *f);
-    CHK(stokes(*f, time_mat_vec));
-
-    if (ves_props_.has_contrast){
-        av(ves_props_.dl_coeff, x_new, *f);
-        
-        stokes_.SetDensitySL(NULL);
-        stokes_.SetDensityDL(f.get());
-        stokes_.SelfInteraction(*dlp_tmp);
-        
-        axpy(static_cast<value_type>(1.0), *dlp_tmp, time_mat_vec, time_mat_vec);
+    
+    stokes_.SetDensitySL(f.get());
+    if(ves_props_.has_contrast)
+    {
+        av(ves_props_.dl_coeff, x_new, *dlp_tmp);
+        stokes_.SetDensityDL(dlp_tmp.get());
     }
+    else
+    {
+        stokes_.SetDensityDL(NULL);
+    }
+    stokes_.SelfInteraction(time_mat_vec);
     
     S_.div(time_mat_vec, div_stokes_fs);
     
-    if (ves_props_.has_contrast){
+    if(ves_props_.has_contrast){
         av(ves_props_.vel_coeff, x_new, *f);
         axpy(static_cast<value_type>(-1.0), time_mat_vec, *f, time_mat_vec);
     }
@@ -3435,31 +3454,37 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 {
-    // clear variables
-    num_cvs_ = 0;
-    IV_.clear();
-    vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
-    std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
-    ghost_vgrad_.clear();
-    ghost_vgrad_ind_.clear();
-
-    // call VesBoundingBox get index pairs, we can sub-divide [X_s, X_e] to do culling
-    // vesicle id [0, N-1], N is total number of vesicles globally
-    INFO("before BBIPairs");
-    std::vector< std::pair<size_t, size_t> > BBIPairs;
-    VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.upsample_freq);
-    VBBI_->GetContactBoundingBoxPair(BBIPairs);
-    INFO("after BBIPairs");
-    for(size_t i=0; i<BBIPairs.size(); i++)
-    {
-        INFO("pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
-    }
-    
-    // send ghost vesicles, receive ghost vesicles
     int myrank, np;
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &np);
+
+    // clear variables
+    sum_num_cvs_ = 0;
+    num_cvs_ = 0;
+    IV_.clear();
+    vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+    std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+    for(typename std::map<int, Vec_t*>::iterator i=ghost_vgrad_.begin(); i!=ghost_vgrad_.end(); i++)
+        delete i->second;
+    ghost_vgrad_.clear();
+    for(std::map<int, std::vector<int>*>::iterator i=ghost_vgrad_ind_.begin(); i!=ghost_vgrad_ind_.end(); i++)
+        delete i->second;
+    ghost_vgrad_ind_.clear();
+
+    // call VesBoundingBox get index pairs, we can sub-divide [X_s, X_e] to do culling
+    // vesicle id [0, N-1], N is total number of vesicles globally
+    std::vector< std::pair<size_t, size_t> > BBIPairs;
+    VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.upsample_freq);
+    VBBI_->GetContactBoundingBoxPair(BBIPairs);
+    
+    COUT("After getcontactbbpairs.\n");
+    for(size_t i=0; i<BBIPairs.size(); i++)
+    {
+        COUT("pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second<<"\n");
+    }
+    
+    // send ghost vesicles, receive ghost vesicles
     size_t nv = X_s.getNumSubs();     // number of vesicles per process
     size_t stride = X_s.getStride();    // number of points per vesicle
     size_t stride_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
@@ -3547,12 +3572,13 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     for(size_t i=0; i<sves_id.size(); i++)
     {
         size_t local_i = sves_id[i] - myrank*nv;
+        ASSERT(local_i >= 0, "Bad local ves id size");
+        ASSERT(local_i < nv, "Bad local ves id size");
+
         for(size_t k=0; k<COORD_DIM; k++)
         {
             for(size_t j=0; j<stride; j++)
             {
-                ASSERT(local_i >= 0, "Bad local ves id size");
-                ASSERT(local_i < nv, "Bad local ves id size");
                 send_ves_coord_s[i*stride*COORD_DIM + k*stride + j] = 
                     X_s.begin()[local_i*stride*COORD_DIM + k*stride + j];
                 send_ves_coord_e[i*stride*COORD_DIM + k*stride + j] = 
@@ -3615,9 +3641,10 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         if( (BBIPairs[i].second < nv*myrank || BBIPairs[i].second >= nv*(myrank+1)) &&
             BBIPairs[i].first > BBIPairs[i].second )
         {
-            INFO("checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
+            COUT("checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
             size_t local_i = BBIPairs[i].first - myrank*nv;
-            
+            ASSERT(local_i >= 0, "Bad local ves id size");
+            ASSERT(local_i < nv, "Bad local ves id size");
             // copy local vesicle start position
             x_pair.getDevice().Memcpy(&(x_pair.begin()[0]),               &X_s.begin()[local_i*x_pair.size()/2],
                     x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
@@ -3686,12 +3713,16 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         }
         else if(BBIPairs[i].first > BBIPairs[i].second)
         {
-            INFO("checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
+            COUT("checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
             size_t local_i = BBIPairs[i].first - myrank*nv;
+            ASSERT(local_i >= 0, "Bad local ves id size");
+            ASSERT(local_i < nv, "Bad local ves id size");
             // copy local vesicle 1 start position
             x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_s.begin()[local_i*x_pair.size()/2],
                     x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
             local_i = BBIPairs[i].second - myrank*nv;
+            ASSERT(local_i >= 0, "Bad local ves id size");
+            ASSERT(local_i < nv, "Bad local ves id size");
             // copy local vesicle 2 start position
             x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], &X_s.begin()[local_i*x_pair.size()/2], 
                     x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
@@ -3758,8 +3789,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     // update vgrad_ind to global vgrad_ind
     int cv_id_disp;
     int num_cvs_myrank = num_cvs_;
+    // scan displacement of cvid to update cvid to global cvid
     MPI_Scan(&num_cvs_myrank, &cv_id_disp, 1, MPI_INT, MPI_SUM, comm);
     cv_id_disp = cv_id_disp - num_cvs_myrank;
+    // scan global number of cvs
+    MPI_Allreduce(&num_cvs_myrank, &sum_num_cvs_, 1, MPI_INT, MPI_SUM, comm);
     if(num_cvs_myrank > 0)
     {
         // update vgrad_ind_
@@ -3837,7 +3871,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                   comm);
     // recv_ves_coord contains the vgrad coord, rves_id contains the global vesicle id
     // add vgrad to local vgrad, and the same for vgra_ind
-    for(size_t i=0; i<rves_id.size(); i++)
+    for(i=0; i<rves_id.size(); i++)
     {
         size_t local_i = rves_id[i] - myrank*nv;
         ASSERT(local_i >= 0, "Bad local ves id size");
@@ -4088,8 +4122,8 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     r_ind.resize(2*recv_size, 0);
 
     // TODO replace with Mpi_Alltoallv_sparse
-    MPI_Alltoallv(&s_value[0], &s_value_cnt[0], &s_value_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
-                  &r_value[0], &r_value_cnt[0], &r_value_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    MPI_Alltoallv(&s_value[0], &s_value_cnt[0], &s_value_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  &r_value[0], &r_value_cnt[0], &r_value_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), comm);
     MPI_Alltoallv(&s_ind[0], &s_ind_cnt[0], &s_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
                   &r_ind[0], &r_ind_cnt[0], &r_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
     
@@ -4107,6 +4141,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     }
     
     // sort lcp_matrix and delete all enties sent out
+    ASSERT(s_value.size()*2 == s_ind.size(), "send value index size don't match");
     for(size_t i=0; i<s_value.size();i++)
         lcp_matrix.erase(std::make_pair(s_ind[2*i],s_ind[2*i+1]));
     // end of MPI communication lcp_matrix
@@ -4194,7 +4229,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
     pvfmm::Vector<size_t> cvid_dsp(np);
     cvid_dsp[0]=0; pvfmm::omp_par::scan(&world_num_cvs[0], &cvid_dsp[0], world_num_cvs.Dim());
     cvid_dsp_ = cvid_dsp[myrank];
-    sum_num_cvs_ = cvid_dsp[np-1]+world_num_cvs[np-1];
+    ASSERT(sum_num_cvs_==(cvid_dsp[np-1]+world_num_cvs[np-1]), "wrong sum_num_cvs_");
     // cv_id of current process is (cvid_dsp, cvid_dsp+num_cvs_]
     
     // prepare all to all communication for lambdas
@@ -4243,11 +4278,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
     MPI_Alltoallv(&s_ind_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
                   &r_ind_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
     // end of MPI communication
-
-    INFO("IV_.size(): "<<IV_.size());
-    INFO("num_cvs_: "<<num_cvs_);
-    INFO("sum_num_cvs_: "<<sum_num_cvs_);
-
+    
     while(lcp_iter < lcp_max_iter)
     {
         // configure linear system solver
@@ -4325,7 +4356,8 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         // So lcp_flag 6,7 is not tested, and we use Newton's method withou line search for now.
         // (Line search requires \nabla\theta)
 
-        value_type dlambda_norm = Arr_t::getDevice().AlgebraicDot(dlambda.begin(), dlambda.begin(), dlambda.size());
+        value_type dlambda_norm;
+        parallel_u_->Norm(dlambda_norm);
         if(dlambda_norm < lcp_eps)
         {
             lcp_flag = 5;
@@ -4357,6 +4389,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
 {
+    // begin of MPI communication
     int myrank,np;
     MPI_Comm comm=MPI_COMM_WORLD;
     MPI_Comm_rank(comm,&myrank);
@@ -4369,6 +4402,7 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
     {
         const std::vector<int> &value_i = *(iter_i->second);
         size_t pid = floor(iter_i->first/nv);
+        ASSERT(pid != myrank, "wrong ghost vgrad id");
         if(pid != myrank)
         {
             for(size_t i=0; i<value_i.size(); i++)
@@ -4393,7 +4427,7 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
         s_ind_.push_back(pid_cvid[i].second);
 
         ASSERT(pid_cvid[i].second>cvid_dsp_, "wrong cvid in cvjacobiantrans");
-        ASSERT(pid_cvid[i].second<=(cvid_dsp_+num_cvs), "wrong cvid in cvjacobiantrans");
+        ASSERT(pid_cvid[i].second<=(cvid_dsp_+num_cvs_), "wrong cvid in cvjacobiantrans");
 
         size_t local_i = pid_cvid[i].second - cvid_dsp_ - 1;
         s_value_.push_back(lambda.begin()[local_i]);
@@ -4425,7 +4459,7 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
     }
     // end of MPI communication
 
-    // similar to CVJacobianTrans but need send receive lambda
+    // similar to CVJacobianTrans calculation
     std::vector<value_type> f_col_host;
     f_col_host.resize(vgrad_.size(), 0.0);
 
@@ -4632,13 +4666,17 @@ ConfigureLCPSolver() const
     typedef typename PSolver_t::vec_type PVec;
     typedef typename PVec::size_type size_type;
 
+    size_type sz(num_cvs_); size_type SZ(sum_num_cvs_);
+    
     // set new parallel linear solver
     if(lcp_parallel_linear_solver_)
         delete lcp_parallel_linear_solver_;
     lcp_parallel_linear_solver_ = new ParallelLinSolverPetsc<value_type>(VES3D_COMM_WORLD);
 
     // Setting up the operator
-    size_type sz(num_cvs_); size_type SZ(sum_num_cvs_);
+    if(parallel_matvec_ != NULL)
+        delete parallel_matvec_;
+    parallel_matvec_ = NULL;
     CHK(lcp_parallel_linear_solver_->LinOpFactory(&parallel_matvec_));
     CHK(parallel_matvec_->SetSizes(sz,sz,SZ,SZ));
     CHK(parallel_matvec_->SetName("LCP matrix"));
@@ -4647,27 +4685,30 @@ ConfigureLCPSolver() const
     CHK(parallel_matvec_->Configure());
 
     // setting up the rhs
+    if(parallel_rhs_ != NULL)
+        delete parallel_rhs_;
+    parallel_rhs_ = NULL;
     CHK(lcp_parallel_linear_solver_->VecFactory(&parallel_rhs_));
     CHK(parallel_rhs_->SetSizes(sz,SZ));
     CHK(parallel_rhs_->SetName("rhs"));
     CHK(parallel_rhs_->Configure());
 
+    if(parallel_u_ !=NULL)
+        delete parallel_u_;
+    parallel_u_ = NULL;
     CHK(parallel_rhs_->ReplicateTo(&parallel_u_));
+    CHK(parallel_u_->SetSizes(sz,SZ));
     CHK(parallel_u_->SetName("solution"));
     
     // setting up the solver
     CHK(lcp_parallel_linear_solver_->SetOperator(parallel_matvec_));
     CHK(lcp_parallel_linear_solver_->SetTolerances(params_.time_tol*1e-2,
-            PSolver_t::PLS_DEFAULT,
-            PSolver_t::PLS_DEFAULT,
-            params_.time_iter_max));
-
+                PSolver_t::PLS_DEFAULT,
+                PSolver_t::PLS_DEFAULT,
+                params_.time_iter_max));
     CHK(lcp_parallel_linear_solver_->Configure());
-
     CHK(lcp_parallel_linear_solver_->SetPrecondContext(static_cast<const void*>(this)));
     CHK(lcp_parallel_linear_solver_->UpdatePrecond(ParallelLCPPrecond));
-    
-    psolver_configured_ = true;
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -4694,6 +4735,7 @@ ParallelLCPMatvec(Arr_t &lambda) const
                   &r_value_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<value_type>::value(), comm);
 
     // add received lambda to ghost_lambda_ map
+    ghost_lambda_.clear();
     for(size_t i=0; i<r_ind_.size(); i++)
     {
         ghost_lambda_[r_ind_[i]] = r_value_[i];
@@ -4715,7 +4757,7 @@ ParallelLCPMatvec(Arr_t &lambda) const
             value_type val_tmp = iter_i->second;
 
             ASSERT(ind_i>cvid_dsp_, "wrong ind_i in matvec");
-            ASSERT(ind_i<=(cvid_dsp_+num_cvs), "wrong ind_i in matvec");
+            ASSERT(ind_i<=(cvid_dsp_+num_cvs_), "wrong ind_i in matvec");
 
             size_t local_i = ind_i - cvid_dsp_ - 1;
 
