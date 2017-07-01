@@ -348,8 +348,11 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     b2->getDevice().Memcpy(rhs_host+vsz, b2->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
         
     // solve the linear system using gmres
+    MPI_Comm comm=MPI_COMM_WORLD;
+    pvfmm::Profile::Tic("LinearSolverVelocity", &comm, true);
     int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host, rhs_host, 
             relres, relres*0, N_size, iter, rsrt);
+    pvfmm::Profile::Toc();
     
     // copy host to device
     x1->getDevice().Memcpy(x1->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
@@ -366,8 +369,10 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         // the candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
         // get collision
+        pvfmm::Profile::Tic("GetContactVolume", &comm, true);
         ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
-        
+        pvfmm::Profile::Toc();
+   
         /*
         // old sequential code
         // pos_s stores the start configuration
@@ -399,6 +404,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     col_tension->replicate(tension_);
     int resolveCount = 0;
     // begin of developing code for col 
+    pvfmm::Profile::Tic("ContactResolveIters", &comm, true);
     while(sum_num_cvs_ >0 && params_.min_sep_dist>0)
     {
         COUT("IV_.size(): "<<IV_.size());
@@ -428,10 +434,12 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
  
         // form lcp matrix
         COUT("before formlcp");
+        pvfmm::Profile::Tic("FormLCPMatrix", &comm, true);
         ParallelFormLCPMatrixSparse(parallel_lcp_matrix_);
+        pvfmm::Profile::Toc();
         COUT("after formlcp");
         typename std::map<std::pair<size_t, size_t>, value_type>::iterator got_lcp_matrix_ij;
-        INFO("size of lcp matrix: "<<parallel_lcp_matrix_.size());
+        COUT("size of lcp matrix: "<<parallel_lcp_matrix_.size());
         for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij!=parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
         {
             COUT("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
@@ -443,13 +451,17 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         
         // solve lcp
         COUT("before solvelcp");
+        pvfmm::Profile::Tic("SolveLCP", &comm, true);
         ParallelSolveLCPSmall(col_lambda, cvs);
+        pvfmm::Profile::Toc();
         COUT("after solvelcp");
         ///SolveLCPSmall(col_lambda, cvs);
         
         // get contact force
         COUT("getting contact force.");
+        pvfmm::Profile::Tic("CVJacobianTrans", &comm, true);
         ParallelCVJacobianTrans(col_lambda, *col_f);
+        pvfmm::Profile::Toc();
         ///CVJacobianTrans(col_lambda, *col_f);
         
         // accumulate contact force to S_.fc_
@@ -460,7 +472,9 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         
         // get displacement in u and tension due to contact force
         COUT("getting dx dtension update.");
+        pvfmm::Profile::Tic("GetDx", &comm, true);
         GetDx(*col_dx,*col_tension,*col_f);
+        pvfmm::Profile::Toc();
         
         // update velocity
         axpy(static_cast<value_type>(1.0), *col_dx, *x1, *x1);
@@ -476,7 +490,9 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         // get new candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
         COUT("before getvolume");
+        pvfmm::Profile::Tic("GetContactVolume", &comm, true);
         ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
+        pvfmm::Profile::Toc();
         ///GetColPos(*xtmp, pos_e, pos_e_pole);
         ///if(params_.periodic_length > 0)
         ///{
@@ -487,6 +503,8 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ///        params_.min_sep_dist, params_.periodic_length);
         COUT("after getvolume");
     }
+    pvfmm::Profile::Toc();
+    
     recycle(col_dx);
     recycle(col_tension);
     recycle(col_f);
@@ -3047,6 +3065,72 @@ RemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
+{
+    MPI_Comm comm = MPI_COMM_WORLD;
+    pvfmm::Profile::Tic("RmContactSimple", &comm, true);
+
+    std::auto_ptr<Vec_t> xwrk = checkoutVec();
+    std::auto_ptr<Vec_t> xwrk_up = checkoutVec();
+    std::auto_ptr<Vec_t> wrk1 = checkoutVec();
+    std::auto_ptr<Vec_t> wrk2 = checkoutVec();
+    xwrk->replicate(S_.getPosition());
+    xwrk_up->replicate(vgrad_);
+    wrk1->replicate(vgrad_);
+    wrk2->replicate(vgrad_);
+
+    if(params_.min_sep_dist>0)
+    {
+        axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
+        ParallelGetVolumeAndGradient(x_old, *xwrk);
+    }
+    int resolveCount = 0;
+    while(sum_num_cvs_>0 && params_.min_sep_dist>0)
+    {
+        // worker for array size of num_cvs_
+        Arr_t awrk(num_cvs_);
+        
+        // cvs stores the contact volumes
+        Arr_t cvs(num_cvs_);
+        // copy contact volumes to cvs
+        cvs.getDevice().Memcpy(cvs.begin(), &IV_.front(), num_cvs_ * sizeof(value_type), cvs.getDevice().MemcpyHostToDevice);
+
+        // get magnitude of projection direction
+        // filter projection direction
+        sht_filter_high(vgrad_, *xwrk_up, &sht_upsample_, params_.rep_exponent);
+        // downsample xwrk_up to xwrk
+        Resample(*xwrk_up, sht_upsample_, sht_, *wrk1, *wrk2, *xwrk);
+
+        // get magnitude
+        ParallelCVJacobian(*xwrk, awrk);
+        awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
+
+        // projection direction with magnitude
+        ParallelCVJacobianTrans(awrk, *xwrk);
+        
+        // update velocity
+        axpy(static_cast<value_type>(-1.0), *xwrk, u1, u1);
+        
+        resolveCount++;
+        COUT("Projecting to avoid collision iter#: "<<resolveCount);
+        COUT(cvs);
+
+        // get candidate position
+        axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
+        ParallelGetVolumeAndGradient(x_old, *xwrk);
+    }
+
+    recycle(xwrk);
+    recycle(xwrk_up);
+    recycle(wrk1);
+    recycle(wrk2);
+    
+    pvfmm::Profile::Toc();
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e, 
         pvfmm::Vector<value_type> &pole_s_pole, pvfmm::Vector<value_type> &pole_e_pole) const
 {
@@ -3460,6 +3544,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     MPI_Comm_size(comm, &np);
 
     // clear variables
+    pvfmm::Profile::Tic("ClearVariables", &comm, true);
     sum_num_cvs_ = 0;
     num_cvs_ = 0;
     IV_.clear();
@@ -3471,11 +3556,14 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     for(std::map<int, std::vector<int>*>::iterator i=ghost_vgrad_ind_.begin(); i!=ghost_vgrad_ind_.end(); i++)
         delete i->second;
     ghost_vgrad_ind_.clear();
+    pvfmm::Profile::Toc();
 
     // call VesBoundingBox get index pairs, we can sub-divide [X_s, X_e] to do culling
     // vesicle id [0, N-1], N is total number of vesicles globally
     std::vector< std::pair<size_t, size_t> > BBIPairs;
+    pvfmm::Profile::Tic("SetBoundingBox", &comm, true);
     VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.upsample_freq);
+    pvfmm::Profile::Toc();
     VBBI_->GetContactBoundingBoxPair(BBIPairs);
     
     COUT("After getcontactbbpairs.\n");
@@ -3484,6 +3572,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         COUT("pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second<<"\n");
     }
     
+    pvfmm::Profile::Tic("PrepareData1", &comm, true);
     // send ghost vesicles, receive ghost vesicles
     size_t nv = X_s.getNumSubs();     // number of vesicles per process
     size_t stride = X_s.getStride();    // number of points per vesicle
@@ -3554,12 +3643,16 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     ASSERT(sves_id.size() == send_size_ves, "Bad send ves size");
     // init receive id data
     rves_id.resize(recv_size_ves, 0);
+    pvfmm::Profile::Toc();
     
     // send and receive ghost vesicles' global id, local_id = global_id - myrank*nv, local_id = [0, nv-1]
     // TODO replace with Mpi_Alltoallv_sparse
+    pvfmm::Profile::Tic("SendRecvGhostVesID", &comm, true);
     MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    pvfmm::Profile::Toc();
 
+    pvfmm::Profile::Tic("PrepareData2", &comm, true);
     // init variables for sending, receiving vesicle coordinate
     pvfmm::Vector<value_type> send_ves_coord_s, send_ves_coord_e;
     pvfmm::Vector<value_type> recv_ves_coord_s, recv_ves_coord_e;
@@ -3586,15 +3679,18 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             }
         }
     }
+    pvfmm::Profile::Toc();
     
     // send and receive ghost vesicles' coord
     // TODO replace with Mpi_Alltoallv_sparse
+    pvfmm::Profile::Tic("SendRecvGhostVesPos", &comm, true);
     MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
                   comm);    
     MPI_Alltoallv(&send_ves_coord_e[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_e[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
                   comm);
+    pvfmm::Profile::Toc();
     // recv_ves_coord contains the ghost vesicles' coord, rves_id contains the global vesicle id
 
     // map for global vesicle id and coordinate
@@ -3602,6 +3698,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     typename GVMAP::iterator got;
     typename GVMAP::const_iterator iter_i;
 
+    pvfmm::Profile::Tic("AddGhostPos", &comm, true);
     // insert ghost vesilces
     GVMAP ghost_ves_s, ghost_ves_e;
     for(size_t i = 0; i<rves_id.size(); i++)
@@ -3624,6 +3721,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             ghost_vgrad_ind_.insert( std::make_pair< int, std::vector<int>* >( rves_id[i], new std::vector<int>(stride_up*COORD_DIM, 0) ) );
         }
     }
+    pvfmm::Profile::Toc();
 
     // loop all BBIpairs to call CI_pair_ do contact detect
     static std::vector<value_type> x_s(stride_up*COORD_DIM*2, 0.0);
@@ -3634,6 +3732,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     static std::vector<int> vgrad_pair_ind(stride_up*COORD_DIM*2, 0.0);
     Vec_t vgrad1(1, params_.upsample_freq), vgrad2(1, params_.upsample_freq);
     ASSERT(vgrad1.size() == stride_up*COORD_DIM, "wrong vgrad1 size");
+    pvfmm::Profile::Tic("BBIPairsContact", &comm, true);
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         // do contact detection first id > second id to remove duplicate contacts
@@ -3679,7 +3778,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
             std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
             CI_pair_.getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
-            params_.min_sep_dist, params_.periodic_length);
+                    params_.min_sep_dist, params_.periodic_length);
 
             // updates
             if(num_cvs > 0)
@@ -3752,7 +3851,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
             std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
             CI_pair_.getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
-            params_.min_sep_dist, params_.periodic_length);
+                    params_.min_sep_dist, params_.periodic_length);
 
             // updates
             if(num_cvs > 0)
@@ -3786,6 +3885,9 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             }
         }
     }
+    pvfmm::Profile::Toc();
+    
+    pvfmm::Profile::Tic("UpdateVGID", &comm, true);
     // update vgrad_ind to global vgrad_ind
     int cv_id_disp;
     int num_cvs_myrank = num_cvs_;
@@ -3804,7 +3906,9 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             UpdateVgradInd(&i->second->front(), &i->second->front(), cv_id_disp, i->second->size());
         }
     }
+    pvfmm::Profile::Toc();
 
+    pvfmm::Profile::Tic("PrepareData3", &comm, true);
     // MPI merge global vgrad_ and vgrad_ind_,
     sves_cnt.SetZero(); rves_cnt.SetZero();
     sves_coord_cnt.SetZero(); rves_coord_cnt.SetZero();
@@ -3833,12 +3937,16 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     
     ASSERT(sves_id.size() == send_size_ves, "Bad send ves size");
     rves_id.resize(recv_size_ves, 0);
+    pvfmm::Profile::Toc();
     
     // send and receive ghost vesicles' global id, local_id = global_id - myrank*nv
     // TODO replace with Mpi_Alltoallv_sparse
+    pvfmm::Profile::Tic("SendRecvGhostVesIDv", &comm, true);
     MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                   &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+    pvfmm::Profile::Toc();
 
+    pvfmm::Profile::Tic("PrepareData4", &comm, true);
     send_ves_coord_s.ReInit(send_size_ves*COORD_DIM*stride_up);
     recv_ves_coord_s.ReInit(recv_size_ves*COORD_DIM*stride_up);
 
@@ -3861,14 +3969,20 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         }
         i++;
     }
+    pvfmm::Profile::Toc();
+    
     // send and receive ghost vesicles' coord
     // TODO replace with Mpi_Alltoallv_sparse
+    pvfmm::Profile::Tic("SendRecvGhostVesPosv", &comm, true);
     MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
                   &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
                   comm);    
     MPI_Alltoallv(&send_ves_ind[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(),
                   &recv_ves_ind[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(), 
                   comm);
+    pvfmm::Profile::Toc();
+    
+    pvfmm::Profile::Tic("AddGhostVgrad", &comm, true);
     // recv_ves_coord contains the vgrad coord, rves_id contains the global vesicle id
     // add vgrad to local vgrad, and the same for vgra_ind
     for(i=0; i<rves_id.size(); i++)
@@ -3897,6 +4011,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     ghost_ves_e.clear();
 
     // TODO clear ghost_vgrad_ and ghost_vgrad_ind_
+    pvfmm::Profile::Toc();
 
     return ErrorEvent::Success;
 }
@@ -4127,6 +4242,14 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     MPI_Alltoallv(&s_ind[0], &s_ind_cnt[0], &s_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
                   &r_ind[0], &r_ind_cnt[0], &r_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
     
+    // print lcp matrix portion before delete and add
+    COUT("size of lcp matrix before delete: "<<parallel_lcp_matrix_.size());
+    for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij!=parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
+    {
+        COUT("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
+                got_lcp_matrix_ij->second);
+    }
+
     // add received data to local lcp_matrix
     for(size_t i=0; i<r_value.size();i++)
     {
@@ -4457,6 +4580,7 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
     {
         ghost_lambda_[r_ind_[i]] = r_value_[i];
     }
+    COUT("ghost lambda size in CVJacobianTrans: "<<ghost_lambda_.size());
     // end of MPI communication
 
     // similar to CVJacobianTrans calculation
@@ -4587,7 +4711,7 @@ ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
             //}
         }
     }
-
+    COUT("ghost lambda mat vec size in CVJacobian: "<<ghost_lambda_mat_vec.size());
     
     // begin of MPI
     // set pid cvid pair for sending out
@@ -4740,6 +4864,7 @@ ParallelLCPMatvec(Arr_t &lambda) const
     {
         ghost_lambda_[r_ind_[i]] = r_value_[i];
     }
+    COUT("ghost lambda mat vec size in lcpmatvec: "<<ghost_lambda_.size());
 
     // do lcp matvec
     if(num_cvs_>0)
@@ -5156,7 +5281,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         std::vector<value_type>  x2=inner_prod(Surf->getPosition(), Surf->getPosition(), sh_trans, rep_exp);
         for(long i=0;i<x2.size();i++) E1+=x2[i];
     }
-    INFO("Iterations = "<<ii<<", Energy = "<<E1<<", dE = "<<E1-E0);
+    COUT("Iterations = "<<ii<<", Energy = "<<E1<<", dE = "<<E1-E0);
     { // print log(coeff)
       std::auto_ptr<Vec_t> x = checkoutVec();
       { // Set x
@@ -5192,7 +5317,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             ss<<-(int)(0.5-10*log(sqrt(coeff_norm0[ii]))/log(10.0))*0.1<<' ';
           }
           ss<<'\n';
-          INFO(ss.str());
+          COUT(ss.str());
       }
       recycle(x);
     }
@@ -5203,11 +5328,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
     // begin for collision
     // project u1 to collision free
-    INFO("Begin Project reparam direction to without contact.");
+    COUT("Begin Project reparam direction to without contact.");
     axpy(static_cast<value_type>(-1.0), *x_old, S_.getPosition(), *u1_down);
-    RemoveContactSimple(*u1_down, *x_old);
+    //RemoveContactSimple(*u1_down, *x_old);
+    ParallelRemoveContactSimple(*u1_down, *x_old);
     axpy(static_cast<value_type>(1.0), *u1_down, *x_old, S_.getPositionModifiable());
-    INFO("End Project reparam direction to without contact.");
+    COUT("End Project reparam direction to without contact.");
     // end for collision
 
     recycle(u1);

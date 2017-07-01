@@ -321,7 +321,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
             COUT("TimeAdapNone");
-            pvfmm::Profile::Tic("GMRES",&comm,true);
+            pvfmm::Profile::Tic("JacobiStep",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
             pvfmm::Profile::Toc();
@@ -330,10 +330,10 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         }
 
         pvfmm::Profile::Tic("Reparam",&comm,true);
-        //F_->reparam();
+        F_->reparam();
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("AreaVolume",&comm,true);
-        //AreaVolumeCorrection(area, vol);
+        AreaVolumeCorrection(area, vol);
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("Repartition",&comm,true);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
@@ -476,15 +476,16 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
 
         S_up_->resample(params_->sh_order, &S_); // down-sample
     }
-    INFO("Number of iterations : "<<iter);
+    COUT("Number of iterations : "<<iter);
     
     // begin for collision
     // project u1 to collision free
-    INFO("Begin Project AreaVolume correction direction to without contact.");
+    COUT("Begin Project AreaVolume correction direction to without contact.");
     axpy(static_cast<value_type>(-1.0), x_old, S_->getPosition(), u1);
-    F_->RemoveContactSimple(u1, x_old);
+    //F_->RemoveContactSimple(u1, x_old);
+    F_->ParallelRemoveContactSimple(u1, x_old);
     axpy(static_cast<value_type>(1.0), u1, x_old, S_->getPositionModifiable());
-    INFO("End Project AreaVolume correction  direction to without contact.");
+    COUT("End Project AreaVolume correction  direction to without contact.");
     // end for collision
 
     return ErrorEvent::Success;
