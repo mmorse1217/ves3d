@@ -66,9 +66,9 @@ int main(int argc, char** argv){
   int max_depth=20;
   const pvfmm::Kernel<Real_t>* ker=&StokesKernel<Real_t>::Kernel();
 
-  std::vector<Real_t> coord   (N*(DIM                ));
+  std::vector<Real_t> coord   (N*(COORD_DIM                ));
   std::vector<Real_t> force_sl(N*(    ker->ker_dim[0]));
-  std::vector<Real_t> force_dl(N*(DIM+ker->ker_dim[0]));
+  std::vector<Real_t> force_dl(N*(COORD_DIM+ker->ker_dim[0]));
   std::vector<Real_t> fmm_v   (N*(    ker->ker_dim[1]));
 
   for(size_t i=0;i<coord   .size();i++) coord   [i]=drand48();
@@ -81,8 +81,8 @@ int main(int argc, char** argv){
   PVFMMEval(&coord[0], &force_sl[0], &force_dl[0], N, &fmm_v[0], &ctx);
 
   {// Check error
-    size_t n_trg=coord.size()/DIM;
-    size_t N=coord.size()/DIM*np;
+    size_t n_trg=coord.size()/COORD_DIM;
+    size_t N=coord.size()/COORD_DIM*np;
 
     std::vector<Real_t> trg_sample_coord;
     std::vector<Real_t> trg_sample_value;

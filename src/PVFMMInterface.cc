@@ -1042,3 +1042,110 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
   }
 }
 
+template<typename T>
+void PVFMM_GlobalRepart_LI(size_t nv, size_t stride,
+    const T* x, const T* tension, const T* contrast, const T* excess_density, const T* bending_modulus, const T* vel, const T* fc,
+    size_t* nvr, 
+    T** xr, T** tensionr, T** contrastr, T** excess_densityr, T** bending_modulusr, T** velr, T** fcr,
+    void* user_ptr){
+  assert(false); // I think this doesn't work
+  exit(0);
+
+  MPI_Comm comm=MPI_COMM_WORLD;
+
+  // Get bounding box.
+  T scale_x, shift_x[COORD_DIM];
+  PVFMMBoundingBox(nv*stride, x, &scale_x, shift_x, comm);
+
+  pvfmm::Vector<pvfmm::MortonId> ves_mid(nv);
+  { // Create MortonIds for vesicles.
+    scale_x/=stride;
+    #pragma omp parallel for
+    for(size_t i=0;i<nv;i++){
+      T  x_ves[3]={0,0,0};
+      const T* x_=&x[i*COORD_DIM*stride];
+      for(size_t j=0;j<stride;j++){
+        for(size_t k=0;k<COORD_DIM;k++){
+          x_ves[k]+=x_[0];
+          ++x_;
+        }
+      }
+      for(size_t k=0;k<COORD_DIM;k++){
+        x_ves[k]=x_ves[k]*scale_x+shift_x[k];
+        assert(x_ves[k]>0.0);
+        assert(x_ves[k]<1.0);
+      }
+      ves_mid[i]=pvfmm::MortonId(x_ves);
+    }
+  }
+
+  // Determine scatter index vector.
+  pvfmm::Vector<size_t> scatter_index;
+  pvfmm::par::SortScatterIndex(ves_mid, scatter_index, comm);
+
+  // Allocate memory for output.
+  nvr[0]=scatter_index.Dim();
+  xr              [0]=new T[nvr[0]*stride*COORD_DIM];
+  tensionr        [0]=new T[nvr[0]*stride          ];
+  contrastr       [0]=new T[nvr[0]                 ];
+  excess_densityr [0]=new T[nvr[0]                 ];
+  bending_modulusr[0]=new T[nvr[0]                 ];
+  velr            [0]=new T[nvr[0]*stride*COORD_DIM];
+  fcr             [0]=new T[nvr[0]*stride*COORD_DIM];
+
+  { // Scatter x
+    pvfmm::Vector<T> data(nv*stride*COORD_DIM,(T*)x);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]*stride*COORD_DIM);
+    memcpy(xr[0],&data[0],data.Dim()*sizeof(T));
+  }
+
+  { // Scatter tension
+    pvfmm::Vector<T> data(nv*stride,(T*)tension);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]*stride);
+    memcpy(tensionr[0],&data[0],data.Dim()*sizeof(T));
+  }
+  
+  { // Scatter contrast
+    pvfmm::Vector<T> data(nv,(T*)contrast);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]);
+    memcpy(contrastr[0],&data[0],data.Dim()*sizeof(T));
+  }
+  
+  { // Scatter excess_density
+    pvfmm::Vector<T> data(nv,(T*)excess_density);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]);
+    memcpy(excess_densityr[0],&data[0],data.Dim()*sizeof(T));
+  }
+  
+  { // Scatter bending_modulus
+    pvfmm::Vector<T> data(nv,(T*)bending_modulus);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]);
+    memcpy(bending_modulusr[0],&data[0],data.Dim()*sizeof(T));
+  }
+  
+  { // Scatter vel
+    pvfmm::Vector<T> data(nv*stride*COORD_DIM,(T*)vel);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]*stride*COORD_DIM);
+    memcpy(velr[0],&data[0],data.Dim()*sizeof(T));
+  }
+
+  { // Scatter fc
+    pvfmm::Vector<T> data(nv*stride*COORD_DIM,(T*)fc);
+    pvfmm::par::ScatterForward(data, scatter_index, comm);
+
+    assert(data.Dim()==nvr[0]*stride*COORD_DIM);
+    memcpy(fcr[0],&data[0],data.Dim()*sizeof(T));
+  }
+}

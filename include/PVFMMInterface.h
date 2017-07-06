@@ -62,6 +62,18 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
     T** tensionr, void* user_ptr);
 
 /**
+ * Repartition nv vesicles by the MortonId of their center-of-mass between
+ * processors in MPI_COMM_WORLD. Repartition all the info needed(checkpoint) 
+ * for local implicit scheme.
+ */
+template<typename T>
+void PVFMM_GlobalRepart_LI(size_t nv, size_t stride,
+    const T* x, const T* tension, const T* contrast, const T* excess_density, const T* bending_modulus, const T* vel, const T* fc,
+    size_t* nvr, 
+    T** xr, T** tensionr, T** contrastr, T** excess_densityr, T** bending_modulusr, T** velr, T** fcr,
+    void* user_ptr);
+
+/**
  * Determine bounding box.
  */
 template<typename T>
