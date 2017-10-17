@@ -336,7 +336,10 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         AreaVolumeCorrection(area, vol);
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("Repartition",&comm,true);
-        (*repartition_)(S_->getPositionModifiable(), F_->tension());
+        //(*repartition_)(S_->getPositionModifiable(), F_->tension(), 
+        //        ves_props_->viscosity_contrast, ves_props_->excess_density, ves_props_->bending_modulus,
+        //        F_->pos_vel_, S_->fc_);
+        //ves_props_->update();
         pvfmm::Profile::Toc();
         pvfmm::Profile::Tic("Monitor",&comm,true);
         CHK( (*monitor_)( this, t, dt) );

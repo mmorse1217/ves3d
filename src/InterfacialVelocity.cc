@@ -75,7 +75,9 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     
     // *init Contact Interface*
     ASSERT(params_.upsample_freq >= params_.sh_order, "Bad collision upsample freq size");
-    int np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
+    int np_up = 2*params_.sh_order*(params_.sh_order+1);
+    if(params_.col_upsample)
+        np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
     nv_ = S_.getPosition().getNumSubs();
     
     static std::vector<value_type> x_s(np_up*COORD_DIM*2, 0.0);
@@ -91,7 +93,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     // get upsampled position of x_pair
     // init contact object
     GetColPos(x_pair, x_s, x_s_pole);
-    CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
+    if(params_.col_upsample)
+        CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
+    else
+        CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.sh_order, 2);
     CI_pair_.init(SURF_SUBDIVISION);
 
     /*
@@ -105,7 +110,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     
     // init contact variables
     // init vgrad_ and vgrad_ind_
-    vgrad_.resize(S_.getPosition().getNumSubs(), params_.upsample_freq);
+    if(params_.col_upsample)
+        vgrad_.resize(S_.getPosition().getNumSubs(), params_.upsample_freq);
+    else
+        vgrad_.resize(S_.getPosition().getNumSubs(), params_.sh_order);
     vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
     vgrad_ind_.resize(vgrad_.size(), 0);
     // init ghost_vgrad_ and ghost_vgrad_ind_
@@ -326,7 +334,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // parameters for gmres
     int iter(params_.time_iter_max);
-    int rsrt(300);
+    int rsrt(100);
     value_type tol(params_.time_tol),relres(params_.time_tol);
 
     Error_t ret_val(ErrorEvent::Success);
@@ -337,6 +345,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
     size_t N_size = vsz+tsz;
     // copy device type to value_type array to call GMRES
+    // change to new pointer
     value_type x_host[N_size], rhs_host[N_size];
 
     // copy to unknown solution
@@ -410,6 +419,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         COUT("IV_.size(): "<<IV_.size());
         COUT("num_cvs_: "<<num_cvs_);
         COUT("sum_num_cvs_: "<<sum_num_cvs_);
+        COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
 
         // copy contact volume gradient to vgrad_
         ///vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -3096,10 +3106,15 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         cvs.getDevice().Memcpy(cvs.begin(), &IV_.front(), num_cvs_ * sizeof(value_type), cvs.getDevice().MemcpyHostToDevice);
 
         // get magnitude of projection direction
-        // filter projection direction
-        sht_filter_high(vgrad_, *xwrk_up, &sht_upsample_, params_.rep_exponent);
-        // downsample xwrk_up to xwrk
-        Resample(*xwrk_up, sht_upsample_, sht_, *wrk1, *wrk2, *xwrk);
+        if(params_.col_upsample)
+        {
+            // filter projection direction
+            sht_filter_high(vgrad_, *xwrk_up, &sht_upsample_, params_.rep_exponent);
+            // downsample xwrk_up to xwrk
+            Resample(*xwrk_up, sht_upsample_, sht_, *wrk1, *wrk2, *xwrk);
+        }
+        else
+            sht_filter_high(vgrad_, *xwrk, &sht_, params_.rep_exponent);
 
         // get magnitude
         ParallelCVJacobian(*xwrk, awrk);
@@ -3114,6 +3129,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         resolveCount++;
         COUT("Projecting to avoid collision iter#: "<<resolveCount);
         COUT(cvs);
+        COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
 
         // get candidate position
         axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
@@ -3135,9 +3151,13 @@ TransferVesicle(std::vector<value_type> &pos_s, std::vector<value_type> &pos_e,
         pvfmm::Vector<value_type> &pole_s_pole, pvfmm::Vector<value_type> &pole_e_pole) const
 {
     // Set point_coord, point_value, poly_connect
-    size_t p1 = params_.upsample_freq;
+    size_t p1 = params_.sh_order;
+    if(params_.col_upsample)
+        p1 = params_.upsample_freq;
     size_t N_ves = pos_e.size()/(2*p1*(p1+1)*COORD_DIM); // Number of vesicles
     
+    // add #pragma omp parallel for
+    #pragma omp parallel for
     for(size_t k=0;k<N_ves;k++){ // Set point_coord
         value_type C[COORD_DIM]={0,0,0};
         for(long l=0;l<COORD_DIM;l++) C[l]=0;
@@ -3477,7 +3497,7 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
             
         // solve the linear system using gmres
         int solver_ret = linear_solver_gmres_(JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                x_host, rhs_host, params_.time_tol, 0, N_size, params_.time_iter_max, 300);
+                x_host, rhs_host, params_.time_tol, 0, N_size, params_.time_iter_max, 100);
 
         // copy host to device
         col_dx.getDevice().Memcpy( &(col_dx.begin()[i_vesicle*vsz]), x_host, 
@@ -3504,7 +3524,7 @@ GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<valu
     SphericalHarmonics<value_type>::Grid2SHC(pos_pvfmm, params_.sh_order, params_.sh_order, pos_coef);
     SphericalHarmonics<value_type>::SHC2Pole(pos_coef, params_.sh_order, pos_pole);
 
-    if(params_.upsample_freq > params_.sh_order)
+    if(params_.upsample_freq > params_.sh_order && params_.col_upsample)
     {
         pvfmm::Vector<value_type> pos_up(pos_vec.size(), (value_type*)&pos_vec[0], false);
         // upsample
@@ -3560,9 +3580,17 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 
     // call VesBoundingBox get index pairs, we can sub-divide [X_s, X_e] to do culling
     // vesicle id [0, N-1], N is total number of vesicles globally
+    int col_upsample_freq = params_.sh_order;
+    if(params_.col_upsample)
+    {
+        col_upsample_freq = params_.upsample_freq;
+    }
     std::vector< std::pair<size_t, size_t> > BBIPairs;
     pvfmm::Profile::Tic("SetBoundingBox", &comm, true);
-    VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.upsample_freq);
+    if(params_.col_upsample)
+        VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.sh_order);
+    else
+        VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, col_upsample_freq);
     pvfmm::Profile::Toc();
     VBBI_->GetContactBoundingBoxPair(BBIPairs);
     
@@ -3576,7 +3604,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     // send ghost vesicles, receive ghost vesicles
     size_t nv = X_s.getNumSubs();     // number of vesicles per process
     size_t stride = X_s.getStride();    // number of points per vesicle
-    size_t stride_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
+    size_t stride_up = 2*col_upsample_freq*(col_upsample_freq+1);
 
     // data to send vesicle id: vid
     pvfmm::Vector<int> sves_cnt(np);
@@ -3716,7 +3744,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                     ghost_ves_e[rves_id[i]]->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
             // prepare for ghost_vgrad_ and ghost_vgrad_ind_
-            ghost_vgrad_.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, params_.upsample_freq) ) );
+            ghost_vgrad_.insert( std::make_pair< int, Vec_t* >( rves_id[i], new Vec_t(1, col_upsample_freq) ) );
             Arr_t::getDevice().Memset(ghost_vgrad_[rves_id[i]]->begin(), 0, ghost_vgrad_[rves_id[i]]->size()*sizeof(value_type));
             ghost_vgrad_ind_.insert( std::make_pair< int, std::vector<int>* >( rves_id[i], new std::vector<int>(stride_up*COORD_DIM, 0) ) );
         }
@@ -3730,9 +3758,10 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     static Vec_t x_pair(2, params_.sh_order);
     static std::vector<value_type> vgrad_pair(stride_up*COORD_DIM*2, 0.0);
     static std::vector<int> vgrad_pair_ind(stride_up*COORD_DIM*2, 0.0);
-    Vec_t vgrad1(1, params_.upsample_freq), vgrad2(1, params_.upsample_freq);
+    Vec_t vgrad1(1, col_upsample_freq), vgrad2(1, col_upsample_freq);
     ASSERT(vgrad1.size() == stride_up*COORD_DIM, "wrong vgrad1 size");
     pvfmm::Profile::Tic("BBIPairsContact", &comm, true);
+    COUT("total number of pairs to check: "<<BBIPairs.size()<<".");
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         // do contact detection first id > second id to remove duplicate contacts
@@ -3777,8 +3806,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             std::vector<value_type> IV;
             std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
             std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
+            double t_check_start = omp_get_wtime();
             CI_pair_.getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
                     params_.min_sep_dist, params_.periodic_length);
+            double t_check_end = omp_get_wtime();
+            COUT("time for checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second<<" is: "<<(t_check_end-t_check_start));
 
             // updates
             if(num_cvs > 0)
@@ -3809,6 +3841,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                 num_cvs_ += num_cvs;
                 IV_.insert(IV_.end(), IV.begin(), IV.end());
             }
+            COUT("finish checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
         }
         else if(BBIPairs[i].first > BBIPairs[i].second)
         {
@@ -3850,8 +3883,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             std::vector<value_type> IV;
             std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
             std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
+            double t_check_start = omp_get_wtime();
             CI_pair_.getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
                     params_.min_sep_dist, params_.periodic_length);
+            double t_check_end = omp_get_wtime();
+            COUT("time for checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second<<" is: "<<(t_check_end-t_check_start));
 
             // updates
             if(num_cvs > 0)
@@ -3883,6 +3919,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                 num_cvs_ += num_cvs;
                 IV_.insert(IV_.end(), IV.begin(), IV.end());
             }
+            COUT("finish checking pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second);
         }
     }
     pvfmm::Profile::Toc();
@@ -4029,6 +4066,11 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     SurfContainer* Surf;
     Surf = S_i_;
 
+    // col upsample freq
+    int col_upsample_freq = params_.sh_order;
+    if(params_.col_upsample)
+        col_upsample_freq = params_.upsample_freq;
+
     // checkout workers
     std::auto_ptr<Vec_t> f_i = checkoutVec();
     std::auto_ptr<Vec_t> f_i_up = checkoutVec();
@@ -4038,11 +4080,11 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     std::auto_ptr<Vec_t> wrk2 = checkoutVec();
     std::auto_ptr<Sca_t> ten_i = checkoutSca();
     f_i->replicate(Surf->getPosition());
-    f_i_up->resize(1, params_.upsample_freq);
+    f_i_up->resize(1, col_upsample_freq);
     vel_i->replicate(Surf->getPosition());
-    vel_i_up->resize(1, params_.upsample_freq);
-    wrk1->resize(1, params_.upsample_freq);
-    wrk2->resize(1, params_.upsample_freq);
+    vel_i_up->resize(1, col_upsample_freq);
+    wrk1->resize(1, col_upsample_freq);
+    wrk2->resize(1, col_upsample_freq);
     ten_i->replicate(Surf->getPosition());
     
     // clear lcp_matrix
@@ -4051,7 +4093,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     // number of vesicles
     int nves = nv_;
     // sh_order collision detection working on
-    int sh_order = params_.upsample_freq;
+    int sh_order = col_upsample_freq;
     // iterator for vgrad
     value_type* iter_vgrad;
         
@@ -4067,6 +4109,8 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     typename CVMAP::const_iterator iter_i, iter_j;
     contact_vesicle_list_.clear();
     // TODO: OMP this for loop?
+    MPI_Comm comm = MPI_COMM_WORLD;
+    pvfmm::Profile::Tic("FormLCPMatrixLocal", &comm, true);
     for(int i_vesicle = 0; i_vesicle < nves; ++i_vesicle)
     {
         bool has_contact = false;
@@ -4103,7 +4147,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
                 }
                 else
                 {
-                   cvmap.insert( std::make_pair< int, Vec_t* >( vgrad_index, new Vec_t(1, sh_order) ) );
+                   cvmap.insert( std::make_pair( (int)vgrad_index, new Vec_t(1, sh_order) ) );
                    axpy(static_cast<value_type>(0.0), i_vgrad, *cvmap[vgrad_index]);
                    cvmap[vgrad_index]->begin()[icount] = i_vgrad.begin()[icount];
                 }
@@ -4116,10 +4160,15 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         // iterate cvmap
         for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
         {
-            // filter high freq
-            sht_filter_high(*iter_i->second, *f_i_up, &sht_upsample_, params_.rep_exponent);
-            // downsample f_i_up to f_i
-            Resample(*f_i_up, sht_upsample_, sht_, *wrk1, *wrk2, *f_i);
+            if(params_.col_upsample)
+            {
+                // filter high freq
+                sht_filter_high(*iter_i->second, *f_i_up, &sht_upsample_, params_.rep_exponent);
+                // downsample f_i_up to f_i
+                Resample(*f_i_up, sht_upsample_, sht_, *wrk1, *wrk2, *f_i);
+            }
+            else
+                sht_filter_high(*iter_i->second, *f_i, &sht_, params_.rep_exponent);
             
             // prepare rhs for current vesicle
             stokesSLPerVesicle(*f_i, *vel_i, current_vesicle_);
@@ -4143,14 +4192,17 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     
             // solve the linear system using gmres
             int solver_ret = linear_solver_gmres_(JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                    x_host, rhs_host, params_.time_tol, 0, N_size, params_.time_iter_max, 300);
+                    x_host, rhs_host, params_.time_tol, 0, N_size, params_.time_iter_max, 100);
 
             // copy host to device
             vel_i->getDevice().Memcpy(vel_i->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
             axpy(dt_, *vel_i, *vel_i);
             // end of using GMRES Solver
             // upsample vel_i to vel_i_up
-            Resample(*vel_i, sht_, sht_upsample_, *wrk1, *wrk2, *vel_i_up);
+            if(params_.col_upsample)
+                Resample(*vel_i, sht_, sht_upsample_, *wrk1, *wrk2, *vel_i_up);
+            else
+                axpy(static_cast<value_type>(1.0), *vel_i, *vel_i_up);
             
             for(iter_j = cvmap.cbegin(); iter_j != cvmap.cend(); iter_j++)
             {
@@ -4165,15 +4217,16 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             }
         }
     }
-    
+    // clear cvmap
     for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
         delete iter_i->second;
     cvmap.clear();
+    pvfmm::Profile::Toc();
     
+    pvfmm::Profile::Tic("FormLCPMatrixGlobal", &comm, true);
     // MPI communication lcp_matrix
     // send and receive lcp_matrix(i, j) so that local lcp_matrix contains row block
     int myrank, np;
-    MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &np);
     
@@ -4268,6 +4321,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     for(size_t i=0; i<s_value.size();i++)
         lcp_matrix.erase(std::make_pair(s_ind[2*i],s_ind[2*i+1]));
     // end of MPI communication lcp_matrix
+    pvfmm::Profile::Toc();
     
     // release workers
     recycle(f_i);
@@ -4340,6 +4394,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &np);
+    pvfmm::Profile::Tic("SolveLCPLComm", &comm, true);
     
     // number of cvs of all processes
     // TODO: could remember world_num_cvs(np) and cvid_dsp(np) to save some MPI_allgather
@@ -4372,7 +4427,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         ASSERT(pid >= 0, "wrong pid"); ASSERT(pid < np, "wrong pid");
         ASSERT(ind_j>cvid_dsp[pid], "bad pid for ind_j"); ASSERT(ind_j<=(cvid_dsp[pid]+world_num_cvs[pid]), "bad pid for ind_j");
         ASSERT(pid!=myrank, "wrong pid!!!");
-        pid_cvid.push_back(std::make_pair<size_t, size_t>(pid, ind_i));
+        pid_cvid.push_back(std::make_pair((size_t)pid, (size_t)ind_i));
     }
     // sort by pid, and remove duplicate
     std::sort(pid_cvid.begin(), pid_cvid.end());
@@ -4401,9 +4456,12 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
     MPI_Alltoallv(&s_ind_[0], &s_ind_cnt_[0], &s_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), 
                   &r_ind_[0], &r_ind_cnt_[0], &r_ind_dsp_[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
     // end of MPI communication
+    pvfmm::Profile::Toc();
     
+    pvfmm::Profile::Tic("SolveLCPNewtons", &comm, true);
     while(lcp_iter < lcp_max_iter)
     {
+        pvfmm::Profile::Tic("SolveLCPOneNewton", &comm, true);
         // configure linear system solver
         CHK(ConfigureLCPSolver());
         typename PVec_t::iterator pvec_i(NULL);
@@ -4452,6 +4510,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         if(fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) < 1e-6)
         {
             lcp_flag = 3;
+            pvfmm::Profile::Toc();
             break;
         }
         
@@ -4459,11 +4518,14 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         if(lcp_err < 1e-21)
         {
             lcp_flag =4;
+            pvfmm::Profile::Toc();
             break;
         }
                 
+        pvfmm::Profile::Tic("SolveLCPLiSys", &comm, true);
         // solve linear system
         Error_t err_lcp = lcp_parallel_linear_solver_->Solve(parallel_rhs_, parallel_u_);
+        pvfmm::Profile::Toc();
         
         // copy back lambda
         CHK(parallel_u_->GetArray(pvec_i, p_sz));
@@ -4484,6 +4546,7 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         if(dlambda_norm < lcp_eps)
         {
             lcp_flag = 5;
+            pvfmm::Profile::Toc();
             break;
             // could use dlambda = -nabla_theta
         }
@@ -4498,12 +4561,18 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         Arr_t::getDevice().axpy(lcp_tau, dlambda.begin(), lambda.begin(), 
                 dlambda.size(), lambda.begin());
         
-        //bool lambdaupdated = false;
-        //check_lambda();
-        // if lambdaupdated == true, solve for du and dtension of new lambda
+        // check lambda if all >= 0
+        value_type* tmp_i = lambda.begin();
+        for(size_t idx=0; idx < lambda.size(); idx++)
+        {
+            if(tmp_i[idx] < 0)
+                tmp_i[idx] = 0;
+        }
         // end of update solution
         lcp_iter++;
+        pvfmm::Profile::Toc();
     }
+    pvfmm::Profile::Toc();
 
     return ErrorEvent::Success;
 }
@@ -4634,8 +4703,13 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const
         xwrk->size() * sizeof(value_type),
         xwrk->getDevice().MemcpyHostToDevice);
 
-    sht_filter_high(*xwrk, *f_col_up, &sht_upsample_, params_.rep_exponent);
-    Resample(*f_col_up, sht_upsample_, sht_, *wrk1, *wrk2, f_col);
+    if(params_.col_upsample)
+    {
+        sht_filter_high(*xwrk, *f_col_up, &sht_upsample_, params_.rep_exponent);
+        Resample(*f_col_up, sht_upsample_, sht_, *wrk1, *wrk2, f_col);
+    }
+    else
+        sht_filter_high(*xwrk, f_col, &sht_, params_.rep_exponent);
     
     recycle(xwrk);
     recycle(f_col_up);
@@ -4678,9 +4752,13 @@ ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const
     wrk1->replicate(vgrad_);
     wrk2->replicate(vgrad_);
 
-    Resample(x_new, sht_, sht_upsample_, *wrk1, *wrk2, *x_new_up);
-
-    xy(*x_new_up, vgrad_, *x_vgrad);
+    if(params_.col_upsample)
+    {
+        Resample(x_new, sht_, sht_upsample_, *wrk1, *wrk2, *x_new_up);
+        xy(*x_new_up, vgrad_, *x_vgrad);
+    }
+    else
+        xy(x_new, vgrad_, *x_vgrad);
 
     std::vector<value_type> x_vgrad_host(x_vgrad->size(), 0.0);
     // copy x_vgrad to host
@@ -5140,7 +5218,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     SurfContainer* Surf;
     SHtrans_t* sh_trans;
     if (params_.rep_upsample){
-        INFO("Upsampling for reparametrization");
+        COUT("Upsampling for reparametrization");
         S_.resample(params_.upsample_freq, &S_up_);
         Surf = S_up_;
         sh_trans = &sht_upsample_;

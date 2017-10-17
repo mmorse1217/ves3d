@@ -45,7 +45,7 @@ void Parameters<T>::init()
     rep_upsample            = false;
     repul_dist              = 5e-2;
     min_sep_dist            = 0.0;
-    col_upsample_freq       = 32;
+    col_upsample            = false;
     scheme                  = JacobiBlockImplicit;
     sh_order                = 12;
     singular_stokes         = ViaSpHarm;
@@ -228,6 +228,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setFlag( "solve-for-velocity" );
     opt->setFlag( "pseudospectral" );
     opt->setFlag( "time-adaptive" );
+    opt->setFlag( "col-upsample" );
     opt->setOption( "write-vtk" );
 
     //an option (takes an argument), supporting long and short forms
@@ -391,8 +392,8 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
     if( opt->getValue( "min-sep-dist" ) != NULL)
         min_sep_dist = atof(opt->getValue( "min-sep-dist" ));
 
-    if (opt->getValue( "col-upsample-freq" ) != NULL)
-        col_upsample_freq = atof(opt->getValue( "col-upsample-freq" ));
+    if( opt->getFlag( "col-upsample" ) )
+        col_upsample = true;
     
     if( opt->getValue( "checkpoint-stride" ) != NULL  )
         checkpoint_stride =  atof(opt->getValue( "checkpoint-stride" ));
@@ -463,7 +464,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"rep_exponent: "<<rep_exponent<<"\n";
     os<<"repul_dist: "<<repul_dist<<"\n";
     os<<"min_sep_dist: "<<min_sep_dist<<"\n";
-    os<<"col_upsample_freq: "<<col_upsample_freq<<"\n";
+    os<<"col_upsample: "<<col_upsample<<"\n";
     os<<"bg_flow_param: "<<bg_flow_param<<"\n";
     os<<"periodic_length: "<<periodic_length<<"\n";
     os<<"interaction_upsample: "<<interaction_upsample<<"\n";
@@ -549,7 +550,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
 
     is>>key>>repul_dist; ASSERT(key=="repul_dist:", "Unexpected key (expected repul_dist)");
     is>>key>>min_sep_dist; ASSERT(key=="min_sep_dist:", "Unexpected key (expected min_sep_dist)");
-    is>>key>>col_upsample_freq; ASSERT(key=="col_upsample_freq:", "Unexpected key (expected col_upsample_freq)");
+    is>>key>>col_upsample; ASSERT(key=="col_upsample:", "Unexpected key (expected col_upsample)");
 
     is>>key>>bg_flow_param; ASSERT(key=="bg_flow_param:", "Unexpected key (expected bg_flow_param)");
     is>>key>>periodic_length; ASSERT(key=="periodic_length:", "Unexpected key (expected periodic_length)");
@@ -644,7 +645,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"------------------------------------"<<std::endl;
     output<<" Contact:"<<std::endl;
     output<<"   Minimal Sep distance     : "<<par.min_sep_dist<<std::endl;
-    output<<"   Collision upsample freq  : "<<par.col_upsample_freq<<std::endl;
+    output<<"   Collision upsample       : "<<par.col_upsample<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Initialization:"<<std::endl;

@@ -33,7 +33,7 @@ void SphericalHarmonics<Real>::SHC2Grid(const pvfmm::Vector<Real>& S, long p0, l
       for(long j=0;j<2*p0;j++){
         long len=p0+1-(j+1)/2;
         Real* B_=&B0[i*len+N*offset];
-        Real* S_=&S[i*p0*(p0+2)+offset];
+        Real* S_=const_cast<Real*>(&S[i*p0*(p0+2)+offset]);
         for(long k=0;k<len;k++) B_[k]=S_[k];
         offset+=len;
       }
@@ -176,7 +176,7 @@ void SphericalHarmonics<Real>::Grid2SHC(const pvfmm::Vector<Real>& X, long p0, l
     pvfmm::Matrix<Real> B2(block_size,2*p1);
     for(long i0=a;i0<b;i0+=block_size){
       long i1=std::min(b,i0+block_size);
-      pvfmm::Matrix<Real> Min (i1-i0,2*p0,&X[i0*2*p0], false);
+      pvfmm::Matrix<Real> Min (i1-i0,2*p0,const_cast<Real*>(&X[i0*2*p0]), false);
       pvfmm::Matrix<Real> Mout(i1-i0,2*p1,&B2[0][0]  , false);
       pvfmm::Matrix<Real>::GEMM(Mout, Min, Mf);
 
@@ -263,7 +263,7 @@ void SphericalHarmonics<Real>::SHC2GridTranspose(const pvfmm::Vector<Real>& X, l
     pvfmm::Matrix<Real> B2(block_size,2*p1);
     for(long i0=a;i0<b;i0+=block_size){
       long i1=std::min(b,i0+block_size);
-      pvfmm::Matrix<Real> Min (i1-i0,2*p0,&X[i0*2*p0], false);
+      pvfmm::Matrix<Real> Min (i1-i0,2*p0,const_cast<Real*>(&X[i0*2*p0]), false);
       pvfmm::Matrix<Real> Mout(i1-i0,2*p1,&B2[0][0]  , false);
       pvfmm::Matrix<Real>::GEMM(Mout, Min, Mf);
 
@@ -379,7 +379,7 @@ void SphericalHarmonics<Real>::RotateAll(const pvfmm::Vector<Real>& S, long p0, 
   long N=S.Dim()/Ncoef/dof;
   assert(N*Ncoef*dof==S.Dim());
   if(S_.Dim()!=N*dof*Ncoef*p0*(p0+1)) S_.ReInit(N*dof*Ncoef*p0*(p0+1));
-  pvfmm::Matrix<Real> S0(N*dof          ,Ncoef, &S [0], false);
+  pvfmm::Matrix<Real> S0(N*dof          ,Ncoef, const_cast<Real*>(&S [0]), false);
   pvfmm::Matrix<Real> S1(N*dof*p0*(p0+1),Ncoef, &S_[0], false);
 
   #pragma omp parallel
@@ -470,7 +470,7 @@ void SphericalHarmonics<Real>::RotateTranspose(const pvfmm::Vector<Real>& S_, lo
   assert(N*Ncoef*dof*(p0*(p0+1))==S_.Dim());
   if(S.Dim()!=N*dof*Ncoef*p0*(p0+1)) S.ReInit(N*dof*Ncoef*p0*(p0+1));
   pvfmm::Matrix<Real> S0(N*dof*p0*(p0+1),Ncoef, &S [0], false);
-  pvfmm::Matrix<Real> S1(N*dof*p0*(p0+1),Ncoef, &S_[0], false);
+  pvfmm::Matrix<Real> S1(N*dof*p0*(p0+1),Ncoef, const_cast<Real*>(&S_[0]), false);
 
   #pragma omp parallel
   { // Transpose all p0*(p0+1) rotations
@@ -877,7 +877,7 @@ void SphericalHarmonics<Real>::StokesSingularInteg(const pvfmm::Vector<Real>& S,
     pvfmm::Vector<Real> _SLMatrix, _DLMatrix, _S;
     if(SLMatrix) _SLMatrix.ReInit((b-a)*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM),&SLMatrix[0][a*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM)],false);
     if(DLMatrix) _DLMatrix.ReInit((b-a)*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM),&DLMatrix[0][a*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM)],false);
-    _S                    .ReInit((b-a)*(Ngrid*COORD_DIM)                  ,&S          [a*(Ngrid*COORD_DIM)                  ],false);
+    _S                    .ReInit((b-a)*(Ngrid*COORD_DIM)                  ,const_cast<Real*>(&S [a*(Ngrid*COORD_DIM)        ]),false);
 
     if(SLMatrix && DLMatrix) StokesSingularInteg_< true,  true>(_S, p0, p1, _SLMatrix, _DLMatrix);
     else        if(SLMatrix) StokesSingularInteg_< true, false>(_S, p0, p1, _SLMatrix, _DLMatrix);

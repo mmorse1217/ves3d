@@ -1161,16 +1161,16 @@ void NearSingular<Real_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
       for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-        PVFMMVec_t s_coord(     M_ves*COORD_DIM, &S[0]      [   i*M_ves*COORD_DIM], false);
+        PVFMMVec_t s_coord(     M_ves*COORD_DIM, const_cast<Real_t*>(&S[0]      [   i*M_ves*COORD_DIM]), false);
         PVFMMVec_t t_coord(trg_cnt[i]*COORD_DIM, &trg_coord [trg_dsp[i]*COORD_DIM], false);
         PVFMMVec_t t_veloc(trg_cnt[i]*COORD_DIM, &vel_direct[trg_dsp[i]*COORD_DIM], false);
 
         if(qforce_single){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), const_cast<Real_t*>(&qforce_single[0][0]+M_ves*(COORD_DIM*1)*i), false);
           StokesKernel<Real_t>::Kernel().k_s2t->      ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), const_cast<Real_t*>(&qforce_double[0][0]+M_ves*(COORD_DIM*2)*i), false);
           StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
       }
@@ -1185,16 +1185,16 @@ void NearSingular<Real_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
         size_t Ta=(vel_direct.Dim()/COORD_DIM)*(i+0)/N_ves;
         size_t Tb=(vel_direct.Dim()/COORD_DIM)*(i+1)/N_ves;
 
-        PVFMMVec_t s_coord(  M_ves*COORD_DIM, &S[0]      [i*M_ves*COORD_DIM], false);
+        PVFMMVec_t s_coord(  M_ves*COORD_DIM, const_cast<Real_t*>(&S[0]      [i*M_ves*COORD_DIM]), false);
         PVFMMVec_t t_coord((Tb-Ta)*COORD_DIM, &T         [     Ta*COORD_DIM], false);
         PVFMMVec_t t_veloc((Tb-Ta)*COORD_DIM, &vel_direct[     Ta*COORD_DIM], false);
 
         if(qforce_single){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), const_cast<Real_t*>(&qforce_single[0][0]+M_ves*(COORD_DIM*1)*i), false);
           StokesKernel<Real_t>::Kernel().k_s2t->      ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], Tb-Ta, &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), const_cast<Real_t*>(&qforce_double[0][0]+M_ves*(COORD_DIM*2)*i), false);
           StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], Tb-Ta, &t_veloc[0], NULL);
         }
       }
@@ -1419,7 +1419,7 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
     size_t a=((tid+0)*N_ves)/omp_p;
     size_t b=((tid+1)*N_ves)/omp_p;
     for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-      PVFMMVec_t s_coord(M_ves*COORD_DIM, &S[0][i*M_ves*COORD_DIM], false);
+      PVFMMVec_t s_coord(M_ves*COORD_DIM, const_cast<Real_t*>(&S[0][i*M_ves*COORD_DIM]), false);
       { // Resize interp_coord, interp_veloc, patch_veloc, interp_x; interp_veloc[:]=0
         interp_coord.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_DIM);
         interp_veloc.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_DIM);
@@ -1455,10 +1455,10 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
       }
       if(interp_veloc.Dim()){ // Set interp_veloc
         if(qforce_single){
-          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, const_cast<Real_t*>(&qforce_single[0][0]+M_ves*(COORD_DIM*1)*i), 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
         }
         if(qforce_double){
-          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, const_cast<Real_t*>(&qforce_double[0][0]+M_ves*(COORD_DIM*2)*i), 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
         }
       }
       { // Set patch_veloc

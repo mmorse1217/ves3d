@@ -207,8 +207,8 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
 
     for ( size_t ii=0;ii<pos.size(); ++ii )
     {
-        wrk_vec1_.begin()[ii] = sin(wrk_vec1_.begin()[ii]);
-        wrk_vec2_.begin()[ii] = cos(wrk_vec2_.begin()[ii]);
+        wrk_vec1_.begin()[ii] = sin(wrk_vec1_.begin()[ii]+M_PI/3);
+        wrk_vec2_.begin()[ii] = cos(wrk_vec2_.begin()[ii]+M_PI/3);
     }
 
     axpy(0.0, pos, vel_inf);
@@ -216,9 +216,8 @@ void TaylorVortexImp<Vec_t>::operator()(const Vec_t &pos, const value_type time,
         for ( int ii=0;ii<stride; ++ii)
         {
             idx = ss * VES3D_DIM * stride + ii;
-            vel_inf.begin()[idx          ] =        wrk_vec1_.begin()[idx] * wrk_vec2_.begin()[idx + stride];
-            vel_inf.begin()[idx + stride ] = -1.0 * wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride];
-
+            vel_inf.begin()[idx          ] =        wrk_vec1_.begin()[idx] * wrk_vec2_.begin()[idx + stride] * wrk_vec1_.begin()[idx + 2*stride];
+            vel_inf.begin()[idx + stride ] = -1.0 * wrk_vec2_.begin()[idx] * wrk_vec1_.begin()[idx + stride] * wrk_vec1_.begin()[idx + 2*stride];
         }
     axpy(strength_, vel_inf, vel_inf);
 }

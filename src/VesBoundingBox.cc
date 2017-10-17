@@ -32,12 +32,18 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
 
     // start configuration
     SphericalHarmonics<Real_t>::Grid2SHC(ves_coord_s, sh_order, sh_order,    shc_coef);
-    SphericalHarmonics<Real_t>::SHC2Grid(shc_coef,    sh_order, sh_order_up, ves_coord_s_up);
+    if(sh_order != sh_order_up)
+        SphericalHarmonics<Real_t>::SHC2Grid(shc_coef,    sh_order, sh_order_up, ves_coord_s_up);
+    else
+        ves_coord_s_up = ves_coord_s;
     SphericalHarmonics<Real_t>::SHC2Pole(shc_coef,    sh_order, ves_coord_pole_s);
 
     // end configuration
     SphericalHarmonics<Real_t>::Grid2SHC(ves_coord_e, sh_order, sh_order,    shc_coef);
-    SphericalHarmonics<Real_t>::SHC2Grid(shc_coef,    sh_order, sh_order_up, ves_coord_e_up);
+    if(sh_order != sh_order_up)
+        SphericalHarmonics<Real_t>::SHC2Grid(shc_coef,    sh_order, sh_order_up, ves_coord_e_up);
+    else
+        ves_coord_e_up = ves_coord_e;
     SphericalHarmonics<Real_t>::SHC2Pole(shc_coef,    sh_order, ves_coord_pole_e);
 
     // stride(number of points per vesicle)
@@ -112,7 +118,7 @@ void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<si
 #endif
 
     pvfmm::Profile::Tic("GetContactBBPair", &comm, true);
-    bool prof_state=pvfmm::Profile::Enable(false);
+    //bool prof_state=pvfmm::Profile::Enable(false);
     
     TREEGRID BB_let;
 
@@ -148,7 +154,7 @@ void VesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<si
     // find contact BB pair
     FindNearPair(BB_let, BBIPairs);
 
-    pvfmm::Profile::Enable(prof_state);
+    //pvfmm::Profile::Enable(prof_state);
     pvfmm::Profile::Toc();
 }
 
@@ -307,16 +313,23 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
         }
 
         pt_id   .ReInit(N_pts_);
+        pvfmm::Profile::Tic("SortPoints",&comm,true);
         pvfmm::par::SortScatterIndex(pt_mid, pt_id, comm);
+        pvfmm::Profile::Toc();
+        pvfmm::Profile::Tic("ScatterPtMid",&comm,true);
         pvfmm::par::ScatterForward  (pt_mid, pt_id, comm);
+        pvfmm::Profile::Toc();
         { // build let_mins
+            pvfmm::Profile::Tic("LetMins",&comm,true);
             let_mins.ReInit(np_);
             MPI_Allgather(&  pt_mid[0], 1, pvfmm::par::Mpi_datatype<pvfmm::MortonId>::value(),
                           &let_mins[0], 1, pvfmm::par::Mpi_datatype<pvfmm::MortonId>::value(), comm);
             if(rank_) assert(let_mins[rank_]!=let_mins[rank_-1]);
             let_mins[0]=pvfmm::MortonId(0,0,0,tree_depth_);
+            pvfmm::Profile::Toc();
         }
         { // Exchange shared octant with neighbour
+            pvfmm::Profile::Tic("NeighbourComm",&comm,true);
             int send_size=0;
             int recv_size=0;
             if(rank_<np_-1){ // send_size
@@ -343,6 +356,7 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
                 for(size_t i=0;i<recv_size;i++) pt_mid_new[i]=let_mins[rank_];
                 pt_mid.Swap(pt_mid_new);
             }
+            pvfmm::Profile::Toc();
         }
         { // Sort points by pt_id in each octant
             #pragma omp parallel for
@@ -410,12 +424,14 @@ void VesBoundingBox<Real_t>::ConstructLocalTree(TREEGRID &BB_let)
         }
     }
     { // scatter pt_coord, box_id, box_min, box_max
+        pvfmm::Profile::Tic("ScatterRemain",&comm,true);
         box_min=BB_pts_min_;
         pvfmm::par::ScatterForward(box_min, pt_id, comm);
         box_max=BB_pts_max_;
         pvfmm::par::ScatterForward(box_max, pt_id, comm);
         box_id = BB_id_;
         pvfmm::par::ScatterForward(box_id, pt_id, comm);
+        pvfmm::Profile::Toc();
     }
     pvfmm::Profile::Toc();
 }
@@ -960,6 +976,7 @@ void VesBoundingBox<Real_t>::GlobalBoundingBox(Real_t *scale_xr, Real_t *shift_x
 template<typename Real_t>
 void VesBoundingBox<Real_t>::GenerateBBPoints()
 {
+    pvfmm::Profile::Tic("GenBBPoints", &comm, true);
     // number of points in each dimension
     std::vector<size_t> bbox_nxyz(COORD_DIM*N_bbox_, 0);
     // number of points per box
@@ -998,6 +1015,7 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
     // total number of points
     n_sum = pvfmm::omp_par::reduce(&bbox_n[0], bbox_n.size());
     N_pts_ = n_sum;
+    COUT("rank: "<<rank_<<" of "<<np_<<" processes has "<<N_pts_<<" BB points.");
 
     // init data for generating points
     BB_pts_.ReInit(COORD_DIM*n_sum);
@@ -1050,6 +1068,7 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
             }
         }
     }
+    pvfmm::Profile::Toc();
 }
 
 template<typename Real_t>

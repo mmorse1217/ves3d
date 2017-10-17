@@ -268,7 +268,7 @@ Error_t Scalars<T, DT, DEVICE>::unpack(std::istream &is, Streamable::Format form
     ASSERT(key=="gridy:", "bad key");
     is>>key>>stride;
     ASSERT(key=="stride:", "bad key");
-    resize(nsub, shorder, std::make_pair<int,int>(gridx,gridy));
+    resize(nsub, shorder, std::make_pair(gridx,gridy));
     ASSERT(getNumSubs()     == nsub	, "Incorrect resizing nsub");
     ASSERT(sh_order_	    == shorder	, "Incorrect resizing shorder");
     ASSERT(grid_dim_.first  == gridx  	, "Incorrect resizing grid.first");

@@ -44,6 +44,10 @@ class Repartition
     template<typename VecContainer, typename ScaContainer>
     Error_t operator()(VecContainer &coord, ScaContainer &tension) const;
 
+    template<typename VecContainer, typename ScaContainer, typename ArrContainer>
+    Error_t operator()(VecContainer &coord, ScaContainer &tension, ArrContainer &contrast, 
+            ArrContainer &excess_density, ArrContainer &bending_modulus, VecContainer &vel, VecContainer &fc) const;
+
   private:
     GlobalRepart_t g_repart_handle_;
     Dealloc_t clear_context_;
@@ -57,9 +61,19 @@ class Repartition
 
     mutable T* all_pos_;
     mutable T* all_tension_;
+    mutable T* all_contrast_;
+    mutable T* all_excess_density_;
+    mutable T* all_bending_modulus_;
+    mutable T* all_vel_;
+    mutable T* all_fc_;
 
     mutable T* posr_;
     mutable T* tensionr_;
+    mutable T* contrastr_;
+    mutable T* excess_densityr_;
+    mutable T* bending_modulusr_;
+    mutable T* velr_;
+    mutable T* fcr_;
     mutable size_t nvr_;
     mutable void* context_;
 

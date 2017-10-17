@@ -65,7 +65,7 @@ class Parameters : public Streamable
 
     // contact
     T    min_sep_dist;
-    int col_upsample_freq;
+    bool col_upsample;
 
     //Background flow
     T bg_flow_param;
