@@ -3588,9 +3588,9 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     std::vector< std::pair<size_t, size_t> > BBIPairs;
     pvfmm::Profile::Tic("SetBoundingBox", &comm, true);
     if(params_.col_upsample)
-        VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.sh_order);
-    else
         VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, col_upsample_freq);
+    else
+        VBBI_->SetVesBoundingBox(X_s, X_e, params_.min_sep_dist, params_.sh_order, params_.sh_order);
     pvfmm::Profile::Toc();
     VBBI_->GetContactBoundingBoxPair(BBIPairs);
     
