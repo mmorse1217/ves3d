@@ -28,13 +28,14 @@ class GMRESLinSolver
         // the other way is use template MatVec, pass the object(InterfacialVelocity)
         // and define operator()(const double*, double*) in the object
         
-        typedef Error_t (*JacobiImpApply)(const GMRESLinSolver*, const double*, double*);
+        typedef Error_t (*JacobiImpApply)(const GMRESLinSolver*, const double*, double*, int);
+        typedef Error_t (*JacobiImpApplyPrecond)(const GMRESLinSolver*, const double*, double*);
 
         Error_t SetContext(const void *ctx);
         Error_t Context(const void **ctx) const;
 
-        int operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs, 
-                T reltol, T abstol, size_t N, int maxIters, int restartIters) const;
+        int operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T *rhs, 
+                T reltol, T abstol, size_t N, int maxIters, int restartIters, int vid = -1) const;
 
     private:
         const void *ctx_;

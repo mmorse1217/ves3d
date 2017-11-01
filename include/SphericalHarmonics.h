@@ -10,8 +10,10 @@ class SphericalHarmonics{
   public:
 
     static void SHC2Grid(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>& X, pvfmm::Vector<Real>* X_theta=NULL, pvfmm::Vector<Real>* X_phi=NULL);
+    static void SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>& X, pvfmm::Vector<Real>* X_theta=NULL, pvfmm::Vector<Real>* X_phi=NULL);
 
     static void Grid2SHC(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S);
+    static void Grid2SHCPerVesicle(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S);
 
     static void SHC2GridTranspose(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S);
 
@@ -42,6 +44,8 @@ class SphericalHarmonics{
     static std::vector<pvfmm::Matrix<Real> >& MatRotate(long p0);
 
     static void StokesSingularInteg(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix=NULL, pvfmm::Vector<Real>* DLMatrix=NULL);
+
+    static void SetB0B1();
 
   private:
 
@@ -85,6 +89,7 @@ class SphericalHarmonics{
       std::vector<std::vector<pvfmm::Matrix<Real> > > Mr_;
       std::vector<pvfmm::Matrix<Real> > Mfinv_ ;
       std::vector<std::vector<pvfmm::Matrix<Real> > > Mlinv_ ;
+      std::vector< pvfmm::Vector<Real> > B0s, B1s;
     } matrix;
 
 };

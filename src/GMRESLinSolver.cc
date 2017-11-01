@@ -1,7 +1,7 @@
 template<typename T>
 int GMRESLinSolver<T>::
-operator()(JacobiImpApply MV, JacobiImpApply PC, T *computed_solution, T *rhs, 
-        T reltol, T abstol, size_t N, int maxIters, int restartIters) const
+operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T *rhs, 
+        T reltol, T abstol, size_t N, int maxIters, int restartIters, int vid) const
 {
   /*---------------------------------------------------------------------------
   * Allocate storage for the ?par parameters and the solution/rhs vectors
@@ -151,14 +151,14 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
   *---------------------------------------------------------------------------*/
   if (RCI_request == 1)
     {
-      MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1]);
+      MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1], vid);
       goto ONE;
     }
   if (RCI_request == 2)
     {
       ipar[12] = 1;
       dfgmres_get (&ivar, computed_solution, b, &RCI_request, ipar, dpar, tmp, &itercount);
-      MV(this, b, residual);
+      MV(this, b, residual, vid);
       dvar = -1.0E0;
       i = 1;
       daxpy (&ivar, &dvar, rhs, &i, residual, &i);

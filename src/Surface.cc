@@ -46,6 +46,10 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     //contact force
     fc_.replicate(x_);
     fc_.getDevice().Memset(fc_.begin(), 0, sizeof(value_type)*fc_.size());
+    fc_.set_name("contact force");
+    tension_.replicate(x_);
+    tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
+    tension_.set_name("tension");
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -626,6 +630,8 @@ Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
     os<<"reparam_filter_freq: "<<reparam_filter_freq_<<"\n";
     os<<"reparam_type: "<<reparam_type_<<"\n";
     x_.pack(os,format);
+    fc_.pack(os,format);
+    tension_.pack(os,format);
     os<<"/SURFACE\n";
 
     return ErrorEvent::Success;
@@ -683,10 +689,10 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
     if(rt!=reparam_type_) WARN("Reparametrization type switched from "<<rt<<" to "<<reparam_type_);
 
     x_.unpack(is, format);
+    fc_.unpack(is, format);
+    tension_.unpack(is, format);
     is>>s;
     ASSERT(s=="/SURFACE", "Bad input string (missing footer).");
-    fc_.replicate(x_);
-    fc_.getDevice().Memset(fc_.begin(), 0, sizeof(value_type)*fc_.size());
 
     INFO("Unpacked "<<Streamable::name_<<" data from version "<<version<<" (current version "<<VERSION<<")");
 

@@ -9,12 +9,22 @@ InterfacialForce<SurfContainer>::InterfacialForce(
     sht_up_(mats.p_up_, mats.mats_p_up_),
     cen(1, 1, std::make_pair(1,1)),
     S_up(NULL)
-{}
+{
+    int omp_p = omp_get_max_threads();
+    for(int i=0; i<omp_p; ++i)
+        S_ups.push_back(NULL);
+}
 
 template<typename SurfContainer>
 InterfacialForce<SurfContainer>::~InterfacialForce()
 {
   if(S_up) delete S_up;
+  int omp_p = omp_get_max_threads();
+  for(int i=0; i<omp_p; ++i)
+  {
+      if(S_ups[i]) 
+          delete S_ups[i];
+  }
 }
 
 template<typename SurfContainer>
@@ -95,7 +105,9 @@ template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::linearBendingForcePerVesicle(const SurfContainer &S,
     const Vec_t &x_new, Vec_t &Fb, const int vesicle_i) const
 {
-    S.resample(params_.upsample_freq, &S_up); // upsample
+    // TODO: add S_ups for omp threads
+    int tid = omp_get_thread_num();
+    S.resample(params_.upsample_freq, &S_ups[tid]); // upsample
     Vec_t x_new_up;
     { // upsample x_new
       Vec_t wrk[2]; // TODO: Pre-allocate
@@ -106,22 +118,23 @@ void InterfacialForce<SurfContainer>::linearBendingForcePerVesicle(const SurfCon
     }
 
     Vec_t Fb_up;
-    Fb_up.replicate(S_up->getPosition());
-    s1.replicate(S_up->getPosition());
-    s2.replicate(S_up->getPosition());
+    Sca_t s1, s2;
+    Fb_up.replicate(S_ups[tid]->getPosition());
+    s1.replicate(S_ups[tid]->getPosition());
+    s2.replicate(S_ups[tid]->getPosition());
 
-    S_up->linearizedMeanCurv(x_new_up, s1);
+    S_ups[tid]->linearizedMeanCurv(x_new_up, s1);
 
-    xy(S_up->getMeanCurv(), S_up->getMeanCurv(), s2);
+    xy(S_ups[tid]->getMeanCurv(), S_ups[tid]->getMeanCurv(), s2);
     axpy(static_cast<typename SurfContainer::value_type>(-1.0),
-        S_up->getGaussianCurv(), s2, s2);
+        S_ups[tid]->getGaussianCurv(), s2, s2);
     xy(s1, s2, s2);
 
-    S_up->grad(s1, Fb_up);
-    S_up->div(Fb_up, s1);
+    S_ups[tid]->grad(s1, Fb_up);
+    S_ups[tid]->div(Fb_up, s1);
     axpy(static_cast<typename SurfContainer::value_type>(2), s2, s1, s1);
 
-    xv(s1, S_up->getNormal(), Fb_up);
+    xv(s1, S_ups[tid]->getNormal(), Fb_up);
     
     // get the i_th vesicle bending coeff 
     Arr_t bending_coeff_tmp(1);
@@ -160,6 +173,40 @@ void InterfacialForce<SurfContainer>::tensileForce(const SurfContainer &S,
     xv(S_up->getMeanCurv(), S_up->getNormal(), Fs_up);
     xv(tension_up, Fs_up, Fs_up);
     S_up->grad(tension_up, v1);
+    axpy(static_cast<typename SurfContainer::value_type>(2), Fs_up, v1, Fs_up);
+
+    { // downsample Fs
+      Vec_t wrk[2]; // TODO: Pre-allocate
+      wrk[0].resize(Fs_up.getNumSubs(), params_.upsample_freq);
+      wrk[1].resize(Fs_up.getNumSubs(), params_.upsample_freq);
+      Fs.replicate(S.getPosition());
+      Resample(Fs_up, sht_up_, sht_, wrk[0], wrk[1], Fs);
+    }
+}
+
+template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::tensileForcePerVesicle(const SurfContainer &S,
+    const Sca_t &tension, Vec_t &Fs) const
+{
+    // TODO: add S_ups for omp
+    int tid = omp_get_thread_num();
+    S.resample(params_.upsample_freq, &S_ups[tid]); // upsample
+    Sca_t tension_up;
+    { // upsample tension
+      Sca_t wrk[2]; // TODO: Pre-allocate
+      wrk[0]    .resize(tension.getNumSubs(), params_.upsample_freq);
+      wrk[1]    .resize(tension.getNumSubs(), params_.upsample_freq);
+      tension_up.resize(tension.getNumSubs(), params_.upsample_freq);
+      Resample(tension, sht_, sht_up_, wrk[0], wrk[1], tension_up);
+    }
+
+    Vec_t Fs_up, v1;
+    Fs_up.replicate(S_ups[tid]->getPosition());
+    v1.replicate(S_ups[tid]->getPosition());
+
+    xv(S_ups[tid]->getMeanCurv(), S_ups[tid]->getNormal(), Fs_up);
+    xv(tension_up, Fs_up, Fs_up);
+    S_ups[tid]->grad(tension_up, v1);
     axpy(static_cast<typename SurfContainer::value_type>(2), Fs_up, v1, Fs_up);
 
     { // downsample Fs
@@ -279,10 +326,12 @@ void InterfacialForce<SurfContainer>::implicitTractionJumpPerVesicle(const SurfC
 {
     linearBendingForcePerVesicle(S, x, F, vesicle_i);
 
+    Vec_t ftmp;
+
     ftmp.replicate(x);
     gravityForcePerVesicle(S, x, ftmp, vesicle_i);
     axpy((value_type) 1.0, F, ftmp, F);
 
-    tensileForce(S, tension, ftmp);
+    tensileForcePerVesicle(S, tension, ftmp);
     axpy( (value_type) 1.0, F, ftmp, F);
 }

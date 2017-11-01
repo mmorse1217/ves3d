@@ -109,8 +109,8 @@ class InterfacialVelocity
     Error_t ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const;
     Error_t ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const;
     Error_t ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const;
-    Error_t ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col) const;
-    Error_t ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec) const;
+    Error_t ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col, bool simple = false) const;
+    Error_t ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec, bool simple = false) const;
     Error_t ConfigureLCPSolver() const;
     Error_t ParallelLCPMatvec(Arr_t &lambda) const;
 
@@ -124,7 +124,6 @@ class InterfacialVelocity
     mutable std::vector<value_type> IV_;
     mutable Arr_t lcp_matrix_;
     mutable std::map<std::pair<size_t, size_t>, value_type> parallel_lcp_matrix_;
-    mutable int current_vesicle_;
     mutable int nv_;
     
   private:
@@ -152,8 +151,8 @@ class InterfacialVelocity
     static Error_t ImplicitApply(const POp_t *o, const value_type *x, value_type *y);
     static Error_t ImplicitPrecond(const PSolver_t *ksp, const value_type *x, value_type *y);
     
-    static Error_t JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
-    static Error_t JacobiImplicitApplyPerVesicle(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
+    static Error_t JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y, int tmp_trash=-1);
+    static Error_t JacobiImplicitApplyPerVesicle(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y, int current_vesicle = 0);
     static Error_t JacobiImplicitLCPApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
     static Error_t JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y);
@@ -203,6 +202,7 @@ class InterfacialVelocity
     //Contact
     mutable ContactInterface CI_;
     mutable ContactInterface CI_pair_;
+    mutable std::vector<ContactInterface*> CI_pairs_;
     mutable Vec_t vgrad_;
     mutable std::vector<int> vgrad_ind_;
     mutable std::map<int, Vec_t*> ghost_vgrad_;
@@ -211,6 +211,7 @@ class InterfacialVelocity
     mutable size_t cvid_dsp_;
     mutable std::vector<int> PA_;
     mutable SurfContainer* S_i_;
+    mutable std::vector<SurfContainer*> S_is_;
     mutable std::vector<int> contact_vesicle_list_;
     mutable VesBoundingBox<value_type> *VBBI_;
     mutable pvfmm::Vector<int> s_ind_cnt_, s_ind_dsp_, r_ind_cnt_, r_ind_dsp_;

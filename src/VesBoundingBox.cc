@@ -79,8 +79,8 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
                 }
                 // extend bounding box by some absolute value, 1e-10 for now.
                 // TODO: should extend by absolute + relative*size
-                mini[k] = mink - min_sep/2 - 1e-10;
-                maxi[k] = maxk + min_sep/2 + 1e-10;
+                mini[k] = mink - min_sep/2 - 1e-8;
+                maxi[k] = maxk + min_sep/2 + 1e-8;
             }
         }
     }

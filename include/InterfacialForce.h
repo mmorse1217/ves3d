@@ -29,6 +29,7 @@ class InterfacialForce
     mutable Sca_t s1, s2;
     mutable Vec_t v1, ftmp;
     mutable SurfContainer* S_up;
+    mutable std::vector<SurfContainer*> S_ups; //each element is a single vesicle surface
 
   public:
     InterfacialForce(const Parameters<value_type> &params,
@@ -40,6 +41,7 @@ class InterfacialForce
     void linearBendingForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fb) const;
     void linearBendingForcePerVesicle(const SurfContainer &S, const Vec_t &x, Vec_t &Fb, const int vesicle_i) const;
     void tensileForce(const SurfContainer &S, const Sca_t &tension, Vec_t &Fs) const;
+    void tensileForcePerVesicle(const SurfContainer &S, const Sca_t &tension, Vec_t &Fs) const;
     void gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const;
     void gravityForcePerVesicle(const SurfContainer &S, const Vec_t &x, Vec_t &Fg, const int vesicle_i) const;
 

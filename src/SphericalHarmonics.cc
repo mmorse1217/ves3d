@@ -149,6 +149,156 @@ void SphericalHarmonics<Real>::SHC2Grid(const pvfmm::Vector<Real>& S, long p0, l
 }
 
 template <class Real>
+void SphericalHarmonics<Real>::SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>& X, pvfmm::Vector<Real>* X_theta, pvfmm::Vector<Real>* X_phi){
+  pvfmm::Matrix<Real>& Mf =SphericalHarmonics<Real>::MatFourier(p0,p1);
+  pvfmm::Matrix<Real>& Mdf=SphericalHarmonics<Real>::MatFourierGrad(p0,p1);
+  std::vector<pvfmm::Matrix<Real> >& Ml =SphericalHarmonics<Real>::MatLegendre(p0,p1);
+  std::vector<pvfmm::Matrix<Real> >& Mdl=SphericalHarmonics<Real>::MatLegendreGrad(p0,p1);
+  assert(p0==Ml.size()-1);
+  assert(p0==Mf.Dim(0)/2);
+  assert(p1==Mf.Dim(1)/2);
+
+  long N=S.Dim()/(p0*(p0+2));
+  assert(N*p0*(p0+2)==S.Dim());
+
+  if(X.Dim()!=N*2*p1*(p1+1)) X.ReInit(N*2*p1*(p1+1));
+  if(X_phi   && X_phi  ->Dim()!=N*2*p1*(p1+1)) X_phi  ->ReInit(N*2*p1*(p1+1));
+  if(X_theta && X_theta->Dim()!=N*2*p1*(p1+1)) X_theta->ReInit(N*2*p1*(p1+1));
+
+  int omp_id = omp_get_thread_num();
+  pvfmm::Vector<Real> &B0 = matrix.B0s[omp_id];
+  pvfmm::Vector<Real> &B1 = matrix.B1s[omp_id];
+  B0.ReInit(N*  p0*(p0+2));
+  B1.ReInit(N*2*p0*(p1+1));
+
+  #pragma omp parallel
+  { // B0 <-- Rearrange(S)
+    long tid=omp_get_thread_num();
+    long omp_p=omp_get_num_threads();
+
+    long a=(tid+0)*N/omp_p;
+    long b=(tid+1)*N/omp_p;
+    for(long i=a;i<b;i++){
+      long offset=0;
+      for(long j=0;j<2*p0;j++){
+        long len=p0+1-(j+1)/2;
+        Real* B_=&B0[i*len+N*offset];
+        Real* S_=const_cast<Real*>(&S[i*p0*(p0+2)+offset]);
+        for(long k=0;k<len;k++) B_[k]=S_[k];
+        offset+=len;
+      }
+    }
+  }
+
+  #pragma omp parallel
+  { // Evaluate Legendre polynomial
+    long tid=omp_get_thread_num();
+    long omp_p=omp_get_num_threads();
+
+    long offset0=0;
+    long offset1=0;
+    for(long i=0;i<p0+1;i++){
+      long N0=2*N;
+      if(i==0 || i==p0) N0=N;
+      pvfmm::Matrix<Real> Min (N0, p0+1-i,&B0[0]+offset0,false);
+      pvfmm::Matrix<Real> Mout(N0, p1+1  ,&B1[0]+offset1,false);
+      { // Mout = Min * Ml[i]  // split between threads
+        long a=(tid+0)*N0/omp_p;
+        long b=(tid+1)*N0/omp_p;
+        if(a<b){
+          pvfmm::Matrix<Real> Min_ (b-a, Min .Dim(1), &Min [a][0],false);
+          pvfmm::Matrix<Real> Mout_(b-a, Mout.Dim(1), &Mout[a][0],false);
+          pvfmm::Matrix<Real>::GEMM(Mout_,Min_,Ml[i]);
+        }
+      }
+      offset0+=Min .Dim(0)*Min .Dim(1);
+      offset1+=Mout.Dim(0)*Mout.Dim(1);
+    }
+  }
+
+  #pragma omp parallel
+  { // Transpose and evaluate Fourier
+    long tid=omp_get_thread_num();
+    long omp_p=omp_get_num_threads();
+
+    long a=(tid+0)*N*(p1+1)/omp_p;
+    long b=(tid+1)*N*(p1+1)/omp_p;
+
+    const long block_size=16;
+    pvfmm::Matrix<Real> B2(block_size,2*p0);
+    for(long i0=a;i0<b;i0+=block_size){
+      long i1=std::min(b,i0+block_size);
+      for(long i=i0;i<i1;i++){
+        for(long j=0;j<2*p0;j++){
+          B2[i-i0][j]=B1[j*N*(p1+1)+i];
+        }
+      }
+
+      pvfmm::Matrix<Real> Min (i1-i0,2*p0,&B2[0][0]  , false);
+      pvfmm::Matrix<Real> Mout(i1-i0,2*p1,&X[i0*2*p1], false);
+      pvfmm::Matrix<Real>::GEMM(Mout, Min, Mf);
+
+      if(X_theta){ // Evaluate Fourier gradient
+        pvfmm::Matrix<Real> Mout(i1-i0,2*p1,&(*X_theta)[i0*2*p1], false);
+        pvfmm::Matrix<Real>::GEMM(Mout, Min, Mdf);
+      }
+    }
+  }
+
+  if(X_phi){
+    #pragma omp parallel
+    { // Evaluate Legendre gradient
+      long tid=omp_get_thread_num();
+      long omp_p=omp_get_num_threads();
+
+      long offset0=0;
+      long offset1=0;
+      for(long i=0;i<p0+1;i++){
+        long N0=2*N;
+        if(i==0 || i==p0) N0=N;
+        pvfmm::Matrix<Real> Min (N0, p0+1-i,&B0[0]+offset0,false);
+        pvfmm::Matrix<Real> Mout(N0, p1+1  ,&B1[0]+offset1,false);
+        { // Mout = Min * Mdl[i]  // split between threads
+          long a=(tid+0)*N0/omp_p;
+          long b=(tid+1)*N0/omp_p;
+          if(a<b){
+            pvfmm::Matrix<Real> Min_ (b-a, Min .Dim(1), &Min [a][0],false);
+            pvfmm::Matrix<Real> Mout_(b-a, Mout.Dim(1), &Mout[a][0],false);
+            pvfmm::Matrix<Real>::GEMM(Mout_,Min_,Mdl[i]);
+          }
+        }
+        offset0+=Min .Dim(0)*Min .Dim(1);
+        offset1+=Mout.Dim(0)*Mout.Dim(1);
+      }
+    }
+
+    #pragma omp parallel
+    { // Transpose and evaluate Fourier
+      long tid=omp_get_thread_num();
+      long omp_p=omp_get_num_threads();
+
+      long a=(tid+0)*N*(p1+1)/omp_p;
+      long b=(tid+1)*N*(p1+1)/omp_p;
+
+      const long block_size=16;
+      pvfmm::Matrix<Real> B2(block_size,2*p0);
+      for(long i0=a;i0<b;i0+=block_size){
+        long i1=std::min(b,i0+block_size);
+        for(long i=i0;i<i1;i++){
+          for(long j=0;j<2*p0;j++){
+            B2[i-i0][j]=B1[j*N*(p1+1)+i];
+          }
+        }
+
+        pvfmm::Matrix<Real> Min (i1-i0,2*p0,&B2[0][0]         , false);
+        pvfmm::Matrix<Real> Mout(i1-i0,2*p1,&(*X_phi)[i0*2*p1], false);
+        pvfmm::Matrix<Real>::GEMM(Mout, Min, Mf);
+      }
+    }
+  }
+}
+
+template <class Real>
 void SphericalHarmonics<Real>::Grid2SHC(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S){
   pvfmm::Matrix<Real> Mf =SphericalHarmonics<Real>::MatFourierInv(p0,p1);
   std::vector<pvfmm::Matrix<Real> > Ml =SphericalHarmonics<Real>::MatLegendreInv(p0,p1);
@@ -161,6 +311,94 @@ void SphericalHarmonics<Real>::Grid2SHC(const pvfmm::Vector<Real>& X, long p0, l
   if(S.Dim()!=N*(p1*(p1+2))) S.ReInit(N*(p1*(p1+2)));
 
   static pvfmm::Vector<Real> B0, B1;
+  B0.ReInit(N*  p1*(p1+2));
+  B1.ReInit(N*2*p1*(p0+1));
+
+  #pragma omp parallel
+  { // Evaluate Fourier and transpose
+    long tid=omp_get_thread_num();
+    long omp_p=omp_get_num_threads();
+
+    long a=(tid+0)*N*(p0+1)/omp_p;
+    long b=(tid+1)*N*(p0+1)/omp_p;
+
+    const long block_size=16;
+    pvfmm::Matrix<Real> B2(block_size,2*p1);
+    for(long i0=a;i0<b;i0+=block_size){
+      long i1=std::min(b,i0+block_size);
+      pvfmm::Matrix<Real> Min (i1-i0,2*p0,const_cast<Real*>(&X[i0*2*p0]), false);
+      pvfmm::Matrix<Real> Mout(i1-i0,2*p1,&B2[0][0]  , false);
+      pvfmm::Matrix<Real>::GEMM(Mout, Min, Mf);
+
+      for(long i=i0;i<i1;i++){
+        for(long j=0;j<2*p1;j++){
+          B1[j*N*(p0+1)+i]=B2[i-i0][j];
+        }
+      }
+    }
+  }
+
+  #pragma omp parallel
+  { // Evaluate Legendre polynomial
+    long tid=omp_get_thread_num();
+    long omp_p=omp_get_num_threads();
+
+    long offset0=0;
+    long offset1=0;
+    for(long i=0;i<p1+1;i++){
+      long N0=2*N;
+      if(i==0 || i==p1) N0=N;
+      pvfmm::Matrix<Real> Min (N0, p0+1  ,&B1[0]+offset0,false);
+      pvfmm::Matrix<Real> Mout(N0, p1+1-i,&B0[0]+offset1,false);
+      { // Mout = Min * Ml[i]  // split between threads
+        long a=(tid+0)*N0/omp_p;
+        long b=(tid+1)*N0/omp_p;
+        if(a<b){
+          pvfmm::Matrix<Real> Min_ (b-a, Min .Dim(1), &Min [a][0],false);
+          pvfmm::Matrix<Real> Mout_(b-a, Mout.Dim(1), &Mout[a][0],false);
+          pvfmm::Matrix<Real>::GEMM(Mout_,Min_,Ml[i]);
+        }
+      }
+      offset0+=Min .Dim(0)*Min .Dim(1);
+      offset1+=Mout.Dim(0)*Mout.Dim(1);
+    }
+  }
+
+  #pragma omp parallel
+  { // S <-- Rearrange(B0)
+    long tid=omp_get_thread_num();
+    long omp_p=omp_get_num_threads();
+
+    long a=(tid+0)*N/omp_p;
+    long b=(tid+1)*N/omp_p;
+    for(long i=a;i<b;i++){
+      long offset=0;
+      for(long j=0;j<2*p1;j++){
+        long len=p1+1-(j+1)/2;
+        Real* B_=&B0[i*len+N*offset];
+        Real* S_=&S[i*p1*(p1+2)+offset];
+        for(long k=0;k<len;k++) S_[k]=B_[k];
+        offset+=len;
+      }
+    }
+  }
+}
+
+template <class Real>
+void SphericalHarmonics<Real>::Grid2SHCPerVesicle(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S){
+  pvfmm::Matrix<Real> Mf =SphericalHarmonics<Real>::MatFourierInv(p0,p1);
+  std::vector<pvfmm::Matrix<Real> > Ml =SphericalHarmonics<Real>::MatLegendreInv(p0,p1);
+  assert(p1==Ml.size()-1);
+  assert(p0==Mf.Dim(0)/2);
+  assert(p1==Mf.Dim(1)/2);
+
+  long N=X.Dim()/(2*p0*(p0+1));
+  assert(N*2*p0*(p0+1)==X.Dim());
+  if(S.Dim()!=N*(p1*(p1+2))) S.ReInit(N*(p1*(p1+2)));
+
+  int omp_id = omp_get_thread_num();
+  pvfmm::Vector<Real> &B0 = matrix.B0s[omp_id];
+  pvfmm::Vector<Real> &B1 = matrix.B1s[omp_id];
   B0.ReInit(N*  p1*(p1+2));
   B1.ReInit(N*2*p1*(p0+1));
 
@@ -883,6 +1121,16 @@ void SphericalHarmonics<Real>::StokesSingularInteg(const pvfmm::Vector<Real>& S,
     else        if(SLMatrix) StokesSingularInteg_< true, false>(_S, p0, p1, _SLMatrix, _DLMatrix);
     else        if(DLMatrix) StokesSingularInteg_<false,  true>(_S, p0, p1, _SLMatrix, _DLMatrix);
   }
+}
+
+template <class Real>
+void SphericalHarmonics<Real>::SetB0B1(){
+    int omp_p = omp_get_max_threads();
+    for(int i=0; i<omp_p; ++i)
+    {
+        matrix.B0s.push_back(pvfmm::Vector<Real>());
+        matrix.B1s.push_back(pvfmm::Vector<Real>());
+    }
 }
 
 template <class Real>

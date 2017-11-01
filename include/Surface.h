@@ -85,6 +85,7 @@ class Surface : public Streamable
     int reparamFilterFreq() const {return reparam_filter_freq_;}
 
     mutable Vec_t fc_;
+    mutable Sca_t tension_;
   private:
     Vec_t x_;
     mutable Vec_t normal_;
