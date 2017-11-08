@@ -24,18 +24,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
     stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length,params_.repul_dist),
-    S_up_(NULL)
+    S_up_(NULL),
+    pos_vel_(S_in.velocity_),
+    tension_(S_in.tension_)
 {
-    pos_vel_.replicate(S_.getPosition());
-    tension_.replicate(S_.getPosition());
-
-    pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
-
-    //Setting initial tension
-    tension_.getDevice().Memcpy(tension_.begin(), S_.tension_.begin(), 
-            tension_.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
-    tension_.set_name("tension");
-
     int p = S_.getPosition().getShOrder();
     int np = S_.getPosition().getStride();
 
@@ -100,7 +92,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
     else
         CI_pair_.generateMesh(x_s, &x_s_pole[0], params_.sh_order, 2);
-    CI_pair_.init(SURF_SUBDIVISION);
+    CI_pair_.init(SURF_SIMPLE);
 
     int omp_p=omp_get_max_threads();
     COUT("we have number of omp threads: "<<omp_p);
@@ -115,7 +107,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
             CI_pairs_[i]->generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
         else
             CI_pairs_[i]->generateMesh(x_s, &x_s_pole[0], params_.sh_order, 2);
-        CI_pairs_[i]->init(SURF_SUBDIVISION);
+        CI_pairs_[i]->init(SURF_SIMPLE);
     }
 
     /*
@@ -177,6 +169,13 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     else
         sht_filter_high(vgrad_, *xwrk, &sht_, params_.rep_exponent);
     recycle(xwrk);
+
+    // init x and rhs storage
+    size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
+    ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
+    size_t N_size = vsz+tsz;
+    x_host_ = new value_type[N_size];
+    rhs_host_ = new value_type[N_size];
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -212,6 +211,13 @@ InterfacialVelocity<SurfContainer, Interaction>::
         delete S_is_[i];
         delete CI_pairs_[i];
     }
+
+    if(x_host_)
+        delete x_host_;
+    if(rhs_host_)
+        delete rhs_host_;
+    
+    linear_solver_gmres_.clear();
 }
 
 // Performs the following computation:
@@ -413,27 +419,24 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     ASSERT(S_.getPosition().size()==vsz,"Bad sizes");
     size_t N_size = vsz+tsz;
     // copy device type to value_type array to call GMRES
-    // change to new pointer
-    value_type x_host[N_size], rhs_host[N_size];
-
     // copy to unknown solution
-    x1->getDevice().Memcpy(x_host, x1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    tension_.getDevice().Memcpy(x_host+vsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    x1->getDevice().Memcpy(x_host_, x1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    tension_.getDevice().Memcpy(x_host_+vsz, tension_.begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     
     // copy to rhs
-    b1->getDevice().Memcpy(rhs_host    , b1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
-    b2->getDevice().Memcpy(rhs_host+vsz, b2->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    b1->getDevice().Memcpy(rhs_host_    , b1->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
+    b2->getDevice().Memcpy(rhs_host_+vsz, b2->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
         
     // solve the linear system using gmres
     MPI_Comm comm=MPI_COMM_WORLD;
     pvfmm::Profile::Tic("LinearSolverVelocity", &comm, true);
-    int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host, rhs_host, 
+    int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host_, rhs_host_, 
             relres, relres*0, N_size, iter, rsrt);
     pvfmm::Profile::Toc();
     
     // copy host to device
-    x1->getDevice().Memcpy(x1->begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    tension_.getDevice().Memcpy(tension_.begin(), x_host+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    x1->getDevice().Memcpy(x1->begin(), x_host_    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
+    tension_.getDevice().Memcpy(tension_.begin(), x_host_+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     // end of new code using GMRES Solver
 
     // developing code for col
@@ -607,9 +610,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(static_cast<value_type>(1.0), *x1, pos_vel_);
 
     // filter tension_
-    sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
-    tension_.getDevice().Memcpy(S_.tension_.begin(), tension_.begin(), 
-            tension_.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+    //sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
     
     // print the max abs vel
     COUT("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
@@ -1003,6 +1004,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     PROFILESTART();
 
     if (pos_vel_.size() != S_.getPosition().size()){
+      COUT(pos_vel_.size());
+      COUT(S_.getPosition().size());
+      COUT(tension_.size());
       COUT("Zeroing pos_vel_ and tension_!!!!");
       COUTDEBUG("Resizing the containers");
       pos_vel_.replicate(S_.getPosition());
@@ -3142,24 +3146,33 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
 
     std::auto_ptr<Vec_t> xwrk = checkoutVec();
     std::auto_ptr<Vec_t> xwrk_up = checkoutVec();
-    std::auto_ptr<Vec_t> wrk1 = checkoutVec();
-    std::auto_ptr<Vec_t> wrk2 = checkoutVec();
     std::auto_ptr<Vec_t> u1_up = checkoutVec();
+    std::auto_ptr<Vec_t> x_old_up = checkoutVec();
     xwrk->replicate(S_.getPosition());
     xwrk_up->replicate(vgrad_);
-    wrk1->replicate(vgrad_);
-    wrk2->replicate(vgrad_);
     u1_up->replicate(vgrad_);
+    x_old_up->replicate(vgrad_);
             
-    if(params_.col_upsample)
-    {
-        Resample(u1, sht_, sht_upsample_, *wrk1, *wrk2, *u1_up);
-    }
-
     if(params_.min_sep_dist>0)
     {
         axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         ParallelGetVolumeAndGradient(x_old, *xwrk);
+    }
+    if(sum_num_cvs_>0 && params_.min_sep_dist>0 && params_.col_upsample)
+    {
+        //u1_up
+        pvfmm::Vector<value_type> u1_pvfmm(u1.size(), (value_type*)u1.begin(), false);
+        pvfmm::Vector<value_type> u1_up_pvfmm(u1_up->size(), (value_type*)u1_up->begin(), false);
+        static pvfmm::Vector<value_type> u1_coeff;
+        SphericalHarmonics<value_type>::Grid2SHC(u1_pvfmm, params_.sh_order, params_.sh_order, u1_coeff);
+        SphericalHarmonics<value_type>::SHC2Grid(u1_coeff, params_.sh_order, params_.upsample_freq, u1_up_pvfmm);
+
+
+        // x_old_up
+        pvfmm::Vector<value_type> x_old_pvfmm(x_old.size(), (value_type*)x_old.begin(), false);
+        pvfmm::Vector<value_type> x_old_up_pvfmm(x_old_up->size(), (value_type*)x_old_up->begin(), false);
+        SphericalHarmonics<value_type>::Grid2SHC(x_old_pvfmm, params_.sh_order, params_.sh_order, u1_coeff);
+        SphericalHarmonics<value_type>::SHC2Grid(u1_coeff, params_.sh_order, params_.upsample_freq, x_old_up_pvfmm);
     }
     int resolveCount = 0;
     while(sum_num_cvs_>0 && params_.min_sep_dist>0)
@@ -3172,53 +3185,44 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         // copy contact volumes to cvs
         cvs.getDevice().Memcpy(cvs.begin(), &IV_.front(), num_cvs_ * sizeof(value_type), cvs.getDevice().MemcpyHostToDevice);
 
-        // get magnitude of projection direction
-        /*
-        if(params_.col_upsample)
-        {
-            // filter projection direction
-            sht_filter_high(vgrad_, *xwrk_up, &sht_upsample_, params_.rep_exponent);
-            // downsample xwrk_up to xwrk
-            Resample(*xwrk_up, sht_upsample_, sht_, *wrk1, *wrk2, *xwrk);
-        }
-        else
-            sht_filter_high(vgrad_, *xwrk, &sht_, params_.rep_exponent);
-        */
-
         // get magnitude
-        //ParallelCVJacobian(*xwrk, awrk);
         ParallelCVJacobian(vgrad_, awrk, true);
         awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
 
         // projection direction with magnitude
         ParallelCVJacobianTrans(awrk, *xwrk_up, true);
         
-        // update velocity
         if(params_.col_upsample)
         {
             axpy(static_cast<value_type>(-1.0), *xwrk_up, *u1_up, *u1_up);
-            Resample(*u1_up, sht_upsample_, sht_, *wrk1, *wrk2, u1);
+            axpy(static_cast<value_type> (1.0), *u1_up, *x_old_up, *xwrk_up);
+
+            pvfmm::Vector<value_type> xwrk_up_pvfmm(xwrk_up->size(), (value_type*)xwrk_up->begin(), false);
+            pvfmm::Vector<value_type> xwrk_pvfmm(xwrk->size(), (value_type*)xwrk->begin(), false);
+            static pvfmm::Vector<value_type> xwrk_up_coeff;
+            SphericalHarmonics<value_type>::Grid2SHC(xwrk_up_pvfmm, params_.upsample_freq, params_.upsample_freq, xwrk_up_coeff);
+            SphericalHarmonics<value_type>::SHC2Grid(xwrk_up_coeff, params_.upsample_freq, params_.sh_order, xwrk_pvfmm);
         }
         else
         {
             axpy(static_cast<value_type>(-1.0), *xwrk_up, u1, u1);
+            axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         }
         
         resolveCount++;
         COUT("Projecting to avoid collision iter#: "<<resolveCount);
         COUT(cvs);
+        COUT(awrk);
         COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
-
-        // get candidate position
-        axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         ParallelGetVolumeAndGradient(x_old, *xwrk);
     }
 
+    u1.getDevice().Memcpy(u1.begin(), xwrk->begin(), u1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
     recycle(xwrk);
     recycle(xwrk_up);
-    recycle(wrk1);
-    recycle(wrk2);
     recycle(u1_up);
+    recycle(x_old_up);
     
     pvfmm::Profile::Toc();
     return ErrorEvent::Success;
@@ -3854,6 +3858,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         Vec_t vgrad1(1, col_upsample_freq), vgrad2(1, col_upsample_freq);
         ASSERT(vgrad1.size() == stride_up*COORD_DIM, "wrong vgrad1 size");
         typename GVMAP::const_iterator got_i;
+        ContactInterface *CI_pair = CI_pairs_[omp_id];
         
         for(size_t i=tida; i<tidb; i++)
         {
@@ -3872,7 +3877,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                         x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // copy ghost vesicle start position
                 got_i = ghost_ves_s.find(vid2);
-                ASSERT(got_i != ghost_ves_s.end(), "missing ghost vesicle?????");
+                ASSERT(got_i != ghost_ves_s.cend(), "missing ghost vesicle?????");
                 x_pair.getDevice().Memcpy(&(x_pair.begin()[x_pair.size()/2]), got_i->second->begin(), 
                         x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // upsample and get poles
@@ -3883,7 +3888,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                         x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // copy ghost vesicle end position
                 got_i = ghost_ves_e.find(vid2);
-                ASSERT(got_i != ghost_ves_e.end(), "missing ghost vesicle?????");
+                ASSERT(got_i != ghost_ves_e.cend(), "missing ghost vesicle?????");
                 x_pair.getDevice().Memcpy(&(x_pair.begin()[x_pair.size()/2]), got_i->second->begin(), 
                         x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // upsample and get poles
@@ -3901,8 +3906,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                 std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
                 std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
                 double t_check_start = omp_get_wtime();
-                CI_pairs_[omp_id]->getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
-                        params_.min_sep_dist, params_.periodic_length);
+                //#pragma omp critical(detect)
+                {
+                    CI_pair->getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
+                            params_.min_sep_dist, params_.periodic_length);
+                }
                 double t_check_end = omp_get_wtime();
                 COUT("time for checking pair: "<<vid1<<", "<<vid2<<" is: "<<(t_check_end-t_check_start));
 
@@ -3980,8 +3988,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                 std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
                 std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
                 double t_check_start = omp_get_wtime();
-                CI_pairs_[omp_id]->getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
-                        params_.min_sep_dist, params_.periodic_length);
+                //#pragma omp critical(detect)
+                {
+                    CI_pair->getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
+                            params_.min_sep_dist, params_.periodic_length);
+                }
                 double t_check_end = omp_get_wtime();
                 COUT("time for checking pair: "<<vid1<<", "<<vid2<<" is: "<<(t_check_end-t_check_start));
 
@@ -4253,8 +4264,8 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         std::memcpy(&(i_vgrad_ind[0]), &(vgrad_ind_[i_vesicle*i_vgrad.size()]), ncount*sizeof(int));
         
         // form cvmap
-        for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
-            delete iter_i->second;
+        for(got = cvmap.begin(); got != cvmap.end(); got++)
+            delete got->second;
         cvmap.clear();
         for(size_t icount = 0; icount < ncount; icount++)
         {
@@ -4285,6 +4296,8 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         // iterate cvmap
         for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
         {
+#pragma omp critical(trans)
+{
             if(params_.col_upsample)
             {
                 // filter high freq
@@ -4294,7 +4307,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             }
             else
                 sht_filter_high(*iter_i->second, f_i, &sht_, params_.rep_exponent);
-            
+}
             // prepare rhs for current vesicle
             stokesSLPerVesicle(f_i, vel_i, i_vesicle);
             Surf->div(vel_i, ten_i);
@@ -4327,11 +4340,14 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             axpy(dt_, vel_i, vel_i);
             // end of using GMRES Solver
             
+#pragma omp critical(trans)
+{
             // upsample vel_i to vel_i_up
             if(params_.col_upsample)
                 Resample(vel_i, sht_, sht_upsample_, wrk1, wrk2, vel_i_up);
             else
                 axpy(static_cast<value_type>(1.0), vel_i, vel_i_up);
+}
             
             for(iter_j = cvmap.cbegin(); iter_j != cvmap.cend(); iter_j++)
             {
@@ -4354,9 +4370,9 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     {
         CVMAP &cvmap = cvmaps[i];
         // clear cvmap
-        typename CVMAP::const_iterator iter_i;
-        for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
-            delete iter_i->second;
+        typename CVMAP::iterator got;
+        for(got = cvmap.begin(); got != cvmap.end(); got++)
+            delete got->second;
         cvmap.clear();
         
         delete f_is[i];
@@ -5555,9 +5571,9 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     // project u1 to collision free
     COUT("Begin Project reparam direction to without contact.");
     axpy(static_cast<value_type>(-1.0), *x_old, S_.getPosition(), *u1_down);
-    //RemoveContactSimple(*u1_down, *x_old);
     ParallelRemoveContactSimple(*u1_down, *x_old);
-    axpy(static_cast<value_type>(1.0), *u1_down, *x_old, S_.getPositionModifiable());
+    u1_down->getDevice().Memcpy(S_.getPositionModifiable().begin(), u1_down->begin(), 
+            u1_down->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
     COUT("End Project reparam direction to without contact.");
     // end for collision
 

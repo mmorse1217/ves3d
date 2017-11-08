@@ -180,8 +180,8 @@ class InterfacialVelocity
     SHtrans_t sht_upsample_;
 
     mutable Stokes_t stokes_;
-    mutable Vec_t pos_vel_;
-    mutable Sca_t tension_;
+    mutable Vec_t &pos_vel_;
+    mutable Sca_t &tension_;
     mutable Sca_t position_precond;
     mutable Sca_t tension_precond;
 
@@ -218,6 +218,10 @@ class InterfacialVelocity
     mutable std::vector<size_t> s_ind_, r_ind_;
     mutable std::vector<value_type> s_value_, r_value_;
     mutable ParallelLinSolverPetsc<value_type> *lcp_parallel_linear_solver_;
+    
+    // rhs and x
+    mutable value_type *x_host_;
+    mutable value_type *rhs_host_;
 };
 
 #include "InterfacialVelocity.cc"

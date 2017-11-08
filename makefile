@@ -18,7 +18,7 @@ LDLIBS += -lCGAL -lgmp -llapack -liomp5 -liagm
 
 EIGEN_INC := /opt/local/include/eigen3
 CONTACT_INC := /Users/libinlu/Documents/Projects/ves3d/contact3d/inc
-CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC)
+CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) -std=c++11
 #
 
 # targets of install

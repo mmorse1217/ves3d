@@ -14,7 +14,23 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   double b[N];
   double residual[N];
   */
-  double *tmp      = new double[tmp_N];
+  double *tmp;
+  if(vid<0)
+  {
+      if(large_mem)
+      {
+          tmp = large_mem;
+      }
+      else
+      {
+          large_mem = new double[tmp_N];
+          tmp = large_mem;
+      }
+  }
+  else
+  {
+      tmp      = new double[tmp_N];
+  }
   double *b        = new double[N];
   double *residual = new double[N];
   /*---------------------------------------------------------------------------
@@ -210,7 +226,9 @@ COMPLETE:ipar[12] = 0;
   /* NOTE: It is important to call the routine below to avoid memory leaks   */
   /* unless you disable Intel(R) MKL Memory Manager                                   */
   /*-------------------------------------------------------------------------*/
-  delete[] tmp;
+  if(vid>=0)
+      delete[] tmp;
+  
   delete[] b;
   delete[] residual;
   MKL_Free_Buffers ();
@@ -222,7 +240,9 @@ COMPLETE:ipar[12] = 0;
   /*-------------------------------------------------------------------------*/
 
 FAILED:COUT("Solving the system FAILED as the solver has returned the ERROR code "<<RCI_request<<"\n");
-  delete[] tmp;
+  if(vid>=0)
+      delete[] tmp;
+  
   delete[] b;
   delete[] residual;
   MKL_Free_Buffers ();

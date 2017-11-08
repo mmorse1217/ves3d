@@ -46,7 +46,10 @@ Surface<ScalarContainer, VectorContainer>::Surface(
     //contact force
     fc_.replicate(x_);
     fc_.getDevice().Memset(fc_.begin(), 0, sizeof(value_type)*fc_.size());
-    fc_.set_name("contact force");
+    fc_.set_name("contact_force");
+    velocity_.replicate(x_);
+    velocity_.getDevice().Memset(velocity_.begin(), 0, sizeof(value_type)*velocity_.size());
+    velocity_.set_name("velocity");
     tension_.replicate(x_);
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
     tension_.set_name("tension");
@@ -631,6 +634,7 @@ Error_t Surface<S, V>::pack(std::ostream &os, Streamable::Format format) const{
     os<<"reparam_type: "<<reparam_type_<<"\n";
     x_.pack(os,format);
     fc_.pack(os,format);
+    velocity_.pack(os,format);
     tension_.pack(os,format);
     os<<"/SURFACE\n";
 
@@ -690,6 +694,7 @@ Error_t Surface<S, V>::unpack(std::istream &is, Streamable::Format format){
 
     x_.unpack(is, format);
     fc_.unpack(is, format);
+    velocity_.unpack(is, format);
     tension_.unpack(is, format);
     is>>s;
     ASSERT(s=="/SURFACE", "Bad input string (missing footer).");

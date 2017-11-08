@@ -126,6 +126,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         //S_up_->resample(params_->sh_order, &S_); // down-sample
     }
 
+    /*
     { // Sanity check for time-stepper
         Vec_t y0, y1;
         Error_t err=ErrorEvent::Success;
@@ -154,6 +155,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         if(max_err>max_y0*dt*params_->time_tol && params_->scheme==GloballyImplicit)
             CERR_LOC("Sanity check for time-stepper failed!", std::endl,exit(1));
     }
+    */
 
     Vec_t dx, x0, x_dt, x_2dt;
     CHK( (*monitor_)( this, 0, dt) );
@@ -335,12 +337,14 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         pvfmm::Profile::Tic("AreaVolume",&comm,true);
         AreaVolumeCorrection(area, vol);
         pvfmm::Profile::Toc();
+        /*
         pvfmm::Profile::Tic("Repartition",&comm,true);
-        //(*repartition_)(S_->getPositionModifiable(), F_->tension(), 
-        //        ves_props_->viscosity_contrast, ves_props_->excess_density, ves_props_->bending_modulus,
-        //        F_->pos_vel_, S_->fc_);
-        //ves_props_->update();
+        (*repartition_)(S_->getPositionModifiable(), S_->tension_, 
+                ves_props_->viscosity_contrast, ves_props_->excess_density, ves_props_->bending_modulus,
+                S_->velocity_, S_->fc_);
+        ves_props_->update();
         pvfmm::Profile::Toc();
+        */
         pvfmm::Profile::Tic("Monitor",&comm,true);
         CHK( (*monitor_)( this, t, dt) );
         pvfmm::Profile::Toc();
@@ -362,7 +366,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     int iter(-1);
 
     // store collision free state in x_old
-    Vec_t x_old, u1;
+    static Vec_t x_old, u1;
     x_old.replicate(S_->getPosition());
     u1.replicate(S_->getPosition());
     axpy(static_cast<value_type>(1.0), S_->getPosition(), x_old);
@@ -485,9 +489,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     // project u1 to collision free
     COUT("Begin Project AreaVolume correction direction to without contact.");
     axpy(static_cast<value_type>(-1.0), x_old, S_->getPosition(), u1);
-    //F_->RemoveContactSimple(u1, x_old);
     F_->ParallelRemoveContactSimple(u1, x_old);
-    axpy(static_cast<value_type>(1.0), u1, x_old, S_->getPositionModifiable());
+    u1.getDevice().Memcpy(S_->getPositionModifiable().begin(), u1.begin(), 
+            u1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
     COUT("End Project AreaVolume correction  direction to without contact.");
     // end for collision
 
