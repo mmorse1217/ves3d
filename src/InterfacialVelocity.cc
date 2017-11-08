@@ -3153,9 +3153,9 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
     u1_up->replicate(vgrad_);
     x_old_up->replicate(vgrad_);
             
+    axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
     if(params_.min_sep_dist>0)
     {
-        axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         ParallelGetVolumeAndGradient(x_old, *xwrk);
     }
     if(sum_num_cvs_>0 && params_.min_sep_dist>0 && params_.col_upsample)
