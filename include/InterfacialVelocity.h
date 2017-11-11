@@ -198,6 +198,8 @@ class InterfacialVelocity
     mutable int checked_out_work_vec_;
 
     void purgeTheWorkSpace() const;
+
+    void ShuffleVector(const Vec_t &u_in, Vec_t &u_out, int mode);
     
     //Contact
     mutable ContactInterface CI_;

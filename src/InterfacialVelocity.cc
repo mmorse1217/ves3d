@@ -609,8 +609,14 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // set pos_vel_
     axpy(static_cast<value_type>(1.0), *x1, pos_vel_);
 
+    // filter fc
+    sht_filter_high(S_.fc_, S_.fc_, &sht_, params_.rep_exponent);
+
+    // filter velocity
+    sht_filter_high(pos_vel_, pos_vel_, &sht_, params_.rep_exponent);
+    
     // filter tension_
-    //sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
+    sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
     
     // print the max abs vel
     COUT("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
@@ -3158,6 +3164,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
     {
         ParallelGetVolumeAndGradient(x_old, *xwrk);
     }
+    /*
     if(sum_num_cvs_>0 && params_.min_sep_dist>0 && params_.col_upsample)
     {
         //u1_up
@@ -3174,6 +3181,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         SphericalHarmonics<value_type>::Grid2SHC(x_old_pvfmm, params_.sh_order, params_.sh_order, u1_coeff);
         SphericalHarmonics<value_type>::SHC2Grid(u1_coeff, params_.sh_order, params_.upsample_freq, x_old_up_pvfmm);
     }
+    */
     int resolveCount = 0;
     while(sum_num_cvs_>0 && params_.min_sep_dist>0)
     {
@@ -3185,6 +3193,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         // copy contact volumes to cvs
         cvs.getDevice().Memcpy(cvs.begin(), &IV_.front(), num_cvs_ * sizeof(value_type), cvs.getDevice().MemcpyHostToDevice);
 
+        /*
         // get magnitude
         ParallelCVJacobian(vgrad_, awrk, true);
         awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
@@ -3208,6 +3217,28 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
             axpy(static_cast<value_type>(-1.0), *xwrk_up, u1, u1);
             axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         }
+        */
+
+        // get magnitude of projection direction
+        if(params_.col_upsample)
+        {
+            // filter projection direction
+            sht_filter_high(vgrad_, *xwrk_up, &sht_upsample_, params_.rep_exponent);
+            // downsample xwrk_up to xwrk
+            Resample(*xwrk_up, sht_upsample_, sht_, *u1_up, *x_old_up, *xwrk);
+        }
+        else
+            sht_filter_high(vgrad_, *xwrk, &sht_, params_.rep_exponent);
+
+        // get magnitude
+        ParallelCVJacobian(*xwrk, awrk);
+        awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
+
+        // projection direction with magnitude
+        ParallelCVJacobianTrans(awrk, *xwrk);
+        
+        axpy(static_cast<value_type> (-1.0), *xwrk, u1, u1);
+        axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         
         resolveCount++;
         COUT("Projecting to avoid collision iter#: "<<resolveCount);
@@ -5397,8 +5428,16 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     u1_down ->replicate(S_.getPosition());
     // store collision free state in x_old
     // TODO: in upsample mode
-    axpy(static_cast<value_type>(1.0), S_.getPosition(), *x_old);
+    //axpy(static_cast<value_type>(1.0), S_.getPosition(), *x_old);
     // End of storage for resolving collision
+    
+    // prepare for upsample tension
+    std::auto_ptr<Sca_t> twrk1 = checkoutSca();
+    std::auto_ptr<Sca_t> twrk2 = checkoutSca();
+    std::auto_ptr<Sca_t> tencpy = checkoutSca();
+    twrk1->replicate(Surf->getPosition());
+    twrk2->replicate(Surf->getPosition());
+    tencpy->replicate(S_.getPosition());
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
@@ -5414,6 +5453,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         for(long i=0;i<x2.size();i++) E0+=x2[i];
     }
         
+    ShuffleVector(S_.fc_, *x_old, 1);
+    ShuffleVector(pos_vel_, *u1_down, 1);
     int ii(0);
     std::vector<value_type> E;
     while ( ii < rep_maxit )
@@ -5482,12 +5523,6 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         //Advecting tension (useless for implicit)
         if (params_.scheme != GloballyImplicit){
             if (params_.rep_upsample){
-                // prepare for upsample tension
-                std::auto_ptr<Sca_t> twrk1 = checkoutSca();
-                std::auto_ptr<Sca_t> twrk2 = checkoutSca();
-                twrk1->replicate(Surf->getPosition());
-                twrk2->replicate(Surf->getPosition());
-
                 // upsample tension
                 Resample(tension_, sht_, sht_upsample_, *twrk1, *twrk2, *wrk);
                 
@@ -5498,15 +5533,75 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                 
                 // downsample tension
                 Resample(*wrk, sht_upsample_, sht_, *twrk1, *twrk2, tension_);
+                
+                // velocity
+                for(int i=0; i<VES3D_DIM; i++)
+                {
+                    tencpy->getDevice().Memcpy(tencpy->begin(), &(u1_down->begin()[i*tencpy->size()]), 
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
-                // recycle workers
-                recycle(twrk1);
-                recycle(twrk2);
+                    // upsample tension
+                    Resample(*tencpy, sht_, sht_upsample_, *twrk1, *twrk2, *wrk);
+                
+                    // advect tension
+                    Surf->grad(*wrk, *u2);
+                    GeometricDot(*u2, *u1, *twrk1);
+                    axpy(1.0, *twrk1, *wrk, *wrk);
+                
+                    // downsample tension
+                    Resample(*wrk, sht_upsample_, sht_, *twrk1, *twrk2, *tencpy);
+
+                    u1_down->getDevice().Memcpy(&(u1_down->begin()[i*tencpy->size()]), tencpy->begin(),
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                }
+                // fc
+                for(int i=0; i<VES3D_DIM; i++)
+                {
+                    tencpy->getDevice().Memcpy(tencpy->begin(), &(x_old->begin()[i*tencpy->size()]), 
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
+                    // upsample tension
+                    Resample(*tencpy, sht_, sht_upsample_, *twrk1, *twrk2, *wrk);
+                
+                    // advect tension
+                    Surf->grad(*wrk, *u2);
+                    GeometricDot(*u2, *u1, *twrk1);
+                    axpy(1.0, *twrk1, *wrk, *wrk);
+                
+                    // downsample tension
+                    Resample(*wrk, sht_upsample_, sht_, *twrk1, *twrk2, *tencpy);
+
+                    x_old->getDevice().Memcpy(&(x_old->begin()[i*tencpy->size()]), tencpy->begin(),
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                }
             }
             else {
+                // tension
                 Surf->grad(tension_, *u2);
                 GeometricDot(*u2, *u1, *wrk);
                 axpy(1.0, *wrk, tension_, tension_);
+                // velocity
+                for(int i=0; i<VES3D_DIM; i++)
+                {
+                    tencpy->getDevice().Memcpy(tencpy->begin(), &(u1_down->begin()[i*tencpy->size()]), 
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                    Surf->grad(*tencpy, *u2);
+                    GeometricDot(*u2, *u1, *wrk);
+                    axpy(1.0, *wrk, *tencpy, *tencpy);
+                    u1_down->getDevice().Memcpy(&(u1_down->begin()[i*tencpy->size()]), tencpy->begin(),
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                }
+                // fc
+                for(int i=0; i<VES3D_DIM; i++)
+                {
+                    tencpy->getDevice().Memcpy(tencpy->begin(), &(x_old->begin()[i*tencpy->size()]), 
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                    Surf->grad(*tencpy, *u2);
+                    GeometricDot(*u2, *u1, *wrk);
+                    axpy(1.0, *wrk, *tencpy, *tencpy);
+                    x_old->getDevice().Memcpy(&(x_old->begin()[i*tencpy->size()]), tencpy->begin(),
+                            tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
+                }
             }
         }
 
@@ -5516,6 +5611,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         COUTDEBUG("Iteration = "<<ii<<", dt = "<<dt_max);
         ++ii;
     }
+    ShuffleVector(*x_old, S_.fc_, 0);
+    ShuffleVector(*u1_down, pos_vel_, 0);
 
     value_type E1=0;
     { // Compute energy E1
@@ -5570,6 +5667,15 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     // begin for collision
     // project u1 to collision free
     COUT("Begin Project reparam direction to without contact.");
+    if (params_.rep_upsample)
+    {
+        axpy(static_cast<value_type>(-0.005), Surf->getNormal(), Surf->getPosition(), Surf->getPositionModifiable());
+        Resample(Surf->getPositionModifiable(), sht_upsample_, sht_, *u1, *u2, *x_old);
+    }
+    else
+    {
+        axpy(static_cast<value_type>(-0.005), Surf->getNormal(), Surf->getPosition(), *x_old);
+    }
     axpy(static_cast<value_type>(-1.0), *x_old, S_.getPosition(), *u1_down);
     ParallelRemoveContactSimple(*u1_down, *x_old);
     u1_down->getDevice().Memcpy(S_.getPositionModifiable().begin(), u1_down->begin(), 
@@ -5577,11 +5683,14 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     COUT("End Project reparam direction to without contact.");
     // end for collision
 
+    recycle(twrk1);
+    recycle(twrk2);
     recycle(u1);
     recycle(u2);
     recycle(x_old);
     recycle(u1_down);
     recycle(wrk);
+    recycle(tencpy);
     PROFILEEND("",0);
 
     return ErrorEvent::Success;
@@ -5656,4 +5765,37 @@ purgeTheWorkSpace() const
         delete vector_work_q_.front();
         vector_work_q_.pop();
     }
+}
+
+template<typename SurfContainer, typename Interaction>
+void InterfacialVelocity<SurfContainer, Interaction>::
+ShuffleVector(const Vec_t &u_in, Vec_t &u_out, int mode)
+{
+    assert(u_in.size() == u_out.size());
+    size_t stride = u_in.getStride();
+    size_t num_sub_funcs = u_in.getNumSubFuncs();
+    size_t num_subs = u_in.getNumSubs();
+    if(mode == 1)
+    {
+        #pragma omp parallel for
+        for(size_t ss=0; ss<num_sub_funcs; ss++)
+        {
+            size_t i = ss%3;
+            size_t j = ss/3;
+            u_out.getDevice().Memcpy(&(u_out.begin()[i*stride*num_subs+j*stride]), &(u_in.begin()[ss*stride]), 
+                    stride*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+        }
+    }
+    else
+    {
+        #pragma omp parallel for
+        for(size_t ss=0; ss<num_sub_funcs; ss++)
+        {
+            size_t i = ss%3;
+            size_t j = ss/3;
+            u_out.getDevice().Memcpy(&(u_out.begin()[ss*stride]), &(u_in.begin()[i*stride*num_subs+j*stride]), 
+                    stride*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+        }
+    }
+
 }
