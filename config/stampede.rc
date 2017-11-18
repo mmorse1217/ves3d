@@ -1,0 +1,16 @@
+# -*- mode: sh; -*-
+
+module load fftw3
+module load petsc
+module load boost/1.61.0
+
+export FFTW_ROOT=$TACC_FFTW3_DIR
+export OMP_NUM_THREADS=16
+
+export VES3D_PLATFORM=stampede
+export VES3D_DIR=/home1/05303/libinlu/projects/ves3d-cxx
+export PVFMM_DIR=/home1/05303/libinlu/installs/pvfmm/share/pvfmm
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home1/05303/libinlu/installs/cgal/lib64
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home1/05303/libinlu/installs/gmp/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home1/05303/libinlu/installs/mpfr/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home1/05303/libinlu/projects/contact3d/lib

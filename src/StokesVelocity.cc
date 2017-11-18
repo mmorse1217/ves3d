@@ -553,7 +553,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
   setup_self();
 
   if(!S_vel.Dim()){ // Compute self interaction
-    //pvfmm::Profile::Tic("SelfInteractionInSelf",&comm);
+    //pvfmm::Profile::Tic("SelfMatVec",&comm);
     //bool prof_state=pvfmm::Profile::Enable(false);
     static PVFMMVec Vcoef;
     { // Compute Vcoeff
@@ -1332,6 +1332,27 @@ void StokesVelocity<Real>::Test(){
   }
 }
 
+template <class Real>
+template <class Vec>
+void StokesVelocity<Real>::GetRepulsionForce(Vec& f_repul){
+  PVFMMVec f_repul_(f_repul.size(),f_repul.begin(),false);
+
+  const PVFMMVec& f_repl=near_singular0.ForceRepul();
+  
+  long Mves=2*sh_order*(sh_order+1);
+  long Nves=f_repl.Dim()/Mves/COORD_DIM;
+  assert(f_repl.Dim()==Nves*Mves*COORD_DIM);
+  assert(f_repl.Dim()==f_repul_.Dim());
+    
+  #pragma omp parallel for
+  for(long i=0;i<Nves;i++){
+    for(long j=0;j<COORD_DIM;j++){
+      for(long k=0;k<Mves;k++){
+        f_repul_[(i*COORD_DIM+j)*Mves+k]=f_repl[(i*Mves+k)*COORD_DIM+j];
+      }
+    }
+  }
+}
 
 template <class Real>
 void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const pvfmm::Vector<Real>* v_ptr=NULL, MPI_Comm comm=MPI_COMM_WORLD){

@@ -54,6 +54,8 @@ class StokesVelocity{
 
     static void Test();
 
+    template<class Vec>
+    void GetRepulsionForce(Vec& f_repul);
   private:
 
     StokesVelocity(const StokesVelocity &);

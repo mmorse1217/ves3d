@@ -7,7 +7,6 @@
 
 #include "InterfacialForce.h"
 #include "BiCGStab.h"
-#include "BiCGStabTMP.h"
 #include "SHTrans.h"
 #include "Device.h"
 #include <queue>
@@ -20,7 +19,7 @@
 #include "StokesVelocity.h"
 #include "ContactInterface.h"
 #include "GMRESLinSolver.h"
-#include <unordered_map>
+#include <boost/unordered_map.hpp>
 #include <map>
 #include "VesBoundingBox.h"
 #include "ParallelLinSolver_Petsc.h"
@@ -136,7 +135,6 @@ class InterfacialVelocity
     InterfacialForce<SurfContainer> Intfcl_force_;
     BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
     BiCGStab<Vec_t, InterfacialVelocity> linear_solver_vec_;
-    BiCGStabTMP<Vec_t, Sca_t, InterfacialVelocity> linear_solver_vec_sca_;
     GMRESLinSolver<value_type> linear_solver_gmres_;
 
     // parallel solver

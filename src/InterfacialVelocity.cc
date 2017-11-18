@@ -404,7 +404,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     
     // tension rhs
     S_.div(*b1, *b2);
-    axpy(static_cast<value_type>(-1.0),*b2,*b2);
+    //axpy(static_cast<value_type>(-1.0),*b2,*b2);
 
     // parameters for gmres
     int iter(params_.time_iter_max);
@@ -1171,6 +1171,7 @@ AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     stokes_.SetDensityDL(NULL);
     stokes_(*Sf);
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
+    stokes_.GetRepulsionForce(S_.fc_);
 
     COUTDEBUG("Computing rhs for div(u)");
     std::auto_ptr<Sca_t> tRhs = checkoutSca();
@@ -1549,7 +1550,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y, int tmp_trash)
 {
-    PROFILESTART();
+    //PROFILESTART();
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
     size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
@@ -1578,7 +1579,7 @@ JacobiImplicitApply(const GMRESLinSolver<value_type> *o, const value_type *x, va
     F->recycle(vox_y);
     F->recycle(ten_y);
 
-    PROFILEEND("",0);
+    //PROFILEEND("",0);
     return ErrorEvent::Success;
 }
 
@@ -1619,10 +1620,9 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     
     size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
     
-    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz) * sizeof(value_type), device_type::MemcpyHostToHost);
-    /*
-    //Vec_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
+    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
 
+    /*
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Vec_t> vxs = F->checkoutVec();
     std::auto_ptr<Vec_t> wrk = F->checkoutVec();
@@ -1638,18 +1638,16 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     COUTDEBUG("Unpacking the input parallel vector");
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    //axpy(static_cast<value_type>(1.0),*vox,*vox);
-    //axpy(static_cast<value_type>(1.0),*ten,*ten);
     
-    //F->sht_.forward(*vox, *wrk, *vxs);
-    //F->sht_.forward(*ten, *wrk, *tns);
+    F->sht_.forward(*vox, *wrk, *vxs);
+    F->sht_.forward(*ten, *wrk, *tns);
 
     //COUTDEBUG("Applying diagonal preconditioner");
-    //F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
-    //F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
 
-    //F->sht_.backward(*vxs, *wrk, *vox);
-    //F->sht_.backward(*tns, *wrk, *ten);
+    F->sht_.backward(*vxs, *wrk, *vox);
+    F->sht_.backward(*tns, *wrk, *ten);
     
     vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
@@ -2421,9 +2419,11 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
     {
         stokes_.SetDensityDL(NULL);
     }
+    
     stokes_.SelfInteraction(time_mat_vec);
     
     S_.div(time_mat_vec, div_stokes_fs);
+    axpy((value_type) -1.0, div_stokes_fs, div_stokes_fs);
     
     if(ves_props_.has_contrast){
         av(ves_props_.vel_coeff, x_new, *f);
@@ -2507,6 +2507,7 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
     }
     
     S_is_[omp_id]->div(time_mat_vec, div_stokes_fs);
+    axpy(static_cast<value_type>(-1.0), div_stokes_fs, div_stokes_fs);
     
     if (ves_props_.has_contrast){
         Arr_t vel_coeff_tmp(1);
@@ -3347,7 +3348,7 @@ FormLCPMatrix(Arr_t &lcp_matrix) const
         // prepare rhs for Stokes linear system
         stokes(*f_i, *vel_i);
         Surf->div(*vel_i, *ten_i);
-        axpy(static_cast<value_type>(-1.0),*ten_i,*ten_i);
+        //axpy(static_cast<value_type>(-1.0),*ten_i,*ten_i);
             
         // using GMRES Solver solve for velocity due to the i_th row of contact volume Jacobian
         size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
@@ -3400,7 +3401,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 FormLCPMatrixSparse(Arr_t &lcp_matrix) const
 {
-    typedef std::unordered_map< int, Vec_t* > CVMAP;
+    typedef boost::unordered_map< int, Vec_t* > CVMAP;
     CVMAP cvmap;
     
     // get surface resolution we are working on
@@ -3500,7 +3501,7 @@ FormLCPMatrixSparse(Arr_t &lcp_matrix) const
             // prepare rhs for current vesicle
             stokesSLPerVesicle(*f_i, *vel_i, i_vesicle);
             Surf->div(*vel_i, *ten_i);
-            axpy(static_cast<value_type>(-1.0), *ten_i, *ten_i);
+            //axpy(static_cast<value_type>(-1.0), *ten_i, *ten_i);
 
             // using GMRES Solver solve for velocity due to the i_th row of contact volume Jacobian
             size_t vsz(f_i->size()), tsz(ten_i->size());
@@ -3596,7 +3597,7 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
                     vsz*sizeof(value_type), device_type::MemcpyDeviceToDevice);
             stokesSLPerVesicle(f_i, vel_i, i_vesicle);
             Surf->div(vel_i, ten_i);
-            axpy(static_cast<value_type>(-1.0), ten_i, ten_i);
+            //axpy(static_cast<value_type>(-1.0), ten_i, ten_i);
         
             // copy device type to value_type array to call GMRES
             value_type x_host[N_size], rhs_host[N_size];
@@ -4203,7 +4204,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     int omp_p = omp_get_max_threads();
 
     // form lcp_matrix as in FormLCPMatrixSparse
-    typedef std::unordered_map< int, Vec_t* > CVMAP;
+    typedef boost::unordered_map< int, Vec_t* > CVMAP;
     CVMAP cvmaps[omp_p];
     
     // col upsample freq
@@ -4342,7 +4343,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             // prepare rhs for current vesicle
             stokesSLPerVesicle(f_i, vel_i, i_vesicle);
             Surf->div(vel_i, ten_i);
-            axpy(static_cast<value_type>(-1.0), ten_i, ten_i);
+            //axpy(static_cast<value_type>(-1.0), ten_i, ten_i);
 
             // using GMRES Solver solve for velocity due to the i_th row of contact volume Jacobian
             size_t vsz(f_i.size()), tsz(ten_i.size());
@@ -5113,7 +5114,7 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelLCPMatvec(Arr_t &lambda) const
 {
-    PROFILESTART()
+    PROFILESTART();
     MPI_Comm comm = MPI_COMM_WORLD;
     // prepare send values of lambda
     for(size_t i=0; i<s_ind_.size(); i++)
