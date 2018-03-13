@@ -1120,7 +1120,7 @@ void NearSingular<Real_t>::SetupCoordData(){
 }
 
 template<typename Real_t>
-const NearSingular<Real_t>::PVFMMVec_t&  NearSingular<Real_t>::ForceRepul(){
+const typename NearSingular<Real_t>::PVFMMVec_t&  NearSingular<Real_t>::ForceRepul(){
   SetupCoordData();
   PVFMMVec_t& repl_force=coord_setup.repl_force;
   return repl_force;
@@ -1373,7 +1373,7 @@ static inline Real_t InterPoly(Real_t x, int j, int deg){
 }
 
 template<typename Real_t>
-const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool update){
+const typename NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool update){
   if(!update || !update_interp){
     return vel_interp;
   }

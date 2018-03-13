@@ -132,11 +132,26 @@ void ParabolicFlowImp<Vec_t>::operator()(const
     Vec_t &pos, const value_type time, Vec_t &vel_inf) const
 {
     this->CheckContainers(pos);
-
+    
     GeometricDot(pos, flow_direction_, s_wrk_);
     xv(s_wrk_, flow_direction_, vel_inf);
     axpy(static_cast<value_type>(-1), vel_inf, pos, vel_inf);
     GeometricDot(vel_inf, vel_inf, s_wrk_);
+
+    if(inv_radius2_ == -1e-2)
+    {
+        INFO(inv_radius2_);
+        INFO("changing inv radius2");
+        INFO(MaxAbs(s_wrk_));
+        double max_loc = MaxAbs(s_wrk_);
+        double max_glb = 0;
+        //MPI max
+        MPI_Comm comm = MPI_COMM_WORLD;
+        MPI_Allreduce(&max_loc, &max_glb, 1, MPI_DOUBLE, MPI_MAX, comm);
+        inv_radius2_ = -1.0/(max_glb*1.2);
+        INFO(inv_radius2_);
+    }
+
     axpy(inv_radius2_, s_wrk_, s_wrk_);
     xvpw(s_wrk_, flow_direction_, flow_direction_, vel_inf);
     axpy(center_vel_, vel_inf, vel_inf);

@@ -27,7 +27,7 @@ class GMRESLinSolver
         // where this the object containing the function int func(const double*, double*)
         // the other way is use template MatVec, pass the object(InterfacialVelocity)
         // and define operator()(const double*, double*) in the object
-        GMRESLinSolver(){large_mem = NULL;}
+        GMRESLinSolver(){large_mem = NULL; mem_b=NULL; mem_res=NULL;}
         
         typedef Error_t (*JacobiImpApply)(const GMRESLinSolver*, const double*, double*, int);
         typedef Error_t (*JacobiImpApplyPrecond)(const GMRESLinSolver*, const double*, double*);
@@ -39,6 +39,10 @@ class GMRESLinSolver
         {
             if(large_mem)
                 delete[] large_mem;
+	    if(mem_b)
+	        delete[] mem_b;
+	    if(mem_res)
+	        delete[] mem_res;
         }
 
         int operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T *rhs, 
@@ -47,6 +51,8 @@ class GMRESLinSolver
     private:
         const void *ctx_;
         mutable double *large_mem;
+        mutable double *mem_b;
+        mutable double *mem_res;
 };
 
 #include "GMRESLinSolver.cc"

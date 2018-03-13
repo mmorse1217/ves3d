@@ -322,7 +322,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             INFO("Time-adaptive: A_err/dt = "<<(A_err/A0)/dt<<", V_err/dt = "<<(V_err/V0)/dt<<", dt_new = "<<dt_new);
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
-            COUT("TimeAdapNone");
+            INFO("TimeAdapNone");
             pvfmm::Profile::Tic("JacobiStep",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
@@ -483,16 +483,16 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
 
         S_up_->resample(params_->sh_order, &S_); // down-sample
     }
-    COUT("Number of iterations : "<<iter);
+    INFO("Number of iterations : "<<iter);
     
     // begin for collision
     // project u1 to collision free
-    COUT("Begin Project AreaVolume correction direction to without contact.");
+    INFO("Begin Project AreaVolume correction direction to without contact.");
     axpy(static_cast<value_type>(-1.0), x_old, S_->getPosition(), u1);
     F_->ParallelRemoveContactSimple(u1, x_old);
     u1.getDevice().Memcpy(S_->getPositionModifiable().begin(), u1.begin(), 
             u1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
-    COUT("End Project AreaVolume correction  direction to without contact.");
+    INFO("End Project AreaVolume correction  direction to without contact.");
     // end for collision
 
     return ErrorEvent::Success;

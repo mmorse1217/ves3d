@@ -34,8 +34,8 @@ class ParabolicFlowImp : public BgFlowBase<Vec_t>
     typedef typename Vec_t::scalars_type Sca_t;
 
     ParabolicFlowImp(value_type radius, value_type center_vel,
-        value_type flow_dir_x = 1, value_type flow_dir_y = 0,
-        value_type flow_dir_z = 0);
+        value_type flow_dir_x = 0, value_type flow_dir_y = 0,
+        value_type flow_dir_z = -1);
 
     virtual void operator()(const Vec_t &pos, const value_type time,
         Vec_t &vel_inf) const;
@@ -43,7 +43,7 @@ class ParabolicFlowImp : public BgFlowBase<Vec_t>
   private:
     void CheckContainers(const Vec_t &ref) const;
 
-    value_type inv_radius2_, center_vel_;
+    mutable value_type inv_radius2_, center_vel_;
     value_type flow_dir_x_, flow_dir_y_, flow_dir_z_;
     mutable Vec_t flow_direction_;
     mutable Sca_t s_wrk_;

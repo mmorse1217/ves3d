@@ -28,6 +28,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     pos_vel_(S_in.velocity_),
     tension_(S_in.tension_)
 {
+    //COUT("mkl max threads: "<<mkl_get_max_threads());
     int p = S_.getPosition().getShOrder();
     int np = S_.getPosition().getStride();
 
@@ -95,14 +96,14 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     CI_pair_.init(SURF_SIMPLE);
 
     int omp_p=omp_get_max_threads();
-    COUT("we have number of omp threads: "<<omp_p);
+    //COUT("we have number of omp threads: "<<omp_p);
     for(int i=0; i<omp_p; ++i)
         CI_pairs_.push_back(new ContactInterface());
     #pragma omp parallel for
     for(int i=0; i<omp_p; ++i)
     {
-        #pragma omp critical
-        COUT("number of omp threads: "<<omp_get_num_threads()<<". thread #: "<<omp_get_thread_num());
+        //#pragma omp critical
+        //COUT("number of omp threads: "<<omp_get_num_threads()<<". thread #: "<<omp_get_thread_num());
         if(params_.col_upsample)
             CI_pairs_[i]->generateMesh(x_s, &x_s_pole[0], params_.upsample_freq, 2);
         else
@@ -142,6 +143,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
                 params_.rep_filter_freq, params_.rep_type, params_.rep_exponent));
         //S_is_[i]->set_name("subsurface_i");
     }
+    for(int i=0; i<omp_p; ++i)
+    {
+        S_is_[i]->resample(params_.upsample_freq, &(Intfcl_force_.S_ups[i]));
+    }
     // parallel bounding box intersection checker
     VBBI_ = new VesBoundingBox<value_type>(params_.periodic_length);
     // init the alltoallv send counter for lambda communication
@@ -161,14 +166,14 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
 
     // MKL GMRES solver
     CHK(linear_solver_gmres_.SetContext(static_cast<const void*>(this)));
-    // init sht_filter_high
-    std::auto_ptr<Vec_t> xwrk = checkoutVec();
-    xwrk->replicate(vgrad_);
-    if(params_.col_upsample)
-        sht_filter_high(vgrad_, *xwrk, &sht_upsample_, params_.rep_exponent);
-    else
-        sht_filter_high(vgrad_, *xwrk, &sht_, params_.rep_exponent);
-    recycle(xwrk);
+    for(int i=0; i<omp_p; ++i)
+    {
+        linear_solver_gmress_.push_back(GMRESLinSolver<value_type>());
+    }
+    for(int i=0; i<omp_p; ++i)
+    {
+        CHK(linear_solver_gmress_[i].SetContext(static_cast<const void*>(this)));
+    }
 
     // init x and rhs storage
     size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
@@ -370,7 +375,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     */
     this->dt_ = dt;
     SolverScheme scheme(JacobiBlockImplicit);
-    COUT("Taking a time step using "<<scheme<<" scheme\n");
+    INFO("Taking a time step using "<<scheme<<" scheme\n");
     CHK(Prepare(scheme));
     
     // check out working vec, sca
@@ -408,11 +413,11 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // parameters for gmres
     int iter(params_.time_iter_max);
-    int rsrt(200);
+    int rsrt(100);
     value_type tol(params_.time_tol),relres(params_.time_tol);
 
     Error_t ret_val(ErrorEvent::Success);
-    COUT("Solving for velocity");
+    INFO("Solving for velocity");
         
     // new code using GMRES Solver
     size_t vsz(stokesBlockSize()), tsz(tensionBlockSize());
@@ -432,6 +437,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     pvfmm::Profile::Tic("LinearSolverVelocity", &comm, true);
     int solver_ret = linear_solver_gmres_(JacobiImplicitApply, JacobiImplicitPrecond, x_host_, rhs_host_, 
             relres, relres*0, N_size, iter, rsrt);
+    //MKL_Free_Buffers();
     pvfmm::Profile::Toc();
     
     // copy host to device
@@ -440,7 +446,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // end of new code using GMRES Solver
 
     // developing code for col
-    COUT("Begin of contact resolving steps.\n");
+    INFO("Begin of contact resolving steps.\n");
     // reset contact force
     axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
      
@@ -450,7 +456,9 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
         // get collision
         pvfmm::Profile::Tic("GetContactVolume", &comm, true);
-        ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
+	GetStartPosAll(S_.getPosition(), *xtmp, *f1);
+        ParallelGetVolumeAndGradient(*f1, *xtmp);
+        //ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
         pvfmm::Profile::Toc();
    
         /*
@@ -487,10 +495,10 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     pvfmm::Profile::Tic("ContactResolveIters", &comm, true);
     while(sum_num_cvs_ >0 && params_.min_sep_dist>0)
     {
-        COUT("IV_.size(): "<<IV_.size());
-        COUT("num_cvs_: "<<num_cvs_);
-        COUT("sum_num_cvs_: "<<sum_num_cvs_);
-        COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
+        //COUT("IV_.size(): "<<IV_.size());
+        //COUT("num_cvs_: "<<num_cvs_);
+        INFO("sum_num_cvs_: "<<sum_num_cvs_);
+        //COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
 
         // copy contact volume gradient to vgrad_
         ///vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -514,45 +522,47 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         //axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
  
         // form lcp matrix
-        COUT("before formlcp");
+        INFO("before formlcp");
         pvfmm::Profile::Tic("FormLCPMatrix", &comm, true);
         ParallelFormLCPMatrixSparse(parallel_lcp_matrix_);
         pvfmm::Profile::Toc();
-        COUT("after formlcp");
+        INFO("after formlcp");
         typename std::map<std::pair<size_t, size_t>, value_type>::iterator got_lcp_matrix_ij;
+/*
         COUT("size of lcp matrix: "<<parallel_lcp_matrix_.size());
         for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij!=parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
         {
             COUT("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
                     got_lcp_matrix_ij->second);
         }
+*/
         ///lcp_matrix_.resize(num_cvs_*num_cvs_);
         ///FormLCPMatrixSparse(lcp_matrix_);
         ///INFO("lcp_matrix sparse: "<<lcp_matrix_);
         
         // solve lcp
-        COUT("before solvelcp");
+        INFO("before solvelcp");
         pvfmm::Profile::Tic("SolveLCP", &comm, true);
         ParallelSolveLCPSmall(col_lambda, cvs);
         pvfmm::Profile::Toc();
-        COUT("after solvelcp");
+        INFO("after solvelcp");
         ///SolveLCPSmall(col_lambda, cvs);
         
         // get contact force
-        COUT("getting contact force.");
+        INFO("getting contact force.");
         pvfmm::Profile::Tic("CVJacobianTrans", &comm, true);
         ParallelCVJacobianTrans(col_lambda, *col_f);
         pvfmm::Profile::Toc();
         ///CVJacobianTrans(col_lambda, *col_f);
         
         // accumulate contact force to S_.fc_
-        COUT("accumulating contact force.");
+        INFO("accumulating contact force.");
         //COUT("col_f: "<<(*col_f));
         //COUT("S_.fc_: "<<S_.fc_);
         axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
         
         // get displacement in u and tension due to contact force
-        COUT("getting dx dtension update.");
+        INFO("getting dx dtension update.");
         pvfmm::Profile::Tic("GetDx", &comm, true);
         GetDx(*col_dx,*col_tension,*col_f);
         pvfmm::Profile::Toc();
@@ -563,16 +573,18 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
       
         resolveCount++;
-        COUT("Col iter#: "<<resolveCount);
-        COUT("cvs: "<<cvs);
-        COUT("lambda: "<<col_lambda);
+        INFO("Col iter#: "<<resolveCount);
+        //COUT("cvs: "<<cvs);
+        //COUT("lambda: "<<col_lambda);
       
         // test if still have contact
         // get new candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
-        COUT("before getvolume");
+        INFO("before getvolume");
         pvfmm::Profile::Tic("GetContactVolume", &comm, true);
-        ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
+	GetStartPosAll(S_.getPosition(), *xtmp, *f1);
+        ParallelGetVolumeAndGradient(*f1, *xtmp);
+        //ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
         pvfmm::Profile::Toc();
         ///GetColPos(*xtmp, pos_e, pos_e_pole);
         ///if(params_.periodic_length > 0)
@@ -582,7 +594,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ///}
         ///CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
         ///        params_.min_sep_dist, params_.periodic_length);
-        COUT("after getvolume");
+        INFO("after getvolume");
     }
     pvfmm::Profile::Toc();
     
@@ -610,16 +622,16 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(static_cast<value_type>(1.0), *x1, pos_vel_);
 
     // filter fc
-    sht_filter_high(S_.fc_, S_.fc_, &sht_, params_.rep_exponent);
+    //sht_filter_high(S_.fc_, S_.fc_, &sht_, params_.rep_exponent);
 
     // filter velocity
-    sht_filter_high(pos_vel_, pos_vel_, &sht_, params_.rep_exponent);
+    //sht_filter_high(pos_vel_, pos_vel_, &sht_, params_.rep_exponent);
     
     // filter tension_
-    sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
+    //sht_filter_high_sca(tension_, tension_, &sht_, params_.rep_exponent);
     
     // print the max abs vel
-    COUT("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
+    INFO("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
 
     // clear memory
     recycle(x1);
@@ -1110,7 +1122,7 @@ ConfigurePrecond(const PrecondScheme &precond) const{
     { //bending precond
         int idx(0), N(0);
         // The sh coefficients are ordered by m and then n
-        COUT("second dim: "<<position_precond.getGridDim().second<<", first dim: "<<position_precond.getGridDim().first);
+        //COUT("second dim: "<<position_precond.getGridDim().second<<", first dim: "<<position_precond.getGridDim().first);
         for(int iM=0; iM<position_precond.getGridDim().second; ++iM){
             for(int iN=++N/2; iN<position_precond.getGridDim().first; ++iN){
                 value_type bending_precond(1.0/fabs(1.0-dt_*iN*iN*iN));
@@ -1119,7 +1131,7 @@ ConfigurePrecond(const PrecondScheme &precond) const{
                 ++idx;
             }
         }
-        COUT("idx: "<<idx);
+        //COUT("idx: "<<idx);
         position_precond.getDevice().Memcpy(position_precond.begin(), buffer,
             position_precond.size() * sizeof(value_type),
             device_type::MemcpyHostToDevice);
@@ -1994,7 +2006,7 @@ updateFarField() const
 
     // set doube layer density
     if(ves_props_.has_contrast){
-        COUT("has contrast");
+        //COUT("has contrast");
         av(ves_props_.dl_coeff, pos_vel_, *ui);
         stokes_.SetDensityDL(ui.get());
     }
@@ -2407,8 +2419,12 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
     time_mat_vec.replicate(x_new);
     
     axpy(dt_, x_new, *dlp_tmp);
+    //double ts_if = omp_get_wtime();
     Intfcl_force_.implicitTractionJump(S_, *dlp_tmp, tension, *f);
+    //double te_if = omp_get_wtime();
+    //INFO("intfcl force time: "<<te_if-ts_if);
     
+    //double ts_set = omp_get_wtime();
     stokes_.SetDensitySL(f.get());
     if(ves_props_.has_contrast)
     {
@@ -2419,11 +2435,19 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
     {
         stokes_.SetDensityDL(NULL);
     }
+    //double te_set = omp_get_wtime();
+    //INFO("stokes set time: "<<te_set-ts_set);
     
+    //double ts_self = omp_get_wtime();
     stokes_.SelfInteraction(time_mat_vec);
+    //double te_self = omp_get_wtime();
+    //INFO("stokes self: "<<te_self-ts_self);
     
+    //double ts_div = omp_get_wtime();
     S_.div(time_mat_vec, div_stokes_fs);
     axpy((value_type) -1.0, div_stokes_fs, div_stokes_fs);
+    //double te_div = omp_get_wtime();
+    //INFO("surf div: "<<te_div-ts_div);
     
     if(ves_props_.has_contrast){
         av(ves_props_.vel_coeff, x_new, *f);
@@ -2495,14 +2519,14 @@ operator()(const Vec_t &x_new, const Sca_t &tension, Vec_t &time_mat_vec, Sca_t 
  
     axpy(dt_, x_new, dlp_tmp);
     Intfcl_force_.implicitTractionJumpPerVesicle(*S_is_[omp_id], dlp_tmp, tension, f, vesicle_i);
-    CHK(stokesSLPerVesicle(f, time_mat_vec, vesicle_i));
+    stokesSLPerVesicle(f, time_mat_vec, vesicle_i);
 
     if (ves_props_.has_contrast){
         Arr_t dl_coeff_tmp(1);
         (*dl_coeff_tmp.begin()) = (ves_props_.dl_coeff.begin()[vesicle_i]);
         av(dl_coeff_tmp, x_new, f);
         
-        CHK(stokesDLPerVesicle(f, dlp_tmp, vesicle_i));
+        stokesDLPerVesicle(f, dlp_tmp, vesicle_i);
         axpy(static_cast<value_type>(1.0), dlp_tmp, time_mat_vec, time_mat_vec);
     }
     
@@ -3242,10 +3266,10 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
         
         resolveCount++;
-        COUT("Projecting to avoid collision iter#: "<<resolveCount);
-        COUT(cvs);
-        COUT(awrk);
-        COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
+        INFO("Projecting to avoid collision iter#: "<<resolveCount);
+        //COUT(cvs);
+        //COUT(awrk);
+        //COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
         ParallelGetVolumeAndGradient(x_old, *xwrk);
     }
 
@@ -3561,8 +3585,11 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
     // clear vec
     col_dx.getDevice().Memset(col_dx.begin(), 0, col_dx.size()*sizeof(value_type));
     col_tension.getDevice().Memset(col_tension.begin(), 0, col_tension.size()*sizeof(value_type));
-
+    
+    mkl_set_num_threads(1);
+    //COUT("mkl max threads: "<<mkl_get_max_threads());
     int omp_p = omp_get_max_threads();
+    //COUT("omp max threads: "<<omp_p);
     int N_ves = contact_vesicle_list_.size();
     #pragma omp parallel for
     for(int tid=0; tid<omp_p; tid++)
@@ -3570,6 +3597,8 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
         int tida = ((tid+0)*N_ves)/omp_p;
         int tidb = ((tid+1)*N_ves)/omp_p;
         int omp_id = omp_get_thread_num();
+//#pragma omp critical
+        //COUT("omp thread id: "<<omp_id<<" out of: "<<omp_get_num_threads());
 
         // checkout workers
         // get surface resolution we are working on
@@ -3595,6 +3624,10 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
             // prepare rhs for current vesicle
             f_i.getDevice().Memcpy(f_i.begin(), &(col_f.begin()[i_vesicle*vsz]), 
                     vsz*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
+            if(MaxAbs(f_i) == 0)
+                continue;
+
             stokesSLPerVesicle(f_i, vel_i, i_vesicle);
             Surf->div(vel_i, ten_i);
             //axpy(static_cast<value_type>(-1.0), ten_i, ten_i);
@@ -3612,10 +3645,10 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
             
             // solve the linear system using gmres
             //#pragma omp critical
-            {
-                int solver_ret = linear_solver_gmres_(JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                        x_host, rhs_host, params_.time_tol, 0, N_size, params_.time_iter_max, 200, i_vesicle);
-            }
+            //{
+                int solver_ret = linear_solver_gmress_[omp_id](JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
+                        x_host, rhs_host, params_.time_tol*10, 0, N_size, params_.time_iter_max, 100, i_vesicle);
+            //}
 
             // copy host to device
             #pragma omp critical(dx)
@@ -3627,6 +3660,9 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
             }
         }
     }
+    MKL_Free_Buffers();
+    mkl_set_num_threads(omp_p);
+    //COUT("mkl max threads: "<<mkl_get_max_threads());
     
     return ErrorEvent::Success;
 }
@@ -3711,11 +3747,13 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     pvfmm::Profile::Toc();
     VBBI_->GetContactBoundingBoxPair(BBIPairs);
     
-    COUT("After getcontactbbpairs.\n");
+    INFO("After getcontactbbpairs.\n");
+/*
     for(size_t i=0; i<BBIPairs.size(); i++)
     {
         COUT("pair: "<<BBIPairs[i].first<<", "<<BBIPairs[i].second<<"\n");
     }
+*/
     
     pvfmm::Profile::Tic("PrepareData1", &comm, true);
     // send ghost vesicles, receive ghost vesicles
@@ -3872,7 +3910,11 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     size_t omp_p = omp_get_max_threads();
     int N_pairs = BBIPairs.size();
     pvfmm::Profile::Tic("BBIPairsContact", &comm, true);
-    COUT("total number of pairs to check: "<<N_pairs<<".");
+    //COUT("total number of pairs to check: "<<N_pairs<<".");
+    int tvs = 2*(2*col_upsample_freq*(col_upsample_freq+1)+2);
+    int tfs = 2*(col_upsample_freq*col_upsample_freq*4+4*col_upsample_freq);
+    int tes = tfs*3/2;
+    pvfmm::Profile::Add_FLOP( ((long long)N_pairs)*(tvs+tfs+tes)*500);
     #pragma omp parallel for
     for(size_t tid=0; tid<omp_p; tid++)
     {
@@ -3885,6 +3927,8 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
         std::vector<value_type> x_e(stride_up*COORD_DIM*2, 0.0);
         pvfmm::Vector<value_type> x_s_pole, x_e_pole;
         Vec_t x_pair(2, params_.sh_order);
+        Vec_t x_pair_s(2, params_.sh_order);
+        Vec_t x_pair_e(2, params_.sh_order);
         std::vector<value_type> vgrad_pair(stride_up*COORD_DIM*2, 0.0);
         std::vector<int> vgrad_pair_ind(stride_up*COORD_DIM*2, 0.0);
         Vec_t vgrad1(1, col_upsample_freq), vgrad2(1, col_upsample_freq);
@@ -3900,31 +3944,35 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
             // this is local vesicle vs ghost vesicle
             if( (vid2 < nv*myrank || vid2 >= nv*(myrank+1)) && (vid1 > vid2) )
             {
-                COUT("checking pair ghost: "<<vid1<<", "<<vid2);
+                //COUT("checking pair ghost: "<<vid1<<", "<<vid2);
                 size_t local_i = vid1 - myrank*nv;
                 ASSERT(local_i >= 0, "Bad local ves id size");
                 ASSERT(local_i < nv, "Bad local ves id size");
                 // copy local vesicle start position
-                x_pair.getDevice().Memcpy(&(x_pair.begin()[0]),               &X_s.begin()[local_i*x_pair.size()/2],
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_s.getDevice().Memcpy(&(x_pair_s.begin()[0]), &X_s.begin()[local_i*x_pair_s.size()/2],
+                        x_pair_s.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // copy ghost vesicle start position
                 got_i = ghost_ves_s.find(vid2);
                 ASSERT(got_i != ghost_ves_s.cend(), "missing ghost vesicle?????");
-                x_pair.getDevice().Memcpy(&(x_pair.begin()[x_pair.size()/2]), got_i->second->begin(), 
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_s.getDevice().Memcpy(&(x_pair_s.begin()[x_pair_s.size()/2]), got_i->second->begin(), 
+                        x_pair_s.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // upsample and get poles
-                GetColPos(x_pair, x_s, x_s_pole);
+                //GetColPos(x_pair, x_s, x_s_pole);
 
                 // copy local vesicle end position
-                x_pair.getDevice().Memcpy(&(x_pair.begin()[0]),               &X_e.begin()[local_i*x_pair.size()/2],
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_e.getDevice().Memcpy(&(x_pair_e.begin()[0]), &X_e.begin()[local_i*x_pair_e.size()/2],
+                        x_pair_e.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // copy ghost vesicle end position
                 got_i = ghost_ves_e.find(vid2);
                 ASSERT(got_i != ghost_ves_e.cend(), "missing ghost vesicle?????");
-                x_pair.getDevice().Memcpy(&(x_pair.begin()[x_pair.size()/2]), got_i->second->begin(), 
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_e.getDevice().Memcpy(&(x_pair_e.begin()[x_pair_e.size()/2]), got_i->second->begin(), 
+                        x_pair_e.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // upsample and get poles
-                GetColPos(x_pair, x_e, x_e_pole);
+                GetColPos(x_pair_e, x_e, x_e_pole);
+
+                //TODO: do we need this?
+                GetStartPosPair(x_pair_s, x_pair_e, x_pair);
+                GetColPos(x_pair, x_s, x_s_pole);
 
                 // transfer vesicle to periodic box
                 if(params_.periodic_length > 0)
@@ -3944,7 +3992,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                             params_.min_sep_dist, params_.periodic_length);
                 }
                 double t_check_end = omp_get_wtime();
-                COUT("time for checking pair: "<<vid1<<", "<<vid2<<" is: "<<(t_check_end-t_check_start));
+                //COUT("time for checking pair: "<<vid1<<", "<<vid2<<" is: "<<(t_check_end-t_check_start));
 
                 // updates
                 if(num_cvs > 0)
@@ -3977,36 +4025,40 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                         IV_.insert(IV_.end(), IV.begin(), IV.end());
                     }
                 }
-                COUT("finish checking pair: "<<vid1<<", "<<vid2);
+                //COUT("finish checking pair: "<<vid1<<", "<<vid2);
             }
             else if(vid1 > vid2)
             {
-                COUT("checking pair: "<<vid1<<", "<<vid2);
+                //COUT("checking pair: "<<vid1<<", "<<vid2);
                 size_t local_i = vid1 - myrank*nv;
                 ASSERT(local_i >= 0, "Bad local ves id size");
                 ASSERT(local_i < nv, "Bad local ves id size");
                 // copy local vesicle 1 start position
-                x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_s.begin()[local_i*x_pair.size()/2],
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_s.getDevice().Memcpy(&x_pair_s.begin()[0], &X_s.begin()[local_i*x_pair_s.size()/2],
+                        x_pair_s.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 local_i = vid2 - myrank*nv;
                 ASSERT(local_i >= 0, "Bad local ves id size");
                 ASSERT(local_i < nv, "Bad local ves id size");
                 // copy local vesicle 2 start position
-                x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], &X_s.begin()[local_i*x_pair.size()/2], 
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_s.getDevice().Memcpy(&x_pair_s.begin()[x_pair_s.size()/2], &X_s.begin()[local_i*x_pair_s.size()/2], 
+                        x_pair_s.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // upsample and get poles
-                GetColPos(x_pair, x_s, x_s_pole);
+                //GetColPos(x_pair, x_s, x_s_pole);
 
                 local_i = vid1 - myrank*nv;
                 // copy local vesicle 1 end position
-                x_pair.getDevice().Memcpy(&x_pair.begin()[0],               &X_e.begin()[local_i*x_pair.size()/2],
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_e.getDevice().Memcpy(&x_pair_e.begin()[0],               &X_e.begin()[local_i*x_pair_e.size()/2],
+                        x_pair_e.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 local_i = vid2 - myrank*nv;
                 // copy local vesicle 2 end position
-                x_pair.getDevice().Memcpy(&x_pair.begin()[x_pair.size()/2], &X_e.begin()[local_i*x_pair.size()/2], 
-                        x_pair.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
+                x_pair_e.getDevice().Memcpy(&x_pair_e.begin()[x_pair_e.size()/2], &X_e.begin()[local_i*x_pair_e.size()/2], 
+                        x_pair_e.size()*sizeof(value_type)/2, device_type::MemcpyDeviceToDevice);
                 // upsample and get poles
-                GetColPos(x_pair, x_e, x_e_pole);
+                GetColPos(x_pair_e, x_e, x_e_pole);
+
+                //TODO: do we need this?
+                GetStartPosPair(x_pair_s, x_pair_e, x_pair);
+                GetColPos(x_pair, x_s, x_s_pole);
 
                 // transfer vesicles to periodic box
                 if(params_.periodic_length > 0)
@@ -4026,7 +4078,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                             params_.min_sep_dist, params_.periodic_length);
                 }
                 double t_check_end = omp_get_wtime();
-                COUT("time for checking pair: "<<vid1<<", "<<vid2<<" is: "<<(t_check_end-t_check_start));
+                //COUT("time for checking pair: "<<vid1<<", "<<vid2<<" is: "<<(t_check_end-t_check_start));
 
                 // updates
                 if(num_cvs > 0)
@@ -4060,7 +4112,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                         IV_.insert(IV_.end(), IV.begin(), IV.end());
                     }
                 }
-                COUT("finish checking pair: "<<vid1<<", "<<vid2);
+                //COUT("finish checking pair: "<<vid1<<", "<<vid2);
             }
         }
     }
@@ -4200,8 +4252,11 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const
 {
+    mkl_set_num_threads(1);
+    //COUT("mkl max threads: "<<mkl_get_max_threads());
     // max number of threads
     int omp_p = omp_get_max_threads();
+    //COUT("omp max threads: "<<omp_p);
 
     // form lcp_matrix as in FormLCPMatrixSparse
     typedef boost::unordered_map< int, Vec_t* > CVMAP;
@@ -4233,7 +4288,8 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         wrk2s.push_back(new Vec_t(1, col_upsample_freq));
         i_vgrads.push_back(new Vec_t(1, col_upsample_freq));
         ten_is.push_back(new Sca_t(1, params_.sh_order));
-        i_vgrad_inds[i] = std::vector<int>(i_vgrads[i]->size(), 0);
+        //i_vgrad_inds[i] = std::vector<int>(i_vgrads[i]->size(), 0);
+        i_vgrad_inds[i].resize(i_vgrads[i]->size(), 0);
     }
 
     // clear lcp_matrix
@@ -4246,11 +4302,14 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
     contact_vesicle_list_.clear();
     MPI_Comm comm = MPI_COMM_WORLD;
     pvfmm::Profile::Tic("FormLCPMatrixLocal", &comm, true);
+    //COUT("before form lcp local");
     #pragma omp parallel for schedule(dynamic)
     for(int i_vesicle = 0; i_vesicle < nves; i_vesicle++)
     {
         // working thread id
         int omp_id = omp_get_thread_num();
+//#pragma omp critical
+        //COUT("omp thread id: "<<omp_id<<" out of: "<<omp_get_num_threads());
 
         // workers reference
         CVMAP &cvmap = cvmaps[omp_id];
@@ -4328,18 +4387,18 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         // iterate cvmap
         for(iter_i = cvmap.cbegin(); iter_i != cvmap.cend(); iter_i++)
         {
-#pragma omp critical(trans)
-{
             if(params_.col_upsample)
             {
                 // filter high freq
-                sht_filter_high(*iter_i->second, f_i_up, &sht_upsample_, params_.rep_exponent);
+                //sht_filter_high(*iter_i->second, f_i_up, &sht_upsample_, params_.rep_exponent);
+                sht_filter_high(*iter_i->second, f_i_up, Surf->sht_resample_, params_.rep_exponent);
                 // downsample f_i_up to f_i
-                Resample(f_i_up, sht_upsample_, sht_, wrk1, wrk2, f_i);
+                //Resample(f_i_up, sht_upsample_, sht_, wrk1, wrk2, f_i);
+                Resample(f_i_up, *Surf->sht_resample_, Surf->sht_, wrk1, wrk2, f_i);
             }
             else
-                sht_filter_high(*iter_i->second, f_i, &sht_, params_.rep_exponent);
-}
+                //sht_filter_high(*iter_i->second, f_i, &sht_, params_.rep_exponent);
+                sht_filter_high(*iter_i->second, f_i, &Surf->sht_, params_.rep_exponent);
             // prepare rhs for current vesicle
             stokesSLPerVesicle(f_i, vel_i, i_vesicle);
             Surf->div(vel_i, ten_i);
@@ -4361,25 +4420,23 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
                     N_size, x_host);
     
             // solve the linear system using gmres
-            //#pragma omp critical 
-            {
-                int solver_ret = linear_solver_gmres_(JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                        x_host, rhs_host, params_.time_tol, 0, N_size, params_.time_iter_max, 200, i_vesicle);
-            }
+            //#pragma omp critical
+            //{
+                int solver_ret = linear_solver_gmress_[omp_id](JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
+                        x_host, rhs_host, params_.time_tol*10, 0, N_size, params_.time_iter_max, 100, i_vesicle);
+            //}
 
             // copy host to device
             vel_i.getDevice().Memcpy(vel_i.begin(), x_host    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
             axpy(dt_, vel_i, vel_i);
             // end of using GMRES Solver
             
-#pragma omp critical(trans)
-{
             // upsample vel_i to vel_i_up
             if(params_.col_upsample)
-                Resample(vel_i, sht_, sht_upsample_, wrk1, wrk2, vel_i_up);
+                //Resample(vel_i, sht_, sht_upsample_, wrk1, wrk2, vel_i_up);
+                Resample(vel_i, Surf->sht_, *Surf->sht_resample_, wrk1, wrk2, vel_i_up);
             else
                 axpy(static_cast<value_type>(1.0), vel_i, vel_i_up);
-}
             
             for(iter_j = cvmap.cbegin(); iter_j != cvmap.cend(); iter_j++)
             {
@@ -4397,6 +4454,10 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             }
         }
     }
+    //COUT("after form lcp local");
+    MKL_Free_Buffers();
+    mkl_set_num_threads(omp_p);
+    //COUT("mkl max threads: "<<mkl_get_max_threads());
     //#pragma omp parallel for
     for(int i=0; i<omp_p; i++)
     {
@@ -4415,6 +4476,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
         delete wrk2s[i];
         delete i_vgrads[i];
         delete ten_is[i];
+        i_vgrad_inds[i].clear();
     }
     pvfmm::Profile::Toc();
     
@@ -4492,12 +4554,14 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
                   &r_ind[0], &r_ind_cnt[0], &r_ind_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
     
     // print lcp matrix portion before delete and add
-    COUT("size of lcp matrix before delete: "<<parallel_lcp_matrix_.size());
+    //COUT("size of lcp matrix before delete: "<<parallel_lcp_matrix_.size());
+/*
     for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij!=parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
     {
         COUT("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
                 got_lcp_matrix_ij->second);
     }
+*/
 
     // add received data to local lcp_matrix
     for(size_t i=0; i<r_value.size();i++)
@@ -4689,9 +4753,9 @@ ParallelSolveLCPSmall(Arr_t &lambda, const Arr_t &cvs) const
         parallel_rhs_->Norm(lcp_err);
         lcp_err = 0.5*lcp_err*lcp_err;
 
-        INFO("parallel lcp small Newtown iter: "<<lcp_iter<<". -- err: "<<lcp_err<<" -- relative err: "
-                <<fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) );
-        INFO("parallel lambda small: "<<lambda);
+        //INFO("parallel lcp small Newtown iter: "<<lcp_iter<<". -- err: "<<lcp_err<<" -- relative err: "
+        //        <<fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) );
+        //INFO("parallel lambda small: "<<lambda);
 
         // relative stopping criteria
         if(fabs(lcp_err - lcp_old_err)/fabs(lcp_old_err) < 1e-6)
@@ -4836,7 +4900,7 @@ ParallelCVJacobianTrans(const Arr_t &lambda, Vec_t &f_col, bool simple) const
     {
         ghost_lambda_[r_ind_[i]] = r_value_[i];
     }
-    COUT("ghost lambda size in CVJacobianTrans: "<<ghost_lambda_.size());
+    //COUT("ghost lambda size in CVJacobianTrans: "<<ghost_lambda_.size());
     // end of MPI communication
 
     // similar to CVJacobianTrans calculation
@@ -4983,7 +5047,7 @@ ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec, bool simple) const
             //}
         }
     }
-    COUT("ghost lambda mat vec size in CVJacobian: "<<ghost_lambda_mat_vec.size());
+    //COUT("ghost lambda mat vec size in CVJacobian: "<<ghost_lambda_mat_vec.size());
     
     // begin of MPI
     // set pid cvid pair for sending out
@@ -5136,7 +5200,7 @@ ParallelLCPMatvec(Arr_t &lambda) const
     {
         ghost_lambda_[r_ind_[i]] = r_value_[i];
     }
-    COUT("ghost lambda mat vec size in lcpmatvec: "<<ghost_lambda_.size());
+    //COUT("ghost lambda mat vec size in lcpmatvec: "<<ghost_lambda_.size());
 
     // do lcp matvec
     if(num_cvs_>0)
@@ -5182,7 +5246,145 @@ ParallelLCPMatvec(Arr_t &lambda) const
 }
 
 template<typename SurfContainer, typename Interaction>
-InterfacialVelocity<SurfContainer, Interaction>::value_type InterfacialVelocity<SurfContainer, Interaction>::
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+GetStartPosAll(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
+{
+    xs_out.replicate(xs_in);
+    size_t p1 = params_.sh_order;
+    size_t N_ves = xs_in.getNumSubs(); // Number of vesicles
+
+    axpy(static_cast<value_type>(-1.0), xs_in, xe_in, xs_out);
+
+    std::vector<value_type> cx(N_ves, 0.0);
+    std::vector<value_type> cy(N_ves, 0.0);
+    std::vector<value_type> cz(N_ves, 0.0);
+    
+    #pragma omp parallel for
+    for(size_t k=0;k<N_ves;k++){
+        for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+                cx[k]+=xs_out.begin()[j+2*p1*(i+(p1+1)*(0+k*COORD_DIM))];
+                cy[k]+=xs_out.begin()[j+2*p1*(i+(p1+1)*(1+k*COORD_DIM))];
+                cz[k]+=xs_out.begin()[j+2*p1*(i+(p1+1)*(2+k*COORD_DIM))];
+            }
+        }
+        cx[k] /= (2*p1*(p1+1));
+        cy[k] /= (2*p1*(p1+1));
+        cz[k] /= (2*p1*(p1+1));
+    }
+
+    double C[COORD_DIM]={0,0,0};
+    double C_glb[COORD_DIM]={0,0,0};
+    for(size_t k=0;k<N_ves;k++)
+    {
+        C[0] += cx[k];
+        C[1] += cy[k];
+        C[2] += cz[k];
+    }
+    C[0] /= N_ves; C[1] /= N_ves; C[2] /= N_ves;
+    
+    int npros;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_size(comm, &npros);
+    MPI_Allreduce(C, C_glb, 3, MPI_DOUBLE, MPI_SUM, comm);
+    
+    C_glb[0] /= npros; C_glb[1] /= npros; C_glb[2] /= npros;
+
+    xs_out.getDevice().Memcpy(xs_out.begin(), xs_in.begin(), xs_in.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
+    double c_len = sqrt(C_glb[0]*C_glb[0] + C_glb[1]*C_glb[1] + C_glb[2]*C_glb[2]);
+    if(c_len <= 0.04)
+    {
+	return ErrorEvent::Success;
+    }
+    else
+    {   
+        double c_scale = (c_len - 0.04)/c_len;
+        C_glb[0] *= c_scale;
+        C_glb[1] *= c_scale;
+        C_glb[2] *= c_scale;
+    }
+
+    #pragma omp parallel for
+    for(size_t k=0;k<N_ves;k++){
+        for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+                for(size_t l=0;l<COORD_DIM;l++){
+                    xs_out.begin()[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))] += C_glb[l];
+                }
+            }
+        }
+    }
+    
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+GetStartPosPair(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
+{
+    xs_out.replicate(xs_in);
+    size_t p1 = params_.sh_order;
+    size_t N_ves = xs_in.getNumSubs(); // Number of vesicles
+
+    axpy(static_cast<value_type>(-1.0), xs_in, xe_in, xs_out);
+
+    std::vector<value_type> cx(N_ves, 0.0);
+    std::vector<value_type> cy(N_ves, 0.0);
+    std::vector<value_type> cz(N_ves, 0.0);
+    
+    for(size_t k=0;k<N_ves;k++){
+        for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+                cx[k]+=xs_out.begin()[j+2*p1*(i+(p1+1)*(0+k*COORD_DIM))];
+                cy[k]+=xs_out.begin()[j+2*p1*(i+(p1+1)*(1+k*COORD_DIM))];
+                cz[k]+=xs_out.begin()[j+2*p1*(i+(p1+1)*(2+k*COORD_DIM))];
+            }
+        }
+        cx[k] /= (2*p1*(p1+1));
+        cy[k] /= (2*p1*(p1+1));
+        cz[k] /= (2*p1*(p1+1));
+    }
+
+    value_type C[COORD_DIM]={0,0,0};
+    for(size_t k=0;k<N_ves;k++)
+    {
+        C[0] += cx[k];
+        C[1] += cy[k];
+        C[2] += cz[k];
+    }
+    C[0] /= N_ves; C[1] /= N_ves; C[2] /= N_ves;
+
+    xs_out.getDevice().Memcpy(xs_out.begin(), xs_in.begin(), xs_in.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+
+    double c_len = sqrt(C[0]*C[0] + C[1]*C[1] + C[2]*C[2]);
+    if(c_len <= 0.04)
+    {
+	return ErrorEvent::Success;
+    }
+    else
+    {   
+        double c_scale = (c_len - 0.04)/c_len;
+        C[0] *= c_scale;
+        C[1] *= c_scale;
+        C[2] *= c_scale;
+    }
+
+    for(size_t k=0;k<N_ves;k++){
+        for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+                for(size_t l=0;l<COORD_DIM;l++){
+                    xs_out.begin()[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))] += C[l];
+                }
+            }
+        }
+    }
+    
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+typename InterfacialVelocity<SurfContainer, Interaction>::value_type InterfacialVelocity<SurfContainer, Interaction>::
 StokesError(const Vec_t &x) const
 {
     PROFILESTART();
@@ -5311,10 +5513,13 @@ static void sht_filter_high(const Vec_t& v1, Vec_t& v2, SHT* sh_trans, int rep_e
   size_t p=v1.getShOrder();
   int ns_x = v1.getNumSubFuncs();
 
-  assert(p<256);
-  assert(rep_exp<128);
-  static std::vector<value_type> AH_[256*128];
-  std::vector<value_type>& AH=AH_[rep_exp*256+p];
+  //assert(p<256);
+  //assert(rep_exp<128);
+  //static std::vector<value_type> AH_[256*128];
+  //std::vector<value_type>& AH=AH_[rep_exp*256+p];
+  std::vector<value_type> AH;
+//#pragma omp critical(ShtFilterHigh)
+//{
   if(!AH.size()){
     AH.resize(p+1);
     long filter_freq_=(rep_exp?p/2:p/3);
@@ -5324,6 +5529,7 @@ static void sht_filter_high(const Vec_t& v1, Vec_t& v2, SHT* sh_trans, int rep_e
       AH[ii] = a;
     }
   }
+//}
 
   value_type E=0;
   for(int ii=0; ii<= p; ++ii){
@@ -5413,7 +5619,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     SurfContainer* Surf;
     SHtrans_t* sh_trans;
     if (params_.rep_upsample){
-        COUT("Upsampling for reparametrization");
+        //COUT("Upsampling for reparametrization");
         S_.resample(params_.upsample_freq, &S_up_);
         Surf = S_up_;
         sh_trans = &sht_upsample_;
@@ -5454,8 +5660,8 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         for(long i=0;i<x2.size();i++) E0+=x2[i];
     }
         
-    ShuffleVector(S_.fc_, *x_old, 1);
-    ShuffleVector(pos_vel_, *u1_down, 1);
+    //ShuffleVector(S_.fc_, *x_old, 1);
+    //ShuffleVector(pos_vel_, *u1_down, 1);
     int ii(0);
     std::vector<value_type> E;
     while ( ii < rep_maxit )
@@ -5535,6 +5741,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                 // downsample tension
                 Resample(*wrk, sht_upsample_, sht_, *twrk1, *twrk2, tension_);
                 
+/*
                 // velocity
                 for(int i=0; i<VES3D_DIM; i++)
                 {
@@ -5575,12 +5782,14 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                     x_old->getDevice().Memcpy(&(x_old->begin()[i*tencpy->size()]), tencpy->begin(),
                             tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
                 }
+*/
             }
             else {
                 // tension
                 Surf->grad(tension_, *u2);
                 GeometricDot(*u2, *u1, *wrk);
                 axpy(1.0, *wrk, tension_, tension_);
+/*
                 // velocity
                 for(int i=0; i<VES3D_DIM; i++)
                 {
@@ -5603,6 +5812,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                     x_old->getDevice().Memcpy(&(x_old->begin()[i*tencpy->size()]), tencpy->begin(),
                             tencpy->size() * sizeof(value_type), device_type::MemcpyDeviceToDevice);
                 }
+*/
             }
         }
 
@@ -5612,15 +5822,15 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
         COUTDEBUG("Iteration = "<<ii<<", dt = "<<dt_max);
         ++ii;
     }
-    ShuffleVector(*x_old, S_.fc_, 0);
-    ShuffleVector(*u1_down, pos_vel_, 0);
+    //ShuffleVector(*x_old, S_.fc_, 0);
+    //ShuffleVector(*u1_down, pos_vel_, 0);
 
     value_type E1=0;
     { // Compute energy E1
         std::vector<value_type>  x2=inner_prod(Surf->getPosition(), Surf->getPosition(), sh_trans, rep_exp);
         for(long i=0;i<x2.size();i++) E1+=x2[i];
     }
-    COUT("Iterations = "<<ii<<", Energy = "<<E1<<", dE = "<<E1-E0);
+    INFO("Iterations = "<<ii<<", Energy = "<<E1<<", dE = "<<E1-E0);
     { // print log(coeff)
       std::auto_ptr<Vec_t> x = checkoutVec();
       { // Set x
@@ -5656,7 +5866,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             ss<<-(int)(0.5-10*log(sqrt(coeff_norm0[ii]))/log(10.0))*0.1<<' ';
           }
           ss<<'\n';
-          COUT(ss.str());
+          INFO(ss.str());
       }
       recycle(x);
     }
@@ -5667,21 +5877,21 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 
     // begin for collision
     // project u1 to collision free
-    COUT("Begin Project reparam direction to without contact.");
+    INFO("Begin Project reparam direction to without contact.");
     if (params_.rep_upsample)
     {
-        axpy(static_cast<value_type>(-0.005), Surf->getNormal(), Surf->getPosition(), Surf->getPositionModifiable());
+        axpy(static_cast<value_type>(-0.01), Surf->getNormal(), Surf->getPosition(), Surf->getPositionModifiable());
         Resample(Surf->getPositionModifiable(), sht_upsample_, sht_, *u1, *u2, *x_old);
     }
     else
     {
-        axpy(static_cast<value_type>(-0.005), Surf->getNormal(), Surf->getPosition(), *x_old);
+        axpy(static_cast<value_type>(-0.01), Surf->getNormal(), Surf->getPosition(), *x_old);
     }
     axpy(static_cast<value_type>(-1.0), *x_old, S_.getPosition(), *u1_down);
     ParallelRemoveContactSimple(*u1_down, *x_old);
     u1_down->getDevice().Memcpy(S_.getPositionModifiable().begin(), u1_down->begin(), 
             u1_down->size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
-    COUT("End Project reparam direction to without contact.");
+    INFO("End Project reparam direction to without contact.");
     // end for collision
 
     recycle(twrk1);

@@ -11,6 +11,21 @@ endif
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
+# TODO:add to makefile.col
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.1.126/mac/compiler/lib
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.1.126/mac/mkl/lib
+LDFLAGS += -L/Users/libinlu/Documents/Projects/ves3d/contact3d/lib
+LDFLAGS += -L/usr/local/Cellar/fftw/3.3.5/lib
+LDFLAGS += -L/usr/local/Cellar/cgal/4.9/lib
+LDFLAGS += -L/usr/local/lib
+
+LDLIBS += -lCGAL -lgmp -llapack -liomp5 -liagm
+
+EIGEN_INC := /opt/local/include/eigen3
+CONTACT_INC := /Users/libinlu/Documents/Projects/ves3d/contact3d/inc
+CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) -std=c++11 -fabi-version=6 -fpermissive
+#
+
 # targets of install
 VES3D_BINS = ves3d
 

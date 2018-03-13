@@ -78,6 +78,8 @@ class SphericalHarmonics{
         Mr_ .resize(size);
         Mfinv_ .resize(size*size);
         Mlinv_ .resize(size*size);
+        B0s.resize(omp_get_max_threads());
+        B1s.resize(omp_get_max_threads());
       }
       std::vector<pvfmm::Vector<Real> > Qx_;
       std::vector<pvfmm::Vector<Real> > Qw_;
@@ -94,8 +96,8 @@ class SphericalHarmonics{
 
 };
 
-SphericalHarmonics<double>::MatrixStorage SphericalHarmonics<double>::matrix(SHMAXDEG);
-SphericalHarmonics<float >::MatrixStorage SphericalHarmonics<float >::matrix(SHMAXDEG);
+template<> SphericalHarmonics<double>::MatrixStorage SphericalHarmonics<double>::matrix(SHMAXDEG);
+template<> SphericalHarmonics<float >::MatrixStorage SphericalHarmonics<float>::matrix(SHMAXDEG);
 
 #include "SphericalHarmonics.cc"
 

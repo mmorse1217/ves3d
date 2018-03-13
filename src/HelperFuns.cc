@@ -190,7 +190,7 @@ inline void av(const Arr_t &a_in, const Vec_t &v_in, Vec_t &av_out)
     ASSERT(a_in.size() == v_in.getNumSubs(),"Incompatible containers");
     ASSERT(AreCompatible(v_in,av_out),"Incompatible containers");
 
-    Arr_t::getDevice().avpw<Arr_t::value_type>(a_in.begin(),
+    Arr_t::getDevice().avpw<typename Arr_t::value_type>(a_in.begin(),
 					       v_in.begin(),
 					       NULL,
 					       v_in.getStride(),

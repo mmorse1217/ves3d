@@ -15,6 +15,8 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   double residual[N];
   */
   double *tmp;
+  double *b;
+  double *residual;
   if(vid<0)
   {
       if(large_mem)
@@ -23,16 +25,39 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
       }
       else
       {
+          INFO("newing large mem");
           large_mem = new double[tmp_N];
           tmp = large_mem;
+      }
+     
+      if(mem_b)
+      {
+          b = mem_b;
+      }
+      else
+      {
+          INFO("newing b mem");
+          mem_b = new double[N];
+          b = mem_b;
+      }
+     
+      if(mem_res)
+      {
+          residual = mem_res;
+      }
+      else
+      {
+          INFO("newing res  mem");
+          mem_res = new double[N];
+          residual = mem_res;
       }
   }
   else
   {
       tmp      = new double[tmp_N];
+      b        = new double[N];
+      residual = new double[N];
   }
-  double *b        = new double[N];
-  double *residual = new double[N];
   /*---------------------------------------------------------------------------
   * Some additional variables to use with the RCI (P)FGMRES solver
   *---------------------------------------------------------------------------*/
@@ -40,7 +65,9 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   MKL_INT RCI_request, i, ivar;
   double dvar;
   
-  COUT("Solving the linear system using RCI FGMRES solver\n");
+  //COUT("Solving the linear system using RCI FGMRES solver\n");
+  //if(vid<0)
+  //INFO("Solving the linear system using RCI FGMRES solver\n");
   
   /*---------------------------------------------------------------------------
   * Initialize variables and the right hand side through matrix-vector product
@@ -50,6 +77,7 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   * Save the right-hand side in vector b for future use
   *---------------------------------------------------------------------------*/
   i = 1;
+  //double rhs_norm = dnrm2 (&ivar, rhs, &i);
   dcopy (&ivar, rhs, &i, b, &i);
   /*---------------------------------------------------------------------------
   * Initialize the solver
@@ -78,12 +106,15 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   //ipar[11] = 1;
   dpar[0] = reltol;
   dpar[1] = abstol;
+  //dpar[0] = 0;
+  //dpar[1] = abstol + reltol*rhs_norm + 1e-16;
   /*---------------------------------------------------------------------------
   * Check the correctness and consistency of the newly set parameters
   *---------------------------------------------------------------------------*/
   dfgmres_check (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
   if (RCI_request != 0)
     goto FAILED;
+  //COUT("Solving the linear system check finished\n");
   /*---------------------------------------------------------------------------
   * Print the info about the RCI FGMRES method
   *---------------------------------------------------------------------------*/
@@ -167,9 +198,15 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
   *---------------------------------------------------------------------------*/
   if (RCI_request == 1)
     {
+      INFO("RCI_request 1");
       MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1], vid);
       goto ONE;
     }
+  //else
+    //{
+      //INFO("RCI_request FAILED");
+      //goto FAILED;
+    //}
   if (RCI_request == 2)
     {
       ipar[12] = 1;
@@ -181,6 +218,7 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       dvar = dnrm2 (&ivar, residual, &i);
       
       //COUT("rank: "<<myrank<<". Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
+      INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
       
       if (dvar <= dpar[3])
         goto COMPLETE;
@@ -220,18 +258,22 @@ COMPLETE:ipar[12] = 0;
   /*---------------------------------------------------------------------------
   * Print solution vector: computed_solution[N] and the number of iterations: itercount
   *--------------------------------------------------------------------------- */
-  COUT("The system has been solved. Number of iterations: "<<itercount<<".\n");
+  //COUT("The system has been solved. Number of iterations: "<<itercount<<".\n");
+  if(vid<0)
+  INFO("The system has been solved. Number of iterations: "<<itercount<<".\n");
   /*-------------------------------------------------------------------------*/
   /* Release internal Intel(R) MKL memory that might be used for computations         */
   /* NOTE: It is important to call the routine below to avoid memory leaks   */
   /* unless you disable Intel(R) MKL Memory Manager                                   */
   /*-------------------------------------------------------------------------*/
   if(vid>=0)
+  {
       delete[] tmp;
+      delete[] b;
+      delete[] residual;
+  }
   
-  delete[] b;
-  delete[] residual;
-  MKL_Free_Buffers ();
+  MKL_Thread_Free_Buffers ();
   return 0;
   /*-------------------------------------------------------------------------*/
   /* Release internal Intel(R) MKL memory that might be used for computations         */
@@ -240,12 +282,16 @@ COMPLETE:ipar[12] = 0;
   /*-------------------------------------------------------------------------*/
 
 FAILED:COUT("Solving the system FAILED as the solver has returned the ERROR code "<<RCI_request<<"\n");
+  //ipar[12] = 0;
+  //dfgmres_get (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp, &itercount);
   if(vid>=0)
+  {
       delete[] tmp;
+      delete[] b;
+      delete[] residual;
+  }
   
-  delete[] b;
-  delete[] residual;
-  MKL_Free_Buffers ();
+  MKL_Thread_Free_Buffers ();
   return 1;
 }
 

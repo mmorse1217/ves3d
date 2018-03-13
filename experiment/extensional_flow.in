@@ -27,10 +27,10 @@ rep-timestep : 1e-2
 rep-tol : 1e-4
 
 ## checkpoint/monitor ------------------------
-checkpoint
+#checkpoint
 #checkpoint-stride : 5e-1
-checkpoint-file : extensional_ns{{n_surfs}}_p{{sh_order}}_{{time_idx}}.chk
-write-vtk
+#checkpoint-file : extensional_ns{{n_surfs}}_p{{sh_order}}_{{time_idx}}.chk
+#write-vtk
 
 ## far filed ---------------------------------
 bg-flow-type : ExtensionalFlow

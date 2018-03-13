@@ -6,38 +6,20 @@ endif
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
-TEST =		ArrayTest.exe			\
-	BiCGStabTest.exe		\
-	BlasToyTest.exe			\
-	DataIOTest.exe			\
-	DeviceTest.exe			\
-	EnumsTest.exe			\
-	ErrorTest.exe			\
-	EvolveSurfaceTest.exe		\
-	LoggerTest.exe			\
-	MovePoleTest.exe		\
-	ParametersTest.exe		\
-	ParsingTest.exe			\
-	SHTransTest.exe			\
-	ScalarsTest.exe			\
-	SimulationTest.exe		\
-	StokesDoubleLayerTest.exe	\
-	StokesTest.exe			\
-	StreamableTest.exe 		\
-        SurfaceTest.exe			\
-        Tr1Test.exe			\
-        VectorsTest.exe			\
-#	MemoryManagerTest.exe		\
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2017.1.126/mac/compiler/lib
+LDFLAGS += -L/Users/libinlu/Documents/Projects/ves3d/contact3d/lib
+LDFLAGS += -L/usr/local/Cellar/fftw/3.3.5/lib
+LDFLAGS += -L/usr/local/Cellar/cgal/4.9/lib
+LDFLAGS += -L/usr/local/lib
+LDLIBS += -lCGAL -lgmp -llapack -liomp5 -liagm
 
-ifeq (${VES3D_USE_PVFMM},yes)
-  TEST += PVFMMInterfaceTest.exe	\
-	  NearSingularTest.exe
-endif
+EIGEN_INC := /opt/local/include/eigen3
+CONTACT_INC := /Users/libinlu/Documents/Projects/ves3d/contact3d/inc
+CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) -std=c++11 -DQUIET
 
-ifeq (${VES3D_USE_PETSC},yes)
-  TEST += ParallelLinSolverPetscTest.exe \
-          InterfacialVelocityTest.exe
-endif
+
+TEST = ExtenTestData.exe \
+       #ShearTestData3.exe \
 
 RUNEXE   = 0
 RUNLOG = test_results.txt

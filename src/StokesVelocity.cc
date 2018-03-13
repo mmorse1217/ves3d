@@ -165,7 +165,7 @@ void StokesVelocity<Real>::SetTrgCoord(const PVFMMVec* T){
 }
 
 template <class Real>
-const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
+const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
 #ifdef __ENABLE_PVFMM_PROFILER__
   bool prof_state=pvfmm::Profile::Enable(true);
   pvfmm::Profile::Tic("StokesVelocity",&comm, true);
@@ -544,7 +544,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
 }
 
 template <class Real>
-const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
+const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
 #ifdef __ENABLE_PVFMM_PROFILER__
   //bool prof_state=pvfmm::Profile::Enable(true);
   //pvfmm::Profile::Tic("StokesVelocitySelfInteraction",&comm, true);
@@ -629,7 +629,7 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::SelfInteraction(){
 }
 
 template <class Real>
-const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::FarInteraction(){
+const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::FarInteraction(){
 #ifdef __ENABLE_PVFMM_PROFILER__
   bool prof_state=pvfmm::Profile::Enable(true);
   pvfmm::Profile::Tic("StokesVelocityFarInteraction",&comm, true);

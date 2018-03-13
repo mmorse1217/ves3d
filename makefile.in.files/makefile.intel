@@ -5,7 +5,7 @@
 
 MAKE_DEP += ${VES3D_MKDIR}/makefile.intel
 
-CXXFLAGS += -openmp -fPIC -early-template-check -Wall 
+CXXFLAGS += -fopenmp -fPIC
 
 ifeq ($(strip ${VES3D_PLATFORM}),mercer)
   CXXFLAGS += -xSSE4.2 -axAVX
@@ -16,7 +16,7 @@ endif
 ifeq ($(strip ${VES3D_DEBUG}),yes)
   CXXFLAGS += -g -O0 -fp-model precise -mp1 -debug full -fno-inline #-Werror
 else
-  CXXFLAGS += -O3 -finline  -unroll-aggressive -malign-double 
+  CXXFLAGS += -O3 -finline  #unroll-aggressive -malign-double
 endif
 
 ifneq ($(strip ${VES3D_PLATFORM}),lonestar)

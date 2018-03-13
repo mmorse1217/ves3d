@@ -156,7 +156,7 @@ class ParallelLinSolver{
     typedef ParallelLinOp<T> matvec_type;
     typedef typename ParallelLinOp<T>::vec_type vec_type;
     typedef typename ParallelLinOp<T>::apply_type apply_type;
-    static const value_type PLS_DEFAULT = -2.0;
+    constexpr static const value_type PLS_DEFAULT = -2.0;
     typedef Error_t (*precond_type)(const ParallelLinSolver*, const_iterator, iterator);
 
     // setup

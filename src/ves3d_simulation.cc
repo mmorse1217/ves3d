@@ -95,6 +95,7 @@ Error_t Simulation<DT,DEVICE>::setup_basics(){
         INFO("OMP max threads is "<<omp_get_max_threads());
         omp_set_num_threads(omp_get_max_threads());
     }
+    omp_set_nested(0);
 
     //Reading Operators From File
     Mats_ = new Mats_t(true /*readFromFile*/, run_params_);
@@ -187,7 +188,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options()
             prp->resize(nves);
             prp->getDevice().Memcpy(prp->begin(),
                 props.begin() + (iP*nproc + rank)*nves,
-                nves * sizeof(VProp_t::value_type),
+                nves * sizeof(typename VProp_t::value_type),
                 DT::MemcpyDeviceToDevice);
         }
         ves_props_->update();

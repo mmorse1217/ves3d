@@ -2,38 +2,50 @@
 sh-order : 16
 rep-upsample
 interaction-upsample
+col-upsample
+pseudospectral
 
 ## initial shape -----------------------------
-n-surfs : 500
+n-surfs : 168
 bending-modulus : .01
-shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
-vesicle-geometry-file : precomputed/geometry_spec_periodic.txt
+#shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
+#vesicle-geometry-file : precomputed/geometry_spec_periodic1.txt
+shape-gallery-file : precomputed/ellipse_16.txt 
+vesicle-geometry-file : precomputed/vol_55.txt 
 
 ## time stepping -----------------------------
-time-horizon : 1000
-timestep : 2e-1
-time-tol : 1e-5
+time-horizon : 100
+timestep : 1e-1
+time-tol : 1e-4
 time-iter-max : 300
-time-scheme : GloballyImplicit
+time-scheme : JacobiBlockImplicit
 time-precond : DiagonalSpectral
 singular-stokes : Direct
 error-factor : 1
 solve-for-velocity
-time-adaptive
+#time-adaptive
 
 ## reparametrization -------------------------
-rep-max-iter : 1000
-rep-timestep : 1e-3
-rep-tol : 1e-6
+rep-max-iter : 30
+rep-timestep : 1e-2
+rep-tol : 1e-4
+
+repul-dist : 0.00
+min-sep-dist : 0.02
+
 
 ## checkpoint/monitor ------------------------
 checkpoint
-checkpoint-file : experiment/taylor6_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+#checkpoint-file : experiment/taylor6_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+checkpoint-stride : 1e-04
+checkpoint-file : data/taylor_ns{{n_surfs}}_rank{{rank}}_nproc{{nprocs}}_{{time_idx}}.chk
+write-vtk : data/taylor_ns{{n_surfs}}_rank{{rank}}_np{{nprocs}}_
 
 ## far filed ---------------------------------
 bg-flow-type : TaylorFlow
-bg-flow-param : 0.1
+#bg-flow-type : ShearFlow
+bg-flow-param : 1.0
 
 ## misc  -------------------------------------
-num-threads : 16
-periodic-length : 17
+num-threads : 4
+periodic-length : 14

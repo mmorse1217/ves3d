@@ -20,6 +20,7 @@
 #include "ContactInterface.h"
 #include "GMRESLinSolver.h"
 #include <boost/unordered_map.hpp>
+//#include <boost/container/map.hpp>
 #include <map>
 #include "VesBoundingBox.h"
 #include "ParallelLinSolver_Petsc.h"
@@ -112,6 +113,8 @@ class InterfacialVelocity
     Error_t ParallelCVJacobian(const Vec_t &x_new, Arr_t &lambda_mat_vec, bool simple = false) const;
     Error_t ConfigureLCPSolver() const;
     Error_t ParallelLCPMatvec(Arr_t &lambda) const;
+    Error_t GetStartPosAll(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const;
+    Error_t GetStartPosPair(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const;
 
     value_type StokesError(const Vec_t &x) const;
 
@@ -136,6 +139,7 @@ class InterfacialVelocity
     BiCGStab<Sca_t, InterfacialVelocity> linear_solver_;
     BiCGStab<Vec_t, InterfacialVelocity> linear_solver_vec_;
     GMRESLinSolver<value_type> linear_solver_gmres_;
+    std::vector< GMRESLinSolver<value_type> > linear_solver_gmress_;
 
     // parallel solver
     PSolver_t *parallel_solver_;
@@ -178,8 +182,8 @@ class InterfacialVelocity
     SHtrans_t sht_upsample_;
 
     mutable Stokes_t stokes_;
-    mutable Vec_t &pos_vel_;
-    mutable Sca_t &tension_;
+    Vec_t &pos_vel_;
+    Sca_t &tension_;
     mutable Sca_t position_precond;
     mutable Sca_t tension_precond;
 
