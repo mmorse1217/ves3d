@@ -48,7 +48,7 @@ FixedBoundary()
     Petsc::create_mpi_vec(solver->mpiComm(),
             total_num_dof,
             solved_density);
-    VecSet(solved_density, 1.);
+    VecSet(solved_density, 0.);
 
     DblNumMat boundary_data_local = get_local_vector(1, total_num_dof, solved_density);
     for(int i=0; i<boundary_data_local._n; i++)

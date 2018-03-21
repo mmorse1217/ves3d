@@ -201,11 +201,10 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1], vid);
       goto ONE;
     }
-  //else
-    //{
-      //INFO("RCI_request FAILED");
-      //goto FAILED;
-    //}
+  else
+    {
+      goto FAILED;
+    }
   if (RCI_request == 2)
     {
       ipar[12] = 1;
@@ -217,7 +216,7 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       dvar = dnrm2 (&ivar, residual, &i);
       
       //COUT("rank: "<<myrank<<". Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
-      //INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
+      INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
       
       if (dvar <= dpar[3])
         goto COMPLETE;
@@ -281,8 +280,9 @@ COMPLETE:ipar[12] = 0;
   /*-------------------------------------------------------------------------*/
 
 FAILED:COUT("Solving the system FAILED as the solver has returned the ERROR code "<<RCI_request<<"\n");
-  //ipar[12] = 0;
-  //dfgmres_get (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp, &itercount);
+  ipar[12] = 0;
+  dfgmres_get (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp, &itercount);
+  COUT("Fail to solve the system. Number of iterations: "<<itercount<<".\n");
   if(vid>=0)
   {
       delete[] tmp;

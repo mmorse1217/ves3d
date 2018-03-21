@@ -608,8 +608,8 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     INFO("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
     
     //update boundary
-    //this->updateFarFieldBoundary();
-    //fixed_bd->Solve();
+    this->updateFarFieldBoundary();
+    fixed_bd->Solve();
 
     // clear memory
     recycle(x1);
@@ -2008,7 +2008,6 @@ updateFarField() const
     axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
 
     // boundary
-    /*
     ShufflePoints(S_.getPosition(), *pos);
     vel_bd->setPointOrder(PointMajor);
     fixed_bd->EvalPotential(pos->size()/COORD_DIM, pos->begin(), vel_bd->begin());
@@ -2016,9 +2015,8 @@ updateFarField() const
     axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
     pos->setPointOrder(AxisMajor);      
     vel_bd->setPointOrder(AxisMajor);
-    for(int i=0; i<pos_vel_.size();i++)
-        std::cout<<"vel: "<<pos_vel_.begin()[i]<<"\n";
-    */
+    //for(int i=0; i<pos_vel_.size();i++)
+        //std::cout<<"vel: "<<pos_vel_.begin()[i]<<"\n";
     
     recycle(fi);
     recycle(ui);
@@ -5311,6 +5309,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 GetStartPosAll(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
 {
     xs_out.replicate(xs_in);
+/*
     size_t p1 = params_.sh_order;
     size_t N_ves = xs_in.getNumSubs(); // Number of vesicles
 
@@ -5350,9 +5349,11 @@ GetStartPosAll(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
     MPI_Allreduce(C, C_glb, 3, MPI_DOUBLE, MPI_SUM, comm);
     
     C_glb[0] /= npros; C_glb[1] /= npros; C_glb[2] /= npros;
+*/
 
     xs_out.getDevice().Memcpy(xs_out.begin(), xs_in.begin(), xs_in.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
+/*
     double c_len = sqrt(C_glb[0]*C_glb[0] + C_glb[1]*C_glb[1] + C_glb[2]*C_glb[2]);
     if(c_len <= 0.04)
     {
@@ -5376,6 +5377,7 @@ GetStartPosAll(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
             }
         }
     }
+*/
     
     return ErrorEvent::Success;
 }
@@ -5385,6 +5387,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 GetStartPosPair(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
 {
     xs_out.replicate(xs_in);
+/*
     size_t p1 = params_.sh_order;
     size_t N_ves = xs_in.getNumSubs(); // Number of vesicles
 
@@ -5415,9 +5418,11 @@ GetStartPosPair(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
         C[2] += cz[k];
     }
     C[0] /= N_ves; C[1] /= N_ves; C[2] /= N_ves;
+*/
 
     xs_out.getDevice().Memcpy(xs_out.begin(), xs_in.begin(), xs_in.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
 
+/*
     double c_len = sqrt(C[0]*C[0] + C[1]*C[1] + C[2]*C[2]);
     if(c_len <= 0.04)
     {
@@ -5440,6 +5445,7 @@ GetStartPosPair(const Vec_t &xs_in, const Vec_t &xe_in, Vec_t &xs_out) const
             }
         }
     }
+*/
     
     return ErrorEvent::Success;
 }
