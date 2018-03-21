@@ -28,6 +28,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     pos_vel_(S_in.velocity_),
     tension_(S_in.tension_)
 {
+    fixed_bd = new FixedBoundary();
+    
     //COUT("mkl max threads: "<<mkl_get_max_threads());
     int p = S_.getPosition().getShOrder();
     int np = S_.getPosition().getStride();
@@ -344,35 +346,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     PROFILESTART();
-    /*
-    // begin test
-    COUT("position precond size: "<<position_precond.size());
-    COUT(position_precond);
-    std::auto_ptr<Vec_t> vxs = checkoutVec();
-    std::auto_ptr<Vec_t> wrk = checkoutVec();
-    vxs->replicate(S_.getPosition());
-    wrk->replicate(S_.getPosition());
-    vxs->getDevice().Memset(vxs->begin(), 0, sizeof(value_type)*vxs->size());
-    wrk->getDevice().Memset(wrk->begin(), 0, sizeof(value_type)*wrk->size());
-    sht_.forward(S_.getPosition(), *wrk, *vxs);
-    COUT("position shc: ");
-    COUT(*vxs);
-    recycle(vxs);
-    recycle(wrk);
-    const pvfmm::Vector<value_type> pos_pvfmm_tmp(S_.getPosition().size(), (value_type*)S_.getPosition().begin(), false); 
-    pvfmm::Vector<value_type> pos_coef_tmp;
-    SphericalHarmonics<value_type>::Grid2SHC(pos_pvfmm_tmp, params_.sh_order, params_.sh_order, pos_coef_tmp);
-    COUT("pos_coef_tmp size: "<<pos_coef_tmp.Dim());
-    std::auto_ptr<Vec_t> vxs2 = checkoutVec();
-    vxs2->replicate(S_.getPosition());
-    vxs2->getDevice().Memset(vxs2->begin(), 0, sizeof(value_type)*vxs2->size());
-    vxs2->getDevice().Memcpy(vxs2->begin(), &pos_coef_tmp[0],
-        pos_coef_tmp.Dim() * sizeof(value_type),
-        vxs2->getDevice().MemcpyHostToDevice);
-    COUT("position shc tmp: ");
-    COUT(*vxs2);
-    // end test
-    */
+        
     this->dt_ = dt;
     SolverScheme scheme(JacobiBlockImplicit);
     INFO("Taking a time step using "<<scheme<<" scheme\n");
@@ -401,7 +375,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     this->updateFarField();
 
     // position rhs
-    Intfcl_force_.bendingForce(S_, *f1);
+    Intfcl_force_.explicitTractionJump(S_, *f1);
     stokes_.SetDensitySL(f1.get());
     stokes_.SetDensityDL(NULL);
     stokes_.SelfInteraction(*b1);
@@ -632,6 +606,10 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     
     // print the max abs vel
     INFO("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
+    
+    //update boundary
+    //this->updateFarFieldBoundary();
+    //fixed_bd->Solve();
 
     // clear memory
     recycle(x1);
@@ -664,6 +642,8 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     if(err==ErrorEvent::Success) err=AssembleInitial(parallel_u_, dt_, scheme);
     if(err==ErrorEvent::Success) err=Solve(parallel_rhs_, parallel_u_, dt_, scheme);
     if(err==ErrorEvent::Success) err=Update(parallel_u_);
+    
+    INFO("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
 
     if(0)
     if (params_.solve_for_velocity && !params_.pseudospectral){ // Save velocity field to VTK
@@ -1988,9 +1968,13 @@ updateFarField() const
     std::auto_ptr<Vec_t>        fi  = checkoutVec();
     std::auto_ptr<Vec_t>        ui  = checkoutVec();
     std::auto_ptr<Vec_t>        vel = checkoutVec();
+    std::auto_ptr<Vec_t>        pos = checkoutVec();
+    std::auto_ptr<Vec_t>        vel_bd = checkoutVec();
     fi->replicate(pos_vel_);
     ui->replicate(pos_vel_);
     vel->replicate(pos_vel_);
+    pos->replicate(pos_vel_);
+    vel_bd->replicate(pos_vel_);
 
     Intfcl_force_.bendingForce(S_, *fi);
     Intfcl_force_.tensileForce(S_, tension_, *vel);
@@ -2022,6 +2006,83 @@ updateFarField() const
                
     CHK(this->BgFlow(pos_vel_, this->dt_));
     axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
+
+    // boundary
+    /*
+    ShufflePoints(S_.getPosition(), *pos);
+    vel_bd->setPointOrder(PointMajor);
+    fixed_bd->EvalPotential(pos->size()/COORD_DIM, pos->begin(), vel_bd->begin());
+    ShufflePoints(*vel_bd, *vel);
+    axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
+    pos->setPointOrder(AxisMajor);      
+    vel_bd->setPointOrder(AxisMajor);
+    for(int i=0; i<pos_vel_.size();i++)
+        std::cout<<"vel: "<<pos_vel_.begin()[i]<<"\n";
+    */
+    
+    recycle(fi);
+    recycle(ui);
+    recycle(vel);
+    recycle(pos);
+    recycle(vel_bd);
+    
+    PROFILEEND("",0);
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+updateFarFieldBoundary() const
+{
+    PROFILESTART();
+    ASSERT(pos_vel_.size() == S_.getPosition().size(), "inccorrect size");
+    
+    std::auto_ptr<Vec_t>        fi  = checkoutVec();
+    std::auto_ptr<Vec_t>        ui  = checkoutVec();
+    std::auto_ptr<Vec_t>        vel = checkoutVec();
+    fi->replicate(pos_vel_);
+    ui->replicate(pos_vel_);
+    vel->replicate(pos_vel_);
+
+    Intfcl_force_.bendingForce(S_, *fi);
+    Intfcl_force_.tensileForce(S_, tension_, *vel);
+    axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+    // add contact force
+    axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
+    // add gravity force
+    Intfcl_force_.gravityForce(S_, S_.getPosition(), *vel);
+    axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+
+    // set source
+    stokes_.SetSrcCoord(S_.getPosition());
+    
+    // set target
+    double* target_address;
+    int num_target_points;
+    target_address = fixed_bd->GetSamplePoints(num_target_points);
+    pvfmm::Vector<double> coord(COORD_DIM*num_target_points, target_address, false);
+    stokes_.SetTrgCoord(&coord);
+
+    // set single layer density
+    stokes_.SetDensitySL(fi.get());
+
+    // set doube layer density
+    if(ves_props_.has_contrast){
+        //COUT("has contrast");
+        av(ves_props_.dl_coeff, pos_vel_, *ui);
+        stokes_.SetDensityDL(ui.get());
+    }
+    else{
+        stokes_.SetDensityDL(NULL);
+    }
+        
+    // potential from vesicles
+    pvfmm::Vector<double> value(COORD_DIM*num_target_points);
+    value=stokes_();
+    for(long i=0;i<value.Dim();i++) value[i] *= -1.0;
+    fixed_bd->SetBoundaryData(&value[0]);
+
+    // bgflow
 
     recycle(fi);
     recycle(ui);

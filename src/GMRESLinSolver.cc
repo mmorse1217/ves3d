@@ -77,7 +77,7 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   * Save the right-hand side in vector b for future use
   *---------------------------------------------------------------------------*/
   i = 1;
-  //double rhs_norm = dnrm2 (&ivar, rhs, &i);
+  double rhs_norm = dnrm2 (&ivar, rhs, &i);
   dcopy (&ivar, rhs, &i, b, &i);
   /*---------------------------------------------------------------------------
   * Initialize the solver
@@ -99,15 +99,15 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   *---------------------------------------------------------------------------*/
   ipar[14] = restartIters;
   ipar[4] = maxIters;
-  ipar[7] = 0;
-  ipar[10] = 1;
-  //ipar[8] = 1;
-  //ipar[9] = 0;
-  //ipar[11] = 1;
-  dpar[0] = reltol;
-  dpar[1] = abstol;
-  //dpar[0] = 0;
-  //dpar[1] = abstol + reltol*rhs_norm + 1e-16;
+  //ipar[7] = 0;
+  //ipar[10] = 1;
+  ipar[8] = 1;
+  ipar[9] = 0;
+  ipar[11] = 1;
+  //dpar[0] = reltol;
+  //dpar[1] = abstol;
+  dpar[0] = 0;
+  dpar[1] = abstol + reltol*rhs_norm + 1e-16;
   /*---------------------------------------------------------------------------
   * Check the correctness and consistency of the newly set parameters
   *---------------------------------------------------------------------------*/
@@ -198,7 +198,6 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
   *---------------------------------------------------------------------------*/
   if (RCI_request == 1)
     {
-      INFO("RCI_request 1");
       MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1], vid);
       goto ONE;
     }
@@ -218,7 +217,7 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       dvar = dnrm2 (&ivar, residual, &i);
       
       //COUT("rank: "<<myrank<<". Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
-      INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
+      //INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
       
       if (dvar <= dpar[3])
         goto COMPLETE;

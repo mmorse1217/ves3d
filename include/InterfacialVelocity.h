@@ -24,6 +24,7 @@
 #include <map>
 #include "VesBoundingBox.h"
 #include "ParallelLinSolver_Petsc.h"
+#include "FixedBoundary.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -76,6 +77,7 @@ class InterfacialVelocity
     Error_t stokesDLPerVesicle(const Vec_t &force, Vec_t &vel, const int vesicle_i) const;
     Error_t stokes_double_layer(const Vec_t &force, Vec_t &vel) const;
     Error_t updateFarField() const;
+    Error_t updateFarFieldBoundary() const;
 
     Error_t EvaluateFarInteraction(const Vec_t &src, const Vec_t &fi, Vec_t &vel) const;
     Error_t CallInteraction(const Vec_t &src, const Vec_t &den, Vec_t &pot) const;
@@ -127,6 +129,9 @@ class InterfacialVelocity
     mutable Arr_t lcp_matrix_;
     mutable std::map<std::pair<size_t, size_t>, value_type> parallel_lcp_matrix_;
     mutable int nv_;
+    
+    // fixed boundary
+    FixedBoundary* fixed_bd;
     
   private:
     SurfContainer &S_;
