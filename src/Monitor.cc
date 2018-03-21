@@ -47,7 +47,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
 
 #pragma omp critical (monitor)
     {
-        COUT(emph<<"Monitor: thread = "<<omp_get_thread_num()<<"/"<<omp_get_num_threads()
+        INFO(emph<<"Monitor: thread = "<<omp_get_thread_num()<<"/"<<omp_get_num_threads()
              <<", progress = "<<static_cast<int>(100*t/params_->time_horizon)<<"%"
              <<", t = "<<SCI_PRINT_FRMT<<t
              <<", dt = "<<SCI_PRINT_FRMT<<dt
@@ -73,7 +73,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             params_->pack(ss, Streamable::ASCII);
             state->pack(ss, Streamable::ASCII);
 
-            COUT("Writing data to file "<<fname);
+            INFO("Writing data to file "<<fname);
             IO_.DumpFile(fname.c_str(), ss);
             ++last_checkpoint_;
 
@@ -81,7 +81,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             if(params_->write_vtk.size()){
                 std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
-                COUT("Writing VTK file");
+                INFO("Writing VTK file");
                 //WriteVTK(*state->S_,vtkfbase.c_str(), MPI_COMM_WORLD, NULL, -1, params_->periodic_length);
                 WriteVTK(*state->S_,vtkfbase.c_str(), MPI_COMM_WORLD, &(state->S_->fc_), -1, params_->periodic_length);
             }

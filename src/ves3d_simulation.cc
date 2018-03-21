@@ -95,6 +95,7 @@ Error_t Simulation<DT,DEVICE>::setup_basics(){
         INFO("OMP max threads is "<<omp_get_max_threads());
         omp_set_num_threads(omp_get_max_threads());
     }
+    omp_set_nested(0);
 
     //Reading Operators From File
     Mats_ = new Mats_t(true /*readFromFile*/, run_params_);

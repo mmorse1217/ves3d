@@ -114,7 +114,8 @@ void InterfacialForce<SurfContainer>::linearBendingForcePerVesicle(const SurfCon
       wrk[0]  .resize(x_new.getNumSubs(), params_.upsample_freq);
       wrk[1]  .resize(x_new.getNumSubs(), params_.upsample_freq);
       x_new_up.resize(x_new.getNumSubs(), params_.upsample_freq);
-      Resample(x_new, sht_, sht_up_, wrk[0], wrk[1], x_new_up);
+      //Resample(x_new, sht_, sht_up_, wrk[0], wrk[1], x_new_up);
+      Resample(x_new, S.sht_, *S.sht_resample_, wrk[0], wrk[1], x_new_up);
     }
 
     Vec_t Fb_up;
@@ -148,7 +149,8 @@ void InterfacialForce<SurfContainer>::linearBendingForcePerVesicle(const SurfCon
       wrk[0].resize(Fb_up.getNumSubs(), params_.upsample_freq);
       wrk[1].resize(Fb_up.getNumSubs(), params_.upsample_freq);
       Fb.replicate(S.getPosition());
-      Resample(Fb_up, sht_up_, sht_, wrk[0], wrk[1], Fb);
+      //Resample(Fb_up, sht_up_, sht_, wrk[0], wrk[1], Fb);
+      Resample(Fb_up, *S.sht_resample_, S.sht_, wrk[0], wrk[1], Fb);
     }
 }
 
@@ -197,7 +199,8 @@ void InterfacialForce<SurfContainer>::tensileForcePerVesicle(const SurfContainer
       wrk[0]    .resize(tension.getNumSubs(), params_.upsample_freq);
       wrk[1]    .resize(tension.getNumSubs(), params_.upsample_freq);
       tension_up.resize(tension.getNumSubs(), params_.upsample_freq);
-      Resample(tension, sht_, sht_up_, wrk[0], wrk[1], tension_up);
+      //Resample(tension, sht_, sht_up_, wrk[0], wrk[1], tension_up);
+      Resample(tension, S.sht_, *S.sht_resample_, wrk[0], wrk[1], tension_up);
     }
 
     Vec_t Fs_up, v1;
@@ -214,7 +217,8 @@ void InterfacialForce<SurfContainer>::tensileForcePerVesicle(const SurfContainer
       wrk[0].resize(Fs_up.getNumSubs(), params_.upsample_freq);
       wrk[1].resize(Fs_up.getNumSubs(), params_.upsample_freq);
       Fs.replicate(S.getPosition());
-      Resample(Fs_up, sht_up_, sht_, wrk[0], wrk[1], Fs);
+      //Resample(Fs_up, sht_up_, sht_, wrk[0], wrk[1], Fs);
+      Resample(Fs_up, *S.sht_resample_, S.sht_, wrk[0], wrk[1], Fs);
     }
 }
 

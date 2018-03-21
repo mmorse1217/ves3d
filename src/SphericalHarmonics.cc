@@ -171,7 +171,7 @@ void SphericalHarmonics<Real>::SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, 
   B0.ReInit(N*  p0*(p0+2));
   B1.ReInit(N*2*p0*(p1+1));
 
-  #pragma omp parallel
+  #pragma omp parallel num_threads(1)
   { // B0 <-- Rearrange(S)
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
@@ -190,7 +190,7 @@ void SphericalHarmonics<Real>::SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, 
     }
   }
 
-  #pragma omp parallel
+  #pragma omp parallel num_threads(1)
   { // Evaluate Legendre polynomial
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
@@ -216,7 +216,7 @@ void SphericalHarmonics<Real>::SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, 
     }
   }
 
-  #pragma omp parallel
+  #pragma omp parallel num_threads(1)
   { // Transpose and evaluate Fourier
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
@@ -246,7 +246,7 @@ void SphericalHarmonics<Real>::SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, 
   }
 
   if(X_phi){
-    #pragma omp parallel
+    #pragma omp parallel num_threads(1)
     { // Evaluate Legendre gradient
       long tid=omp_get_thread_num();
       long omp_p=omp_get_num_threads();
@@ -272,7 +272,7 @@ void SphericalHarmonics<Real>::SHC2GridPerVesicle(const pvfmm::Vector<Real>& S, 
       }
     }
 
-    #pragma omp parallel
+    #pragma omp parallel num_threads(1)
     { // Transpose and evaluate Fourier
       long tid=omp_get_thread_num();
       long omp_p=omp_get_num_threads();
@@ -402,7 +402,7 @@ void SphericalHarmonics<Real>::Grid2SHCPerVesicle(const pvfmm::Vector<Real>& X, 
   B0.ReInit(N*  p1*(p1+2));
   B1.ReInit(N*2*p1*(p0+1));
 
-  #pragma omp parallel
+  #pragma omp parallel num_threads(1)
   { // Evaluate Fourier and transpose
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
@@ -426,7 +426,7 @@ void SphericalHarmonics<Real>::Grid2SHCPerVesicle(const pvfmm::Vector<Real>& X, 
     }
   }
 
-  #pragma omp parallel
+  #pragma omp parallel num_threads(1)
   { // Evaluate Legendre polynomial
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
@@ -452,7 +452,7 @@ void SphericalHarmonics<Real>::Grid2SHCPerVesicle(const pvfmm::Vector<Real>& X, 
     }
   }
 
-  #pragma omp parallel
+  #pragma omp parallel num_threads(1)
   { // S <-- Rearrange(B0)
     long tid=omp_get_thread_num();
     long omp_p=omp_get_num_threads();
@@ -781,22 +781,27 @@ void SphericalHarmonics<Real>::RotateTranspose(const pvfmm::Vector<Real>& S_, lo
 template <class Real>
 pvfmm::Vector<Real>& SphericalHarmonics<Real>::LegendreNodes(long p1){
   assert(p1<SHMAXDEG);
-  matrix.Qx_.resize(SHMAXDEG);
+  //matrix.Qx_.resize(SHMAXDEG);
   pvfmm::Vector<Real>& Qx=matrix.Qx_[p1];
+//#pragma omp critical(LegendreNodes)
+//{
   if(!Qx.Dim()){
     std::vector<Real> qx1(p1+1);
     std::vector<Real> qw1(p1+1);
     cgqf(p1+1, 1, 0.0, 0.0, -1.0, 1.0, &qx1[0], &qw1[0]);
     Qx=qx1;
   }
+//}
   return Qx;
 }
 
 template <class Real>
 pvfmm::Vector<Real>& SphericalHarmonics<Real>::LegendreWeights(long p1){
   assert(p1<SHMAXDEG);
-  matrix.Qw_.resize(SHMAXDEG);
+  //matrix.Qw_.resize(SHMAXDEG);
   pvfmm::Vector<Real>& Qw=matrix.Qw_[p1];
+//#pragma omp critical(LegendreWeights)
+//{
   if(!Qw.Dim()){
     std::vector<Real> qx1(p1+1);
     std::vector<Real> qw1(p1+1);
@@ -804,14 +809,17 @@ pvfmm::Vector<Real>& SphericalHarmonics<Real>::LegendreWeights(long p1){
     for(long i=0;i<qw1.size();i++) qw1[i]*=M_PI/p1/sqrt(1-qx1[i]*qx1[i]);
     Qw=qw1;
   }
+//}
   return Qw;
 }
 
 template <class Real>
 pvfmm::Vector<Real>& SphericalHarmonics<Real>::SingularWeights(long p1){
   assert(p1<SHMAXDEG);
-  matrix.Sw_.resize(SHMAXDEG);
+  //matrix.Sw_.resize(SHMAXDEG);
   pvfmm::Vector<Real>& Sw=matrix.Sw_[p1];
+//#pragma omp critical(SingularWeights)
+//{
   if(!Sw.Dim()){
     std::vector<Real> qx1(p1+1);
     std::vector<Real> qw1(p1+1);
@@ -838,14 +846,17 @@ pvfmm::Vector<Real>& SphericalHarmonics<Real>::SingularWeights(long p1){
       Sw[i]=(qw1[i]*M_PI/p1)*Yf[i]/cos(acos(qx1[i])/2);
     }
   }
+//}
   return Sw;
 }
 
 template <class Real>
 pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourier(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
-  matrix.Mf_ .resize(SHMAXDEG*SHMAXDEG);
+  //matrix.Mf_ .resize(SHMAXDEG*SHMAXDEG);
   pvfmm::Matrix<Real>& Mf =matrix.Mf_ [p0*SHMAXDEG+p1];
+//#pragma omp critical(MatFourier)
+//{
   if(!Mf.Dim(0)){
     const Real SQRT2PI=sqrt(2*M_PI);
     { // Set Mf
@@ -861,14 +872,17 @@ pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourier(long p0, long p1){
       Mf=M;
     }
   }
+//}
   return Mf;
 }
 
 template <class Real>
 pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourierInv(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
-  matrix.Mfinv_ .resize(SHMAXDEG*SHMAXDEG);
+  //matrix.Mfinv_ .resize(SHMAXDEG*SHMAXDEG);
   pvfmm::Matrix<Real>& Mf =matrix.Mfinv_ [p0*SHMAXDEG+p1];
+//#pragma omp critical(MatFourierInv)
+//{
   if(!Mf.Dim(0)){
     const Real INVSQRT2PI=1.0/sqrt(2*M_PI)/p0;
     { // Set Mf
@@ -887,14 +901,17 @@ pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourierInv(long p0, long p1){
       Mf=M;
     }
   }
+//}
   return Mf;
 }
 
 template <class Real>
 pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourierGrad(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
-  matrix.Mdf_.resize(SHMAXDEG*SHMAXDEG);
+  //matrix.Mdf_.resize(SHMAXDEG*SHMAXDEG);
   pvfmm::Matrix<Real>& Mdf=matrix.Mdf_[p0*SHMAXDEG+p1];
+//#pragma omp critical(MatFourierGrad)
+//{
   if(!Mdf.Dim(0)){
     const Real SQRT2PI=sqrt(2*M_PI);
     { // Set Mdf_
@@ -910,14 +927,17 @@ pvfmm::Matrix<Real>& SphericalHarmonics<Real>::MatFourierGrad(long p0, long p1){
       Mdf=M;
     }
   }
+//}
   return Mdf;
 }
 
 template <class Real>
 std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendre(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
-  matrix.Ml_ .resize(SHMAXDEG*SHMAXDEG);
+  //matrix.Ml_ .resize(SHMAXDEG*SHMAXDEG);
   std::vector<pvfmm::Matrix<Real> >& Ml =matrix.Ml_ [p0*SHMAXDEG+p1];
+//#pragma omp critical(MatLegendre)
+//{
   if(!Ml.size()){
     std::vector<Real> qx1(p1+1);
     std::vector<Real> qw1(p1+1);
@@ -935,14 +955,17 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendre(long p0
       }
     }
   }
+//}
   return Ml;
 }
 
 template <class Real>
 std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreInv(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
-  matrix.Mlinv_ .resize(SHMAXDEG*SHMAXDEG);
+  //matrix.Mlinv_ .resize(SHMAXDEG*SHMAXDEG);
   std::vector<pvfmm::Matrix<Real> >& Ml =matrix.Mlinv_ [p0*SHMAXDEG+p1];
+//#pragma omp critical(MatLegendreInv)
+//{
   if(!Ml.size()){
     std::vector<Real> qx1(p0+1);
     std::vector<Real> qw1(p0+1);
@@ -966,14 +989,17 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreInv(long
       }
     }
   }
+//}
   return Ml;
 }
 
 template <class Real>
 std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreGrad(long p0, long p1){
   assert(p0<SHMAXDEG && p1<SHMAXDEG);
-  matrix.Mdl_.resize(SHMAXDEG*SHMAXDEG);
+  //matrix.Mdl_.resize(SHMAXDEG*SHMAXDEG);
   std::vector<pvfmm::Matrix<Real> >& Mdl=matrix.Mdl_[p0*SHMAXDEG+p1];
+//#pragma omp critical(MatLegendreGrad)
+//{
   if(!Mdl.size()){
     std::vector<Real> qx1(p1+1);
     std::vector<Real> qw1(p1+1);
@@ -991,6 +1017,7 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatLegendreGrad(lon
       }
     }
   }
+//}
   return Mdl;
 }
 
@@ -1010,8 +1037,10 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatRotate(long p0){
   }
 
   assert(p0<SHMAXDEG);
-  matrix.Mr_.resize(SHMAXDEG);
+  //matrix.Mr_.resize(SHMAXDEG);
   std::vector<pvfmm::Matrix<Real> >& Mr=matrix.Mr_[p0];
+//#pragma omp critical(MatRotate)
+//{
   if(!Mr.size()){
     const Real SQRT2PI=sqrt(2*M_PI);
     long Ncoef=p0*(p0+2);
@@ -1094,6 +1123,7 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatRotate(long p0){
       }
     }
   }
+//}
   return Mr;
 }
 
@@ -1125,12 +1155,19 @@ void SphericalHarmonics<Real>::StokesSingularInteg(const pvfmm::Vector<Real>& S,
 
 template <class Real>
 void SphericalHarmonics<Real>::SetB0B1(){
+    matrix.Qx_.resize(SHMAXDEG);
+    matrix.Qw_.resize(SHMAXDEG);
+    matrix.Sw_.resize(SHMAXDEG);
+    matrix.Mf_.resize(SHMAXDEG*SHMAXDEG);
+    matrix.Mdf_.resize(SHMAXDEG*SHMAXDEG);
+    matrix.Ml_.resize(SHMAXDEG*SHMAXDEG);
+    matrix.Mdl_.resize(SHMAXDEG*SHMAXDEG);
+    matrix.Mr_.resize(SHMAXDEG);
+    matrix.Mfinv_.resize(SHMAXDEG*SHMAXDEG);
+    matrix.Mlinv_.resize(SHMAXDEG*SHMAXDEG);
     int omp_p = omp_get_max_threads();
-    for(int i=0; i<omp_p; ++i)
-    {
-        matrix.B0s.push_back(pvfmm::Vector<Real>());
-        matrix.B1s.push_back(pvfmm::Vector<Real>());
-    }
+    matrix.B0s.resize(omp_p);
+    matrix.B1s.resize(omp_p);
 }
 
 template <class Real>

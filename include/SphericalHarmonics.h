@@ -78,6 +78,8 @@ class SphericalHarmonics{
         Mr_ .resize(size);
         Mfinv_ .resize(size*size);
         Mlinv_ .resize(size*size);
+        B0s.resize(omp_get_max_threads());
+        B1s.resize(omp_get_max_threads());
       }
       std::vector<pvfmm::Vector<Real> > Qx_;
       std::vector<pvfmm::Vector<Real> > Qw_;

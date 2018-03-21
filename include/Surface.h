@@ -87,15 +87,7 @@ class Surface : public Streamable
     mutable Vec_t fc_;
     mutable Vec_t velocity_;
     mutable Sca_t tension_;
-  private:
-    Vec_t x_;
-    mutable Vec_t normal_;
-    mutable Sca_t w_;
-    mutable Sca_t h_;
-    mutable Sca_t k_;
-    mutable Vec_t cu_;
-    mutable Vec_t cv_;
-
+    
     int sh_order_;
     int diff_filter_freq_;
     int reparam_filter_freq_;
@@ -108,6 +100,27 @@ class Surface : public Streamable
     SHMats_t sht_;
     SHMats_t sht_rep_filter_;
     SHMats_t *sht_resample_; /*either up/down sample based initialization */
+  private:
+    Vec_t x_;
+    mutable Vec_t normal_;
+    mutable Sca_t w_;
+    mutable Sca_t h_;
+    mutable Sca_t k_;
+    mutable Vec_t cu_;
+    mutable Vec_t cv_;
+
+    //int sh_order_;
+    //int diff_filter_freq_;
+    //int reparam_filter_freq_;
+    //ReparamType reparam_type_;
+
+    //const OperatorsMats<Arr_t> *mats_;
+    //typedef SHTMats<value_type, device_type> Mats_t;
+    //typedef SHTrans<Sca_t,Mats_t> SHMats_t;
+
+    //SHMats_t sht_;
+    //SHMats_t sht_rep_filter_;
+    //SHMats_t *sht_resample_; /*either up/down sample based initialization */
 
     GaussLegendreIntegrator<Sca_t> integrator_;
 

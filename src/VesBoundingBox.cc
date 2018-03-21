@@ -79,8 +79,8 @@ void VesBoundingBox<Real_t>::SetVesBoundingBox(const PVFMMVec_t& ves_coord_s, co
                 }
                 // extend bounding box by some absolute value, 1e-10 for now.
                 // TODO: should extend by absolute + relative*size
-                mini[k] = mink - min_sep/2 - 1e-8;
-                maxi[k] = maxk + min_sep/2 + 1e-8;
+                mini[k] = mink - min_sep - 1e-7;
+                maxi[k] = maxk + min_sep + 1e-7;
             }
         }
     }
@@ -211,7 +211,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
 
     r_near = r_min_glb;
     
-    COUT("set r_near: "<<r_near<<"\n");
+    //COUT("set r_near: "<<r_near<<"\n");
 
     if(box_size_>0 && r_max_glb > box_size_){
         COUTDEBUG("Domain too small for bounding box size");
@@ -230,16 +230,16 @@ void VesBoundingBox<Real_t>::SetTreeParams()
             ASSERT(scale_tmp!=0, "invalid scale");
             
             Real_t domain_length = 1.0/scale_tmp + 4*r_near;
-            COUT("domain_length_tmp: "<<domain_length);
+            //COUT("domain_length_tmp: "<<domain_length);
             Real_t leaf_size = r_near/2;
             scale_x = 1.0/leaf_size;
             while(domain_length*scale_x>1.0 && tree_depth<MAX_DEPTH-1){
                 scale_x *= 0.5;
                 tree_depth++;
             }
-            COUT("domain_length_actual: "<<1.0/scale_x);
+            //COUT("domain_length_actual: "<<1.0/scale_x);
             leaf_size_ = leaf_size;
-            COUT("leaf_size: "<<leaf_size);
+            //COUT("leaf_size: "<<leaf_size);
         }
 
         for(size_t j=0;j<COORD_DIM;j++){ // Update shift_x
@@ -266,7 +266,7 @@ void VesBoundingBox<Real_t>::SetTreeParams()
         // r_near/4 < leaf_size <= r_near/2
         leaf_size *= 0.5; tree_depth++;
         leaf_size_ = leaf_size;
-        COUT("leaf_size: "<<leaf_size);
+        //COUT("leaf_size: "<<leaf_size);
     }
     pvfmm::Profile::Toc();
 }
@@ -872,6 +872,7 @@ void VesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::pa
                 
                     // TODO: add FLOP
                 }
+                FLOP+=tcnt*tcnt*10;
             }
         }
         pvfmm::Profile::Add_FLOP(FLOP);
@@ -1015,7 +1016,7 @@ void VesBoundingBox<Real_t>::GenerateBBPoints()
     // total number of points
     n_sum = pvfmm::omp_par::reduce(&bbox_n[0], bbox_n.size());
     N_pts_ = n_sum;
-    COUT("rank: "<<rank_<<" of "<<np_<<" processes has "<<N_pts_<<" BB points.");
+    //COUT("rank: "<<rank_<<" of "<<np_<<" processes has "<<N_pts_<<" BB points.");
 
     // init data for generating points
     BB_pts_.ReInit(COORD_DIM*n_sum);
