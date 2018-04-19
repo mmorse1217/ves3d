@@ -182,6 +182,10 @@ class Device
     T* Reduce(const T *x_in, const int x_dim, const T *w_in, const T *quad_w_in,
         const size_t stride, const size_t ns, T *x_dw) const;
 
+    template<typename T>
+    T* Reduce(const T *x_in, const int x_dim, const T *w_in,
+        const size_t stride, const size_t ns, T *x_dw) const;
+
     //! General matrix-matrix multiplication.
     //!  From DGEMM documentation
     //!

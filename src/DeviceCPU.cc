@@ -498,6 +498,61 @@ T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
 
 template<>
 template<typename T>
+T*  Device<CPU>::Reduce(const T *x_in, const int x_dim, const T *w_in,
+                        const size_t stride, const size_t ns, T *x_dw) const
+{
+    COUTDEBUG("x=("<<x_dim<<","<<stride<<","<<ns<<")");
+
+    PROFILESTART();
+    register T val;
+    T sum;
+
+    if(x_in != NULL)
+    {
+#pragma omp parallel for private(val,sum)
+        for (size_t ii = 0; ii < ns; ++ii)
+        {
+            int wbase = ii * stride;
+            for(int kk = 0; kk < x_dim; ++kk)
+            {
+                sum = 0;
+                int xbase = ii * x_dim * stride + kk * stride;
+
+                for (size_t jj = 0; jj < stride; ++jj)
+                {
+                    val  = x_in[xbase + jj];
+                    val *= w_in[wbase + jj];
+
+                    sum += val;
+                }
+                x_dw[ii*x_dim + kk] = sum;
+            }
+        }
+        PROFILEEND("CPU", 3 * ns * x_dim * stride );
+    }
+    else
+    {
+#pragma omp parallel for private(val,sum)
+        for (size_t ii = 0; ii < ns; ++ii)
+        {
+            sum = 0;
+            for (size_t jj = 0; jj < stride; ++jj)
+            {
+                val = w_in[ii * stride + jj];
+
+                sum += val;
+            }
+
+           x_dw[ii] = sum;
+        }
+    PROFILEEND("CPU", 2 * ns * stride );
+    }
+
+    return x_dw;
+}
+
+template<>
+template<typename T>
 T* Device<CPU>::gemm(const char *transA, const char *transB,
     const int *m, const int *n, const int *k, const T *alpha,
     const T *A, const int *lda, const T *B, const int *ldb,

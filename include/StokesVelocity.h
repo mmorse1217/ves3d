@@ -6,7 +6,7 @@
 #include "NearSingular.h"
 #include <matrix.hpp>
 
-template <class Real>
+template <class Real>//, int caller=1>
 class StokesVelocity{
 
     typedef typename pvfmm::Vector<Real> PVFMMVec;

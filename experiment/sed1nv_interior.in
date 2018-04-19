@@ -1,0 +1,49 @@
+## spherical harmonics -----------------------
+sh-order : 16
+rep-upsample
+interaction-upsample
+#col-upsample
+pseudospectral
+
+## initial shape -----------------------------
+n-surfs : 1
+#bending-modulus : .05
+#shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
+shape-gallery-file : precomputed/ellipse_16.txt
+vesicle-geometry-file : precomputed/sed1nv_interior.txt
+
+## time stepping -----------------------------
+time-horizon : 200
+timestep : 1e-1
+time-tol : 1e-5
+time-iter-max : 500
+time-scheme : JacobiBlockImplicit
+#time-scheme : GloballyImplicit
+time-precond : DiagonalSpectral
+singular-stokes : Direct
+error-factor : 1
+solve-for-velocity
+#time-adaptive
+
+## reparametrization -------------------------
+rep-max-iter : 5000
+rep-timestep : 1e-4
+rep-tol : 1e-6
+
+#min-sep-dist : 0.08
+repul-dist : 0.00
+
+## checkpoint/monitor ------------------------
+checkpoint
+checkpoint-file : data_bd/sedimentation_bd_ns{{n_surfs}}_nproc{{nprocs}}_{{time_idx}}_rank{{rank}}.chk
+checkpoint-stride : 1e-2
+write-vtk : data_bd/sedimentation_bd_ns{{n_surfs}}_np{{nprocs}}_
+
+## far filed ---------------------------------
+bg-flow-type : ShearFlow
+bg-flow-param : 0
+excess-density : 1
+gravity-field : 0.0 0.0 -1.0
+
+## misc  -------------------------------------
+num-threads : 16

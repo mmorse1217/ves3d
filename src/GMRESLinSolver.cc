@@ -100,7 +100,7 @@ operator()(JacobiImpApply MV, JacobiImpApplyPrecond PC, T *computed_solution, T 
   ipar[14] = restartIters;
   ipar[4] = maxIters;
   //ipar[7] = 0;
-  //ipar[10] = 1;
+  ipar[10] = 0; // 1 with precond, 0 without precond
   ipar[8] = 1;
   ipar[9] = 0;
   ipar[11] = 1;
@@ -199,12 +199,10 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
   if (RCI_request == 1)
     {
       MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1], vid);
+      INFO("Current iteration residual: "<<dpar[4]<<"\n");
       goto ONE;
     }
-  else
-    {
-      goto FAILED;
-    }
+    
   if (RCI_request == 2)
     {
       ipar[12] = 1;
@@ -225,11 +223,13 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       else
         goto ONE;
     }
+
   if (RCI_request == 3)
     {
       PC(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1]);
       goto ONE;
     }
+
   if (RCI_request == 4)
     {
       if (dpar[6] < 1.0E-12)

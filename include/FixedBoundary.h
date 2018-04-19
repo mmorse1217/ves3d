@@ -5,6 +5,7 @@
 #include <bdry3d/patch_surf_blended.hpp>
 #include <bdry3d/patch_surf_face_map.hpp>
 #include <bdry3d/patch_surf_analytic.hpp>
+#include <bdry3d/on_surface_point.hpp>
 #include <bie3d/solver_utils.hpp>
 #include <bie3d/solver_gmres_double_layer.hpp>
 #include <bie3d/markgrid.hpp>
@@ -31,13 +32,20 @@ class FixedBoundary
       MPI_Comm comm;
 
       Vec solved_density;
+      Vec solved_density_tmp;
       Vec boundary_data;
 
       double* GetSamplePoints(int& num_sample_points);
       void SetBoundaryData(double* boundary_data_address);
+      void SetTriData();
   
       //Vec computed_potential;
       //Vec targets;
+      double* tri_vertices;
+      double tri_vertices_spacing;
+      int num_patches; //coarse bdry()
+      int num_vertices_per_patch_1d;
+      int num_vertices_per_patch;
   private:
 };
 

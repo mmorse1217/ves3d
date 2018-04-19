@@ -6,19 +6,67 @@ endif
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
-LDFLAGS += -L/opt/intel/compilers_and_libraries_2017.1.126/mac/compiler/lib
+
+
+# TODO:add to makefile.col
+#initialize include and lib paths
+SURFACE_DIR = ${BLENDSURF_DIR} ${FACEMAP_DIR}
+SURFACE_INC = ${SURFACE_DIR} ${FACEMAP_DIR}/src
+SURFACE_LIB = ${SURFACE_DIR} ${FACEMAP_DIR}/lib
+
+#p4est
+P4EST_INC = ${P4EST_DIR}/include 
+SC_INC = ${P4EST_DIR}/sc/include
+P4EST_LIB = ${P4EST_DIR}/lib 
+SC_LIB = ${P4EST_DIR}/lib
+
+#FFTW
+FFTW_INC = ${FFTW_DIR}/include
+FFTW_LIB = ${FFTW_DIR}/lib
+
+#Petsc
+PETSC_BUILD_INC = ${PETSC_DIR}/include ${PETSC_DIR}/${PETSC_ARCH}/include
+PETSC_LIB = ${PETSC_DIR}/${PETSC_ARCH}/lib
+
+#PvFMM
+#PVFMM_INC = ${PVFMM_DIR}/include utils/pvfmm-utils/
+#PVFMM_LIB = ${PVFMM_DIR}/lib/pvfmm utils/pvfmm-utils/
+PVFMM_INC = /usr/local/include/pvfmm ${HEDGEHOG_DIR}/utils/pvfmm-utils/
+PVFMM_LIB = /usr/local/lib/pvfmm ${HEDGEHOG_DIR}/utils/pvfmm-utils/
+
+MPI_INC = ${MPI_HOME}/include
+MPI_LIB = ${MPI_HOME}/lib
+
+VTK_INC = ${VTK_DIR}/${VTK_INC_DIR}
+VTK_LIB = ${VTK_DIR}/lib
+
+
+VTK_LIBS_TO_LINK = -lvtkIOXML-8.1 -lvtkChartsCore-8.1 -lvtkCommonDataModel-8.1 -lvtkCommonCore-8.1 -lvtkFiltersCore-8.1 -lvtkCommonExecutionModel-8.1
+#aggregate
+DEPS_INC = ${SURFACE_INC} ${SC_INC} ${P4EST_INC} ${FFTW_INC} ${PETSC_BUILD_INC} ${PVFMM_INC} ${MPI_INC} ${VTK_INC}
+DEPS_LIB = ${SURFACE_LIB} ${SC_LIB} ${P4EST_LIB} ${FFTW_LIB} ${PETSC_LIB} ${PVFMM_LIB} ${MPI_LIB} ${FORTRAN_LIB} ${VTK_LIB}
+DEPS_LIB_FLAGS = -lhedgehog -lpatchwork -lblend -lsc -lp4est -lfftw3 -lpvfmmwrap -lpvfmm -lpetsc -lexpat -lblas -llapack -lmpi -lm -fopenmp ${VTK_LIBS_TO_LINK}
+HEDGEHOG_INC = -I/usr/include -I${HEDGEHOG_DIR}/src/ ${DEPS_INC:%=-I%}
+HEDGEHOG_LIB = -L${HEDGEHOG_DIR}/lib ${DEPS_LIB:%=-L%} ${DEPS_LIB_FLAGS}
+#
+
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.1.126/mac/compiler/lib
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.1.126/mac/mkl/lib
 LDFLAGS += -L/Users/libinlu/Documents/Projects/ves3d/contact3d/lib
 LDFLAGS += -L/usr/local/Cellar/fftw/3.3.5/lib
 LDFLAGS += -L/usr/local/Cellar/cgal/4.9/lib
 LDFLAGS += -L/usr/local/lib
-LDLIBS += -lCGAL -lgmp -llapack -liomp5 -liagm
+
+LDLIBS += -lCGAL -lgmp -llapack -liagm ${HEDGEHOG_LIB} # -liomp5
 
 EIGEN_INC := /opt/local/include/eigen3
 CONTACT_INC := /Users/libinlu/Documents/Projects/ves3d/contact3d/inc
-CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) -std=c++11 -DQUIET
+CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) ${HEDGEHOG_INC} -std=c++11 -fabi-version=6 -fpermissive
+#
 
 
-TEST = ExtenTestData.exe \
+TEST = RigidTest.exe 
+       #ExtenTestData.exe \
        #ShearTestData3.exe \
 
 RUNEXE   = 0
@@ -65,7 +113,7 @@ run-exec:
 
 
 clean:
-	-${RM} *.o *.out *.d *.${VES3D_CHKEXT} ${RUNLOG}  ${EXECLOG} *.vtp *.pvtp
+	-${RM} *.o *.out *.d *.${VES3D_CHKEXT} ${RUNLOG}  ${EXECLOG} *.vtp *.pvtp *.exe
 
 distclean:
 	${MAKE} clean

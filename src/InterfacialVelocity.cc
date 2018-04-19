@@ -113,6 +113,16 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         CI_pairs_[i]->init(SURF_SIMPLE);
     }
 
+    std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
+    pvfmm::Vector<value_type> pos_s_pole;
+    GetColPosAll(S_.getPosition(), pos_s, pos_s_pole);
+    if(params_.col_upsample)
+        CI_bd_.generateMesh(pos_s, &pos_s_pole[0], params_.upsample_freq, S_.getPosition().getNumSubs(), 
+                fixed_bd->tri_vertices, fixed_bd->num_vertices_per_patch_1d, fixed_bd->num_patches);
+    else
+        CI_bd_.generateMesh(pos_s, &pos_s_pole[0], params_.sh_order, S_.getPosition().getNumSubs(), 
+                fixed_bd->tri_vertices, fixed_bd->num_vertices_per_patch_1d, fixed_bd->num_patches);
+    CI_bd_.init(SURF_SIMPLE);
     /*
     static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
     static pvfmm::Vector<value_type> pos_s_pole;
@@ -424,8 +434,9 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // reset contact force
     axpy(static_cast<value_type>(-0), S_.fc_, S_.fc_);
      
-    if(params_.min_sep_dist>0)
-    {
+    //if(params_.min_sep_dist>0)
+    //{
+        /* new parallel code
         // the candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
         // get collision
@@ -434,28 +445,42 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ParallelGetVolumeAndGradient(*f1, *xtmp);
         //ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
         pvfmm::Profile::Toc();
+        */
    
-        /*
         // old sequential code
         // pos_s stores the start configuration
         // pos_e stores the end configuration
         // vGrad stores the gradient of contact volumes
-        int np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
+        int np_up = 2*params_.sh_order*(params_.sh_order+1);
+        if(params_.col_upsample)
+            np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
         static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
         static std::vector<value_type> pos_e(np_up*COORD_DIM*nv_, 0.0);
         static std::vector<value_type> vGrad(np_up*COORD_DIM*nv_, 0.0);
         static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
-        GetColPos(S_.getPosition(), pos_s, pos_s_pole);
-        GetColPos(*xtmp, pos_e, pos_e_pole);
-        std::vector<value_type> IV;
+
+        axpy(dt_, *x1, S_.getPosition(), *xtmp);
+        GetColPosAll(S_.getPosition(), pos_s, pos_s_pole);
+        GetColPosAll(*xtmp, pos_e, pos_e_pole);
+
+        sum_num_cvs_ = 0;
+        num_cvs_ = 0;
+        IV_.clear();
+        vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+        std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+
         if(params_.periodic_length > 0)
         {
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
-        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
-                params_.min_sep_dist, params_.periodic_length);
-        */
-    }
+        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+        sum_num_cvs_ = num_cvs_;
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+                vgrad_.size() * sizeof(value_type),
+                vgrad_.getDevice().MemcpyHostToDevice);
+        // end of sequential code
+    //}
         
     // prepare
     std::auto_ptr<Vec_t> col_dx = checkoutVec();
@@ -551,7 +576,12 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         //COUT("cvs: "<<cvs);
         //COUT("lambda: "<<col_lambda);
       
+
+
         // test if still have contact
+        //
+
+        /*
         // get new candidate position
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
         INFO("before getvolume");
@@ -560,6 +590,31 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ParallelGetVolumeAndGradient(*f1, *xtmp);
         //ParallelGetVolumeAndGradient(S_.getPosition(), *xtmp);
         pvfmm::Profile::Toc();
+        // end of new parallel 
+        */
+        
+        
+        // old code sequential
+        axpy(dt_, *x1, S_.getPosition(), *xtmp);
+        GetColPosAll(*xtmp, pos_e, pos_e_pole);
+
+        sum_num_cvs_ = 0;
+        num_cvs_ = 0;
+        IV_.clear();
+        vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+        std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+
+        if(params_.periodic_length > 0)
+        {
+            TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
+        }
+        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+        sum_num_cvs_ = num_cvs_;
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+                vgrad_.size() * sizeof(value_type),
+                vgrad_.getDevice().MemcpyHostToDevice);
+
         ///GetColPos(*xtmp, pos_e, pos_e_pole);
         ///if(params_.periodic_length > 0)
         ///{
@@ -568,6 +623,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ///}
         ///CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
         ///        params_.min_sep_dist, params_.periodic_length);
+        // end of old code sequential
         INFO("after getvolume");
     }
     pvfmm::Profile::Toc();
@@ -610,6 +666,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     //update boundary
     this->updateFarFieldBoundary();
     fixed_bd->Solve();
+    std::cout<<"Boundary solved.\n";
 
     // clear memory
     recycle(x1);
@@ -1612,9 +1669,8 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     
     size_t vsz(F->stokesBlockSize()), tsz(F->tensionBlockSize());
     
-    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
+    //Arr_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
 
-    /*
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Vec_t> vxs = F->checkoutVec();
     std::auto_ptr<Vec_t> wrk = F->checkoutVec();
@@ -1649,7 +1705,6 @@ JacobiImplicitPrecond(const GMRESLinSolver<value_type> *o, const value_type *x, 
     F->recycle(wrk);
     F->recycle(ten);
     F->recycle(tns);
-    */
 
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -1659,15 +1714,14 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value_type *x, value_type *y)
 {
+    // TODO for each vesicle
     //PROFILESTART();
     const InterfacialVelocity *F(NULL);
     o->Context((const void**) &F);
     
     size_t vsz(F->stokesBlockSize()/F->nv_), tsz(F->tensionBlockSize()/F->nv_);
     
-    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz) * sizeof(value_type), device_type::MemcpyHostToHost);
-    /*
-    //Vec_t::getDevice().Memcpy(y, x, (vsz+tsz)*sizeof(value_type), device_type::MemcpyHostToHost);
+    //Arr_t::getDevice().Memcpy(y, x, (vsz+tsz) * sizeof(value_type), device_type::MemcpyHostToHost);
 
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Vec_t> vxs = F->checkoutVec();
@@ -1684,18 +1738,16 @@ JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value
     COUTDEBUG("Unpacking the input parallel vector");
     vox->getDevice().Memcpy(vox->begin(), x    , vsz * sizeof(value_type), device_type::MemcpyHostToDevice);
     ten->getDevice().Memcpy(ten->begin(), x+vsz, tsz * sizeof(value_type), device_type::MemcpyHostToDevice);
-    //axpy(static_cast<value_type>(1.0),*vox,*vox);
-    //axpy(static_cast<value_type>(1.0),*ten,*ten);
     
-    //F->sht_.forward(*vox, *wrk, *vxs);
-    //F->sht_.forward(*ten, *wrk, *tns);
+    F->sht_.forward(*vox, *wrk, *vxs);
+    F->sht_.forward(*ten, *wrk, *tns);
 
     //COUTDEBUG("Applying diagonal preconditioner");
-    //F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
-    //F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
+    F->sht_.ScaleFreq(vxs->begin(), vxs->getNumSubFuncs(), F->position_precond.begin(), vxs->begin());
+    F->sht_.ScaleFreq(tns->begin(), tns->getNumSubFuncs(), F->tension_precond.begin() , tns->begin());
 
-    //F->sht_.backward(*vxs, *wrk, *vox);
-    //F->sht_.backward(*tns, *wrk, *ten);
+    F->sht_.backward(*vxs, *wrk, *vox);
+    F->sht_.backward(*tns, *wrk, *ten);
     
     vox->getDevice().Memcpy(y    , vox->begin(), vsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
     ten->getDevice().Memcpy(y+vsz, ten->begin(), tsz * sizeof(value_type), device_type::MemcpyDeviceToHost);
@@ -1705,7 +1757,6 @@ JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value
     F->recycle(wrk);
     F->recycle(ten);
     F->recycle(tns);
-    */
 
     //PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -2018,6 +2069,8 @@ updateFarField() const
     //for(int i=0; i<pos_vel_.size();i++)
         //std::cout<<"vel: "<<pos_vel_.begin()[i]<<"\n";
     
+    //COUT("max bg vel: "<<MaxAbs(pos_vel_));
+    
     recycle(fi);
     recycle(ui);
     recycle(vel);
@@ -2066,7 +2119,7 @@ updateFarFieldBoundary() const
 
     // set doube layer density
     if(ves_props_.has_contrast){
-        //COUT("has contrast");
+        COUT("has contrast");
         av(ves_props_.dl_coeff, pos_vel_, *ui);
         stokes_.SetDensityDL(ui.get());
     }
@@ -2077,10 +2130,29 @@ updateFarFieldBoundary() const
     // potential from vesicles
     pvfmm::Vector<double> value(COORD_DIM*num_target_points);
     value=stokes_();
-    for(long i=0;i<value.Dim();i++) value[i] *= -1.0;
+    for(long i=0;i<value.Dim();i++) value[i] = -1.0*value[i];
     fixed_bd->SetBoundaryData(&value[0]);
 
     // bgflow
+    //
+    //
+
+    //test
+    stokes_.SetSrcCoord(S_.getPosition());
+    stokes_.SetTrgCoord(&coord);
+    stokes_.SetDensitySL(NULL);
+    
+    vel->getDevice().Memset(vel->begin(), 0, sizeof(value_type)*vel->size());
+    for(int i=0; i<vel->size(); i++)
+        vel->begin()[i] = 1.0;
+    stokes_.SetDensityDL(vel.get());
+    
+    value=stokes_();
+    double max_1 = -100;
+    for(long i=0; i<value.Dim(); i++) 
+        max_1 = std::max(max_1, std::abs(value[i]) );
+    std::cout<<"vesicle to boundary constant dl density max error: "<<max_1<<"; number of dof: "<<value.Dim()<<"\n";
+    //end test
 
     recycle(fi);
     recycle(ui);
@@ -3156,8 +3228,8 @@ RemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
     // the candidate position and copy to end configuration
     axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
     
-    GetColPos(x_old, pos_s, pos_s_pole);
-    GetColPos(*xwrk, pos_e, pos_e_pole);
+    GetColPosAll(x_old, pos_s, pos_s_pole);
+    GetColPosAll(*xwrk, pos_e, pos_e_pole);
 
     if(params_.periodic_length > 0)
     {
@@ -3207,11 +3279,11 @@ RemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         INFO("Projecting to avoid collision iter#: "<<resolveCount);
         INFO(cvs);
 
-        GetColPos(*xwrk, pos_e, pos_e_pole);
+        GetColPosAll(*xwrk, pos_e, pos_e_pole);
         
         if(params_.periodic_length > 0)
         {
-            GetColPos(x_old, pos_s, pos_s_pole);
+            GetColPosAll(x_old, pos_s, pos_s_pole);
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
 
@@ -3244,10 +3316,37 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
     x_old_up->replicate(vgrad_);
             
     axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
-    if(params_.min_sep_dist>0)
-    {
-        ParallelGetVolumeAndGradient(x_old, *xwrk);
-    }
+    //if(params_.min_sep_dist>0)
+    //{
+        //ParallelGetVolumeAndGradient(x_old, *xwrk);
+        int np_up = 2*params_.sh_order*(params_.sh_order+1);
+        if(params_.col_upsample)
+            np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
+        static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
+        static std::vector<value_type> pos_e(np_up*COORD_DIM*nv_, 0.0);
+        static std::vector<value_type> vGrad(np_up*COORD_DIM*nv_, 0.0);
+        static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
+
+        GetColPosAll(x_old, pos_s, pos_s_pole);
+        GetColPosAll(*xwrk, pos_e, pos_e_pole);
+
+        sum_num_cvs_ = 0;
+        num_cvs_ = 0;
+        IV_.clear();
+        vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+        std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+
+        if(params_.periodic_length > 0)
+        {
+            TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
+        }
+        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+        sum_num_cvs_ = num_cvs_;
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+                vgrad_.size() * sizeof(value_type),
+                vgrad_.getDevice().MemcpyHostToDevice);
+    //}
     /*
     if(sum_num_cvs_>0 && params_.min_sep_dist>0 && params_.col_upsample)
     {
@@ -3329,7 +3428,28 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         //COUT(cvs);
         //COUT(awrk);
         //COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
-        ParallelGetVolumeAndGradient(x_old, *xwrk);
+        
+        //ParallelGetVolumeAndGradient(x_old, *xwrk);
+
+        GetColPosAll(*xwrk, pos_e, pos_e_pole);
+
+        sum_num_cvs_ = 0;
+        num_cvs_ = 0;
+        IV_.clear();
+        vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+        std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+
+        if(params_.periodic_length > 0)
+        {
+            TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
+        }
+        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+        sum_num_cvs_ = num_cvs_;
+        vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+                vgrad_.size() * sizeof(value_type),
+                vgrad_.getDevice().MemcpyHostToDevice);
+
     }
 
     u1.getDevice().Memcpy(u1.begin(), xwrk->begin(), u1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
@@ -3741,6 +3861,32 @@ GetColPos(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<valu
         pvfmm::Vector<value_type> pos_up(pos_vec.size(), (value_type*)&pos_vec[0], false);
         // upsample
         SphericalHarmonics<value_type>::SHC2GridPerVesicle(pos_coef, params_.sh_order, params_.upsample_freq, pos_up);
+    }
+    else
+    {
+        xin.getDevice().Memcpy(&pos_vec[0], xin.begin(),
+                xin.size() * sizeof(value_type),
+                xin.getDevice().MemcpyDeviceToHost);
+    }
+   
+    return ErrorEvent::Success;
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
+GetColPosAll(const Vec_t &xin, std::vector<value_type> &pos_vec, pvfmm::Vector<value_type> &pos_pole) const
+{
+    // get poles
+    const pvfmm::Vector<value_type> pos_pvfmm(xin.size(), (value_type*)xin.begin(), false); 
+    pvfmm::Vector<value_type> pos_coef;
+    SphericalHarmonics<value_type>::Grid2SHC(pos_pvfmm, params_.sh_order, params_.sh_order, pos_coef);
+    SphericalHarmonics<value_type>::SHC2Pole(pos_coef, params_.sh_order, pos_pole);
+
+    if(params_.upsample_freq > params_.sh_order && params_.col_upsample)
+    {
+        pvfmm::Vector<value_type> pos_up(pos_vec.size(), (value_type*)&pos_vec[0], false);
+        // upsample
+        SphericalHarmonics<value_type>::SHC2Grid(pos_coef, params_.sh_order, params_.upsample_freq, pos_up);
     }
     else
     {
@@ -5670,6 +5816,7 @@ static void sht_filter_high_sca(const Sca_t& v1, Sca_t& v2, SHT* sh_trans, int r
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
 {
+    std::cout<<"begin reparam.\n";
     PROFILESTART();
 
     value_type ts(params_.rep_ts);
