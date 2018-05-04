@@ -1,0 +1,49 @@
+## spherical harmonics -----------------------
+sh-order : 16
+rep-upsample
+interaction-upsample
+col-upsample
+pseudospectral
+
+## initial shape -----------------------------
+n-surfs : 8
+bending-modulus : .2
+#shape-gallery-file : precomputed/shape_gallery_{{sh_order}}.txt
+shape-gallery-file : precomputed/ellipse_16.txt
+vesicle-geometry-file : precomputed/hourglass_8nv.txt 
+
+## time stepping -----------------------------
+time-horizon : 1000
+timestep : 2e-2
+time-tol : 1e-5
+time-iter-max : 200
+time-scheme : JacobiBlockImplicit
+#time-scheme : GloballyImplicit
+time-precond : DiagonalSpectral
+singular-stokes : Direct
+error-factor : 1
+solve-for-velocity
+#time-adaptive
+
+## reparametrization -------------------------
+rep-max-iter : 2000
+rep-timestep : 1e-4
+rep-tol : 1e-6
+
+min-sep-dist : 0.04
+repul-dist : 0.00
+
+## checkpoint/monitor ------------------------
+checkpoint
+checkpoint-file : data/hourglass_bd_ns{{n_surfs}}_nproc{{nprocs}}_{{time_idx}}_rank{{rank}}.chk
+checkpoint-stride : 1e-2
+write-vtk : data/hourglass_bd_ns{{n_surfs}}_np{{nprocs}}_
+
+## far filed ---------------------------------
+bg-flow-type : ShearFlow
+bg-flow-param : 0
+excess-density : 1
+gravity-field : 1.0 0.0 0.0
+
+## misc  -------------------------------------
+num-threads : 20
