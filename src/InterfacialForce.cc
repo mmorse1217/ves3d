@@ -165,7 +165,11 @@ void InterfacialForce<SurfContainer>::tensileForce(const SurfContainer &S,
       wrk[0]    .resize(tension.getNumSubs(), params_.upsample_freq);
       wrk[1]    .resize(tension.getNumSubs(), params_.upsample_freq);
       tension_up.resize(tension.getNumSubs(), params_.upsample_freq);
-      Resample(tension, sht_, sht_up_, wrk[0], wrk[1], tension_up);
+      //Resample(tension, sht_, sht_up_, wrk[0], wrk[1], tension_up);
+      Sca_t tension_filter;
+      tension_filter.replicate(tension);
+      S.sht_.lowPassFilter(tension, wrk[0], wrk[1], tension_filter);
+      Resample(tension_filter, sht_, sht_up_, wrk[0], wrk[1], tension_up);
     }
 
     Vec_t Fs_up;
@@ -200,7 +204,11 @@ void InterfacialForce<SurfContainer>::tensileForcePerVesicle(const SurfContainer
       wrk[1]    .resize(tension.getNumSubs(), params_.upsample_freq);
       tension_up.resize(tension.getNumSubs(), params_.upsample_freq);
       //Resample(tension, sht_, sht_up_, wrk[0], wrk[1], tension_up);
-      Resample(tension, S.sht_, *S.sht_resample_, wrk[0], wrk[1], tension_up);
+      //Resample(tension, S.sht_, *S.sht_resample_, wrk[0], wrk[1], tension_up);
+      Sca_t tension_filter;
+      tension_filter.replicate(tension);
+      S.sht_.lowPassFilter(tension, wrk[0], wrk[1], tension_filter);
+      Resample(tension_filter, S.sht_, *S.sht_resample_, wrk[0], wrk[1], tension_up);
     }
 
     Vec_t Fs_up, v1;

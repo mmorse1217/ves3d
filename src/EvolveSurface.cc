@@ -119,11 +119,48 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     Sca_t area, vol;
     { // Compute area, vol
         S_->resample(params_->upsample_freq, &S_up_); // up-sample
+
+        std::cout<<std::scientific<<std::setprecision(16);
+        /*
+        for(int i=0; i<S_up_->getPosition().size(); i++)
+            std::cout<<S_up_->getPosition().begin()[i]<<std::endl;
+        */
+
         int N_ves=S_up_->getNumberOfSurfaces();
         area.resize(N_ves,1); S_up_->area  (area);
         vol .resize(N_ves,1); S_up_->volume( vol);
         //@bug downsample seems unnecessary
         //S_up_->resample(params_->sh_order, &S_); // down-sample
+
+        /*
+        //to be delete
+        std::stringstream ss0;
+        ss0<<std::scientific<<std::setprecision(16);
+        area.pack(ss0, Streamable::ASCII);
+        std::ofstream fh0("area0.chk", std::ios::out);
+        fh0<<ss0.rdbuf();
+        fh0.close();
+
+        std::stringstream ss1;
+        ss1<<std::scientific<<std::setprecision(16);
+        vol.pack(ss1, Streamable::ASCII);
+        std::ofstream fh1("vol0.chk", std::ios::out);
+        fh1<<ss1.rdbuf();
+        fh1.close();
+
+        std::stringstream ss0;
+        std::ifstream fh0("area0.chk", std::ios::in);
+        ss0<<fh0.rdbuf();
+        fh0.close();
+        area.unpack(ss0, Streamable::ASCII);
+        
+        std::stringstream ss1;
+        std::ifstream fh1("vol0.chk", std::ios::in);
+        ss1<<fh1.rdbuf();
+        fh1.close();
+        vol.unpack(ss1, Streamable::ASCII);
+        //end of to be delete
+        */
     }
 
     /*
@@ -323,9 +360,19 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
             INFO("TimeAdapNone");
+
+            //update vesicle
             pvfmm::Profile::Tic("JacobiStep",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            pvfmm::Profile::Toc();
+            
+            //update boundary
+            INFO("Begin to solve boundary.");
+            pvfmm::Profile::Tic("BoundarySolver",&comm,true);
+            F_->updateFarFieldBoundary();
+            F_->fixed_bd->Solve();
+            INFO("Boundary solved.");
             pvfmm::Profile::Toc();
 
             t += dt;
@@ -369,9 +416,22 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     static Vec_t x_old, u1;
     x_old.replicate(S_->getPosition());
     u1.replicate(S_->getPosition());
-    axpy(static_cast<value_type>(1.0), S_->getPosition(), x_old);
-    // end of store 
+
+    u1.getDevice().Memcpy(u1.begin(), S_->getPosition().begin(), u1.size()*sizeof(value_type), 
+            device_type::MemcpyDeviceToDevice);
     
+    S_->resample(params_->upsample_freq, &S_up_); // up-sample
+    axpy(static_cast<value_type>(-0.005), S_up_->getNormal(), S_up_->getPosition(), S_up_->getPositionModifiable());
+    S_up_->resample(params_->sh_order, &S_); // down-sample
+
+    x_old.getDevice().Memcpy(x_old.begin(), S_->getPosition().begin(), x_old.size()*sizeof(value_type), 
+            device_type::MemcpyDeviceToDevice);
+
+    u1.getDevice().Memcpy(S_->getPositionModifiable().begin(), u1.begin(), u1.size()*sizeof(value_type), 
+            device_type::MemcpyDeviceToDevice);
+    //axpy(static_cast<value_type>(1.0), S_->getPosition(), x_old);
+    // end of store 
+        
     while (++iter < params_->rep_maxit){
         S_->resample(params_->upsample_freq, &S_up_); // up-sample
 

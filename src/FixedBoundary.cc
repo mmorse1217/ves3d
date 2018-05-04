@@ -7,8 +7,12 @@ FixedBoundary()
     Options::set_value_petsc_opts("-kt","311");
     Options::set_value_petsc_opts("-dom", "0"); // 1 exterior problem, 0 interior problem
     Options::set_value_petsc_opts("-bdtype", "2"); // blended surface
-    Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/cube.wrl"); // single cube
-    Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cube.wrl");
+    //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/cube_large.wrl"); // single cube
+    //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cube_large.wrl");
+    Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/hourglass.wrl"); // hourglass
+    Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/hourglass.wrl");
+    //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/branch.wrl"); // branch
+    //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/branch.wrl");
     Options::set_value_petsc_opts("-bis3d_spacing", ".05");
     Options::set_value_petsc_opts("-bd3d_bdsurf_chttyp", "2");
     Options::set_value_petsc_opts("-bd3d_facemap_adaptive", "0");
@@ -65,7 +69,9 @@ FixedBoundary()
     }
     boundary_data_local.restore_local_vector();
     
-    tri_vertices_spacing = 0.05;
+    //tri_vertices_spacing = 0.02; //cube large
+    tri_vertices_spacing = 0.1; //hourglass
+    //tri_vertices_spacing = 0.1; //branch
     SetTriData();
 
     /*
@@ -224,8 +230,31 @@ void FixedBoundary::
 Solve()
 {
     VecSet(solved_density, 0.);
+
+    static int count_i = 0;
+    if(count_i == 0)
+    {
+        std::stringstream ss;
+        ss<<std::setfill('0')<<std::setw(5)<<count_i;
+        std::string fname = "solved_density_";
+        fname += ss.str();
+        fname += ".vtp";
+        write_general_points_to_vtk(solver->patch_samples()->sample_point_3d_position(), 3, 
+                fname, solved_density, "data/");
+        count_i++;
+    }
+    
     solver->solve(boundary_data, solved_density);
     
+    std::stringstream ss;
+    ss<<std::setfill('0')<<std::setw(5)<<count_i;
+    std::string fname = "solved_density_";
+    fname += ss.str();
+    fname += ".vtp";
+    write_general_points_to_vtk(solver->patch_samples()->sample_point_3d_position(), 3, 
+            fname, solved_density, "data/");
+    count_i++;
+
     /*
     int sample_dof, pole_dof, total_num_dof;
     solver->localSize(sample_dof,pole_dof,total_num_dof);
@@ -263,12 +292,36 @@ SetBoundaryData(double* boundary_data_address)
     std::cout<<"sample num dof: "<<sample_dof<<"\n";
 
     VecSet(boundary_data, 0.);
+    
+    static int count_i = 0;
+    if(count_i == 0)
+    {
+        std::stringstream ss;
+        ss<<std::setfill('0')<<std::setw(5)<<count_i;
+        std::string fname = "boundary_data_";
+        fname += ss.str();
+        fname += ".vtp";
+        write_general_points_to_vtk(solver->patch_samples()->sample_point_3d_position(), 3, 
+                fname, boundary_data, "data/");
+        count_i++;
+    }
+    
     DblNumMat boundary_data_local = get_local_vector(1, total_num_dof, boundary_data);
     for(int i=0; i<sample_dof; i++)
     {
         boundary_data_local(0,i)=boundary_data_address[i];
     }
     boundary_data_local.restore_local_vector();
+
+    //output boundary data
+    std::stringstream ss;
+    ss<<std::setfill('0')<<std::setw(5)<<count_i;
+    std::string fname = "boundary_data_";
+    fname += ss.str();
+    fname += ".vtp";
+    write_general_points_to_vtk(solver->patch_samples()->sample_point_3d_position(), 3, 
+            fname, boundary_data, "data/");
+    count_i++;
 }
 
 void FixedBoundary::

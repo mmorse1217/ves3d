@@ -36,6 +36,35 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
         vol0_ .replicate(state->S_->getPosition());
         device.Memcpy(area0_.begin(), area_new.begin(), N_ves*sizeof(value_type), device.MemcpyDeviceToDevice);
         device.Memcpy( vol0_.begin(),  vol_new.begin(), N_ves*sizeof(value_type), device.MemcpyDeviceToDevice);
+        
+        /*
+        std::stringstream ss0;
+        ss0<<std::scientific<<std::setprecision(16);
+        area0_.pack(ss0, Streamable::ASCII);
+        std::ofstream fh0("area1.chk", std::ios::out);
+        fh0<<ss0.rdbuf();
+        fh0.close();
+
+        std::stringstream ss1;
+        ss1<<std::scientific<<std::setprecision(16);
+        vol0_.pack(ss1, Streamable::ASCII);
+        std::ofstream fh1("vol1.chk", std::ios::out);
+        fh1<<ss1.rdbuf();
+        fh1.close();
+        
+        std::stringstream ss0;
+        std::ifstream fh0("area1.chk", std::ios::in);
+        ss0<<fh0.rdbuf();
+        fh0.close();
+        area0_.unpack(ss0, Streamable::ASCII);
+        
+        std::stringstream ss1;
+        std::ifstream fh1("vol1.chk", std::ios::in);
+        ss1<<fh1.rdbuf();
+        fh1.close();
+        vol0_.unpack(ss1, Streamable::ASCII);
+        */
+
         A0_=(device.MaxAbs(area0_.begin(), N_ves));
         V0_=(device.MaxAbs( vol0_.begin(), N_ves));
     }

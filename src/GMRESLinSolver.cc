@@ -199,7 +199,7 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
   if (RCI_request == 1)
     {
       MV(this, &tmp[ipar[21] - 1], &tmp[ipar[22] - 1], vid);
-      INFO("Current iteration residual: "<<dpar[4]<<"\n");
+      //INFO("Current iteration residual: "<<dpar[4]<<"\n");
       goto ONE;
     }
     
@@ -214,7 +214,7 @@ ONE:dfgmres (&ivar, computed_solution, rhs, &RCI_request, ipar, dpar, tmp);
       dvar = dnrm2 (&ivar, residual, &i);
       
       //COUT("rank: "<<myrank<<". Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
-      INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
+      //INFO("Current iteration: "<<itercount<<". residual: "<<dvar<<"\n");
       
       if (dvar <= dpar[3])
         goto COMPLETE;

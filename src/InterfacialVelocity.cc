@@ -459,8 +459,29 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         static std::vector<value_type> vGrad(np_up*COORD_DIM*nv_, 0.0);
         static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
 
+        
+        //GetColPosAll(S_.getPosition(), pos_s, pos_s_pole);
+        if (params_.col_upsample)
+        {
+            S_.resample(params_.upsample_freq, &S_up_);
+            
+            std::auto_ptr<Vec_t> u1 = checkoutVec();
+            std::auto_ptr<Vec_t> u2 = checkoutVec();
+            u1->replicate(S_up_->getPosition());
+            u2->replicate(S_up_->getPosition());
+
+            axpy(static_cast<value_type>(-0.0002), S_up_->getNormal(), S_up_->getPosition(), S_up_->getPositionModifiable());
+            Resample(S_up_->getPositionModifiable(), sht_upsample_, sht_, *u1, *u2, *xtmp);
+
+            recycle(u1);
+            recycle(u2);
+        }
+        else
+        {
+            axpy(static_cast<value_type>(-0.0002), S_.getNormal(), S_.getPosition(), *xtmp);
+        }
+        GetColPosAll(*xtmp, pos_s, pos_s_pole);
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
-        GetColPosAll(S_.getPosition(), pos_s, pos_s_pole);
         GetColPosAll(*xtmp, pos_e, pos_e_pole);
 
         sum_num_cvs_ = 0;
@@ -527,14 +548,14 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         pvfmm::Profile::Toc();
         INFO("after formlcp");
         typename std::map<std::pair<size_t, size_t>, value_type>::iterator got_lcp_matrix_ij;
-/*
+
         COUT("size of lcp matrix: "<<parallel_lcp_matrix_.size());
         for(got_lcp_matrix_ij = parallel_lcp_matrix_.begin(); got_lcp_matrix_ij!=parallel_lcp_matrix_.end(); got_lcp_matrix_ij++)
         {
             COUT("entry("<<got_lcp_matrix_ij->first.first<<", "<<got_lcp_matrix_ij->first.second<<") = "<<
                     got_lcp_matrix_ij->second);
         }
-*/
+
         ///lcp_matrix_.resize(num_cvs_*num_cvs_);
         ///FormLCPMatrixSparse(lcp_matrix_);
         ///INFO("lcp_matrix sparse: "<<lcp_matrix_);
@@ -573,8 +594,8 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       
         resolveCount++;
         INFO("Col iter#: "<<resolveCount);
-        //COUT("cvs: "<<cvs);
-        //COUT("lambda: "<<col_lambda);
+        COUT("cvs: "<<cvs);
+        COUT("lambda: "<<col_lambda);
       
 
 
@@ -662,11 +683,6 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     
     // print the max abs vel
     INFO("vel maxabs: "<<MaxAbs(pos_vel_)<<"\n");
-    
-    //update boundary
-    this->updateFarFieldBoundary();
-    fixed_bd->Solve();
-    std::cout<<"Boundary solved.\n";
 
     // clear memory
     recycle(x1);
@@ -2027,7 +2043,9 @@ updateFarField() const
     pos->replicate(pos_vel_);
     vel_bd->replicate(pos_vel_);
 
+    // add bending force
     Intfcl_force_.bendingForce(S_, *fi);
+    // add tensile force
     Intfcl_force_.tensileForce(S_, tension_, *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     // add contact force
@@ -2056,6 +2074,7 @@ updateFarField() const
     //axpy(static_cast<value_type>(-1.0), *fi, *vel, *vel);
                
     CHK(this->BgFlow(pos_vel_, this->dt_));
+    COUT("max bg vel: "<<MaxAbs(pos_vel_));
     axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
 
     // boundary
@@ -2095,7 +2114,9 @@ updateFarFieldBoundary() const
     ui->replicate(pos_vel_);
     vel->replicate(pos_vel_);
 
+    // add bending force
     Intfcl_force_.bendingForce(S_, *fi);
+    // add tensile force
     Intfcl_force_.tensileForce(S_, tension_, *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     // add contact force
@@ -3415,10 +3436,35 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
 
         // get magnitude
         ParallelCVJacobian(*xwrk, awrk);
+
+        std::cout<<"cvs: \n";
+        for(int ii=0;ii<cvs.size();ii++)
+            std::cout<<cvs.begin()[ii]<<std::endl;
+
+        std::cout<<"awrk: \n";
+        for(int ii=0;ii<awrk.size();ii++)
+            std::cout<<awrk.begin()[ii]<<std::endl;
+
         awrk.getDevice().xyInv(cvs.begin(), awrk.begin(), cvs.size(), awrk.begin());
 
+        for(size_t idx=0; idx<awrk.size(); idx++)
+        {
+            if(awrk.begin()[idx] >= 0)
+                awrk.begin()[idx] = -1e-10;
+        }
+        std::cout<<"mag: \n";
+        for(int ii=0;ii<awrk.size();ii++)
+            std::cout<<awrk.begin()[ii]<<std::endl;
+        
         // projection direction with magnitude
         ParallelCVJacobianTrans(awrk, *xwrk);
+
+        // to be deleted
+        ParallelCVJacobian(vgrad_, awrk, true);
+        std::cout<<"awrk: \n";
+        for(int ii=0;ii<awrk.size();ii++)
+            std::cout<<awrk.begin()[ii]<<std::endl;
+        // end of to be deleted
         
         axpy(static_cast<value_type> (-1.0), *xwrk, u1, u1);
         axpy(static_cast<value_type> (1.0), u1, x_old, *xwrk);
@@ -3826,7 +3872,7 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
             //#pragma omp critical
             //{
                 int solver_ret = linear_solver_gmress_[omp_id](JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                        x_host, rhs_host, params_.time_tol*10, 0, N_size, params_.time_iter_max, 100, i_vesicle);
+                        x_host, rhs_host, params_.time_tol*0.1, 0, N_size, params_.time_iter_max, 100, i_vesicle);
             //}
 
             // copy host to device
@@ -4455,13 +4501,49 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
+ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e) const
+{
+    int np_up = 2*params_.sh_order*(params_.sh_order+1);
+    if(params_.col_upsample)
+    {
+        std::cout<<"col upsample true\n";
+        np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
+    }
+    static std::vector<value_type> pos_s(np_up*COORD_DIM*nv_, 0.0);
+    static std::vector<value_type> pos_e(np_up*COORD_DIM*nv_, 0.0);
+    static std::vector<value_type> vGrad(np_up*COORD_DIM*nv_, 0.0);
+    static pvfmm::Vector<value_type> pos_s_pole, pos_e_pole;
+        
+    GetColPosAll(X_s, pos_s, pos_s_pole);
+    GetColPosAll(X_e, pos_e, pos_e_pole);
+
+    sum_num_cvs_ = 0;
+    num_cvs_ = 0;
+    IV_.clear();
+    vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+    std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+
+    if(params_.periodic_length > 0)
+    {
+        TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
+    }
+    CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0], 
+            params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+    sum_num_cvs_ = num_cvs_;
+    vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
+            vgrad_.size() * sizeof(value_type),
+            vgrad_.getDevice().MemcpyHostToDevice);
+}
+
+template<typename SurfContainer, typename Interaction>
+Error_t InterfacialVelocity<SurfContainer, Interaction>::
 ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp_matrix) const
 {
     mkl_set_num_threads(1);
-    //COUT("mkl max threads: "<<mkl_get_max_threads());
+    COUT("mkl max threads: "<<mkl_get_max_threads());
     // max number of threads
     int omp_p = omp_get_max_threads();
-    //COUT("omp max threads: "<<omp_p);
+    COUT("omp max threads: "<<omp_p);
 
     // form lcp_matrix as in FormLCPMatrixSparse
     typedef boost::unordered_map< int, Vec_t* > CVMAP;
@@ -4628,7 +4710,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             //#pragma omp critical
             //{
                 int solver_ret = linear_solver_gmress_[omp_id](JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                        x_host, rhs_host, params_.time_tol*10, 0, N_size, params_.time_iter_max, 100, i_vesicle);
+                        x_host, rhs_host, params_.time_tol*0.1, 0, N_size, params_.time_iter_max, 100, i_vesicle);
             //}
 
             // copy host to device
@@ -6094,12 +6176,12 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
     INFO("Begin Project reparam direction to without contact.");
     if (params_.rep_upsample)
     {
-        axpy(static_cast<value_type>(-0.01), Surf->getNormal(), Surf->getPosition(), Surf->getPositionModifiable());
+        axpy(static_cast<value_type>(-0.005), Surf->getNormal(), Surf->getPosition(), Surf->getPositionModifiable());
         Resample(Surf->getPositionModifiable(), sht_upsample_, sht_, *u1, *u2, *x_old);
     }
     else
     {
-        axpy(static_cast<value_type>(-0.01), Surf->getNormal(), Surf->getPosition(), *x_old);
+        axpy(static_cast<value_type>(-0.005), Surf->getNormal(), Surf->getPosition(), *x_old);
     }
     axpy(static_cast<value_type>(-1.0), *x_old, S_.getPosition(), *u1_down);
     ParallelRemoveContactSimple(*u1_down, *x_old);
