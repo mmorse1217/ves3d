@@ -9,6 +9,51 @@ RigidParticle(int sh_order, int sh_order_up, int sh_order_up_self) :
     //set up all containers
     //set up stokes_
     //set up weights, dl matrix
+    PVFMMVec scoord, scoord_up, scoord_shc, X_theta, X_phi, scoord_area;
+    SphericalHarmonics<value_type>::Grid2SHC(scoord,     sh_order, sh_order, scoord_shc);
+    SphericalHarmonics<value_type>::SHC2Grid(scoord_shc, sh_order, sh_order, scoord_up, &X_theta, &X_phi);
+        
+    { // Set scoord_norm, scoord_area
+        long Mves=2*sh_order*(sh_order+1);
+        long N=X_theta.Dim()/Mves/COORD_DIM;
+        scoord_area.ReInit(N*Mves);
+        #pragma omp parallel for
+        for(long i=0;i<N;i++){
+          for(long j=0;j<Mves;j++){
+            value_type nx, ny, nz;
+            { // Compute source normal
+              value_type x_theta=X_theta[(i*COORD_DIM+0)*Mves+j];
+              value_type y_theta=X_theta[(i*COORD_DIM+1)*Mves+j];
+              value_type z_theta=X_theta[(i*COORD_DIM+2)*Mves+j];
+
+              value_type x_phi=X_phi[(i*COORD_DIM+0)*Mves+j];
+              value_type y_phi=X_phi[(i*COORD_DIM+1)*Mves+j];
+              value_type z_phi=X_phi[(i*COORD_DIM+2)*Mves+j];
+
+              nx=(y_theta*z_phi-z_theta*y_phi);
+              ny=(z_theta*x_phi-x_theta*z_phi);
+              nz=(x_theta*y_phi-y_theta*x_phi);
+            }
+            value_type area=sqrt(nx*nx+ny*ny+nz*nz);
+            scoord_area[i*Mves+j]=area;
+          }
+        }
+    }
+
+    { //set weights
+        PVFMMVec& qw=SphericalHarmonics<value_type>::LegendreWeights(sh_order);
+        long Mves = 2*sh_order*(sh_order+1);
+        long Nves = scoord_area.Dim()/Mves;
+        #pragma omp parallel for
+        for(long i=0;i<Nves;i++){
+          for(long j0=0;j0<sh_order_up+1;j0++){
+            for(long j1=0;j1<sh_order_up*2;j1++){
+              long j=j0*sh_order_up*2+j1;
+              weights_.begin()[i*Mves+j]=scoord_area[i*Mves+j]*qw[j0];
+            }
+          }
+        }
+    }
 }
 
 template<typename SurfContainer>
@@ -21,7 +66,20 @@ template<typename SurfContainer>
 void RigidParticle<SurfContainer>::
 EvalPotential(int num_target_points, value_type* target_address, value_type* target_potential)
 {
-    
+    // set source position
+    stokes_.SetSrcCoord(position_);
+    // set target position
+    PVFMMVec t_coord(COORD_DIM*num_target_points, target_address, false); 
+    stokes_.SetTrgCoord(&t_coord);
+
+    // set single layer density 
+    stokes_.SetDensitySL(NULL);
+    // set double layer density
+    stokes_.SetDensityDL(&density_);
+
+    // evaluate potential
+    PVFMMVec value(COORD_DIM*num_target_points, target_potential, false);
+    value = stokes_();
 }
       
 template<typename SurfContainer>
@@ -87,9 +145,11 @@ operator()(const Vec_t density, const Arr_t t_vel, const Arr_t r_vel,
 
     SphericalHarmonics<value_type>::SHC2Grid(DL_vel, sh_order_, sh_order_, vel_dl);
     */
+
     stokes_.SetDensitySL(NULL);
-    stokes_.SetDensityDL(density);
+    stokes_.SetDensityDL(&density);
     stokes_.SelfInteraction(potential);
+    axpy(0.5, density, potential, potential);
     
     // add stokeslet and rotlet evaluation
 
@@ -100,7 +160,10 @@ operator()(const Vec_t density, const Arr_t t_vel, const Arr_t r_vel,
 
     // integral of density cross (x-center)
     // TODO: should be -cm_
-    position_.getDevice().apx(cm_.begin(), position_.begin(), position_.getStride(), position_.getNumSubFuncs(), tmp2_.begin());
+    Arr_t cm_tmp;
+    cm_tmp.resize(cm_.size());
+    cm_tmp.getDevice().axpy(-1.0, cm_.begin(), NULL, cm_.size(), cm_tmp);
+    position_.getDevice().apx(cm_tmp.begin(), position_.begin(), position_.getStride(), position_.getNumSubFuncs(), tmp2_.begin());
     GeometricCross(tmp2_, density, tmp1_);
     //xv(weights_, tmp2_, tmp1_);
     tmp1_.getDevice().Reduce(tmp1_.begin(), tmp1_.getTheDim(), weights_.begin(), 

@@ -361,12 +361,6 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         }else if(time_adap==TimeAdapNone){ // No adaptive
             INFO("TimeAdapNone");
 
-            //update vesicle
-            pvfmm::Profile::Tic("JacobiStep",&comm,true);
-            CHK( (F_->*updater)(*S_, dt, dx) );
-            axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
-            pvfmm::Profile::Toc();
-            
             //update boundary
             INFO("Begin to solve boundary.");
             pvfmm::Profile::Tic("BoundarySolver",&comm,true);
@@ -374,6 +368,22 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             F_->fixed_bd->Solve();
             INFO("Boundary solved.");
             pvfmm::Profile::Toc();
+
+            //update vesicle
+            pvfmm::Profile::Tic("JacobiStep",&comm,true);
+            CHK( (F_->*updater)(*S_, dt, dx) );
+            axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            pvfmm::Profile::Toc();
+            
+/*
+            //update boundary
+            INFO("Begin to solve boundary.");
+            pvfmm::Profile::Tic("BoundarySolver",&comm,true);
+            F_->updateFarFieldBoundary();
+            F_->fixed_bd->Solve();
+            INFO("Boundary solved.");
+            pvfmm::Profile::Toc();
+*/
 
             t += dt;
         }

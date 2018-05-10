@@ -397,7 +397,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // parameters for gmres
     int iter(params_.time_iter_max);
-    int rsrt(100);
+    int rsrt(params_.time_iter_max);
     value_type tol(params_.time_tol),relres(params_.time_tol);
 
     Error_t ret_val(ErrorEvent::Success);
@@ -487,6 +487,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         sum_num_cvs_ = 0;
         num_cvs_ = 0;
         IV_.clear();
+        IS_BDV_.clear();
         vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
         std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
 
@@ -494,7 +495,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         {
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
-        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+        CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -574,13 +575,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ParallelCVJacobianTrans(col_lambda, *col_f);
         pvfmm::Profile::Toc();
         ///CVJacobianTrans(col_lambda, *col_f);
-        
-        // accumulate contact force to S_.fc_
-        INFO("accumulating contact force.");
-        //COUT("col_f: "<<(*col_f));
-        //COUT("S_.fc_: "<<S_.fc_);
-        axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
-        
+                
         // get displacement in u and tension due to contact force
         INFO("getting dx dtension update.");
         pvfmm::Profile::Tic("GetDx", &comm, true);
@@ -589,15 +584,33 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         
         // update velocity
         axpy(static_cast<value_type>(1.0), *col_dx, *x1, *x1);
-        // update tension
-        axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
       
         resolveCount++;
         INFO("Col iter#: "<<resolveCount);
         COUT("cvs: "<<cvs);
         COUT("lambda: "<<col_lambda);
       
-
+        // accumulate contact force to S_.fc_ and update tension
+        INFO("accumulating contact force.");
+        value_type is_bdv = 1;
+        for(int iv=0; iv<col_lambda.size(); iv++)
+        {
+            col_lambda.begin()[iv] *= IS_BDV_[iv];
+            is_bdv *= IS_BDV_[iv];
+        }
+        if(is_bdv)
+        {
+            INFO("no boundary vesicle contact.");
+            axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
+        }
+        else
+        {
+            INFO("there is boundary vesicle contact.");
+            ParallelCVJacobianTrans(col_lambda, *col_f);
+            GetDx(*col_dx,*col_tension,*col_f);
+            axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
+        }
+        axpy(static_cast<value_type>(1.0), *col_f, S_.fc_, S_.fc_);
 
         // test if still have contact
         //
@@ -622,14 +635,16 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         sum_num_cvs_ = 0;
         num_cvs_ = 0;
         IV_.clear();
+        IS_BDV_.clear();
         vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
         std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
 
         if(params_.periodic_length > 0)
         {
+            // TODO: add GetColPosAll(X_s, pos_s, pos_s_pole);
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
-        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+        CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -2049,6 +2064,8 @@ updateFarField() const
     Intfcl_force_.tensileForce(S_, tension_, *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     // add contact force
+    //S_.sht_.lowPassFilter(S_.fc_, *ui, *pos, *vel);
+    //axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
     // add gravity force
     Intfcl_force_.gravityForce(S_, S_.getPosition(), *vel);
@@ -2080,7 +2097,12 @@ updateFarField() const
     // boundary
     ShufflePoints(S_.getPosition(), *pos);
     vel_bd->setPointOrder(PointMajor);
+
+    MPI_Comm comm=MPI_COMM_WORLD;
+    pvfmm::Profile::Tic("BD evalpot", &comm, true);
     fixed_bd->EvalPotential(pos->size()/COORD_DIM, pos->begin(), vel_bd->begin());
+    pvfmm::Profile::Toc();
+
     ShufflePoints(*vel_bd, *vel);
     axpy(static_cast<value_type>(1.0), *vel, pos_vel_, pos_vel_);
     pos->setPointOrder(AxisMajor);      
@@ -2110,9 +2132,11 @@ updateFarFieldBoundary() const
     std::auto_ptr<Vec_t>        fi  = checkoutVec();
     std::auto_ptr<Vec_t>        ui  = checkoutVec();
     std::auto_ptr<Vec_t>        vel = checkoutVec();
+    std::auto_ptr<Vec_t>        pos = checkoutVec();
     fi->replicate(pos_vel_);
     ui->replicate(pos_vel_);
     vel->replicate(pos_vel_);
+    pos->replicate(pos_vel_);
 
     // add bending force
     Intfcl_force_.bendingForce(S_, *fi);
@@ -2120,6 +2144,8 @@ updateFarFieldBoundary() const
     Intfcl_force_.tensileForce(S_, tension_, *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     // add contact force
+    //S_.sht_.lowPassFilter(S_.fc_, *ui, *pos, *vel);
+    //axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
     // add gravity force
     Intfcl_force_.gravityForce(S_, S_.getPosition(), *vel);
@@ -2178,6 +2204,7 @@ updateFarFieldBoundary() const
     recycle(fi);
     recycle(ui);
     recycle(vel);
+    recycle(pos);
     
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -3259,8 +3286,9 @@ RemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
 
     int resolveCount = 0;
     std::vector<value_type> IV;
+    std::vector<value_type> IS_BDV;
     
-    CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+    CI_.getVolumeAndGradient(IV, IS_BDV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
             params_.min_sep_dist, params_.periodic_length);
     while(num_cvs_ > 0)
     {
@@ -3308,7 +3336,7 @@ RemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
 
-        CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+        CI_.getVolumeAndGradient(IV, IS_BDV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, params_.periodic_length);
     }
 
@@ -3354,6 +3382,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         sum_num_cvs_ = 0;
         num_cvs_ = 0;
         IV_.clear();
+        IS_BDV_.clear();
         vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
         std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
 
@@ -3361,7 +3390,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         {
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
-        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+        CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -3482,6 +3511,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         sum_num_cvs_ = 0;
         num_cvs_ = 0;
         IV_.clear();
+        IS_BDV_.clear();
         vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
         std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
 
@@ -3489,7 +3519,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         {
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
-        CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
+        CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -3872,7 +3902,7 @@ GetDx(Vec_t &col_dx, Sca_t &col_tension, const Vec_t &col_f) const
             //#pragma omp critical
             //{
                 int solver_ret = linear_solver_gmress_[omp_id](JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                        x_host, rhs_host, params_.time_tol*0.1, 0, N_size, params_.time_iter_max, 100, i_vesicle);
+                        x_host, rhs_host, params_.time_tol*0.1, 0, N_size, params_.time_iter_max, 200, i_vesicle);
             //}
 
             // copy host to device
@@ -4234,12 +4264,13 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                 // get contact of vesicle pair
                 int num_cvs = 0;
                 std::vector<value_type> IV;
+                std::vector<value_type> IS_BDV;
                 std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
                 std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
                 double t_check_start = omp_get_wtime();
                 //#pragma omp critical(detect)
                 {
-                    CI_pair->getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
+                    CI_pair->getVolumeAndGradient(IV, IS_BDV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
                             params_.min_sep_dist, params_.periodic_length);
                 }
                 double t_check_end = omp_get_wtime();
@@ -4320,12 +4351,13 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
                 // get contact of vesicle pair
                 int num_cvs = 0;
                 std::vector<value_type> IV;
+                std::vector<value_type> IS_BDV;
                 std::memset(&vgrad_pair[0], 0, vgrad_pair.size()*sizeof(vgrad_pair[0]));
                 std::memset(&vgrad_pair_ind[0], 0, vgrad_pair_ind.size()*sizeof(vgrad_pair_ind[0]));
                 double t_check_start = omp_get_wtime();
                 //#pragma omp critical(detect)
                 {
-                    CI_pair->getVolumeAndGradient(IV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
+                    CI_pair->getVolumeAndGradient(IV, IS_BDV, num_cvs, vgrad_pair, vgrad_pair_ind, x_s, x_e, &x_s_pole[0], &x_e_pole[0],
                             params_.min_sep_dist, params_.periodic_length);
                 }
                 double t_check_end = omp_get_wtime();
@@ -4520,6 +4552,7 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e) con
     sum_num_cvs_ = 0;
     num_cvs_ = 0;
     IV_.clear();
+    IS_BDV_.clear();
     vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
     std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
 
@@ -4527,7 +4560,7 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e) con
     {
         TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
     }
-    CI_bd_.getVolumeAndGradient(IV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0], 
+    CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0], 
             params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
     sum_num_cvs_ = num_cvs_;
     vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
@@ -4710,7 +4743,7 @@ ParallelFormLCPMatrixSparse(std::map<std::pair<size_t, size_t>, value_type> &lcp
             //#pragma omp critical
             //{
                 int solver_ret = linear_solver_gmress_[omp_id](JacobiImplicitApplyPerVesicle, JacobiImplicitPrecondPerVesicle, 
-                        x_host, rhs_host, params_.time_tol*0.1, 0, N_size, params_.time_iter_max, 100, i_vesicle);
+                        x_host, rhs_host, params_.time_tol*0.1, 0, N_size, params_.time_iter_max, 200, i_vesicle);
             //}
 
             // copy host to device

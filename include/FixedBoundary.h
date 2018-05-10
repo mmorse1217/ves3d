@@ -34,10 +34,12 @@ class FixedBoundary
       Vec solved_density;
       Vec solved_density_tmp;
       Vec boundary_data;
+      Vec boundary_flow;
 
       double* GetSamplePoints(int& num_sample_points);
       void SetBoundaryData(double* boundary_data_address);
       void SetTriData();
+      void SetBoundaryFlow();
   
       //Vec computed_potential;
       //Vec targets;

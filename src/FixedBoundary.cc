@@ -13,7 +13,8 @@ FixedBoundary()
     Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/hourglass.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/branch.wrl"); // branch
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/branch.wrl");
-    Options::set_value_petsc_opts("-bis3d_spacing", ".05");
+    Options::set_value_petsc_opts("-bis3d_spacing", ".1"); //hourglass
+    //Options::set_value_petsc_opts("-bis3d_spacing", ".05"); //large cube
     Options::set_value_petsc_opts("-bd3d_bdsurf_chttyp", "2");
     Options::set_value_petsc_opts("-bd3d_facemap_adaptive", "0");
     Options::set_value_petsc_opts("-bd3d_facemap_refinement_factor", "1");
@@ -73,6 +74,13 @@ FixedBoundary()
     tri_vertices_spacing = 0.1; //hourglass
     //tri_vertices_spacing = 0.1; //branch
     SetTriData();
+
+    // boundary flow
+    Petsc::create_mpi_vec(solver->mpiComm(),
+            total_num_dof,
+            boundary_flow);
+    VecSet(boundary_flow, 0.);
+    //SetBoundaryFlow(); // hourglass
 
     /*
     Vec computed_potential;
@@ -198,6 +206,7 @@ EvalPotential(int num_target_points, double* target_address, double* target_pote
         max_1 = std::max(max_1, std::abs(computed_local_1(0,i)-1) );
     }
 
+/*
     // test evaluate without computed closest points
     VecSet(computed_potential, 0);
     NumVec<OnSurfacePoint> closest_points_tmp(num_target_points);
@@ -208,6 +217,7 @@ EvalPotential(int num_target_points, double* target_address, double* target_pote
     {
         max_2 = std::max(max_2, std::abs(computed_local_2(0,i)-1) );
     }
+*/
 
     // test far eval
     VecSet(computed_potential, 0);
@@ -219,7 +229,7 @@ EvalPotential(int num_target_points, double* target_address, double* target_pote
         max_3 = std::max(max_3, std::abs(computed_local_3(0,i)-1) );
     }
     std::cout<<"constant density, evaluate, with closest points, error: "<<max_1<<".\n";
-    std::cout<<"constant density, evaluate, without closest points, error: "<<max_2<<".\n";
+    //std::cout<<"constant density, evaluate, without closest points, error: "<<max_2<<".\n";
     std::cout<<"constant density, fareval, error: "<<max_3<<".\n";
     //if(max_1>0.01)
         //abort();
@@ -292,6 +302,7 @@ SetBoundaryData(double* boundary_data_address)
     std::cout<<"sample num dof: "<<sample_dof<<"\n";
 
     VecSet(boundary_data, 0.);
+    VecAXPY(boundary_data, 1, boundary_flow);
     
     static int count_i = 0;
     if(count_i == 0)
@@ -312,6 +323,7 @@ SetBoundaryData(double* boundary_data_address)
         boundary_data_local(0,i)=boundary_data_address[i];
     }
     boundary_data_local.restore_local_vector();
+    VecAXPY(boundary_data, 1, boundary_flow);
 
     //output boundary data
     std::stringstream ss;
@@ -344,4 +356,46 @@ SetTriData()
             for(int d=0; d<COORD_DIM; ++d)
                 tri_vertices[COORD_DIM*pi*num_vertices_per_patch + COORD_DIM*i + d] = vertices(d,i);
     }
+}
+
+void FixedBoundary::
+SetBoundaryFlow()
+{
+    int sample_dof, pole_dof, total_num_dof;
+    solver->localSize(sample_dof,pole_dof,total_num_dof);
+
+    double* sample_points_address;
+    VecGetArray(solver->patch_samples()->sample_point_3d_position(), &sample_points_address);
+    int num_sample_points = solver->patch_samples()->local_num_sample_points();
+    
+    DblNumMat boundary_flow_local = get_local_vector(1, total_num_dof, boundary_flow);
+    for(int i=0; i<num_sample_points; i++)
+    {
+        if(fabs(sample_points_address[3*i+0]) <= 14)
+        {
+            boundary_flow_local(0,3*i+0)=0;
+            boundary_flow_local(0,3*i+1)=0;
+            boundary_flow_local(0,3*i+2)=0;
+        }
+        else
+        {
+            double r2 = sample_points_address[3*i+1]*sample_points_address[3*i+1] 
+                + sample_points_address[3*i+2]*sample_points_address[3*i+2];
+            double r2_max = 2.6*2.6;
+
+            if(r2>=r2_max)
+            {
+                boundary_flow_local(0,3*i+0)=0;
+                boundary_flow_local(0,3*i+1)=0;
+                boundary_flow_local(0,3*i+2)=0;
+            }
+            else
+            {
+                boundary_flow_local(0,3*i+0)=std::exp(1.0/(r2/r2_max-1))/std::exp(-1.0);
+                boundary_flow_local(0,3*i+1)=0;
+                boundary_flow_local(0,3*i+2)=0;
+            }
+        }
+    }
+    boundary_flow_local.restore_local_vector();
 }
