@@ -162,6 +162,10 @@ FixedBoundary::
 {
     if(tri_vertices)
         delete tri_vertices;
+    Petsc::destroy_vec(boundary_data);
+    Petsc::destroy_vec(solved_density);
+    Petsc::destroy_vec(solved_density_tmp);
+    Petsc::destroy_vec(boundary_flow);
 }
 
 void FixedBoundary::
@@ -205,6 +209,7 @@ EvalPotential(int num_target_points, double* target_address, double* target_pote
         //std::cout<<"evaluate with constant density: "<<computed_local_1(0,i)<<"\n";
         max_1 = std::max(max_1, std::abs(computed_local_1(0,i)-1) );
     }
+    computed_local_1.restore_local_vector();
 
 /*
     // test evaluate without computed closest points
@@ -217,6 +222,7 @@ EvalPotential(int num_target_points, double* target_address, double* target_pote
     {
         max_2 = std::max(max_2, std::abs(computed_local_2(0,i)-1) );
     }
+    computed_local_2.restore_local_vector();
 */
 
     // test far eval
@@ -228,12 +234,12 @@ EvalPotential(int num_target_points, double* target_address, double* target_pote
     {
         max_3 = std::max(max_3, std::abs(computed_local_3(0,i)-1) );
     }
+    computed_local_3.restore_local_vector();
     std::cout<<"constant density, evaluate, with closest points, error: "<<max_1<<".\n";
     //std::cout<<"constant density, evaluate, without closest points, error: "<<max_2<<".\n";
     std::cout<<"constant density, fareval, error: "<<max_3<<".\n";
-    //if(max_1>0.01)
-        //abort();
-    //
+    Petsc::destroy_vec(targets);
+    Petsc::destroy_vec(computed_potential);
 }
       
 void FixedBoundary::
@@ -290,6 +296,12 @@ GetSamplePoints(int& num_sample_points)
     num_sample_points = solver->patch_samples()->local_num_sample_points();
 
     return sample_points_address;
+}
+
+void FixedBoundary::
+RestoreSamplePoints(double **local_sample_points)
+{
+    VecRestoreArray(solver->patch_samples()->sample_point_3d_position(), local_sample_points);
 }
 
 void FixedBoundary::
@@ -398,4 +410,5 @@ SetBoundaryFlow()
         }
     }
     boundary_flow_local.restore_local_vector();
+    VecRestoreArray(solver->patch_samples()->sample_point_3d_position(), &sample_points_address);
 }

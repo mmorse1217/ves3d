@@ -37,6 +37,7 @@ class FixedBoundary
       Vec boundary_flow;
 
       double* GetSamplePoints(int& num_sample_points);
+      void RestoreSamplePoints(double **local_sample_points);
       void SetBoundaryData(double* boundary_data_address);
       void SetTriData();
       void SetBoundaryFlow();

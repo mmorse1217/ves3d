@@ -2064,9 +2064,9 @@ updateFarField() const
     Intfcl_force_.tensileForce(S_, tension_, *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     // add contact force
-    //S_.sht_.lowPassFilter(S_.fc_, *ui, *pos, *vel);
-    //axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
-    axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
+    S_.sht_.lowPassFilter(S_.fc_, *ui, *pos, *vel);
+    axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+    //axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
     // add gravity force
     Intfcl_force_.gravityForce(S_, S_.getPosition(), *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
@@ -2144,9 +2144,9 @@ updateFarFieldBoundary() const
     Intfcl_force_.tensileForce(S_, tension_, *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
     // add contact force
-    //S_.sht_.lowPassFilter(S_.fc_, *ui, *pos, *vel);
-    //axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
-    axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
+    S_.sht_.lowPassFilter(S_.fc_, *ui, *pos, *vel);
+    axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
+    //axpy(static_cast<value_type>(1.0), *fi, S_.fc_, *fi);
     // add gravity force
     Intfcl_force_.gravityForce(S_, S_.getPosition(), *vel);
     axpy(static_cast<value_type>(1.0), *fi, *vel, *fi);
@@ -2200,6 +2200,8 @@ updateFarFieldBoundary() const
         max_1 = std::max(max_1, std::abs(value[i]) );
     std::cout<<"vesicle to boundary constant dl density max error: "<<max_1<<"; number of dof: "<<value.Dim()<<"\n";
     //end test
+    
+    fixed_bd->RestoreSamplePoints(&target_address);
 
     recycle(fi);
     recycle(ui);
@@ -4533,8 +4535,32 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e) const
+ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e, 
+        const value_type *pos_bd, const int num_points_per_patch_1d, const int num_patches) const
 {
+    // TODO: test bounding box intersection call that generates correct BOXI-BOX pairs.
+    // get BOXI-BOX pairs from bounding box intersection call, BOXI and BOX can be boundary or vesicle.
+    // first index BOXI is always incident boundary or incident vesicle, 
+    // BOX can be ghost or incident boundary, vesicle.
+    // pairs are ordered, both i-j and j-i shoule be generated from bounding box intersection call
+    //
+    // "I" means incident vesicle or boundary, "G" means ghost vesicle or boundary(boundary<=>patch)
+    //
+    // split BOXI-BOX to B-VI, B-VG, V-BI, V-BG, V-VI, V-VG pairs
+    //
+    // first phase, do BI+BG with VI contact, form boundary contact list and vesicle contact list
+    // B-VI, add B to boundary list for contact, add VI to vesicle list for contact
+    // B-VG, send B to VG process
+    // V-BI, add V to vesicle list and BI to boundary list for contact, may duplicate with B-VI
+    // V-BG, receive BG and add BG to boundary list for contact
+    // V-VI, add V and VI to vesicle list for contact
+    // no communication is needed after contact detection since all vesicles in contact list are incident vesicle.
+    //
+    // second phase, do VI-VG contact, loop over all V_VG pairs if V>VG do contact
+    // V-VG, send V to VG's process if V<VG; on ther other side, receive VG if V>VG and add VG to vesicle contact list
+    // communication is needed after contact detection, send contact information to VG's process
+
+    /*
     int np_up = 2*params_.sh_order*(params_.sh_order+1);
     if(params_.col_upsample)
     {
@@ -4566,6 +4592,8 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e) con
     vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
             vgrad_.size() * sizeof(value_type),
             vgrad_.getDevice().MemcpyHostToDevice);
+    */
+    return ErrorEvent::Success;
 }
 
 template<typename SurfContainer, typename Interaction>
