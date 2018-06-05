@@ -161,6 +161,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     }
     // parallel bounding box intersection checker
     VBBI_ = new VesBoundingBox<value_type>(params_.periodic_length);
+    BDVBBI_ = new BDVesBoundingBox<value_type>(params_.periodic_length);
     // init the alltoallv send counter for lambda communication
     int npros;
     MPI_Comm comm = MPI_COMM_WORLD;
@@ -210,6 +211,7 @@ InterfacialVelocity<SurfContainer, Interaction>::
     delete parallel_rhs_;
     delete parallel_u_;
     delete VBBI_;
+    delete BDVBBI_;
     delete lcp_parallel_linear_solver_;
 
     for(typename std::map<int, Vec_t*>::iterator i=ghost_vgrad_.begin(); i!=ghost_vgrad_.end(); i++)
@@ -233,6 +235,9 @@ InterfacialVelocity<SurfContainer, Interaction>::
         delete x_host_;
     if(rhs_host_)
         delete rhs_host_;
+
+    if(CI_ves_bd_)
+        delete CI_ves_bd_;
     
     linear_solver_gmres_.clear();
 }
@@ -496,7 +501,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
         CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
-                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+                params_.min_sep_dist, fixed_bd->tri_vertices, nv_, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
@@ -645,7 +650,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
         CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
-                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+                params_.min_sep_dist, fixed_bd->tri_vertices, nv_, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
@@ -686,6 +691,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(dt_, *x1, dx);
     // set pos_vel_
     axpy(static_cast<value_type>(1.0), *x1, pos_vel_);
+    // TODO: update pos_vel_ so that pos_vel_ .* S_.fc_ = 0;
 
     // filter fc
     //sht_filter_high(S_.fc_, S_.fc_, &sht_, params_.rep_exponent);
@@ -1752,8 +1758,9 @@ JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value
     
     size_t vsz(F->stokesBlockSize()/F->nv_), tsz(F->tensionBlockSize()/F->nv_);
     
-    //Arr_t::getDevice().Memcpy(y, x, (vsz+tsz) * sizeof(value_type), device_type::MemcpyHostToHost);
+    Arr_t::getDevice().Memcpy(y, x, (vsz+tsz) * sizeof(value_type), device_type::MemcpyHostToHost);
 
+    /*
     std::auto_ptr<Vec_t> vox = F->checkoutVec();
     std::auto_ptr<Vec_t> vxs = F->checkoutVec();
     std::auto_ptr<Vec_t> wrk = F->checkoutVec();
@@ -1788,6 +1795,7 @@ JacobiImplicitPrecondPerVesicle(const GMRESLinSolver<value_type> *o, const value
     F->recycle(wrk);
     F->recycle(ten);
     F->recycle(tns);
+    */
 
     //PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -3393,7 +3401,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
         CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
-                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+                params_.min_sep_dist, fixed_bd->tri_vertices, nv_, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
@@ -3521,8 +3529,8 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         {
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
-        CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
-                params_.min_sep_dist, fixed_bd->tri_vertices, params_.periodic_length);
+        CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0], 
+                params_.min_sep_dist, fixed_bd->tri_vertices, nv_, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
@@ -4528,6 +4536,12 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
     ghost_ves_e.clear();
 
     // TODO clear ghost_vgrad_ and ghost_vgrad_ind_
+    for(typename std::map<int, Vec_t*>::iterator i=ghost_vgrad_.begin(); i!=ghost_vgrad_.end(); i++)
+        delete i->second;
+    ghost_vgrad_.clear();
+    for(std::map<int, std::vector<int>*>::iterator i=ghost_vgrad_ind_.begin(); i!=ghost_vgrad_ind_.end(); i++)
+        delete i->second;
+    ghost_vgrad_ind_.clear();
     pvfmm::Profile::Toc();
 
     return ErrorEvent::Success;
@@ -4556,10 +4570,502 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
     // V-VI, add V and VI to vesicle list for contact
     // no communication is needed after contact detection since all vesicles in contact list are incident vesicle.
     //
-    // second phase, do VI-VG contact, loop over all V_VG pairs if V>VG do contact
+    // second phase, do VI-VG contact, loop over all V-VG pairs if V>VG do contact
     // V-VG, send V to VG's process if V<VG; on ther other side, receive VG if V>VG and add VG to vesicle contact list
     // communication is needed after contact detection, send contact information to VG's process
+    //
+    //
 
+    int myrank, np;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &np);
+
+    // clear contact volume variables
+    pvfmm::Profile::Tic("ClearVariables", &comm, true);
+    sum_num_cvs_ = 0;
+    num_cvs_ = 0;
+    IV_.clear();
+    IS_BDV_.clear();
+    vgrad_.getDevice().Memset(vgrad_.begin(), 0, sizeof(value_type)*vgrad_.size());
+    std::memset(&vgrad_ind_[0], 0, vgrad_ind_.size()*sizeof(vgrad_ind_[0]));
+    for(typename std::map<int, Vec_t*>::iterator i=ghost_vgrad_.begin(); i!=ghost_vgrad_.end(); i++)
+        delete i->second;
+    ghost_vgrad_.clear();
+    for(std::map<int, std::vector<int>*>::iterator i=ghost_vgrad_ind_.begin(); i!=ghost_vgrad_ind_.end(); i++)
+        delete i->second;
+    ghost_vgrad_ind_.clear();
+    pvfmm::Profile::Toc();
+    // end of clear contact volume variables
+
+    // call BDVesBoundingBox get index pairs. 
+    // index order on each process first vesicle then boundary
+    int col_upsample_freq = params_.sh_order;
+    if(params_.col_upsample)
+    {
+        col_upsample_freq = params_.upsample_freq;
+    }
+    std::vector< std::pair<size_t, size_t> > BBIPairs;
+    pvfmm::Profile::Tic("SetBoundingBox", &comm, true);
+    BDVBBI_->SetBDVesBoundingBox(X_s, X_e, params_.min_sep_dist, X_s.getShOrder(), col_upsample_freq,
+            pos_bd, num_points_per_patch_1d, num_patches);
+    pvfmm::Profile::Toc();
+    pvfmm::Profile::Tic("GetBoundingBox", &comm, true);
+    BDVBBI_->GetContactBoundingBoxPair(BBIPairs);
+    pvfmm::Profile::Toc();
+    INFO("After getcontactbbpairs.");
+    // end of BDVesBoundingBox pairs
+
+    // split pairs into six lists of pairs
+    // now assums nv is same across all processes, also num_patches is same across all processes
+    size_t nv = X_s.getNumSubs();   // number of vesicle on this process
+    size_t npa = (size_t)num_patches;   // number of patches on this process
+    size_t nall = nv+npa;   // number of vesicles+patches on this process
+    std::vector< std::pair<size_t, size_t> > B_VI, B_VG, V_BI, V_BG, V_VI, V_VG;
+    for(size_t i_pair; i_pair<BBIPairs.size(); i_pair++)
+    {
+        size_t ind1 = BBIPairs[i_pair].first;   //always incident boundary or vesicle
+        size_t ind2 = BBIPairs[i_pair].second;  //can be incident or ghost boundary, ghost vesicle
+        bool first_bd = false; 
+        bool second_bd = false;
+        bool second_ghost = false;
+
+        size_t ind1_mod = ind1%nall;
+        size_t ind2_mod = ind2%nall;
+        if(ind1_mod>=nv)
+            first_bd=true;
+        if(ind2_mod>=nv)
+            second_bd=true;
+
+        assert( ind1>=nall*myrank && ind1<nall*(myrank+1) );
+
+        if( ind2<nall*myrank || ind2>=nall*(myrank+1) )
+            second_ghost = true;
+
+        if(first_bd)
+        {
+            if(second_bd)
+                continue;
+
+            if(second_ghost)
+                B_VG.push_back( std::make_pair(ind1, ind2) );
+            else
+                B_VI.push_back( std::make_pair(ind1, ind2) );
+        }
+        else
+        {
+            if(second_bd)
+            {
+                if(second_ghost)
+                    V_BG.push_back( std::make_pair(ind1, ind2) );
+                else
+                    V_BI.push_back( std::make_pair(ind1, ind2) );
+            }
+            else
+            {
+                if(second_ghost)
+                    V_VG.push_back( std::make_pair(ind1, ind2) );
+                else
+                    V_VI.push_back( std::make_pair(ind1, ind2) );
+            }
+        }
+    }
+    // end of split pairs
+    
+    // send and receive ghost boundary patches
+    pvfmm::Profile::Tic("BDdataComm", &comm, true);
+    // now assums nv is same across all processes, also num_patches is same across all processes
+
+    // vectors for send/receive boundary patch ids
+    pvfmm::Vector<int> sbd_cnt(np);
+    pvfmm::Vector<int> sbd_dsp(np);
+    pvfmm::Vector<int> rbd_cnt(np);
+    pvfmm::Vector<int> rbd_dsp(np);
+    std::vector<size_t> sbd_id;
+    std::vector<size_t> rbd_id;
+
+    // vectors to send/receive boundary coordinate
+    pvfmm::Vector<int> sbd_coord_cnt(np);
+    pvfmm::Vector<int> sbd_coord_dsp(np);
+    pvfmm::Vector<int> rbd_coord_cnt(np);
+    pvfmm::Vector<int> rbd_coord_dsp(np);
+
+    // get send pairs, send bid patch to pid process
+    std::vector< std::pair<size_t, size_t> > pid_bid;
+    for(size_t i=0; i<B_VG.size(); i++)
+    {
+        pid_bid.push_back( std::make_pair( floor(B_VG[i].second/nall), B_VG[i].first ) );
+    }
+    // sort by pid, and remove duplicate
+    std::sort(pid_bid.begin(), pid_bid.end());
+    pid_bid.erase(std::unique(pid_bid.begin(),pid_bid.end()), pid_bid.end());
+
+    // set send count for bid and boundary coordinate, set bd_id data to send
+    sbd_cnt.SetZero(); rbd_cnt.SetZero();
+    sbd_coord_cnt.SetZero(); rbd_coord_cnt.SetZero();
+    sbd_id.clear(); rbd_id.clear();
+    size_t bd_stride = num_points_per_patch_1d*num_points_per_patch_1d*COORD_DIM;
+    for(size_t i=0; i<pid_bid.size(); i++)
+    {
+        size_t pid = pid_bid[i].first;
+        sbd_cnt[pid]++;
+        sbd_coord_cnt[pid] += bd_stride;
+        sbd_id.push_back(pid_bid[i].second);
+    }
+
+    // all to all communication for receive count of bd id
+    MPI_Alltoall(&sbd_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &rbd_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    // all to all communication for receive count of bd coordinate
+    MPI_Alltoall(&sbd_coord_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &rbd_coord_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    // set displacement of sending and receiving count of bd id
+    sbd_dsp[0] = 0; pvfmm::omp_par::scan(&sbd_cnt[0], &sbd_dsp[0], sbd_cnt.Dim());
+    rbd_dsp[0] = 0; pvfmm::omp_par::scan(&rbd_cnt[0], &rbd_dsp[0], rbd_cnt.Dim());
+
+    // set displacement of sending and receiving count of bd coordinate
+    sbd_coord_dsp[0] = 0; pvfmm::omp_par::scan(&sbd_coord_cnt[0], &sbd_coord_dsp[0], sbd_coord_cnt.Dim());
+    rbd_coord_dsp[0] = 0; pvfmm::omp_par::scan(&rbd_coord_cnt[0], &rbd_coord_dsp[0], rbd_coord_cnt.Dim());
+
+    // total send size of bd id
+    size_t send_size_bd = sbd_cnt[np-1] + sbd_dsp[np-1];
+    // total receive size of bd id
+    size_t recv_size_bd = rbd_cnt[np-1] + rbd_dsp[np-1];
+
+    ASSERT(sbd_id.size() == send_size_bd, "Bad send bd size");
+    // init receive bd id data
+    rbd_id.resize(recv_size_bd, 0);
+
+    // send and receive bd's global id, local_id = global_id - myrank*nall - nv, local_id = [0, num_patches-1]
+    MPI_Alltoallv(&sbd_id[0], &sbd_cnt[0], &sbd_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &rbd_id[0], &rbd_cnt[0], &rbd_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+
+    // init variables for sending/receiving boundary coordinate
+    pvfmm::Vector<value_type> send_bd_coord, recv_bd_coord;
+    send_bd_coord.ReInit(send_size_bd*bd_stride);
+    recv_bd_coord.ReInit(recv_size_bd*bd_stride);
+
+    // prepare send coord
+    for(size_t i=0; i<sbd_id.size(); i++)
+    {
+        size_t local_i = sbd_id[i] - myrank*nall - nv;
+        ASSERT(local_i >= 0, "Bad local bd id");
+        ASSERT(local_i<num_patches, "Bad local bd id");
+        std::memcpy(&send_bd_coord[i*bd_stride], &pos_bd[local_i*bd_stride], sizeof(value_type)*bd_stride);
+    }
+
+    // send and received ghost bd coord
+    MPI_Alltoallv(&send_bd_coord[0], &sbd_coord_cnt[0], &sbd_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  &recv_bd_coord[0], &rbd_coord_cnt[0], &rbd_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  comm);
+    // end of send and receive ghost boundary patches
+    pvfmm::Profile::Toc();
+    // Do contact (VI)-(VI+Ball)
+
+
+    // send and receive ghost vesicles
+    pvfmm::Profile::Tic("VESdataComm", &comm, true);
+    // now assums nv is same across all processes, also num_patches is same across all processes
+    //
+    //
+    //
+    // data to send vesicle id: vid
+    pvfmm::Vector<int> sves_cnt(np);
+    pvfmm::Vector<int> sves_dsp(np);
+    pvfmm::Vector<int> rves_cnt(np);
+    pvfmm::Vector<int> rves_dsp(np);
+    std::vector<size_t> sves_id;
+    std::vector<size_t> rves_id;
+
+    // data to send vesicle coordinate
+    pvfmm::Vector<int> sves_coord_cnt(np);
+    pvfmm::Vector<int> sves_coord_dsp(np);
+    pvfmm::Vector<int> rves_coord_cnt(np);
+    pvfmm::Vector<int> rves_coord_dsp(np);
+
+    // get send pairs, send vid vesicle to pid process
+    std::vector< std::pair<size_t, size_t> > pid_vid;
+    for(size_t i=0; i<V_VG.size(); i++)
+    {
+        if( V_VG[i].first < V_VG[i].second)
+        {
+            // only send smaller vesicle id to process owns larger vesicle id
+            // avoid duplicate contact
+            pid_vid.push_back(std::make_pair(floor(V_VG[i].second/nall), V_VG[i].first));
+        }
+    }
+    // sort by pid, and remove duplicate
+    std::sort(pid_vid.begin(), pid_vid.end());
+    pid_vid.erase(std::unique(pid_vid.begin(),pid_vid.end()), pid_vid.end());
+    
+    // set send count for vid and vesicle coordinate, set ves_id data to send
+    sves_cnt.SetZero(); rves_cnt.SetZero();
+    sves_coord_cnt.SetZero(); rves_coord_cnt.SetZero();
+    sves_id.clear(); rves_id.clear();
+    size_t stride = X_s.getStride();
+    size_t ves_stride = stride*COORD_DIM;
+    for(size_t i=0; i<pid_vid.size(); i++)
+    {
+        sves_cnt[pid_vid[i].first]++;
+        sves_coord_cnt[pid_vid[i].first] += ves_stride;
+        sves_id.push_back(pid_vid[i].second);
+    }
+
+    // all to all communication for receive count of vesicle id
+    MPI_Alltoall(&sves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &rves_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    // all to all communication for receive count of vesicle coordinate
+    MPI_Alltoall(&sves_coord_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(),
+                 &rves_coord_cnt[0], 1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+
+    // set displacement of sending and receiving for vesicle id
+    sves_dsp[0] = 0; pvfmm::omp_par::scan(&sves_cnt[0], &sves_dsp[0], sves_cnt.Dim());
+    rves_dsp[0] = 0; pvfmm::omp_par::scan(&rves_cnt[0], &rves_dsp[0], rves_cnt.Dim());
+
+    // set displacement of sending and receiving for vesicle coordinate
+    sves_coord_dsp[0] = 0; pvfmm::omp_par::scan(&sves_coord_cnt[0], &sves_coord_dsp[0], sves_coord_cnt.Dim());
+    rves_coord_dsp[0] = 0; pvfmm::omp_par::scan(&rves_coord_cnt[0], &rves_coord_dsp[0], rves_coord_cnt.Dim());
+
+    // total send size of vesicle id
+    size_t send_size_ves = sves_cnt[np-1] + sves_dsp[np-1];
+    // total receive size of vesicle id
+    size_t recv_size_ves = rves_cnt[np-1] + rves_dsp[np-1];
+    
+    ASSERT(sves_id.size() == send_size_ves, "Bad send ves size");
+    // init receive id data
+    rves_id.resize(recv_size_ves, 0);
+    
+    // send and receive ghost vesicles' global id, local_id = global_id - myrank*nall, local_id = [0, nv-1]
+    // TODO replace with Mpi_Alltoallv_sparse
+    MPI_Alltoallv(&sves_id[0], &sves_cnt[0], &sves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
+                  &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
+
+    // init variables for sending, receiving vesicle coordinate
+    pvfmm::Vector<value_type> send_ves_coord_s, send_ves_coord_e;
+    pvfmm::Vector<value_type> recv_ves_coord_s, recv_ves_coord_e;
+    send_ves_coord_s.ReInit(send_size_ves*ves_stride);
+    send_ves_coord_e.ReInit(send_size_ves*ves_stride);
+    recv_ves_coord_s.ReInit(recv_size_ves*ves_stride);
+    recv_ves_coord_e.ReInit(recv_size_ves*ves_stride);
+
+    // prepare send coord
+    for(size_t i=0; i<sves_id.size(); i++)
+    {
+        size_t local_i = sves_id[i] - myrank*nall;
+        ASSERT(local_i >= 0, "Bad local ves id size");
+        ASSERT(local_i < nv, "Bad local ves id size");
+        
+        std::memcpy(&send_ves_coord_s[i*ves_stride], &X_s.begin()[local_i*ves_stride], sizeof(value_type)*ves_stride);
+        std::memcpy(&send_ves_coord_e[i*ves_stride], &X_e.begin()[local_i*ves_stride], sizeof(value_type)*ves_stride);
+
+        /*
+        for(size_t k=0; k<COORD_DIM; k++)
+        {
+            for(size_t j=0; j<stride; j++)
+            {
+                send_ves_coord_s[i*stride*COORD_DIM + k*stride + j] = 
+                    X_s.begin()[local_i*stride*COORD_DIM + k*stride + j];
+                send_ves_coord_e[i*stride*COORD_DIM + k*stride + j] = 
+                    X_e.begin()[local_i*stride*COORD_DIM + k*stride + j];
+            }
+        }
+        */
+    }
+    
+    // send and receive ghost vesicles' coord
+    // TODO replace with Mpi_Alltoallv_sparse
+    MPI_Alltoallv(&send_ves_coord_s[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  &recv_ves_coord_s[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  comm);    
+    MPI_Alltoallv(&send_ves_coord_e[0], &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(),
+                  &recv_ves_coord_e[0], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                  comm);
+    //
+    //
+    // end of send and receive ghost vesicles
+    pvfmm::Profile::Toc();
+    // Do contact VI-VG
+    
+    pvfmm::Profile::Tic("ContactCall", &comm, true);
+    //local contact detection
+    // resident vesicle and boundary patch list
+    std::vector<size_t> v_resident;
+    std::vector<size_t> bd_resident;
+    for(size_t i=0; i<V_VI.size(); i++)
+    {
+        if(V_VI[i].first < V_VI[i].second)
+            continue;
+
+        int local_v_i1 = V_VI[i].first - myrank*nall;
+        int local_v_i2 = V_VI[i].second - myrank*nall;
+
+        assert(local_v_i1>=0);
+        assert(local_v_i1<nv);
+        assert(local_v_i2>=0);
+        assert(local_v_i2<nv);
+
+        v_resident.push_back(local_v_i1);
+        v_resident.push_back(local_v_i2);
+    }
+    for(size_t i=0; i<V_VG.size(); i++)
+    {
+        if(V_VG[i].first < V_VG[i].second)
+            continue;
+        int local_v_i = V_VG[i].first - myrank*nall;
+        assert(local_v_i>=0);
+        assert(local_v_i<nv);
+        v_resident.push_back(local_v_i);
+    }
+    for(size_t i=0; i<V_BG.size(); i++)
+    {
+        int local_v_i = V_BG[i].first - myrank*nall;
+        assert(local_v_i>=0);
+        assert(local_v_i<nv);
+        v_resident.push_back(local_v_i);
+    }
+    for(size_t i=0; i<V_BI.size(); i++)
+    {
+        int local_v_i = V_BI[i].first - myrank*nall;
+        int local_bd_i = V_BI[i].second - myrank*nall - nv;
+        assert(local_v_i>=0);
+        assert(local_v_i<nv);
+        assert(local_bd_i>=0);
+        assert(local_bd_i<num_patches);
+        v_resident.push_back(local_v_i);
+        bd_resident.push_back(local_bd_i);
+    }
+    std::sort(v_resident.begin(), v_resident.end());
+    std::sort(bd_resident.begin(), bd_resident.end());
+    v_resident.erase(std::unique(v_resident.begin(), v_resident.end()), v_resident.end());
+    bd_resident.erase(std::unique(bd_resident.begin(), bd_resident.end()), bd_resident.end());
+    
+    // copy data
+    static int c_nv_prev = 0;
+    static int c_nbd_prev = 0;
+    int c_nv = v_resident.size() + recv_size_ves;
+    int c_nbd = bd_resident.size() + recv_size_bd;
+    Vec_t v_pos_s(c_nv, X_s.getShOrder());
+    Vec_t v_pos_e(c_nv, X_e.getShOrder());
+    size_t ves_stride_up = 2*col_upsample_freq*(col_upsample_freq+1)*COORD_DIM;
+    std::vector<value_type> v_pos_up_s(c_nv*ves_stride_up);
+    std::vector<value_type> v_pos_up_e(c_nv*ves_stride_up);
+    pvfmm::Vector<value_type> v_pos_up_s_pole, v_pos_up_e_pole;
+    pvfmm::Vector<value_type> bd_coord;
+    bd_coord.ReInit(c_nbd*bd_stride);
+    std::vector<value_type> vgrad(v_pos_up_s.size(), 0);
+    std::vector<int> vgrad_ind(v_pos_up_s.size(), 0);
+
+    if(v_resident.size()!=0)
+    {
+        // vesicles
+        for(size_t i=0; i<v_resident.size(); i++)
+        {
+            size_t local_v_i = v_resident[i];
+            v_pos_s.getDevice().Memcpy(v_pos_s.begin()[i*ves_stride], X_s.begin()[local_v_i*ves_stride], 
+                    ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
+            v_pos_e.getDevice().Memcpy(v_pos_e.begin()[i*ves_stride], X_e.begin()[local_v_i*ves_stride],
+                    ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
+        }
+        v_pos_s.getDevice().Memcpy(v_pos_s.begin()[v_resident.size()*ves_stride], &recv_ves_coord_s[0],
+                    recv_size_ves*ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
+        v_pos_e.getDevice().Memcpy(v_pos_e.begin()[v_resident.size()*ves_stride], &recv_ves_coord_e[0],
+                    recv_size_ves*ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
+        GetColPosAll(v_pos_s, v_pos_up_s, v_pos_up_s_pole);
+        GetColPosAll(v_pos_e, v_pos_up_e, v_pos_up_e_pole);
+        // boundary pathces
+        for(size_t i=0; i<bd_resident.size(); i++)
+        {
+            size_t local_bd_i = bd_resident[i];
+            memcpy(&bd_coord[0]+i*bd_stride, &pos_bd[local_bd_i*bd_stride], bd_stride*sizeof(value_type));
+        }
+        memcpy(&bd_coord[0]+bd_resident.size()*bd_stride, &recv_bd_coord[0], recv_size_bd*bd_stride*sizeof(value_type));
+
+        // call contact detection
+        if(c_nv != c_nv_prev || c_nbd != c_nbd_prev)
+        {
+            if(CI_ves_bd_)
+                delete CI_ves_bd_;
+            CI_ves_bd_ = new ContactInterfaceBoundary();
+            CI_ves_bd_->generateMesh(v_pos_up_s, &v_pos_up_s_pole[0], col_upsample_freq, c_nv, 
+                    &bd_coord[0], num_points_per_patch_1d, c_nbd);
+            CI_ves_bd_->init(SURF_SIMPLE);
+        }
+        CI_ves_bd_->getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vgrad, vgrad_ind, 
+                v_pos_up_s, v_pos_up_e, &v_pos_up_s_pole[0], &v_pos_up_e_pole[0],
+                params_.min_sep_dist, &bd_coord[0], v_resident.size(), params_.periodic_length);
+        c_nv_prev = c_nv; c_nbd_prev = c_nbd;
+    }
+    pvfmm::Profile::Toc();
+    
+    // update vgrad_ind to global vgrad_ind
+    pvfmm::Profile::Tic("UpdateVGID", &comm, true);
+    int cv_id_disp;
+    int num_cvs_myrank = num_cvs_;
+    // scan displacement of cvid to update cvid to global cvid
+    MPI_Scan(&num_cvs_myrank, &cv_id_disp, 1, MPI_INT, MPI_SUM, comm);
+    cv_id_disp = cv_id_disp - num_cvs_myrank;
+    // scan global number of cvs
+    MPI_Allreduce(&num_cvs_myrank, &sum_num_cvs_, 1, MPI_INT, MPI_SUM, comm);
+    if(num_cvs_myrank > 0)
+    {
+        // update vgrad_ind_
+        UpdateVgradInd(&vgrad_ind[0], &vgrad_ind[0], cv_id_disp, vgrad_ind.size());
+    }
+    pvfmm::Profile::Toc();
+
+    //copy vgrad and vgrad_ind to vgrad_ and vgrad_ind_
+    for(size_t i=0; i<v_resident.size(); i++)
+    {
+        size_t local_v_i = v_resident[i];
+        vgrad_.getDevice().Memcpy(vgrad_.begin()[local_v_i*ves_stride_up], &vgrad[i*ves_stride_up], 
+                ves_stride_up*sizeof(value_type), device_type::MemcpyHostToDevice);
+    
+        memcpy(&vgrad_ind_[local_v_i*ves_stride_up], &vgrad_ind[i*ves_stride_up], 
+                ves_stride_up*sizeof(int));
+    }
+
+
+    // Send back ghost vesicle vgrad and vgrad_ind
+    send_ves_coord_s.ReInit(send_size_ves*ves_stride_up);
+    pvfmm::Vector<int> send_ves_ind;
+    send_ves_ind.ReInit(send_size_ves*ves_stride_up);
+    for(size_t i=0; i<np; i++)
+    {
+        rves_coord_cnt[i] = rves_coord_cnt[i]/ves_stride*ves_stride_up;
+        rves_coord_dsp[i] = rves_coord_dsp[i]/ves_stride*ves_stride_up;
+        sves_coord_cnt[i] = sves_coord_cnt[i]/ves_stride*ves_stride_up;
+        sves_coord_dsp[i] = sves_coord_dsp[i]/ves_stride*ves_stride_up;
+    }
+    size_t ghost_start_index = v_resident.size()*ves_stride_up;
+    MPI_Alltoallv(&vgrad[ghost_start_index], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                 &send_ves_coord_s[0],       &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<value_type>::value(), 
+                 comm);
+    MPI_Alltoallv(&vgrad_ind[ghost_start_index], &rves_coord_cnt[0], &rves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(), 
+                 &send_ves_ind[0],               &sves_coord_cnt[0], &sves_coord_dsp[0], pvfmm::par::Mpi_datatype<int>::value(), 
+                 comm);
+
+    // update vgrad and vgrad_ind 
+    Vec_t vgrad1(1, col_upsample_freq), vgrad2(1, col_upsample_freq);
+    for(size_t i=0; i<sves_id.size(); i++)
+    {
+        size_t local_v_i = sves_id[i] - myrank*nall;
+        assert(local_v_i >= 0);
+        assert(loval_v_i < nv);
+
+        vgrad1.getDevice().Memcpy(vgrad1.begin(), &send_ves_coord_s[i*ves_stride_up],
+                ves_stride_up*sizeof(value_type), device_type::MemcpyHostToDevice);
+        vgrad2.getDevice().Memcpy(vgrad2.begin(), &vgrad_.begin()[local_v_i*ves_stride_up],
+                ves_stride_up*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+        axpy(static_cast<value_type>(1.0), vgrad1, vgrad2, vgrad1);
+
+        vgrad1.getDevice().Memcpy(&vgrad_.begin()[local_v_i*ves_stride_up], vgrad1.begin(), 
+                ves_stride_up*sizeof(value_type), device_type::MemcpyDeviceToDevice);
+        UpdateVgradInd(&vgrad_ind_[local_v_i*ves_stride_up], &send_ves_ind[i*ves_stride_up], 0, ves_stride_up);
+    }
+    
     /*
     int np_up = 2*params_.sh_order*(params_.sh_order+1);
     if(params_.col_upsample)

@@ -26,7 +26,7 @@ BDVesBoundingBox<Real_t>::BDVesBoundingBox(Real_t box_size, MPI_Comm c){
 template<typename Real_t>
 void BDVesBoundingBox<Real_t>::SetBDVesBoundingBox(const PVFMMVec_t& ves_coord_s, const PVFMMVec_t& ves_coord_e,
         const Real_t min_sep, const int sh_order, const int sh_order_up, 
-        const Real_t *pos_bd, const int num_points_per_patch_1d, const int num_patches);
+        const Real_t *pos_bd, const int num_points_per_patch_1d, const int num_patches)
 {
     // upsample position and get and poles
     static PVFMMVec_t shc_coef, ves_coord_s_up, ves_coord_e_up, ves_coord_pole_s, ves_coord_pole_e;
@@ -130,7 +130,7 @@ template<typename Real_t>
 template<typename Vec>
 void BDVesBoundingBox<Real_t>::SetBDVesBoundingBox(const Vec& ves_coord_s, const Vec& ves_coord_e, 
         const Real_t min_sep, const int sh_order, const int sh_order_up, 
-        const Real_t *pos_bd, const int num_points_per_patch_1d, const int num_patches);
+        const Real_t *pos_bd, const int num_points_per_patch_1d, const int num_patches)
 {
     // calculate the bounding boxes for vesicles with start, end position and min_sep
     PVFMMVec_t ves_coord_s_pvfmm(ves_coord_s.size(), (Real_t*)ves_coord_s.begin(), false);
@@ -915,6 +915,10 @@ void BDVesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::
                 FLOP+=tcnt*tcnt*10;
             }
         }
+
+        std::sort(near_pair.begin(),near_pair.end());
+        near_pair.erase(std::unique(near_pair.begin(), near_pair.end()), near_pair.end());
+
         pvfmm::Profile::Add_FLOP(FLOP);
     }
 

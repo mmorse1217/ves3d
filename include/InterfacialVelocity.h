@@ -24,6 +24,7 @@
 //#include <boost/container/map.hpp>
 #include <map>
 #include "VesBoundingBox.h"
+#include "BDVesBoundingBox.h"
 #include "ParallelLinSolver_Petsc.h"
 #include "FixedBoundary.h"
 
@@ -215,6 +216,7 @@ class InterfacialVelocity
     
     //Contact
     mutable ContactInterfaceBoundary CI_bd_;
+    mutable ContactInterfaceBoundary* CI_ves_bd_;
     mutable ContactInterface CI_;
     mutable ContactInterface CI_pair_;
     mutable std::vector<ContactInterface*> CI_pairs_;
@@ -229,6 +231,7 @@ class InterfacialVelocity
     mutable std::vector<SurfContainer*> S_is_;
     mutable std::vector<int> contact_vesicle_list_;
     mutable VesBoundingBox<value_type> *VBBI_;
+    mutable BDVesBoundingBox<value_type> *BDVBBI_;
     mutable pvfmm::Vector<int> s_ind_cnt_, s_ind_dsp_, r_ind_cnt_, r_ind_dsp_;
     mutable std::vector<size_t> s_ind_, r_ind_;
     mutable std::vector<value_type> s_value_, r_value_;
