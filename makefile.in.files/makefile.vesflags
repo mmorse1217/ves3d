@@ -15,7 +15,7 @@ else ifeq ($(strip ${VES3D_VERBOSE}),1)
 endif
 
 ifeq ($(strip ${VES3D_DEBUG}),no)
-  CXXFLAGS += -DNDEBUG
+  #CXXFLAGS += -DNDEBUG
 endif
 
 ifeq ($(strip ${VES3D_PERC}),SINGLE)

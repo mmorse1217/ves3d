@@ -53,8 +53,8 @@ HEDGEHOG_INC = -I/usr/include -I${HEDGEHOG_DIR}/src/ ${DEPS_INC:%=-I%}
 HEDGEHOG_LIB = -L${HEDGEHOG_DIR}/lib ${DEPS_LIB:%=-L%} ${DEPS_LIB_FLAGS}
 #
 
-LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.1.126/mac/compiler/lib
-LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.1.126/mac/mkl/lib
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.2.164/mac/compiler/lib
+LDFLAGS += -L/opt/intel/compilers_and_libraries_2018.2.164/mac/mkl/lib
 LDFLAGS += -L/Users/libinlu/Documents/Projects/ves3d/contact3d/lib
 LDFLAGS += -L/usr/local/Cellar/fftw/3.3.5/lib
 LDFLAGS += -L/usr/local/Cellar/cgal/4.9/lib
@@ -64,11 +64,14 @@ LDLIBS += -lCGAL -lgmp -llapack -liagm ${HEDGEHOG_LIB} # -liomp5
 
 EIGEN_INC := /opt/local/include/eigen3
 CONTACT_INC := /Users/libinlu/Documents/Projects/ves3d/contact3d/inc
-CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) ${HEDGEHOG_INC} -std=c++11 -fabi-version=6 -fpermissive
+CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) ${HEDGEHOG_INC} -I${MKL_INC}
 #
 
 # targets of install
 VES3D_BINS = ves3d
+
+print-%:
+	@echo '$*=$($*)'
 
 all: install
 

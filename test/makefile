@@ -65,7 +65,12 @@ CXXFLAGS += -I$(EIGEN_INC) -I$(CONTACT_INC) ${HEDGEHOG_INC} -std=c++11 -fabi-ver
 #
 
 
-TEST = RigidTest.exe 
+TEST = test.exe \
+       BoundingBoxGridTest.exe \
+       #RigidTest.exe \
+       #LargeCubeTestData.exe \
+       #RigidTest.exe \
+       #HourglassTestData.exe \
        #ExtenTestData.exe \
        #ShearTestData3.exe \
 
