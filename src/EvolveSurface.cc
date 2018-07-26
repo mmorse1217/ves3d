@@ -373,6 +373,37 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             pvfmm::Profile::Tic("JacobiStep",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+            /*
+            Vec_t centers;
+            centers.replicate(S_->getPosition());
+            Sca_t::getDevice().Memset(centers.begin(), 0, centers.size()*sizeof(value_type));
+            S_->getCenters(centers);
+            
+            for(int i=0; i<centers.getNumSubs(); i++)
+            {
+                std::cout<<centers.begin()[i*VES3D_DIM+0]<<"\n";
+            }
+
+            for(int i=0; i<centers.getNumSubs(); i++)
+            {
+                if(centers.begin()[i*VES3D_DIM+0] > 12)
+                {
+                    int stride = centers.getStride();
+                    int base = i*VES3D_DIM*stride;
+                    for(int j=0; j<stride; j++)
+                        S_->getPositionModifiable().begin()[base+j] -= 24;
+                }
+                
+                if(centers.begin()[i*VES3D_DIM+0] < -12)
+                {
+                    int stride = centers.getStride();
+                    int base = i*VES3D_DIM*stride;
+                    for(int j=0; j<stride; j++)
+                        S_->getPositionModifiable().begin()[base+j] += 24;
+                }
+
+            }
+            */
             pvfmm::Profile::Toc();
             
 /*

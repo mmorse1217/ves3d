@@ -11,6 +11,8 @@ FixedBoundary()
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cube_large.wrl");
     Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/hourglass.wrl"); // hourglass
     Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/hourglass.wrl");
+    //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/cuboid.wrl"); // hourglass
+    //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cuboid.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/branch.wrl"); // branch
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/branch.wrl");
     Options::set_value_petsc_opts("-bis3d_spacing", ".1"); //hourglass
@@ -28,6 +30,7 @@ FixedBoundary()
     surface->setup();
     surface->_coarse = true;
     surface->refine_test();
+    //surface->refine_uniform(2);
     std::cout<<"surface refine\n";
     //test_constant_boundary_data(surface.get(),true);
     //

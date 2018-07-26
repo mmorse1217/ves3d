@@ -440,8 +440,17 @@ getCenters(Vec_t &centers) const
 
     scw = checkoutSca();
     scw->replicate(centers);
+
+    scw->getDevice().Memset(scw->begin(), 0, scw->size()*sizeof(value_type));
+
     volume(*scw);
-    uyInv(centers, *scw, centers);
+    //uyInv(centers, *scw, centers);
+    for(int i=0; i<scw->getNumSubs(); i++)
+    {
+        for(int j=0; j<VES3D_DIM; j++)
+            centers.begin()[i*VES3D_DIM+j] /= scw->begin()[i];
+    }
+
     recycle(scw);
     PROFILEEND("",0);
 }

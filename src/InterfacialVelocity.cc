@@ -194,6 +194,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     size_t N_size = vsz+tsz;
     x_host_ = new value_type[N_size];
     rhs_host_ = new value_type[N_size];
+    CI_ves_bd_ = nullptr;
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -372,6 +373,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     std::auto_ptr<Vec_t> f1 = checkoutVec();
     std::auto_ptr<Vec_t> b1 = checkoutVec();
     std::auto_ptr<Vec_t> xtmp = checkoutVec();
+    std::auto_ptr<Vec_t> xstart = checkoutVec();
     std::auto_ptr<Sca_t> b2 = checkoutSca();
     
     // resize
@@ -379,6 +381,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     f1->replicate(S_.getPosition());
     b1->replicate(S_.getPosition());
     xtmp->replicate(S_.getPosition());
+    xstart->replicate(S_.getPosition());
     b2->replicate(tension_);
     
     // initial guess
@@ -476,16 +479,16 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
             u2->replicate(S_up_->getPosition());
 
             axpy(static_cast<value_type>(-0.0002), S_up_->getNormal(), S_up_->getPosition(), S_up_->getPositionModifiable());
-            Resample(S_up_->getPositionModifiable(), sht_upsample_, sht_, *u1, *u2, *xtmp);
+            Resample(S_up_->getPositionModifiable(), sht_upsample_, sht_, *u1, *u2, *xstart);
 
             recycle(u1);
             recycle(u2);
         }
         else
         {
-            axpy(static_cast<value_type>(-0.0002), S_.getNormal(), S_.getPosition(), *xtmp);
+            axpy(static_cast<value_type>(-0.0002), S_.getNormal(), S_.getPosition(), *xstart);
         }
-        GetColPosAll(*xtmp, pos_s, pos_s_pole);
+        GetColPosAll(*xstart, pos_s, pos_s_pole);
         axpy(dt_, *x1, S_.getPosition(), *xtmp);
         GetColPosAll(*xtmp, pos_e, pos_e_pole);
 
@@ -500,13 +503,20 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         {
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
+        /*
         CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, fixed_bd->tri_vertices, nv_, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
                 vgrad_.getDevice().MemcpyHostToDevice);
+        */
         // end of sequential code
+        
+        // new parallel code with boundary
+        ParallelGetVolumeAndGradientWithBoundary(*xstart, *xtmp, 
+                fixed_bd->tri_vertices, fixed_bd->num_vertices_per_patch_1d, fixed_bd->num_patches);
+        // end of new parallel code with boundary
     //}
         
     // prepare
@@ -649,12 +659,14 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
             // TODO: add GetColPosAll(X_s, pos_s, pos_s_pole);
             TransferVesicle(pos_s, pos_e, pos_s_pole, pos_e_pole);
         }
+        /*
         CI_bd_.getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
                 params_.min_sep_dist, fixed_bd->tri_vertices, nv_, params_.periodic_length);
         sum_num_cvs_ = num_cvs_;
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
                 vgrad_.getDevice().MemcpyHostToDevice);
+        */
 
         ///GetColPos(*xtmp, pos_e, pos_e_pole);
         ///if(params_.periodic_length > 0)
@@ -665,6 +677,12 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         ///CI_.getVolumeAndGradient(IV, num_cvs_, vGrad, vgrad_ind_, pos_s, pos_e, &pos_s_pole[0], &pos_e_pole[0],
         ///        params_.min_sep_dist, params_.periodic_length);
         // end of old code sequential
+        
+        // new parallel contact 
+        ParallelGetVolumeAndGradientWithBoundary(*xstart, *xtmp, 
+                fixed_bd->tri_vertices, fixed_bd->num_vertices_per_patch_1d, fixed_bd->num_patches);
+        // end of new parallel contact
+
         INFO("after getvolume");
     }
     pvfmm::Profile::Toc();
@@ -711,6 +729,7 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     recycle(b1);
     recycle(b2);
     recycle(xtmp);
+    recycle(xstart);
 
     PROFILEEND("",0);
     return ret_val;
@@ -3378,6 +3397,10 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
     //if(params_.min_sep_dist>0)
     //{
         //ParallelGetVolumeAndGradient(x_old, *xwrk);
+        ParallelGetVolumeAndGradientWithBoundary(x_old, *xwrk, 
+                fixed_bd->tri_vertices, fixed_bd->num_vertices_per_patch_1d, fixed_bd->num_patches);
+
+        /*
         int np_up = 2*params_.sh_order*(params_.sh_order+1);
         if(params_.col_upsample)
             np_up = 2*params_.upsample_freq*(params_.upsample_freq+1);
@@ -3406,6 +3429,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
                 vgrad_.getDevice().MemcpyHostToDevice);
+        */
     //}
     /*
     if(sum_num_cvs_>0 && params_.min_sep_dist>0 && params_.col_upsample)
@@ -3514,8 +3538,11 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         //COUT(awrk);
         //COUT("Norm of vgrad: " << AlgebraicDot(vgrad_, vgrad_));
         
-        //ParallelGetVolumeAndGradient(x_old, *xwrk);
+        //ParallelGetVolumeAndGradient(x_old, *xwrk);i
+        ParallelGetVolumeAndGradientWithBoundary(x_old, *xwrk, 
+                fixed_bd->tri_vertices, fixed_bd->num_vertices_per_patch_1d, fixed_bd->num_patches);
 
+        /*
         GetColPosAll(*xwrk, pos_e, pos_e_pole);
 
         sum_num_cvs_ = 0;
@@ -3535,7 +3562,7 @@ ParallelRemoveContactSimple(Vec_t &u1, const Vec_t &x_old) const
         vgrad_.getDevice().Memcpy(vgrad_.begin(), &vGrad.front(), 
                 vgrad_.size() * sizeof(value_type),
                 vgrad_.getDevice().MemcpyHostToDevice);
-
+        */
     }
 
     u1.getDevice().Memcpy(u1.begin(), xwrk->begin(), u1.size()*sizeof(value_type), device_type::MemcpyDeviceToDevice);
@@ -4549,7 +4576,7 @@ ParallelGetVolumeAndGradient(const Vec_t &X_s, const Vec_t &X_e) const
 
 template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
-ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e, 
+ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e, 
         const value_type *pos_bd, const int num_points_per_patch_1d, const int num_patches) const
 {
     // TODO: test bounding box intersection call that generates correct BOXI-BOX pairs.
@@ -4626,6 +4653,7 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
     {
         size_t ind1 = BBIPairs[i_pair].first;   //always incident boundary or vesicle
         size_t ind2 = BBIPairs[i_pair].second;  //can be incident or ghost boundary, ghost vesicle
+        COUT("pairs: "<<ind1<<", "<<ind2<<", nall: "<<nall);
         bool first_bd = false; 
         bool second_bd = false;
         bool second_ghost = false;
@@ -4670,6 +4698,22 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
             }
         }
     }
+    COUT("B_VI");
+    for(int i=0; i<B_VI.size(); i++)
+    {
+        COUT("B_VI: "<<B_VI[i].first<<", "<<B_VI[i].second);
+    }
+    COUT("V_VI");
+    for(int i=0; i<V_VI.size(); i++)
+    {
+        COUT("V_VI: "<<V_VI[i].first<<", "<<V_VI[i].second);
+    }
+    COUT("V_BI");
+    for(int i=0; i<V_BI.size(); i++)
+    {
+        COUT("V_BI: "<<V_BI[i].first<<", "<<V_BI[i].second);
+    }
+    COUT(B_VG.size()<<", "<<V_VG.size()<<", "<<V_BG.size());
     // end of split pairs
     
     // send and receive ghost boundary patches
@@ -4960,18 +5004,19 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
 
     if(v_resident.size()!=0)
     {
+        COUT("v_resident: "<<v_resident.size());
         // vesicles
         for(size_t i=0; i<v_resident.size(); i++)
         {
             size_t local_v_i = v_resident[i];
-            v_pos_s.getDevice().Memcpy(v_pos_s.begin()[i*ves_stride], X_s.begin()[local_v_i*ves_stride], 
+            v_pos_s.getDevice().Memcpy(&v_pos_s.begin()[i*ves_stride], &X_s.begin()[local_v_i*ves_stride], 
                     ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
-            v_pos_e.getDevice().Memcpy(v_pos_e.begin()[i*ves_stride], X_e.begin()[local_v_i*ves_stride],
+            v_pos_e.getDevice().Memcpy(&v_pos_e.begin()[i*ves_stride], &X_e.begin()[local_v_i*ves_stride],
                     ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
         }
-        v_pos_s.getDevice().Memcpy(v_pos_s.begin()[v_resident.size()*ves_stride], &recv_ves_coord_s[0],
+        v_pos_s.getDevice().Memcpy(&v_pos_s.begin()[v_resident.size()*ves_stride], &recv_ves_coord_s[0],
                     recv_size_ves*ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
-        v_pos_e.getDevice().Memcpy(v_pos_e.begin()[v_resident.size()*ves_stride], &recv_ves_coord_e[0],
+        v_pos_e.getDevice().Memcpy(&v_pos_e.begin()[v_resident.size()*ves_stride], &recv_ves_coord_e[0],
                     recv_size_ves*ves_stride*sizeof(value_type), device_type::MemcpyHostToDevice);
         GetColPosAll(v_pos_s, v_pos_up_s, v_pos_up_s_pole);
         GetColPosAll(v_pos_e, v_pos_up_e, v_pos_up_e_pole);
@@ -4979,24 +5024,35 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
         for(size_t i=0; i<bd_resident.size(); i++)
         {
             size_t local_bd_i = bd_resident[i];
+            COUT("local_bd_i: "<<local_bd_i);
             memcpy(&bd_coord[0]+i*bd_stride, &pos_bd[local_bd_i*bd_stride], bd_stride*sizeof(value_type));
         }
+        COUT("ghost_bd_size: "<<recv_size_bd);
         memcpy(&bd_coord[0]+bd_resident.size()*bd_stride, &recv_bd_coord[0], recv_size_bd*bd_stride*sizeof(value_type));
 
         // call contact detection
         if(c_nv != c_nv_prev || c_nbd != c_nbd_prev)
         {
-            if(CI_ves_bd_)
+            if(CI_ves_bd_ != nullptr)
+            {
+                COUT("deleting CI_ves_bd: "<<CI_ves_bd_);
                 delete CI_ves_bd_;
+            }
             CI_ves_bd_ = new ContactInterfaceBoundary();
+            COUT(v_pos_up_s.size()<<", "<<v_pos_up_s_pole.Dim()<<", "<<bd_coord.Dim());
             CI_ves_bd_->generateMesh(v_pos_up_s, &v_pos_up_s_pole[0], col_upsample_freq, c_nv, 
                     &bd_coord[0], num_points_per_patch_1d, c_nbd);
             CI_ves_bd_->init(SURF_SIMPLE);
         }
+        COUT("c_nv: "<<c_nv<<", c_nbd: "<<c_nbd);
         CI_ves_bd_->getVolumeAndGradient(IV_, IS_BDV_, num_cvs_, vgrad, vgrad_ind, 
                 v_pos_up_s, v_pos_up_e, &v_pos_up_s_pole[0], &v_pos_up_e_pole[0],
                 params_.min_sep_dist, &bd_coord[0], v_resident.size(), params_.periodic_length);
         c_nv_prev = c_nv; c_nbd_prev = c_nbd;
+    }
+    else
+    {
+        assert(c_nv == 0);
     }
     pvfmm::Profile::Toc();
     
@@ -5020,7 +5076,7 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
     for(size_t i=0; i<v_resident.size(); i++)
     {
         size_t local_v_i = v_resident[i];
-        vgrad_.getDevice().Memcpy(vgrad_.begin()[local_v_i*ves_stride_up], &vgrad[i*ves_stride_up], 
+        vgrad_.getDevice().Memcpy(&vgrad_.begin()[local_v_i*ves_stride_up], &vgrad[i*ves_stride_up], 
                 ves_stride_up*sizeof(value_type), device_type::MemcpyHostToDevice);
     
         memcpy(&vgrad_ind_[local_v_i*ves_stride_up], &vgrad_ind[i*ves_stride_up], 
@@ -5053,7 +5109,7 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t *X_s, const Vec_t *X_e,
     {
         size_t local_v_i = sves_id[i] - myrank*nall;
         assert(local_v_i >= 0);
-        assert(loval_v_i < nv);
+        assert(local_v_i < nv);
 
         vgrad1.getDevice().Memcpy(vgrad1.begin(), &send_ves_coord_s[i*ves_stride_up],
                 ves_stride_up*sizeof(value_type), device_type::MemcpyHostToDevice);
