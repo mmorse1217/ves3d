@@ -9,8 +9,10 @@ FixedBoundary()
     Options::set_value_petsc_opts("-bdtype", "2"); // blended surface
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/cube_large.wrl"); // single cube
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cube_large.wrl");
-    Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/hourglass.wrl"); // hourglass
-    Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/hourglass.wrl");
+    //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/hourglass.wrl"); // hourglass
+    //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/hourglass.wrl");
+    Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/vessel_section.wrl"); // hourglass
+    Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/vessel_section.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/cuboid.wrl"); // hourglass
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cuboid.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/branch.wrl"); // branch
@@ -19,7 +21,7 @@ FixedBoundary()
     //Options::set_value_petsc_opts("-bis3d_spacing", ".05"); //large cube
     Options::set_value_petsc_opts("-bd3d_bdsurf_chttyp", "2");
     Options::set_value_petsc_opts("-bd3d_facemap_adaptive", "0");
-    Options::set_value_petsc_opts("-bd3d_facemap_refinement_factor", "1");
+    Options::set_value_petsc_opts("-bd3d_facemap_refinement_factor", "0");
     Options::set_value_petsc_opts("-boundary_distance_ratio", ".075");
     Options::set_value_petsc_opts("-interpolation_spacing_ratio", ".075");
     std::cout<<"fixed boundary set petsc options\n";
@@ -74,7 +76,8 @@ FixedBoundary()
     boundary_data_local.restore_local_vector();
     
     //tri_vertices_spacing = 0.02; //cube large
-    tri_vertices_spacing = 0.1; //hourglass
+    tri_vertices_spacing = 0.2; // vessel branch
+    //tri_vertices_spacing = 0.1; //hourglass
     //tri_vertices_spacing = 0.1; //branch
     SetTriData();
 

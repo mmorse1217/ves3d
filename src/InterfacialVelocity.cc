@@ -608,12 +608,14 @@ updateJacobiImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         // accumulate contact force to S_.fc_ and update tension
         INFO("accumulating contact force.");
         value_type is_bdv = 1;
+        value_type is_bdv_glb = 1;
         for(int iv=0; iv<col_lambda.size(); iv++)
         {
             col_lambda.begin()[iv] *= IS_BDV_[iv];
             is_bdv *= IS_BDV_[iv];
         }
-        if(is_bdv)
+        MPI_Allreduce(&is_bdv, &is_bdv_glb, 1, MPI_DOUBLE, MPI_MIN, comm);
+        if(is_bdv_glb)
         {
             INFO("no boundary vesicle contact.");
             axpy(static_cast<value_type>(1.0), *col_tension, tension_, tension_);
@@ -4649,7 +4651,7 @@ ParallelGetVolumeAndGradientWithBoundary(const Vec_t &X_s, const Vec_t &X_e,
     size_t npa = (size_t)num_patches;   // number of patches on this process
     size_t nall = nv+npa;   // number of vesicles+patches on this process
     std::vector< std::pair<size_t, size_t> > B_VI, B_VG, V_BI, V_BG, V_VI, V_VG;
-    for(size_t i_pair; i_pair<BBIPairs.size(); i_pair++)
+    for(size_t i_pair=0; i_pair<BBIPairs.size(); i_pair++)
     {
         size_t ind1 = BBIPairs[i_pair].first;   //always incident boundary or vesicle
         size_t ind2 = BBIPairs[i_pair].second;  //can be incident or ghost boundary, ghost vesicle

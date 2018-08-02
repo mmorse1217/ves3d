@@ -385,10 +385,19 @@ inline void InitializeShapes(Vec_t &x, const E &shape_gallery,
             cen.push_back(geo_spec[offset++]);
 
         _rotation_matrix_zyz(
-            geo_spec[offset++] /* rz1 */,
-            geo_spec[offset++] /* ry  */,
-            geo_spec[offset++] /* rz2 */,
+            geo_spec[offset] /* rz1 */,
+            geo_spec[offset+1] /* ry  */,
+            geo_spec[offset+2] /* rz2 */,
             rot);
+        offset += 3;
+
+        // @bug, order of evaluation is undefined
+        // https://en.cppreference.com/w/cpp/language/eval_order
+        //_rotation_matrix_zyz(
+        //    geo_spec[offset++] /* rz1 */,
+        //    geo_spec[offset++] /* ry  */,
+        //    geo_spec[offset++] /* rz2 */,
+        //    rot);
     }
 
     // transform and fill

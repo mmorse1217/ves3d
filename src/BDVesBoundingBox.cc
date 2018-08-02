@@ -98,7 +98,7 @@ void BDVesBoundingBox<Real_t>::SetBDVesBoundingBox(const PVFMMVec_t& ves_coord_s
 
             Real_t min_tmp[3];
             Real_t max_tmp[3];
-            Real_t *first_point = &pos_bd[COORD_DIM*i*(num_points_per_patch_1d*num_points_per_patch_1d)];
+            const Real_t *first_point = &pos_bd[COORD_DIM*i*(num_points_per_patch_1d*num_points_per_patch_1d)];
             for(size_t k=0; k<COORD_DIM; k++)
             {
                 min_tmp[k] = first_point[k];
