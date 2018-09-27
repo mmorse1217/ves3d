@@ -35,12 +35,15 @@ class FixedBoundary
       Vec solved_density_tmp;
       Vec boundary_data;
       Vec boundary_flow;
+      Vec boundary_flow_tmp;
 
       double* GetSamplePoints(int& num_sample_points);
       void RestoreSamplePoints(double **local_sample_points);
       void SetBoundaryData(double* boundary_data_address);
       void SetTriData();
       void SetBoundaryFlow();
+      void BuildInOutLets();
+      void FillVesicle(double cell_size);
   
       //Vec computed_potential;
       //Vec targets;
@@ -49,6 +52,25 @@ class FixedBoundary
       int num_patches; //coarse bdry()
       int num_vertices_per_patch_1d;
       int num_vertices_per_patch;
+
+      // inlet/outlet
+      typedef struct BINOUT {
+          std::vector<int> patch_list;
+          double bmin[3], bmax[3];
+          double cell_size; // cell_size should larger than the diameter of any vesicle, used to generate inslots_min/max
+          double flow_dir[3];
+          //int nx, ny, nz;
+          //std::vector<int> empty_id;
+      } BINOUT;
+      std::vector<BINOUT> boundary_inlets;
+      std::vector<BINOUT> boundary_outlets;
+
+      int total_inslots;
+      double *inslots_min;  // total_inslots*DIM
+      double *inslots_max;  // total_inslots*DIM
+      //double *inslots_cell_size; // total_inslots*DIM
+      int *inslots_count; // total_inslots
+      // end of inlet/outlet
   private:
 };
 

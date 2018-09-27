@@ -11,8 +11,10 @@ FixedBoundary()
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cube_large.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/hourglass.wrl"); // hourglass
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/hourglass.wrl");
-    Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/vessel_section.wrl"); // hourglass
-    Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/vessel_section.wrl");
+    //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/vessel_section.wrl"); // small vessel
+    //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/vessel_section.wrl");
+    Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/larger_vessel_section.wrl"); // large vessel
+    Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/larger_vessel_section.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/cuboid.wrl"); // hourglass
     //Options::set_value_petsc_opts("-bd3d_meshfile", "wrl_files/cuboid.wrl");
     //Options::set_value_petsc_opts("-bd3d_filename", "wrl_files/branch.wrl"); // branch
@@ -86,7 +88,16 @@ FixedBoundary()
             total_num_dof,
             boundary_flow);
     VecSet(boundary_flow, 0.);
-    //SetBoundaryFlow(); // hourglass
+    Petsc::create_mpi_vec(solver->mpiComm(),
+            total_num_dof,
+            boundary_flow_tmp);
+    VecSet(boundary_flow_tmp, 0.);
+
+    BuildInOutLets();
+    
+    SetBoundaryFlow();
+
+    FillVesicle(1);
 
     /*
     Vec computed_potential;
@@ -167,11 +178,22 @@ FixedBoundary::
 ~FixedBoundary()
 {
     if(tri_vertices)
-        delete tri_vertices;
+        delete[] tri_vertices;
+    if(surface)
+        delete surface;
+    if(solver)
+        delete solver;
+    if(inslots_min)
+        delete[] inslots_min;
+    if(inslots_max)
+        delete[] inslots_max;
+    if(inslots_count)
+        delete[] inslots_count;
     Petsc::destroy_vec(boundary_data);
     Petsc::destroy_vec(solved_density);
     Petsc::destroy_vec(solved_density_tmp);
     Petsc::destroy_vec(boundary_flow);
+    Petsc::destroy_vec(boundary_flow_tmp);
 }
 
 void FixedBoundary::
@@ -387,6 +409,116 @@ SetBoundaryFlow()
     int num_sample_points = solver->patch_samples()->local_num_sample_points();
     
     DblNumMat boundary_flow_local = get_local_vector(1, total_num_dof, boundary_flow);
+    DblNumMat boundary_flow_local_tmp = get_local_vector(1, total_num_dof, boundary_flow_tmp);
+    //loop over all inlets
+    for(int i=0; i<boundary_inlets.size(); i++)
+    {
+        double bboxl[3];
+        double bboxc[3];
+        for(int j=0; j<COORD_DIM; j++)
+        {
+            bboxl[j] = boundary_inlets[i].bmax[j] - boundary_inlets[i].bmin[j];
+            bboxc[j] = (boundary_inlets[i].bmax[j] + boundary_inlets[i].bmin[j])/2;
+        }
+
+        double r2_max = (bboxl[0]*bboxl[0] + bboxl[1]*bboxl[1] + bboxl[2]*bboxl[2])/4;
+        for(int j=0; j<num_sample_points; j++)
+        {
+            double sample_dis[3];
+            for(int jj=0; jj<COORD_DIM; jj++)
+            {
+                sample_dis[jj] = sample_points_address[3*j+jj] - bboxc[jj];
+            }
+            double r2 = sample_dis[0]*sample_dis[0] + sample_dis[1]*sample_dis[1] + sample_dis[2]*sample_dis[2];
+        
+            double strength = 0;
+        
+            if(r2>=r2_max)
+                strength = 0;
+            else
+                strength = std::exp(1.0/(r2/r2_max-1))/std::exp(-1.0);
+        
+            boundary_flow_local(0,3*j+0)+=strength * boundary_inlets[i].flow_dir[0];
+            boundary_flow_local(0,3*j+1)+=strength * boundary_inlets[i].flow_dir[1];
+            boundary_flow_local(0,3*j+2)+=strength * boundary_inlets[i].flow_dir[2];
+        }
+    }
+
+    // do integral on boundary_flow_local with only inlets
+    double* sample_points_weight;
+    double* sample_points_normal;
+    VecGetArray(solver->patch_samples()->sample_point_combined_weight(), &sample_points_weight);
+    VecGetArray(solver->patch_samples()->sample_point_normal(), &sample_points_normal);
+    double flux_inlets = 0, total_flux_inlets=0;
+    double udotn = 0;
+    for(int i=0; i<num_sample_points; i++)
+    {
+        udotn = 0;
+        for(int j=0; j<COORD_DIM; j++)
+            udotn += boundary_flow_local(0,3*i+j)*sample_points_normal[3*i+j];
+        udotn *= sample_points_weight[i];
+        flux_inlets += udotn;
+    }
+    MPI_Allreduce(&flux_inlets, &total_flux_inlets, 1, MPI_DOUBLE, MPI_SUM, comm);
+    std::cout<<"flux_inlets: "<<flux_inlets<<std::endl;
+    
+    //loop over all outlets
+    for(int i=0; i<boundary_outlets.size(); i++)
+    {
+        double bboxl[3];
+        double bboxc[3];
+        for(int j=0; j<COORD_DIM; j++)
+        {
+            bboxl[j] = boundary_outlets[i].bmax[j] - boundary_outlets[i].bmin[j];
+            bboxc[j] = (boundary_outlets[i].bmax[j] + boundary_outlets[i].bmin[j])/2;
+        }
+
+        double r2_max = (bboxl[0]*bboxl[0] + bboxl[1]*bboxl[1] + bboxl[2]*bboxl[2])/4;
+        for(int j=0; j<num_sample_points; j++)
+        {
+            double sample_dis[3];
+            for(int jj=0; jj<COORD_DIM; jj++)
+            {
+                sample_dis[jj] = sample_points_address[3*j+jj] - bboxc[jj];
+            }
+            double r2 = sample_dis[0]*sample_dis[0] + sample_dis[1]*sample_dis[1] + sample_dis[2]*sample_dis[2];
+        
+            double strength = 0;
+        
+            if(r2>=r2_max)
+                strength = 0;
+            else
+                strength = std::exp(1.0/(r2/r2_max-1))/std::exp(-1.0);
+        
+            boundary_flow_local_tmp(0,3*j+0)+=strength * boundary_outlets[i].flow_dir[0];
+            boundary_flow_local_tmp(0,3*j+1)+=strength * boundary_outlets[i].flow_dir[1];
+            boundary_flow_local_tmp(0,3*j+2)+=strength * boundary_outlets[i].flow_dir[2];
+        }
+    }
+    // do integral on boundary_flow_local with only outlets
+    double flux_outlets = 0, total_flux_outlets = 0;
+    udotn = 0;
+    for(int i=0; i<num_sample_points; i++)
+    {
+        udotn = 0;
+        for(int j=0; j<COORD_DIM; j++)
+            udotn += boundary_flow_local_tmp(0,3*i+j)*sample_points_normal[3*i+j];
+        udotn *= sample_points_weight[i];
+        flux_outlets += udotn;
+    }
+    MPI_Allreduce(&flux_outlets, &total_flux_outlets, 1, MPI_DOUBLE, MPI_SUM, comm);
+
+    // restore array
+    VecRestoreArray(solver->patch_samples()->sample_point_combined_weight(), &sample_points_weight);
+    VecRestoreArray(solver->patch_samples()->sample_point_normal(), &sample_points_normal);
+    boundary_flow_local.restore_local_vector();
+    boundary_flow_local_tmp.restore_local_vector();
+    VecRestoreArray(solver->patch_samples()->sample_point_3d_position(), &sample_points_address);
+
+    // adjust strength
+    VecAXPY(boundary_flow, -total_flux_inlets/total_flux_outlets, boundary_flow_tmp);
+
+    /*
     for(int i=0; i<num_sample_points; i++)
     {
         if(fabs(sample_points_address[3*i+0]) <= 14)
@@ -414,7 +546,172 @@ SetBoundaryFlow()
                 boundary_flow_local(0,3*i+2)=0;
             }
         }
+        boundary_flow_local(0,3*i+0)=sample_points_address[3*i+2];
+        boundary_flow_local(0,3*i+1)=0;
+        boundary_flow_local(0,3*i+2)=0;
     }
-    boundary_flow_local.restore_local_vector();
+    */
+}
+
+void FixedBoundary::
+BuildInOutLets()
+{
+    // temp inlet
+    BINOUT tmp_let;
+    tmp_let.bmin[0] = 22 - 3.1; tmp_let.bmin[1] = -18.3 - 2; tmp_let.bmin[2] = 4.4 - 1.5;
+    tmp_let.bmax[0] = 22 + 3.1; tmp_let.bmax[1] = -18.3 + 2; tmp_let.bmax[2] = 4.4 + 1.5;
+    tmp_let.flow_dir[0] = -1; tmp_let.flow_dir[1] = 1; tmp_let.flow_dir[2] = 0;
+    boundary_inlets.push_back(tmp_let);
+    
+    // temp outlet
+    tmp_let.bmin[0] = -12.8 - 1.5; tmp_let.bmin[1] = 20.3 - 1.5; tmp_let.bmin[2] = -12 - 1;
+    tmp_let.bmax[0] = -12.8 + 1.5; tmp_let.bmax[1] = 20.3 + 1.5; tmp_let.bmax[2] = -12 + 1;
+    tmp_let.flow_dir[0] = 0; tmp_let.flow_dir[1] = 0; tmp_let.flow_dir[2] = -1;
+    boundary_outlets.push_back(tmp_let);
+    tmp_let.bmin[0] = -24.8 - 1; tmp_let.bmin[1] = 15.8 - 1; tmp_let.bmin[2] = -12.7 - 1;
+    tmp_let.bmax[0] = -24.8 + 1; tmp_let.bmax[1] = 15.8 + 1; tmp_let.bmax[2] = -12.7 + 1;
+    tmp_let.flow_dir[0] = -1; tmp_let.flow_dir[1] = 1; tmp_let.flow_dir[2] = -1;
+    boundary_outlets.push_back(tmp_let);
+
+    // compute inslots/outslots
+    total_inslots = 1;
+    inslots_min = new double[total_inslots*COORD_DIM];
+    inslots_max = new double[total_inslots*COORD_DIM];
+    inslots_count = new int[total_inslots];
+    inslots_min[0] = 22 - 0.7; inslots_min[1] = -18.3 - 0.7; inslots_min[2] = 4.4 - 0.7;
+    inslots_max[0] = 22 + 0.7; inslots_max[1] = -18.3 + 0.7; inslots_max[2] = 4.4 + 0.7;
+    inslots_count[0] = 0;
+}
+
+void FixedBoundary::
+FillVesicle(double cell_size)
+{
+    double* sample_points_address;
+    VecGetArray(solver->patch_samples()->sample_point_3d_position(), &sample_points_address);
+    int num_sample_points = solver->patch_samples()->local_num_sample_points();
+    std::cout<<"num sample points: "<<num_sample_points<<std::endl;
+
+    // get fixed boundary bounding box
+    double bb_min[3], bb_max[3];
+    for(int i=0; i<num_sample_points; i++)
+    {
+        if(i==0)
+        { 
+            for(int j=0; j<VES3D_DIM; j++)
+            {
+                bb_min[j] = sample_points_address[i*VES3D_DIM + j];
+                bb_max[j] = sample_points_address[i*VES3D_DIM + j]; 
+            }
+        }
+        else
+        {
+            for(int j=0; j<VES3D_DIM; j++)
+            {
+                bb_min[j] = std::min(sample_points_address[i*VES3D_DIM + j], bb_min[j]);
+                bb_max[j] = std::max(sample_points_address[i*VES3D_DIM + j], bb_max[j]); 
+            }
+        }
+    }
+
+    // get cell center points
+    int num_cen_pts_dim[3];
+    int num_cen_pts = 1;
+    for(int j=0; j<VES3D_DIM; j++)
+    {
+        num_cen_pts_dim[j] = floor((bb_max[j]-bb_min[j])/cell_size);
+        num_cen_pts *= num_cen_pts_dim[j];
+    }
+    double *cen_pts = new double[VES3D_DIM*num_cen_pts];
+    double *val = new double[VES3D_DIM*num_cen_pts];
+    bool *is_valid = new bool[num_cen_pts];
+    for(int i=0; i<num_cen_pts_dim[0]; i++)
+        for(int j=0; j<num_cen_pts_dim[1]; j++)
+            for(int k=0; k<num_cen_pts_dim[2]; k++)
+            {
+                int ind = num_cen_pts_dim[2]*num_cen_pts_dim[1]*i + num_cen_pts_dim[2]*j + k;
+                cen_pts[VES3D_DIM*ind + 0] = bb_min[0]+(i+0.5)*cell_size;
+                cen_pts[VES3D_DIM*ind + 1] = bb_min[1]+(j+0.5)*cell_size;
+                cen_pts[VES3D_DIM*ind + 2] = bb_min[2]+(k+0.5)*cell_size;
+            }
+
+    // remove points outside of fixed boundary
+    // do constant density evaluation
+    int num_box = 0;
+    VecSet(solved_density, 1.);
+    EvalPotential(num_cen_pts, cen_pts, val);
+    for(int i=0; i<num_cen_pts; i++)
+    {
+        if(std::abs(val[i*VES3D_DIM+0]-1)>0.2 && std::abs(val[i*VES3D_DIM+1]-1)>0.2 && std::abs(val[i*VES3D_DIM+2]-1)>0.2)
+            is_valid[i] = false;
+        else
+        {
+            is_valid[i] = true;
+            num_box++;
+        }
+    }
+    // remove cells intersecting with patches bounding box
+    double *bb_min_patch = new double[VES3D_DIM*num_patches];
+    double *bb_max_patch = new double[VES3D_DIM*num_patches];
+    for(int i=0; i<num_patches; i++)
+    {
+        const double *first_point = &tri_vertices[VES3D_DIM*i*num_vertices_per_patch_1d*num_vertices_per_patch_1d];
+        for(int j=0; j<VES3D_DIM; j++)
+        {
+            bb_min_patch[i*VES3D_DIM+j] = first_point[j];
+            bb_max_patch[i*VES3D_DIM+j] = first_point[j];
+        }
+        for(int j=0; j<num_vertices_per_patch_1d; j++)
+            for(int k=0; k<num_vertices_per_patch_1d; k++)
+            {
+                int point_id = num_vertices_per_patch_1d*j + k;
+                for(int ii=0; ii<VES3D_DIM; i++)
+                {
+                    bb_min_patch[i*VES3D_DIM+ii] = std::min(bb_min_patch[i*VES3D_DIM+ii], first_point[point_id*VES3D_DIM+ii]);
+                    bb_max_patch[i*VES3D_DIM+ii] = std::max(bb_max_patch[i*VES3D_DIM+ii], first_point[point_id*VES3D_DIM+ii]);
+                }
+            }
+    }
+
+    for(int i=0; i<num_cen_pts_dim[0]; i++)
+        for(int j=0; j<num_cen_pts_dim[1]; j++)
+            for(int k=0; k<num_cen_pts_dim[2]; k++)
+            {
+                int ind = num_cen_pts_dim[2]*num_cen_pts_dim[1]*i + num_cen_pts_dim[2]*j + k;
+                if(is_valid[ind]==false)
+                    continue;
+
+                double bb_min_ves[3], bb_max_ves[3];
+                for(int ii=0; ii<VES3D_DIM; ii++)
+                {
+                    bb_min_ves[ii] = cen_pts[VES3D_DIM*ind+ii] - 0.5*cell_size;
+                    bb_max_ves[ii] = cen_pts[VES3D_DIM*ind+ii] + 0.5*cell_size; 
+                }
+                cen_pts[VES3D_DIM*ind + 2] = bb_min[2]+(k+0.5)*cell_size;
+                                
+                for(int ii=0; ii<num_patches; ii++)
+                {
+                    double bb_min_tmp[3], bb_max_tmp[3];
+                    for(int jj=0; jj<VES3D_DIM; jj++)
+                    {
+                        bb_min_tmp[jj] = bb_min_patch[ii*VES3D_DIM+jj];
+                        bb_max_tmp[jj] = bb_max_patch[ii*VES3D_DIM+jj];
+                    }
+                    if(bb_min_ves[0]<=bb_max_tmp[0] && bb_max_ves[0]>=bb_min_tmp[0] && 
+                       bb_min_ves[1]<=bb_max_tmp[1] && bb_max_ves[1]>=bb_min_tmp[1] && 
+                       bb_min_ves[2]<=bb_max_tmp[2] && bb_max_ves[2]>=bb_min_tmp[2]
+                      )
+                    {
+                        is_valid[ind] = false;
+                        break;
+                    }
+                }
+            }
+
+    
     VecRestoreArray(solver->patch_samples()->sample_point_3d_position(), &sample_points_address);
+    delete[] cen_pts;
+    delete[] val;
+    delete[] is_valid;
+    delete[] bb_min_patch;
+    delete[] bb_max_patch;
 }

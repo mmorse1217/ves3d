@@ -373,6 +373,143 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             pvfmm::Profile::Tic("JacobiStep",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
+
+            // begin inlet/outlet
+            // test of move vesicle
+            std::cout<<"num subs: "<<S_->getPosition().getNumSubs()<<"\n";
+            std::cout<<"stride: "<<S_->getPosition().getStride()<<"\n";
+            for(int i=0; i<S_->getPosition().getNumSubs(); i++)
+            {
+                int stride = S_->getPosition().getStride();
+                for(int j=0; j<stride; j++)
+                {
+                    S_->getPositionModifiable().begin()[i*VES3D_DIM*stride + 0*stride + j] -= 0.4;
+                    S_->getPositionModifiable().begin()[i*VES3D_DIM*stride + 1*stride + j] += 0.33;
+                    S_->getPositionModifiable().begin()[i*VES3D_DIM*stride + 2*stride + j] -= 0.27;
+                }
+            }
+            std::cout<<"vesicle moved.\n";
+            // compute center of mass
+            Vec_t centers;
+            centers.replicate(S_->getPosition());
+            Sca_t::getDevice().Memset(centers.begin(), 0, centers.size()*sizeof(value_type));
+            S_->getCenters(centers);
+            // compute vesicles' bounding box
+            //std::vector<value_type> ves_bb(2*VES3D_DIM*centers.getNumSubs(), 0);
+            // update inslots_count
+            std::vector<int> inslots_count_local(F_->fixed_bd->total_inslots, 0);
+            #pragma omp parallel for
+            for(int i=0; i<F_->fixed_bd->total_inslots; i++)
+            {
+                value_type minA[3], maxA[3];//, minB[3], maxB[3];
+                value_type sample_pt_pos[3];
+                for(int j=0; j<VES3D_DIM; j++)
+                {
+                    minA[j] = F_->fixed_bd->inslots_min[i*VES3D_DIM + j];
+                    maxA[j] = F_->fixed_bd->inslots_max[i*VES3D_DIM + j];
+                }
+                int stride = centers.getStride();
+                for(int j=0; j<centers.getNumSubs(); j++)
+                {
+                    // compare each sample point's boundary box in inslots or not, not just bounding box of whole vesicle
+                    for(int jj=0; jj<stride; jj++)
+                    {
+                        sample_pt_pos[0] = S_->getPosition().begin()[j*VES3D_DIM*stride + 0*stride + jj];
+                        sample_pt_pos[1] = S_->getPosition().begin()[j*VES3D_DIM*stride + 1*stride + jj];
+                        sample_pt_pos[2] = S_->getPosition().begin()[j*VES3D_DIM*stride + 2*stride + jj];
+                        if(sample_pt_pos[0]<=maxA[0] && sample_pt_pos[0]>=minA[0] && 
+                           sample_pt_pos[1]<=maxA[1] && sample_pt_pos[1]>=minA[1] && 
+                           sample_pt_pos[2]<=maxA[2] && sample_pt_pos[2]>=minA[2]
+                          )
+                        {
+                            inslots_count_local[i] += 1;
+                            break;
+                        }
+                    }
+                    /*
+                    for(int jj=0; jj<VES3D_DIM; jj++)
+                    {
+                        minB[jj] = ves_bb[2*j*VES3D_DIM + jj];
+                        maxB[jj] = ves_bb[2*j*VES3D_DIM + VES3D_DIM + jj];
+                    }
+
+                    if(
+                            (minA[0]<=maxB[0] && maxA[0]>= minB[0]) &&
+                            (minA[1]<=maxB[1] && maxA[1]>= minB[1]) &&
+                            (minA[2]<=maxB[2] && maxA[2]>= minB[2])
+                      )
+                        inslots_count_local[i] += 1;
+                    */
+                }
+            }
+            // mpi communication
+            MPI_Allreduce(&inslots_count_local[0], &F_->fixed_bd->inslots_count[0], F_->fixed_bd->total_inslots, 
+                    MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+            std::cout<<"inslots count: "<<F_->fixed_bd->inslots_count[0]<<"\n";
+            // delete vesicle from boundary_outlets and add to boundary_inlets
+            std::vector<int> ves_out_local_id;
+            for(int i=0; i<centers.getNumSubs(); i++)
+            {
+                value_type ves_cen[3];
+                for(int j=0; j<VES3D_DIM; j++)
+                    ves_cen[j] = centers.begin()[i*VES3D_DIM+j];
+                for(int j=0; j<F_->fixed_bd->boundary_outlets.size(); j++)
+                {
+                   value_type minA[3], maxA[3];
+                   for(int jj=0; jj<VES3D_DIM; jj++)
+                   {
+                       minA[jj] = F_->fixed_bd->boundary_outlets[j].bmin[jj];
+                       maxA[jj] = F_->fixed_bd->boundary_outlets[j].bmax[jj];
+                   }
+                   if( 
+                           ves_cen[0]<=maxA[0] && ves_cen[0]>=minA[0] &&
+                           ves_cen[1]<=maxA[1] && ves_cen[1]>=minA[1] &&
+                           ves_cen[2]<=maxA[2] && ves_cen[2]>=minA[2] 
+                     )
+                       ves_out_local_id.push_back(i);
+                }
+            }
+            std::sort(ves_out_local_id.begin(), ves_out_local_id.end());
+            ves_out_local_id.erase(std::unique(ves_out_local_id.begin(), ves_out_local_id.end()), ves_out_local_id.end());
+            std::cout<<"vesicle out count: "<<ves_out_local_id.size()<<"\n";
+            // mpi communication
+            long long disp_ves = 0;
+            long long size_ves = ves_out_local_id.size();
+            MPI_Scan(&size_ves, &disp_ves, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+            size_t offset_ves = disp_ves - size_ves;
+            // move vesicle
+            size_t empty_count = 0;
+            size_t moved_count = 0;
+            for(int i=0; i<F_->fixed_bd->total_inslots; i++)
+            {
+                if(F_->fixed_bd->inslots_count[i] == 0)
+                    empty_count++;
+                if(empty_count > offset_ves && ves_out_local_id.size()>0)
+                {
+                    int vid = ves_out_local_id[moved_count];
+                    value_type pos_disp[3], ves_cen[3], minA[3], maxA[3];
+                    for(int j=0; j<VES3D_DIM; j++)
+                    {
+                        minA[j] = F_->fixed_bd->inslots_min[(empty_count-1)*VES3D_DIM + j];
+                        maxA[j] = F_->fixed_bd->inslots_max[(empty_count-1)*VES3D_DIM + j];
+                        ves_cen[j] = centers.begin()[vid*VES3D_DIM + j];
+                        pos_disp[j] = (minA[j]+maxA[j])/2 - ves_cen[j];
+                        
+                        int stride = centers.getStride();
+                        int base = vid*VES3D_DIM*stride + j*stride;
+                        #pragma omp parallel for
+                        for(int jj=0; jj<stride; jj++)
+                            S_->getPositionModifiable().begin()[base+jj] += pos_disp[j];
+
+                    }
+                    moved_count++;
+                    if(moved_count == ves_out_local_id.size())
+                        break;
+                }
+            }
+            assert(moved_count == ves_out_local_id.size());
+            // end inlet/outlet
+            
             /*
             Vec_t centers;
             centers.replicate(S_->getPosition());
