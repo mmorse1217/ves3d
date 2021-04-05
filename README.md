@@ -1,5 +1,5 @@
-This codebase is not maintained and is made available for reference purposes. 
-It simulates deformable vesicles in Stokes flows and resolve inter-cell collisions and scales to thousands of cores.
+This codebase simulates deformable vesicles in Stokes flows and resolve inter-cell collisions and scales to thousands of cores.
+It is not maintained and is made available for reference purposes; we do not guarantee timely responses to feature requests or bug fixes. 
 It contributed to the following publications:
 
  - Dhairya Malhotra, Abtin Rahimian, Denis Zorin, and George Biros. "A parallel algorithm for long-timescale simulation of concentrated vesicle suspensions in three dimensions." (2017) [Preprint](https://cims.nyu.edu/~malhotra/files/pubs/ves3d.pdf) (2017).
