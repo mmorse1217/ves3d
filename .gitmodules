@@ -1,0 +1,3 @@
+[submodule "contact3d"]
+	path = contact3d
+	url = https://github.com/geometryprocessing/stiv
