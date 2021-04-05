@@ -1,10 +1,10 @@
 This codebase is not maintained and is made available for reference purposes. 
-It is a parallel simulation platform to simulate deformable vesicles in Stokes flows and resolve inter-cell collisions.
+It simulates deformable vesicles in Stokes flows and resolve inter-cell collisions and scales to thousands of cores.
 It contributed to the following publications:
 
-Dhairya Malhotra, Abtin Rahimian, Denis Zorin, and George Biros. "A parallel algorithm for long-timescale simulation of concentrated vesicle suspensions in three dimensions." (2017) [Preprint](https://cims.nyu.edu/~malhotra/files/pubs/ves3d.pdf) (2017).
-Libin Lu, Abtin Rahimian, and Denis Zorin. "Parallel contact-aware simulations of deformable particles in 3D Stokes flow." (2018) [arXiv preprint arXiv:1812.04719](https://arxiv.org/pdf/1812.04719)
-Libin Lu, Matthew J. Morse, Abtin Rahimian, Georg Stadler, and Denis Zorin.  "Scalable simulation of realistic volume fraction red blood cell flows through vascular networks." [Supercomputing 2019](https://dl.acm.org/doi/pdf/10.1145/3295500.3356203?casa_token=MSlWLB6jRGQAAAAA:YvpdvZpeUcNF4kj0_BjyVZMg0GyUSeqt9KE-Xb4EbhLTOu6EtUJJrZ7ixNrpqm3tL2S_C9XjwYvA)
+ - Dhairya Malhotra, Abtin Rahimian, Denis Zorin, and George Biros. "A parallel algorithm for long-timescale simulation of concentrated vesicle suspensions in three dimensions." (2017) [Preprint](https://cims.nyu.edu/~malhotra/files/pubs/ves3d.pdf) (2017).
+ - Libin Lu, Abtin Rahimian, and Denis Zorin. "Parallel contact-aware simulations of deformable particles in 3D Stokes flow." (2018) [arXiv preprint arXiv:1812.04719](https://arxiv.org/pdf/1812.04719)
+ - Libin Lu, Matthew J. Morse, Abtin Rahimian, Georg Stadler, and Denis Zorin.  "Scalable simulation of realistic volume fraction red blood cell flows through vascular networks." [Supercomputing 2019](https://dl.acm.org/doi/pdf/10.1145/3295500.3356203?casa_token=MSlWLB6jRGQAAAAA:YvpdvZpeUcNF4kj0_BjyVZMg0GyUSeqt9KE-Xb4EbhLTOu6EtUJJrZ7ixNrpqm3tL2S_C9XjwYvA)
 
 
 # 3D particulate flow simulation code. #
