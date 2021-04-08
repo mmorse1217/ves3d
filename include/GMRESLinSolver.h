@@ -1,6 +1,6 @@
 /**
  * @file GMRESLinSolver.h
- * @author Lu, Libin <ll1488@nyu.edu>
+ * @author Rahimian, Abtin <arahimian@acm.org> Lu, Libin <ll1488@nyu.edu>
  * @date Fri Feb 24 11:37:30 2017
  */
 

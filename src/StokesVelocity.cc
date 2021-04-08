@@ -172,9 +172,10 @@ const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(
 #endif
 
   { // Setup
-    pvfmm::Profile::Tic("Setup",&comm, true);
+    pvfmm::Profile::Tic("SetupOP",&comm, true);
     bool prof_state=pvfmm::Profile::Enable(false);
 
+    INFO("before construct self op");
     if(!SLMatrix.Dim() || !DLMatrix.Dim()){
       pvfmm::Profile::Tic("SelfMatrix",&comm, true);
       if(!SLMatrix.Dim() && !DLMatrix.Dim() && force_single.Dim() && force_double.Dim()){
@@ -196,6 +197,7 @@ const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(
       }
       pvfmm::Profile::Toc();
     }
+    INFO("after construct self op");
 
     if(!scoord_far.Dim()){
       assert(!scoord_norm.Dim());
@@ -280,6 +282,7 @@ const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(
       }
       pvfmm::Profile::Toc();
     }
+    INFO("after set near and area element");
 
     if(!rforce_single.Dim() && add_repul){ // Add repulsion
       pvfmm::Profile::Tic("Repulsion",&comm);
@@ -385,9 +388,10 @@ const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(
     pvfmm::Profile::Enable(prof_state);
     pvfmm::Profile::Toc();
   }
+  INFO("after density setup");
 
   if(!S_vel.Dim()){ // Compute self interaction
-    pvfmm::Profile::Tic("SelfInteraction",&comm);
+    pvfmm::Profile::Tic("SelfInteractionOP",&comm);
     bool prof_state=pvfmm::Profile::Enable(false);
     assert(!S_vel_up.Dim());
     static PVFMMVec vel_up, vel_pole, Vcoef;
@@ -475,19 +479,22 @@ const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(
     pvfmm::Profile::Enable(prof_state);
     pvfmm::Profile::Toc();
   }
+  INFO("after compute self");
 
   NearSingular<Real>& near_singular=(trg_is_surf?near_singular0:near_singular1);
   PVFMMVec& trg_coord=(trg_is_surf?tcoord_repl:tcoord);
 
   if(!fmm_vel.Dim()){ // Compute far interaction
-    pvfmm::Profile::Tic("FarInteraction",&comm,true);
+    pvfmm::Profile::Tic("FarInteractionOP",&comm,true);
     bool prof_state=pvfmm::Profile::Enable(false);
     fmm_vel.ReInit(trg_coord.Dim());
+    INFO("before call fmm");
     PVFMMEval(&scoord_far[0],
               (qforce_single.Dim()?&qforce_single[0]:NULL),
               (qforce_double.Dim()?&qforce_double[0]:NULL),
               scoord_far.Dim()/COORD_DIM,
               &trg_coord[0], &fmm_vel[0], trg_coord.Dim()/COORD_DIM, &pvfmm_ctx, fmm_setup);
+    INFO("after call fmm");
     fmm_setup=false;
     near_singular.SubtractDirect(fmm_vel);
     pvfmm::Profile::Enable(prof_state);
@@ -495,7 +502,7 @@ const typename StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(
   }
 
   if(!trg_vel.Dim()){ // Compute near interaction
-    pvfmm::Profile::Tic("NearInteraction",&comm,true);
+    pvfmm::Profile::Tic("NearInteractionOP",&comm,true);
     bool prof_state=pvfmm::Profile::Enable(false);
     const PVFMMVec& near_vel=near_singular();
     { // Compute trg_vel = fmm_vel + near_vel
@@ -995,9 +1002,10 @@ void StokesVelocity<Real>::setup_all(){
     pvfmm::Profile::Toc();
   }
 
-  //if(!rforce_single.Dim() && add_repul){ // Add repulsion
-  if(0){ // Add repulsion
+  if(!rforce_single.Dim() && add_repul){ // Add repulsion
+  //if(0){ // Add repulsion
     pvfmm::Profile::Tic("Repulsion",&comm);
+    COUT("adding repulsion force");
     const PVFMMVec& f_repl=near_singular0.ForceRepul();
     long Mves=2*sh_order*(sh_order+1);
     long Nves=f_repl.Dim()/Mves/COORD_DIM;
@@ -1250,9 +1258,9 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
 
 template <class Real>
 void StokesVelocity<Real>::Test(){
-  int p0=16;
+  int p0=24;
   long Ngrid=(p0+1)*2*p0;
-  long Nves=2;
+  long Nves=1;
 
   StokesVelocity<Real> S(p0,2*p0);
   pvfmm::Vector<Real> X (Nves*Ngrid*COORD_DIM);
@@ -1272,13 +1280,17 @@ void StokesVelocity<Real>::Test(){
         Real cos_t=qx[i];
         Real sin_t=sqrt(1.0-cos_t*cos_t);
         for(size_t j=0;j<p0*2;j++){
-          X [(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=-(1+0.05*(k-0.5))*cos_t;
-          X [(k*COORD_DIM+1)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*sin(j*M_PI/p0);
-          X [(k*COORD_DIM+2)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*cos(j*M_PI/p0);
+          //X [(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=-(1+0.05*(k-0.5))*cos_t;
+          //X [(k*COORD_DIM+1)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*sin(j*M_PI/p0);
+          //X [(k*COORD_DIM+2)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*cos(j*M_PI/p0);
 
-          FS[(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=0;
-          FS[(k*COORD_DIM+1)*Ngrid+i*p0*2+j]=0;
-          FS[(k*COORD_DIM+2)*Ngrid+i*p0*2+j]=0;
+          X [(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=-(1)*cos_t;
+          X [(k*COORD_DIM+1)*Ngrid+i*p0*2+j]= (1)*sin_t*sin(j*M_PI/p0);
+          X [(k*COORD_DIM+2)*Ngrid+i*p0*2+j]= (1)*sin_t*cos(j*M_PI/p0);
+
+          FS[(k*COORD_DIM+0)*Ngrid+i*p0*2+j]= -cos_t;
+          FS[(k*COORD_DIM+1)*Ngrid+i*p0*2+j]= sin_t*sin(j*M_PI/p0);
+          FS[(k*COORD_DIM+2)*Ngrid+i*p0*2+j]= sin_t*cos(j*M_PI/p0);
 
           FD[(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=1;
           FD[(k*COORD_DIM+1)*Ngrid+i*p0*2+j]=1;
@@ -1288,18 +1300,18 @@ void StokesVelocity<Real>::Test(){
     }
   }
 
-  if(1){
+  if(0){
     S.SetTrgCoord(NULL);
     S.SetSrcCoord(X);
     S.SetDensitySL(&FS);
     S.SetDensityDL(&FD);
     pvfmm::Vector<Real> vel=S();
 
-    WriteVTK(X, 16, 64, "test", 0.0, &vel);
+    WriteVTK(X, p0, 64, "test", 0.0, &vel);
   }else{
     pvfmm::Vector<Real> T;
     { // Set coordinate values
-      int p0=64;
+      int p0=24;
       long Ngrid=(p0+1)*2*p0;
       std::vector<Real> qx;
       { // compute legendre node points
@@ -1322,13 +1334,17 @@ void StokesVelocity<Real>::Test(){
     S.SetTrgCoord(&T);
     S.SetSrcCoord(X);
     S.SetDensitySL(&FS);
-    S.SetDensityDL(&FD);
+    S.SetDensityDL(NULL);
     pvfmm::Vector<Real> vel=S();
 
     pvfmm::Matrix<Real> M;
     M.ReInit(  T.Dim()/COORD_DIM,COORD_DIM,&  T[0],false); M=M.Transpose();
     M.ReInit(vel.Dim()/COORD_DIM,COORD_DIM,&vel[0],false); M=M.Transpose();
-    WriteVTK(T, 64, 64, "test", 0.0, &vel);
+    double max_err = -1;
+    std::setprecision(16);
+    for(int i=0;i<vel.Dim();i++) max_err = (max_err > fabs(vel[i])) ? max_err : fabs(vel[i]);
+    std::cout<<"max error: "<<max_err<<"\n";
+    WriteVTK(T, p0, 64, "test", 0.0, &vel);
   }
 }
 

@@ -1,6 +1,6 @@
 /**
  * @file   Surface.cc
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @date   Tue Feb  2 13:37:21 2010
  *
  * @brief  The implementation of the surface class.

@@ -1,6 +1,6 @@
 /**
  * @file   Surface.h
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @date   Tue Feb  2 13:23:11 2010
  *
  * @brief  The declaration for the Surface class.
@@ -87,6 +87,7 @@ class Surface : public Streamable
     mutable Vec_t fc_;
     mutable Vec_t velocity_;
     mutable Sca_t tension_;
+    mutable Sca_t Vm_;
     
     int sh_order_;
     int diff_filter_freq_;

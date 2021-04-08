@@ -99,6 +99,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
 	case JacobiBlockImplicit:
 	    updater = &IntVel_t::updateJacobiImplicit;
+	    //updater = &IntVel_t::updateExpand;
 	    break;
 
 	case GloballyImplicit:
@@ -120,7 +121,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     { // Compute area, vol
         S_->resample(params_->upsample_freq, &S_up_); // up-sample
 
-        std::cout<<std::scientific<<std::setprecision(16);
+        //std::cout<<std::scientific<<std::setprecision(16);
         /*
         for(int i=0; i<S_up_->getPosition().size(); i++)
             std::cout<<S_up_->getPosition().begin()[i]<<std::endl;
@@ -129,6 +130,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         int N_ves=S_up_->getNumberOfSurfaces();
         area.resize(N_ves,1); S_up_->area  (area);
         vol .resize(N_ves,1); S_up_->volume( vol);
+        COUT("vol: "<<vol.begin()[0]);
         //@bug downsample seems unnecessary
         //S_up_->resample(params_->sh_order, &S_); // down-sample
 
@@ -360,12 +362,14 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
             INFO("TimeAdapNone");
+            INFO("mkl max threads: "<<mkl_get_max_threads());
+            INFO("omp max threads: "<<omp_get_max_threads());
 
             //update boundary
             INFO("Begin to solve boundary.");
             pvfmm::Profile::Tic("BoundarySolver",&comm,true);
-            F_->updateFarFieldBoundary();
-            F_->fixed_bd->Solve();
+            //F_->updateFarFieldBoundary();
+            //F_->fixed_bd->Solve();
             INFO("Boundary solved.");
             pvfmm::Profile::Toc();
 
@@ -374,28 +378,35 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
 
-            // begin inlet/outlet
-            // test of move vesicle
-            std::cout<<"num subs: "<<S_->getPosition().getNumSubs()<<"\n";
-            std::cout<<"stride: "<<S_->getPosition().getStride()<<"\n";
-            for(int i=0; i<S_->getPosition().getNumSubs(); i++)
+            /*
+            // begin expand vesicle
+            int rank_tmp;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank_tmp);
+            ofstream myfile;
+            myfile.open("scale_rank_"+to_string(rank_tmp));
+            for(int i_tmp = 0; i_tmp<F_->expand_by.size(); i_tmp++)
             {
-                int stride = S_->getPosition().getStride();
-                for(int j=0; j<stride; j++)
-                {
-                    S_->getPositionModifiable().begin()[i*VES3D_DIM*stride + 0*stride + j] -= 0.4;
-                    S_->getPositionModifiable().begin()[i*VES3D_DIM*stride + 1*stride + j] += 0.33;
-                    S_->getPositionModifiable().begin()[i*VES3D_DIM*stride + 2*stride + j] -= 0.27;
-                }
+                //myfile<<0.17*(1+F_->expand_by[i_tmp])<<"\n";
+                //double scale_tmp = std::min(0.4, 0.17*(1+F_->expand_by[i_tmp])); // vessel
+                //double scale_tmp = std::min(0.23, 0.10*(1+F_->expand_by[i_tmp])); // larger vessel
+                //double scale_tmp = std::min(0.5, 0.20*(1+F_->expand_by[i_tmp])); // largest vessel
+                //double scale_tmp = std::min(0.5, 0.2296*(1+F_->expand_by[i_tmp])); // 1034
+                //double scale_tmp = std::min(0.34, 0.1536*(1+F_->expand_by[i_tmp])); // 4127
+                double scale_tmp = std::min(0.25, 0.1*(1+F_->expand_by[i_tmp])); // 16830
+                myfile<<scale_tmp<<"\n";
             }
-            std::cout<<"vesicle moved.\n";
+            myfile.close();
+            // end expand vesicle
+            */
+
+            /*
+            // begin inlet/outlet
             // compute center of mass
             Vec_t centers;
             centers.replicate(S_->getPosition());
             Sca_t::getDevice().Memset(centers.begin(), 0, centers.size()*sizeof(value_type));
             S_->getCenters(centers);
-            // compute vesicles' bounding box
-            //std::vector<value_type> ves_bb(2*VES3D_DIM*centers.getNumSubs(), 0);
+            
             // update inslots_count
             std::vector<int> inslots_count_local(F_->fixed_bd->total_inslots, 0);
             #pragma omp parallel for
@@ -426,133 +437,149 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
                             break;
                         }
                     }
-                    /*
-                    for(int jj=0; jj<VES3D_DIM; jj++)
-                    {
-                        minB[jj] = ves_bb[2*j*VES3D_DIM + jj];
-                        maxB[jj] = ves_bb[2*j*VES3D_DIM + VES3D_DIM + jj];
-                    }
-
-                    if(
-                            (minA[0]<=maxB[0] && maxA[0]>= minB[0]) &&
-                            (minA[1]<=maxB[1] && maxA[1]>= minB[1]) &&
-                            (minA[2]<=maxB[2] && maxA[2]>= minB[2])
-                      )
-                        inslots_count_local[i] += 1;
-                    */
                 }
             }
             // mpi communication
             MPI_Allreduce(&inslots_count_local[0], &F_->fixed_bd->inslots_count[0], F_->fixed_bd->total_inslots, 
-                    MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-            std::cout<<"inslots count: "<<F_->fixed_bd->inslots_count[0]<<"\n";
+                    MPI_INT, MPI_SUM, comm);
+            INFO("inslots count: ");
+            for(int i=0; i<F_->fixed_bd->total_inslots; i++)
+                INFO("inslot id: "<<i<<", count: "<<F_->fixed_bd->inslots_count[i]);
+
             // delete vesicle from boundary_outlets and add to boundary_inlets
-            std::vector<int> ves_out_local_id;
+            std::vector<int> ves_out_local_id; ves_out_local_id.clear();
+            static std::list<int> ves_out_global_id;
+            int myrank, np;
+            MPI_Comm_rank(comm, &myrank);
+            MPI_Comm_size(comm, &np);
+            int nv = centers.getNumSubs();
             for(int i=0; i<centers.getNumSubs(); i++)
             {
+                int i_glb = i + myrank * nv;
                 value_type ves_cen[3];
                 for(int j=0; j<VES3D_DIM; j++)
                     ves_cen[j] = centers.begin()[i*VES3D_DIM+j];
                 for(int j=0; j<F_->fixed_bd->boundary_outlets.size(); j++)
                 {
                    value_type minA[3], maxA[3];
+
                    for(int jj=0; jj<VES3D_DIM; jj++)
                    {
                        minA[jj] = F_->fixed_bd->boundary_outlets[j].bmin[jj];
                        maxA[jj] = F_->fixed_bd->boundary_outlets[j].bmax[jj];
                    }
                    if( 
-                           ves_cen[0]<=maxA[0] && ves_cen[0]>=minA[0] &&
+                           (ves_cen[0]<=maxA[0] && ves_cen[0]>=minA[0] &&
                            ves_cen[1]<=maxA[1] && ves_cen[1]>=minA[1] &&
-                           ves_cen[2]<=maxA[2] && ves_cen[2]>=minA[2] 
+                           ves_cen[2]<=maxA[2] && ves_cen[2]>=minA[2])
                      )
-                       ves_out_local_id.push_back(i);
+                   {
+                       bool find_i = false;
+                       for(auto li = ves_out_global_id.cbegin(); li != ves_out_global_id.cend(); li++)
+                       {
+                           if( i_glb == (*li) )
+                           {
+                               find_i = true;
+                               break;
+                           }
+                       }
+                       if(find_i == false)
+                       {
+                           ves_out_local_id.push_back(i_glb);
+                       }
+                       break;
+                   }
                 }
             }
-            std::sort(ves_out_local_id.begin(), ves_out_local_id.end());
-            ves_out_local_id.erase(std::unique(ves_out_local_id.begin(), ves_out_local_id.end()), ves_out_local_id.end());
-            std::cout<<"vesicle out count: "<<ves_out_local_id.size()<<"\n";
-            // mpi communication
-            long long disp_ves = 0;
-            long long size_ves = ves_out_local_id.size();
-            MPI_Scan(&size_ves, &disp_ves, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-            size_t offset_ves = disp_ves - size_ves;
+            // mpi communication mpiallgetherv push ves_out_local_id into ves_out_global_id
+            COUT("vesicle out count: "<<ves_out_local_id.size());
+            pvfmm::Vector<int> rves_cnt(np); rves_cnt.SetZero();
+            pvfmm::Vector<int> rves_dsp(np); rves_dsp.SetZero();
+            int num_ves_out_local = ves_out_local_id.size();
+            MPI_Allgather(&num_ves_out_local, 1, pvfmm::par::Mpi_datatype<int>::value(),
+                          &rves_cnt[0],       1, pvfmm::par::Mpi_datatype<int>::value(), comm);
+            rves_dsp[0]=0; pvfmm::omp_par::scan(&rves_cnt[0], &rves_dsp[0], rves_cnt.Dim());
+            int recv_size = rves_cnt[np-1] + rves_dsp[np-1];
+            pvfmm::Vector<int> rves_id(recv_size);
+            MPI_Allgatherv(&ves_out_local_id[0], num_ves_out_local, pvfmm::par::Mpi_datatype<int>::value(), 
+                           &rves_id[0], &rves_cnt[0], &rves_dsp[0], pvfmm::par::Mpi_datatype<int>::value(), comm);
+            for(int i=0; i<rves_id.Dim(); i++)
+                ves_out_global_id.push_back(rves_id[i]);
+            INFO("glb out ves id: ");
+            for(auto i=ves_out_global_id.cbegin(); i!=ves_out_global_id.cend(); i++)
+                INFO("id: "<<(*i));
+
             // move vesicle
-            size_t empty_count = 0;
+            // bad hard coded
+            //value_type vol_new_v = 2.4937962484200002e-01; // vessel
+            //value_type area_new_v = 2.0439527629074905e+00; // vessel
+            //value_type vol_new_v = 3.1800067730712818e-02 * 8.0; // large vessel
+            //value_type area_new_v = 5.1782407795925178e-01 * 4.0; // large vessel
+            value_type vol_new_v = 3.6302284351072633e-01; // largest vessel
+            value_type area_new_v = 2.6253437710233136e+00; // largest vessel
+            static bool x_loaded = false;
+            static Vec_t x_ves_inlet(1, params_->sh_order);
+            if(x_loaded==false)
+            {
+                DataIO io_tmp;
+                std::string fname(FullPath(params_->shape_gallery_file));
+                std::vector<value_type> shapes;
+                io_tmp.ReadDataStl(fname, shapes, DataIO::ASCII);
+                //std::vector<value_type> spec_tmp{0, 0.3, 0.0, 0.0, 0.0, 0.0, 1.5707, 0.0}; // vessel
+                //std::vector<value_type> spec_tmp{0, 0.302, 0.0, 0.0, 0.0, 1.5708, 1.5708, 1.5708}; // large vessel
+                //std::vector<value_type> spec_tmp{0, 0.3, 0.0, 0.0, 0.0, 1.5708, 1.5708, 1.5708}; // large vessel
+                std::vector<value_type> spec_tmp{0, 0.34, 0.0, 0.0, 0.0, 0.0, 1.57079632679, 1.57079632679}; // largest vessel
+                InitializeShapes(x_ves_inlet, shapes, spec_tmp);
+                x_loaded = true;
+            }
+            // end of bad hard coded
             size_t moved_count = 0;
+            size_t total_ves = ves_out_global_id.size();
             for(int i=0; i<F_->fixed_bd->total_inslots; i++)
             {
-                if(F_->fixed_bd->inslots_count[i] == 0)
-                    empty_count++;
-                if(empty_count > offset_ves && ves_out_local_id.size()>0)
+                if(F_->fixed_bd->inslots_count[i] == 0 && ves_out_global_id.size()>0)
                 {
-                    int vid = ves_out_local_id[moved_count];
-                    value_type pos_disp[3], ves_cen[3], minA[3], maxA[3];
-                    for(int j=0; j<VES3D_DIM; j++)
+                    int vid_glb = ves_out_global_id.front();
+                    ves_out_global_id.pop_front();
+                    if(vid_glb>=myrank*nv && vid_glb<(myrank+1)*nv)
                     {
-                        minA[j] = F_->fixed_bd->inslots_min[(empty_count-1)*VES3D_DIM + j];
-                        maxA[j] = F_->fixed_bd->inslots_max[(empty_count-1)*VES3D_DIM + j];
-                        ves_cen[j] = centers.begin()[vid*VES3D_DIM + j];
-                        pos_disp[j] = (minA[j]+maxA[j])/2 - ves_cen[j];
-                        
+                        int vid = vid_glb - myrank*nv;
+                        value_type pos_disp[3], ves_cen[3], minA[3], maxA[3];
+                        for(int j=0; j<VES3D_DIM; j++)
+                        {
+                            minA[j] = F_->fixed_bd->inslots_min[i*VES3D_DIM + j];
+                            maxA[j] = F_->fixed_bd->inslots_max[i*VES3D_DIM + j];
+                            ves_cen[j] = centers.begin()[vid*VES3D_DIM + j];
+                            pos_disp[j] = (minA[j]+maxA[j])/2 - ves_cen[j];
+                            
+                            int stride = centers.getStride();
+                            int base = vid*VES3D_DIM*stride + j*stride;
+                            //#pragma omp parallel for
+                            for(int jj=0; jj<stride; jj++)
+                            {
+                                //S_->getPositionModifiable().begin()[base+jj] += pos_disp[j];
+                                S_->getPositionModifiable().begin()[base+jj] = (minA[j]+maxA[j])/2 + x_ves_inlet.begin()[j*stride+jj];
+                                S_->fc_.begin()[base+jj] = 0;
+                            }
+                        }
                         int stride = centers.getStride();
-                        int base = vid*VES3D_DIM*stride + j*stride;
-                        #pragma omp parallel for
                         for(int jj=0; jj<stride; jj++)
-                            S_->getPositionModifiable().begin()[base+jj] += pos_disp[j];
-
+                            S_->tension_.begin()[vid*stride + jj] = 0;
+                        area.begin()[vid] = area_new_v;
+                        vol.begin()[vid] = vol_new_v;
+                        (*monitor_).area0_.begin()[vid] = area_new_v;
+                        (*monitor_).vol0_.begin()[vid] = vol_new_v;
                     }
                     moved_count++;
-                    if(moved_count == ves_out_local_id.size())
+                    if(moved_count == total_ves)
                         break;
                 }
             }
-            assert(moved_count == ves_out_local_id.size());
             // end inlet/outlet
-            
-            /*
-            Vec_t centers;
-            centers.replicate(S_->getPosition());
-            Sca_t::getDevice().Memset(centers.begin(), 0, centers.size()*sizeof(value_type));
-            S_->getCenters(centers);
-            
-            for(int i=0; i<centers.getNumSubs(); i++)
-            {
-                std::cout<<centers.begin()[i*VES3D_DIM+0]<<"\n";
-            }
-
-            for(int i=0; i<centers.getNumSubs(); i++)
-            {
-                if(centers.begin()[i*VES3D_DIM+0] > 12)
-                {
-                    int stride = centers.getStride();
-                    int base = i*VES3D_DIM*stride;
-                    for(int j=0; j<stride; j++)
-                        S_->getPositionModifiable().begin()[base+j] -= 24;
-                }
-                
-                if(centers.begin()[i*VES3D_DIM+0] < -12)
-                {
-                    int stride = centers.getStride();
-                    int base = i*VES3D_DIM*stride;
-                    for(int j=0; j<stride; j++)
-                        S_->getPositionModifiable().begin()[base+j] += 24;
-                }
-
-            }
             */
+            
             pvfmm::Profile::Toc();
             
-/*
-            //update boundary
-            INFO("Begin to solve boundary.");
-            pvfmm::Profile::Tic("BoundarySolver",&comm,true);
-            F_->updateFarFieldBoundary();
-            F_->fixed_bd->Solve();
-            INFO("Boundary solved.");
-            pvfmm::Profile::Toc();
-*/
-
             t += dt;
         }
 
@@ -599,7 +626,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
             device_type::MemcpyDeviceToDevice);
     
     S_->resample(params_->upsample_freq, &S_up_); // up-sample
-    axpy(static_cast<value_type>(-0.005), S_up_->getNormal(), S_up_->getPosition(), S_up_->getPositionModifiable());
+    // offset a bit to avoid start configuation being exact of minsep distance, TODO: should be eps time vesicle edge length
+    axpy(static_cast<value_type>(-0.0001), S_up_->getNormal(), S_up_->getPosition(), S_up_->getPositionModifiable());
     S_up_->resample(params_->sh_order, &S_); // down-sample
 
     x_old.getDevice().Memcpy(x_old.begin(), S_->getPosition().begin(), x_old.size()*sizeof(value_type), 

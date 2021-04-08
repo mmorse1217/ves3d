@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Abtin Rahimian
+ * Copyright (c) 2014, Abtin Rahimian 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -42,6 +42,7 @@
 #include "Error.h"
 #include "Enums.h"
 #include "CPUKernels.h"
+#include "PVFMMInterface.h"
 
 #ifdef GPU_ACTIVE
 #include "cuda_runtime.h"

@@ -79,6 +79,7 @@ void NearSingular<Real_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_
 
 template<typename Real_t>
 void NearSingular<Real_t>::SetupCoordData(){
+  INFO("near coord setup");
   assert(S);
   Real_t near=2.0/sqrt((Real_t)sh_order_); // TODO: some function of sh_order and accuracy
   if(!(update_setup & (NearSingular::UpdateSrcCoord | NearSingular::UpdateTrgCoord))) return;

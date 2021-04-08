@@ -1,6 +1,6 @@
 /**
  * @file   DeviceCPU.cc
- * @author Abtin Rahimian <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org>  Abtin Rahimian, <arahimian@acm.org>
  * @date   Tue Feb 23 15:28:14 2010
  *
  * @brief  The implementation of the Device class.

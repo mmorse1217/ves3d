@@ -187,7 +187,7 @@ void Logger::Log(const char *event)
 void Logger::Log(std::ostream &event)
 {
     if (log_file.empty()){
-        COUT(event);
+        COUT(event.rdbuf());
         return;
     }
 
@@ -196,11 +196,11 @@ void Logger::Log(std::ostream &event)
     if(!out)
     {
         CERR_LOC("Could not open the log file '"<< log_file
-            <<"' for log event: "<<event,"",exit(1));
+            <<"' for log event: "<<event.rdbuf(),"",exit(1));
     }
     else
     {
-        out<<event<<std::endl;
+        out<<event.rdbuf()<<std::endl;
     }
     out.close();
 }

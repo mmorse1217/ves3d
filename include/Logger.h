@@ -1,13 +1,13 @@
 /**
  * @file
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @date   2014-08-26 16:26
  *
  * @brief Logger singleton class as well as logging and printing macros
  */
 
 /*
- * Copyright (c) 2014, Abtin Rahimian
+ * Copyright (c) 2014, Abtin Rahimian 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -125,15 +125,15 @@ class Logger
  * Profiling Macros
  */
 #ifdef PROFILING
-#define PROFILESTART() (Logger::Tic())
+#define PROFILESTART() //(Logger::Tic())
 #define PROFILEEND(str,flps) (                                  \
         Logger::Record(__FUNCTION__, str, Logger::Toc(), flps))
-#define PROFILECLEAR() (Logger::PurgeProfileHistory())
-#define PROFILEREPORT(format) (Logger::Report(format))
-#define PROFILEING_EXPR(expr) (expr)
+#define PROFILECLEAR() //(Logger::PurgeProfileHistory())
+#define PROFILEREPORT(format) //(Logger::Report(format))
+#define PROFILEING_EXPR(expr) //(expr)
 #else
 #define PROFILESTART()
-#define PROFILEEND(str,flps)
+#define PROFILEEND(str,flps) //pvfmm::Profile::Add_FLOP(flps)
 #define PROFILECLEAR()
 #define PROFILEREPORT(format)
 #define PROFILEING_EXPR(expr)
@@ -171,6 +171,7 @@ std::ostream& emph(std::ostream& os);
 #define WHENVERBOSE(expr) expr
 #else
 #define COUTDEBUG(str)
+//#define COUTDEBUG(str) {int _rank; MPI_Comm_rank(VES3D_COMM_STDOUT, &_rank); if(!_rank)std::cout<<"[DEBUG - "<<(long) GETSECONDS()<<"]["<<__FUNCTION__<<"] "<<str<<std::endl;}
 #define WHENVERBOSE(expr)
 #endif //VERBOSE
 

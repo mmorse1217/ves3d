@@ -44,6 +44,8 @@ class FixedBoundary
       void SetBoundaryFlow();
       void BuildInOutLets();
       void FillVesicle(double cell_size);
+      void LoadDensity(bool flag);
+      void SaveDensity();
   
       //Vec computed_potential;
       //Vec targets;

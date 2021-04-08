@@ -106,6 +106,8 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             IO_.DumpFile(fname.c_str(), ss);
             ++last_checkpoint_;
 
+            //state->F_->fixed_bd->SaveDensity();
+
 #if HAVE_PVFMM
             if(params_->write_vtk.size()){
                 std::string vtkfbase(params_->write_vtk);

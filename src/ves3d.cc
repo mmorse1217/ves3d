@@ -15,6 +15,8 @@ int main(int argc, char **argv)
     // don't use petsc for commandline argument parsing
     VES3D_INITIALIZE(&pargc, &pargv, NULL, NULL);
 
+    pvfmm::SetSigHandler();
+
     DictString_t dict;
     int nproc(1), rank(0);
 #ifdef HAS_MPI

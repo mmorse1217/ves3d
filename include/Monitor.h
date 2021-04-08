@@ -26,8 +26,8 @@ class Monitor : public MonitorBase<EvolveSurface>
     bool checkpoint_flag_;
     value_type checkpoint_stride_;
     DataIO IO_;
-    mutable value_type A0_, V0_;
-    typename EvolveSurface::Sca_t area0_, vol0_;
+    //mutable value_type A0_, V0_;
+    //typename EvolveSurface::Sca_t area0_, vol0_;
     typename EvolveSurface::Sca_t area_new, vol_new;
     int last_checkpoint_;
     int time_idx_;
@@ -37,6 +37,8 @@ class Monitor : public MonitorBase<EvolveSurface>
   public:
     Monitor(const Parameters<value_type> *params);
     ~Monitor();
+    mutable value_type A0_, V0_;
+    typename EvolveSurface::Sca_t area0_, vol0_;
 
     virtual Error_t operator()(const EvolveSurface *state, const value_type &t,
         value_type &dt);

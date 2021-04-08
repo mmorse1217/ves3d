@@ -1,6 +1,6 @@
 /**
  * @file   Vector.h
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @revision $Revision$
  * @tags $Tags$
  * @date $Date$
@@ -10,7 +10,7 @@
  */
 
 /*
- * Copyright (c) 2014, Abtin Rahimian
+ * Copyright (c) 2014, Abtin Rahimian 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without

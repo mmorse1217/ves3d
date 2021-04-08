@@ -1,6 +1,6 @@
 /**
  * @file   BiCGStab.h
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @date   Tue May 18 15:23:36 2010
  */
 

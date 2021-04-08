@@ -1,6 +1,6 @@
 /**
  * @file
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @revision $Revision$
  * @tags $Tags$
  * @date $Date$

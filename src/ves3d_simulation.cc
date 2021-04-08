@@ -1,6 +1,6 @@
 /**
  * @file
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @revision $Revision$
  * @tags $Tags$
  * @date $Date$
@@ -9,7 +9,7 @@
  */
 
 /*
- * Copyright (c) 2014, Abtin Rahimian
+ * Copyright (c) 2014, Abtin Rahimian 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -236,7 +236,8 @@ template<typename DT, const DT &DEVICE>
 Error_t Simulation<DT,DEVICE>::prepare_run_params(const Param_t &ip)
 {
     if (ip.load_checkpoint != ""){
-        std::string fname = FullPath(ip.load_checkpoint);
+        //std::string fname = FullPath(ip.load_checkpoint);
+        std::string fname = ip.load_checkpoint;
         INFO("Loading checkpoint file "<<fname);
         DataIO::SlurpFile(fname.c_str(), checkpoint_data_);
         load_checkpoint_ = true;

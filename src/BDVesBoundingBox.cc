@@ -167,6 +167,7 @@ void BDVesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<
     // construct BB_let
     pvfmm::Profile::Tic("BBLET", &comm, true);
     SetTreeParams();
+    INFO("After settreeparams.");
 
 #ifdef BDVES_BOUNDING_BOX_DEBUG
     COUT("bbox_: "<<bbox_[0]<<","<<bbox_[1]<<","<<bbox_[2]<<","<<bbox_[3]<<".");
@@ -175,7 +176,9 @@ void BDVesBoundingBox<Real_t>::GetContactBoundingBoxPair(std::vector< std::pair<
 #endif
         
     GenerateBBPoints();
+    //COUT("After generatebbpoints.");
     ConstructLocalTree(BB_let);
+    //COUT("After conslocaltree.");
 
 #ifdef BDVES_BOUNDING_BOX_DEBUG
     COUT("size of mid: "<<BB_let.mid.Dim());
@@ -251,7 +254,9 @@ void BDVesBoundingBox<Real_t>::SetTreeParams()
     MPI_Allreduce(&r_max_loc, &r_max_glb, 1, MPI_DOUBLE, MPI_MAX, comm);
     MPI_Allreduce(&r_min_loc, &r_min_glb, 1, MPI_DOUBLE, MPI_MIN, comm);
 
-    r_near = r_min_glb;
+    //r_near = r_min_glb;
+    //r_near = r_max_glb;
+    r_near = (r_max_glb+r_min_glb)/2.0;
     
     //COUT("set r_near: "<<r_near<<"\n");
 
@@ -873,6 +878,7 @@ void BDVesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::
     pvfmm::Vector<size_t> &tree_pt_cnt = BB_let.pt_cnt;
     pvfmm::Vector<size_t> &tree_pt_dsp = BB_let.pt_dsp;
 
+    pvfmm::Profile::Tic("NearPthreaded",&comm,true);
     std::vector<std::vector<std::pair<size_t, size_t> > > near_pair_omp(omp_p_); // (box_id, box_id)
     #pragma omp parallel num_threads(omp_p_)
     {
@@ -907,8 +913,8 @@ void BDVesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::
                         }
                     }
 
-                    std::sort(near_pair.begin(),near_pair.end());
-                    near_pair.erase(std::unique(near_pair.begin(), near_pair.end()), near_pair.end());
+                    //std::sort(near_pair.begin(),near_pair.end());
+                    //near_pair.erase(std::unique(near_pair.begin(), near_pair.end()), near_pair.end());
                 
                     // TODO: add FLOP
                 }
@@ -921,6 +927,7 @@ void BDVesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::
 
         pvfmm::Profile::Add_FLOP(FLOP);
     }
+    pvfmm::Profile::Toc();
 
     size_t near_size=0;
     pvfmm::Vector<size_t> near_cnt(omp_p_);
@@ -961,6 +968,7 @@ void BDVesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::
     pvfmm::par::ScatterForward(near_src_box_id, scatter_idx, comm);
     pvfmm::par::ScatterForward(near_trg_box_id, scatter_idx, comm);
 
+    pvfmm::Profile::Tic("Uniqpair",&comm,true);
     // construct unique pairs
     near_size = scatter_idx.Dim();
     BBIPairs.resize(near_size);
@@ -971,6 +979,7 @@ void BDVesBoundingBox<Real_t>::FindNearPair(TREEGRID &BB_let, std::vector< std::
     }
     std::sort(BBIPairs.begin(), BBIPairs.end());
     BBIPairs.erase(std::unique(BBIPairs.begin(), BBIPairs.end()), BBIPairs.end());
+    pvfmm::Profile::Toc();
 
     pvfmm::Profile::Toc();
 }
@@ -1032,6 +1041,7 @@ void BDVesBoundingBox<Real_t>::GenerateBBPoints()
 
     // set number of pts in each dimension
     // set number of points per box
+    //COUT("before nx, ny, nz");
     #pragma omp parallel for
     for(size_t tid=0; tid<omp_p_; tid++){
         size_t a = ((tid+0)*N_bbox_)/omp_p_;
@@ -1046,6 +1056,12 @@ void BDVesBoundingBox<Real_t>::GenerateBBPoints()
             int ny = std::ceil((max_i[1] - min_i[1])/leaf_size_) + 1;
             int nz = std::ceil((max_i[2] - min_i[2])/leaf_size_) + 1;
             
+            if(nx<=1)
+                COUT("max_x: "<<max_i[0]<<", min_x: "<<min_i[0]<<", leafs: "<<leaf_size_);
+            if(ny<=1)
+                COUT("max_y: "<<max_i[1]<<", min_y: "<<min_i[1]<<", leafs: "<<leaf_size_);
+            if(nz<=1)
+                COUT("max_z: "<<max_i[2]<<", min_z: "<<min_i[2]<<", leafs: "<<leaf_size_);
             ASSERT(nx > 1, "invalid nx");ASSERT(ny > 1, "invalid ny");ASSERT(nz > 1, "invalid nz");
             
             bbox_nxyzi[0] = nx;
@@ -1054,6 +1070,7 @@ void BDVesBoundingBox<Real_t>::GenerateBBPoints()
             bbox_n[i] = nx*ny*nz;
         }
     }
+    //COUT("after nx, ny, nz");
         
     // set point displacement for each bounding box
     bbox_ndsp[0]=0; pvfmm::omp_par::scan(&bbox_n[0], &bbox_ndsp[0], bbox_n.size());
@@ -1077,6 +1094,7 @@ void BDVesBoundingBox<Real_t>::GenerateBBPoints()
         box_id_offset = disp - size;
     }
 
+    //COUT("before points");
     // generating points
     #pragma omp parallel for
     for(size_t tid=0; tid<omp_p_; tid++){
@@ -1113,6 +1131,7 @@ void BDVesBoundingBox<Real_t>::GenerateBBPoints()
             }
         }
     }
+    //COUT("after points");
     pvfmm::Profile::Toc();
 }
 

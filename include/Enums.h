@@ -1,6 +1,6 @@
 /**
  * @file   Enums.h
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @date   2014-08-26 18:17
  *
  * @brief Enums and macros used in the code and overloaded functions
@@ -8,7 +8,7 @@
  */
 
 /*
- * Copyright (c) 2014, Abtin Rahimian
+ * Copyright (c) 2014, Abtin Rahimian 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without

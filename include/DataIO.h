@@ -1,6 +1,6 @@
 /**
  * @file   DataIO.h
- * @author Rahimian, Abtin <arahimian@acm.org>
+ * @author Rahimian, Abtin <arahimian@acm.org> 
  * @date   Thu Feb  4 13:11:15 2010
  *
  * @brief  The data I/O class header.

@@ -44,6 +44,10 @@ class SphericalHarmonics{
     static std::vector<pvfmm::Matrix<Real> >& MatRotate(long p0);
 
     static void StokesSingularInteg(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix=NULL, pvfmm::Vector<Real>* DLMatrix=NULL);
+    
+    static void LaplaceSingularInteg(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix=NULL, pvfmm::Vector<Real>* DLMatrix=NULL);
+    
+    static void LaplaceSingularIntegTrans(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix=NULL, pvfmm::Vector<Real>* DLMatrix=NULL);
 
     static void SetB0B1();
 
@@ -65,6 +69,12 @@ class SphericalHarmonics{
 
     template <bool SLayer, bool DLayer>
     static void StokesSingularInteg_(const pvfmm::Vector<Real>& X0, long p0, long p1, pvfmm::Vector<Real>& SL, pvfmm::Vector<Real>& DL);
+
+    template <bool SLayer, bool DLayer>
+    static void LaplaceSingularInteg_(const pvfmm::Vector<Real>& X0, long p0, long p1, pvfmm::Vector<Real>& SL, pvfmm::Vector<Real>& DL);
+
+    template <bool SLayer=true, bool DLayer=false>
+    static void LaplaceSingularIntegTrans_(const pvfmm::Vector<Real>& X0, long p0, long p1, pvfmm::Vector<Real>& SL, pvfmm::Vector<Real>& DL);
 
     static struct MatrixStorage{
       MatrixStorage(int size){

@@ -5,6 +5,7 @@
 #include <omp.h>
 #include <math.h>
 #include "Logger.h"
+#include "PVFMMInterface.h"
 
 ///Single precision
 void DirectStokesKernel(int src_stride, int trg_stride, int n_surfs, int trg_idx_head,

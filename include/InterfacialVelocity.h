@@ -26,7 +26,8 @@
 #include "VesBoundingBox.h"
 #include "BDVesBoundingBox.h"
 #include "ParallelLinSolver_Petsc.h"
-#include "FixedBoundary.h"
+//#include "FixedBoundary.h"
+#include "ElectroForce.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -69,6 +70,7 @@ class InterfacialVelocity
     Error_t updateJacobiExplicit   (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
     Error_t updateJacobiGaussSeidel(const SurfContainer& S_, const value_type &dt, Vec_t& dx);
     Error_t updateJacobiImplicit   (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
+    Error_t updateExpand   (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
     Error_t updateImplicit         (const SurfContainer& S_, const value_type &dt, Vec_t& dx);
 
     Error_t reparam();
@@ -137,7 +139,14 @@ class InterfacialVelocity
     mutable int nv_;
     
     // fixed boundary
-    FixedBoundary* fixed_bd;
+    //FixedBoundary* fixed_bd;
+
+    // electrical force
+    ElectroForce<SurfContainer>* el_force;
+
+    // for expand vesicle
+    mutable std::vector<bool> ves_stop;
+    mutable std::vector<double> expand_by;
     
   private:
     SurfContainer &S_;
@@ -240,6 +249,8 @@ class InterfacialVelocity
     // rhs and x
     mutable value_type *x_host_;
     mutable value_type *rhs_host_;
+    
+    mutable Vec_t fe_;
 };
 
 #include "InterfacialVelocity.cc"

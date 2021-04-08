@@ -55,7 +55,8 @@ class EvolveSurface : public Streamable
     typedef Surface<Sca_t, Vec_t> Sur_t;
 
     typedef BgFlowBase<Vec_t> BgFlow_t;
-    typedef MonitorBase<EvolveSurface> Monitor_t;
+    //typedef MonitorBase<EvolveSurface> Monitor_t;
+    typedef Monitor<EvolveSurface> Monitor_t;
     typedef Interact Interaction_t;
     typedef Repart Repartition_t;
 
